@@ -1,0 +1,329 @@
+A New CRT-RSA Algorithm Resistant to Powerful Fault Attacks
+
+Nevine Ebeid
+Certicom Corp. a Subsidiary of Research In Motion Limited
+Mississauga, Ontario, Canada
+nebeid@certicom.com
+ABSTRACT
+CRT-RSA is widely deployed in embedded devices to accelerate the RSA signature generation by about four times compared to regular RSA. However, since the Bellcore attack of 1996, research into securing CRT-RSA has remained active as countermeasures are themselves attacked. In this paper, we propose a new countermeasure designed with a powerful attacker in mind. The attacker may inject multiple precise/random faults and may alter the program counter to skip one or more instructions.
+The strength of our countermeasure derives from combining signature validation with signature unblinding modulo n.
+Keywords: RSA, Chinese Remainder Theorem, Fault injection attacks, Countermeasures.
+1. INTRODUCTION
+Securing the CRT-RSA signature scheme against fault attacks (FA) has attracted the attention of several researchers since the Bellcore attack was introduced in 1996 by Boneh et al. [8]. In general, fault attacks aim to produce an erroneous result in one or more steps of a cryptographic computation. Collecting partially erroneous results or faulty and correct results from the same computation can help the attacker deduce secret information and possibly break the system.
+The immediate objective of inducing a fault may be to change some bit values in memory locations or internal registers, and may also involve changing the values of the program counter or stack pointer and, by this means, skipping some or all of the remaining steps in the algorithm. The fault may also attempt to toggle the result of a conditional check [20]. There are various ways to induce faults in a device while performing a cryptographic application. Arbitrary faults may be injected by varying temperature, the external clock, the supply voltage, or more accurately targeted faults may be injected with laser, X-ray or ion beams [4].
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. To copy otherwise, to republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. WESS'10, October 24, 2010, Scottsdale, AZ,USA Copyright 2010 ACM 978-1-4503-0078-0 ...$10.00.
+
+Rob Lambert
+Certicom Corp. a Subsidiary of Research In Motion Limited
+Mississauga, Ontario, Canada
+rlambert@certicom.com
+The CRT-RSA signature algorithm has become a well-known target of these attacks. Consisting of two lengthy exponentiations modulo each of the secret factors of the RSA modulus, it is relatively easy to induce a fault in just one of these two operations of CRT-RSA. Collecting a single faulty signature, an attacker may factor the modulus, sidestepping this computationally hard problem on which the mathematical security of the RSA scheme is based.
+Since the publication of this attack, several countermeasures have been proposed and many attacks on these countermeasures have also been developed. Countermeasures for CRTRSA often avoid the use of e, which is a public component of the RSA public key, since it is not one of the personalization parameters p, q, dp, dq and q-1 mod p. However, some of theses countermeasures require d, the private exponent, as part of a precomputation phase, which is also not a personalization parameter [5, 6, 21]. Conventionally, e is defined to be a relatively small integer, allowing the signature verification to be more efficient than signature generation. In this paper, we investigate what is possible if e is available. We present a new approach which, employing e, blinds the whole CRT-RSA computation, and which includes an implicit blinded signature validation modulo n in the unblinding computation.
+In Sect. 2, we provide a brief overview of attacks and the previously proposed countermeasures, we also discuss their vulnerability to fault attacks under our attack model. In Sect. 3, we present our new CRT-RSA computation, interwoven with countermeasures against fault analysis attacks. The security and performance evaluation of the proposed algorithm is presented in Sect. 4 and Sect. 5. Finally, we provide our conclusions in Sect. 6.
+2. FAULT ATTACKS ON CRT-RSA AND PROPOSED COUNTERMEASURES
+In this section, we review the Bellcore attack on CRT-RSA and the various countermeasures that have been proposed.
+2.1 CRT-RSA signature scheme
+In the RSA signature scheme [25], party A owns a long-term public key (n, e) and a corresponding private key (p, q, d), where n = pq; p and q are large primes, e is the public exponent; 1 < e < (n) = (p - 1)(q - 1), gcd(e, (n)) = 1 and d = e-1 mod (n) is the private exponent.
+To sign a message m, or rather a hashed and/or padded
+
+version thereof, A calculates the signature s = md mod n
+and sends it to B who, using A's public key, can confirm A's signature on m by verifying that m = se mod n.
+
+An approximately four times more efficient computation was suggested by Quisquater and Couvreur [24] using the Chinese Remainder Theorem (CRT), where A performs the following steps to compute s
+
+sp = mdp mod p , sq = mdq mod q , s = CRT(sp, sq) ,
+= sq + q · (iq · (sp - sq) mod p) ,
+
+(1) (2)
+(3)
+
+where iq = q-1 mod p. Here (3) is referred to as Garner's CRT recombination [15].
+
+2.2 The Bellcore Attack
+
+Bellcore researchers [8] have presented a fault attack on
+
+CRT-RSA as follows: A fault is injected in the device dur-
+
+ing the computation of (1) (equivalently (2)), resulting in a
+
+faulty value sp (sq), and hence a faulty signature s. Now we have
+
+spe  m (mod p) ,
+
+seq  m (mod q) , gcd(se - m, n) = q ,
+
+(4)
+
+thus factoring n and solving the computationally hard problem underlying RSA. This attack is also referred to as the gcd attack [21].
+
+2.3 Previous Countermeasures
+Several countermeasures to the gcd attack have been proposed (we refer the reader to [20] for a chronological overview). The earlier countermeasures were based on inserting one or more conditional checks in the algorithm to verify the integrity of the values [2, 10, 17, 18, 27].
+
+Yen et al. [32] noted that fault injection on status register flags can bypass conditional checks in countermeasures. They hence introduced the concept of infective computation which aims at infecting the resulting signature, i.e., rendering it unusable for the attacker in the case where a fault is injected in one of the two exponentiations. Several subsequent countermeasures [5, 6, 11] employed infective computation.
+
+Kim and Quisquater [20] injected a second fault with the intent of skipping the final step of the algorithm where the signature is validated and were thereby able to retrieve the faulty signature and perform a Bellcore attack. Therefore, they proposed keeping the signature blinded until it is validated and perform the validation in a way such that it infects the signature if it was faulty.
+
+Another technique was proposed by Boscher, Naciri and Prouff [10] and later slightly modified by Boscher, Handschuh and Trichina [9]. It is based on the checks performed after the right-to-left exponentiation is executed and a similar check after the CRT recombination of the signature components. The checks ensure that the contents of the working registers were not modified during the exponentiation or the recombination computations.
+
+In Sect.4.4, we will review in more detail the previous countermeasures in light of our attack model and show how they can be compromised.
+3. NEW COUNTERMEASURE TO FAULT ATTACKS ON CRT-RSA
+In this section we present our new FA resistant CRT-RSA algorithm and discuss its correctness.
+Algorithm 1. Blinded CRT-RSA Algorithm
+Input Private parameters: p, q, dp, dq, iq = q-1 mod p, public parameters: n, e, message (padded and hashed): m.
+Output Signature s.
+
+1. Select random values p, q, r1, r2, t and  at the beginning or right when needed.
+2. dp  dp + p(p - 1) // mask the private exponents
+3. dq  dq + q(q - 1)
+
+4. p  r1 p 5. q  r2 q
+
+// blind the moduli
+
+6. bp  t e mod p // message blinding multipliers 7. bq  t e mod q
+
+8. mp  m mod p // message components 9. mq  m mod q
+
+10. s~p  ((mp bp )(dp-1) mp ) mod p //  mpdp t (1-e) (mod p)
+11. s~q  ((mq bq )(dq-1) mq ) mod q //  mdqq t (1-e) (mod q)
+
+12. s~  (s~q + q ( iq (s~p - s~q ) mod p)) mod n //  md t (1-e) (mod n)
+13. b  (bq + q ( iq (bp - bq ) mod p)) mod n //  t e (mod n)
+14. s  s~ t trunc((m b + (e-1) - (s~ b)e) mod n) mod n //  s~ t(e-1)  md (mod n)
+15. Return(s)
+
+The values p, q, r1, r2, t and  are random values generated by the algorithm. Suggestions for the sizes of these values are given in Sect. 5. trunc is the truncation function as discussed below.
+In the following, we discuss the correctness and purpose of each component of our countermeasure. The resistance of the algorithm to fault attacks is assessed in the next section.
+
+· The RSA moduli p and q are blinded by multiplying them by r1 and r2, respectively. This is similar to the blinding in [5, 6, 11, 18, 20, 21]); however, a novelty is that we do not require that r1 and r2 be co-prime, and we do not need to compute their Euler totient values. This is based on the following two facts:
+
+­ A value v reduced modulo p is congruent to vp =
+v mod p :
+Let vp = v mod p = v - k1p ; vp < p and vp = v mod p = v - k2p ; vp < p for some integers
+k1 and k2. Reducing vp modulo p, we have vp = vp mod p = vp - k3p = v - k2p - k3p = v -
+k4p ; vp < p for some integers k3 and k4. From the division algorithm, we have k1 = k4 and vp = vp. Therefore,
+
+vp  vp (mod p) .
+
+(5)
+
+­ In a residue number system, a value v mod n, where n = pq, can also be expressed by its residues (v mod p, v mod q), when p and q are co-prime.
+For correctness of the RSA-CRT signature, we require a value in residue form (sp, sq), where: sp = mdp mod p, and sq = mdq mod q. We calculate instead the signature components modulo the randomized moduli--assuming the message blinding and the exponent randomization, which will be discussed subsequently, were removed: sp = mdp mod p, and sq = mdq mod q. From (5), sp  sp (mod p), and similarly sq  sq (mod q).
+We form our combined signature in a Garner-like form:
+s = sq + q ^(q-1 mod p)(sp - sq ) mod p~¯
+modn , (6)
+where, notably, we do not need to compute q-1 as in [11, 20, 21].
+Using (5), first modulo q, we have s  sq  sq (mod q). Similarly, modulo p we have:
+
+s  (sq mod p) +(q mod p)(q-1 mod p) [sp - (sq mod p)]
+
+(mod p) ,
+
+ (sq mod p) + [sp - (sq mod p)] (mod p) ,
+
+ sp
+
+(mod p) .
+
+Since a final reduction mod n is performed, and
+because s is correct modulo both p and q, then computing (6) is equivalent to computing md mod
+n.
+
+Note that r1 and r2 are not used as moduli for auxiliary checks (as they are in [2, 5, 6, 11, 18, 20, 21]). Having no restrictions on the values of r1 and r2 conveniently enables choosing new ones for every signature and requires no precomputation. Blinding the RSA moduli in this manner helps prevent side-channel attacks (such as the differential power analysis (DPA) attack in [13]) and also timing attacks (as in [26]) that exploit the modular reduction modulo p and q. It also protects against the injection of chosen bases designed to aid an attacker in discovering secret exponents.
+
+· The private exponent dp is randomized by adding a random multiple of p - 1 to obtain dp as in Step 2 [2]. Similarly, dq is obtained from dq. This randomization is useful in thwarting safe-error fault attacks [30]. The random multiplier p and q are randomly chosen for every signature generation.
+Note that first-order DPA attacks (see e.g., ZEMD in [23]), where an attacker guesses the exponent bits one at a time and computes intermediate values of the exponentiation algorithm, do not apply to the CRT-RSA algorithm since p and q are not available to the attacker for computing those intermediate values [13].
+· Antipa's inversionless message blinding [1] is employed to blind the two main exponentiations to prevent timing attacks [26]: Let sp = mdp mod p be the value required to be computed. A random value r of adequate size is chosen, re mod p is computed, then s~p = (rem)d-m mod p is the blinded signature component; s~p  r1-emd (mod p). Then s~p is unblinded by computing s~p re-1 mod p. The public exponent e is used in this blinding; this is generally acceptable since it was suggested in [7] that the device verifies the signature before releasing it by checking whether se mod n =? m. On the other hand, the full private exponent d = e-1 mod (p - 1)(q - 1) is not required as was the case in other countermeasures [5, 6, 21], where it was used in a precomputation phase. It is the use of e that allows our combination of signature verification and unblinding on the signature modulo n; this work could be interpreted as examining the advantages of using e. For example, in the personalization procedure of smart cards in a mass-production, if e is a constant small value, as is usually the case, it may be made available to every card without being part of the personalization parameters.
+In Algorithm 1, where we have set  = 1 and r = t, this message blinding serves the purpose of keeping the signature components, as well as the recombined signature, blinded until it is validated according to the concept proposed by Kim-Quisquater [20, 21] where they employed different blinding methods to prevent attacks that attempt to skip the validation steps of the algorithm [20]. However, the Kim-Quisquater validation values, though computed after the CRT recombination, in essence validate each signature component separately since they are computed modulo the auxiliary moduli that are used to blind p and q; whereas our new validation technique is applied directly to the recombined signature using a recombined validation value as we discuss below. We show in Sect.4.4 how that separate signature validation is vulnerable under our attack model.
+To unblind the recombined signature s~, we need to compute s = s~ t(e-1). In order to make this unblinding conditional on the validity of s, the exponent of t is expressed as f (m, e, s~, t, ) such that this function evaluates to (e - 1) only if s  md (mod n) with overwhelming probability. In Step 14, we have
+f (m, e, s~, t, ) = trunc((mb+(e-1)-(s~b)e) mod n) ,
+where, from Step 13, b  t e (mod n) and trunc() is
+
+a function that truncates its input to a bit length no less than that of (e - 1). If no fault occurs, then the following holds
+
+(s~ b)e  (md t (1-e) t e)e  (md t )e mb
+
+(mod n) , (mod n) , (mod n) .
+
+We recommend additional measures to our algorithm. For example, we can avoid processing the secret values p, q, dp, dq, iq explicitly. Instead, they may be input to the algorithm as randomly split components that are not combined until each component is processed separately in a computation. For example, p may be represented as p1 - p2 and Step 4 carried out as
+p  r1p1 p  p - r1p2
+Since all secret components have a random representation in every run, a powerful attacker cannot employ bit-set-reset faults (cf. Sect.4.1) to mount safe-error attacks.
+Further countermeasures that seal side-channel information can be integrated. Exponentiation protected against sidechannel leakage and fault injection should be employed. Randomization of the computation sequence and/or location is also a valuable additional measure.
+4. SECURITY EVALUATION
+In this section we provide an overview of previous attack models and present ours. In light of our attack model, we assess the resistance of previous countermeasures then that of Algorithm 1 to various fault attacks.
+4.1 Blömer's Attack Models
+In [6], Bl¨omer et al. gave a collection of attack models, identifying different parameters that define a model:
+· control on the fault location, · control on the fault timing, · control on the number of bits affected, · the fault type:
+­ stuck at fault, ­ bit flip fault, ­ bit set and reset fault, ­ random fault.
+According to the authors, the strongest attack model is the bit-set-reset (bsr) type where the attacker has complete control over the fault location--targeting an exact bit in an exact value--and the timing--injecting the fault at a precise time while running the device on his clock. They mention that this is only plausible if the device, e.g., a smartcard, is not equipped with hardware countermeasures such as randomized clocks, memory encryption/decryption schemes, and randomized address scrambling. Aumu¨ller et al. [2] also mentioned that current smartcard ICs are equipped with sensors and filters to detect variations in the supply voltage that are outside the tolerable range to prevent voltage spike attacks, which they could switch off in their lab experiment in order to test the validity of their software countermeasure.
+
+In the countermeasure presented by Blo¨mer et al., the validation of the signature was performed via values reduced modulo small primes ti, i = 1, 2. In their security analysis, the random errors yielded higher attack success probability since the faulty values were in the range [0, ti), whereas the stronger attacks, such as the bit or byte errors, yielded lower success probabilities since the faulty values were more restricted. However, in his cryptanalysis using a byte error example, Wagner [29] made use of the predictability of the error pattern since the errors can be enumerated.
+Therefore, for every attack model, one should investigate the weakest point of the countermeasure and assess its resistance to a fault at that point.
+4.2 Wagner's Framework
+The framework introduced by Wagner in [29] is useful in assessing the security of an algorithm. He suggests modeling the state of the device si as the contents of the registers and memory, the set of possible states is S. Each step of the algorithm is represented as a relation on S × S. The algorithm is then viewed as a sequence of steps:
+x, k = s0 s1 · · · sn = y ,
+where x represents the collection of inputs, k that of secrets and y that of outputs. The attack model defines a family of possible faults F as a relation i on S × S. A fault attack is specified by the tuple (x, 1, . . . , n). An algorithm is secure, if for all the tuples that could be chosen, an attacker cannot learn y or a part thereof. The faulty computation is represented as
+x, k = s0 s1 1 s1 s2 2 s2 · · · sn n sn = y .
+4.3 Our Attack Model
+In our model, we assume that the attacker has full control over the timing and the location of the fault, i.e., can target a specific bit or more in a specific variable at a specific step of the algorithm or can opt to inject a random fault to completely change a value. F comprises the following fault types:
+· multiple bit-set-reset (bsr) faults in one or multiple values, in one or multiple steps. We assume that when multiple faults are injected in the same execution step and in the same value, they can alter only a small portion of that value; for example a byte or a word thereof,
+· skipping a single or multiple instructions by possibly injecting a fault in the program counter (PC) register,
+· changing the outcome of a conditional check by injecting a fault in the status register.
+This model depicts a powerful attacker injecting faults in a device where hardware countermeasures are not perfect. However, we must assume that the CRT-RSA parameters p, q, dp, dq, iq are protected and are error-free (see also Sect. 4.5).
+4.4 Previous Countermeasures Viewed Under Our Model
+The most recently proposed countermeasures were Kim-Quisquater's [20, 21] and Boscher-Handschuh-Trichina's (BHT) [9].
+
+The BHT countermeasure modified the initialization of Boscher, Naciri and Prouff's (BNP) [10] exponentiation algorithm in order to render it resistant to DPA attacks. In fact, the BNP exponentiation was based on the right-to-left binary algorithm which originally employed two working registers, performing a squaring operation in every iteration and a multiplication only if the exponent bit is 1. An exponentiation algorithm with uniform iterations is required in order to resist simple side-channel attacks [22]. Hence, a third working register was added in the BNP exponentiation and the multiplication was performed in every iteration. The time performance was then the same as the Montgomery ladder [19] or the square-and-multiply always [12] algorithms but as the authors mention, was 33% faster than the slower Fumaroli-Vigilant algorithm [14] (which employs an additional squaring).
+
+The relation maintained between the three working registers is used at the end to verify that their contents have not been modified. The authors mention that "If the loop is attacked such that it ends before all the bits were processed or if the exponent k is corrupted, this will not be detected, so additional checksums over the inputs should be computed." In the same way, even if the exponent is verified to be unchanged at the beginning of the exponentiation, a bit-set-reset fault that toggles an exponent bit during the course of the exponentiation would go undetected just as would a modified input exponent. Merely the output relation between the registers is checked, but this relation holds for any exponent value if the register contents are unaltered.
+
+The three values of the exponentiation modulo p are CRTrecombined with their counterparts modulo q, then the same check is performed on the recombined values. The countermeasure is therefore vulnerable to exponent bit-set-reset faults i.e., a faulty signature component would be undetected, since the relation between the three recombined values would hold without any dependence on the exponents used to compute its components.
+
+We now discuss Kim-Quisquater's modification of Ciet-Joye's scheme [11, 20], where the authors introduced the importance of validating a blinded signature. In Step 1, the signature and validation component are computed as:
+
+sp = (a + mdp ) mod p, s2 = (a + mdq mod (r2)) mod r2 ,
+
+sq = (a + mdq ) mod q, s1 = (a + mdp mod (r1)) mod r1 ,
+
+where r1 and r2 are relatively small coprime integers, p =
+
+r1p, q = r2q and a recombined signature
+
+is s
+
+a is
+
+random
+
+integer
+
+in
+
+
+Zr1
+
+r2
+
+n
+
+.
+
+validated by computing:
+
+The
+
+c1 = (s - s1 + 1) mod r1 , c2 = (s - s2 + 1) mod r2 .
+
+In the case where no fault occurs, we have c1 = c2 = 1
+and the signature is correctly unblinded. Ciet and Joye had stated "The order of the computation is very important: sp, s2, sq and s1. If the computation is carried out as sp, s1, sq and s2 then a long-lived fault on m before the computation of sq (and after s1) would go undetected (i.e., c1 = c2 = 1)"; using the unblinded signature, a gcd attack would yield
+q. We argue that even with the recommended ordering of
+operations, an attack can be mounted: If the attacker injects
+a precise fault in m as it is read for the computation of the
+
+signature component sp, and again injects the same fault before the computation of its validation component s1, then c1 would evaluate to 1 and the gcd attack is applicable. The same argument can be carried to Kim-Quisquater's scheme in [21] and also to Blo¨mer-Otto's improved BOS [6] scheme in [5]. In general, this attack is expected to apply to schemes that rely on validating the signature components modulo p and q separately, where the validation components are a function of m. Therefore, our new validation technique is performed instead on the recombined signature.
+On a side note, we would like to draw the attention to a potential safe-error attack on Kim-Quisquater's exponentiation algorithm in [21], where the authors were improving Fumaroli-Vigilant's exponentiation algorithm [14] due to its vulnerability to fault attacks when used in the CRT-RSA computation. Yet in the improved algorithm [21], the accumulator is multiplied by a value adi where di is the current exponent bit. To determine the jth bit, an attacker may toggle a precise bit in a0, for example, at the beginning of the jth iteration and toggle it again before the following iteration and observe whether this toggling had affected the results; if there is no effect then the attacker concludes that dj = 1 since a0 was not used in this iteration. (Note that bit toggling is possible in our model even if we assume that the attacker can only set/reset a bit, it may just require repeating the attack to discover the modified bit's original value before knowing whether to set it or reset it.) This attack is feasible since the values a0 and a1 are constant and do not evolve with the computation as in the Montgomery ladder method [16] cited by the authors.
+Another possible attack scenario for a powerful attacker results from expecting constant values as the outcome of a validation step, such as the values c1 = c2 = 1 as mentioned above or some values being 0, as in [28], where the conditional checks can be converted into infective values, as the author pointed out. We assume that, if small locations are used to store these values, the attacker may be able to set these locations in RAM to their required values. This certainly requires a more controlled attack than setting the status bits in the control register to toggle the outcome of conditional checks.
+4.5 Security Assessment of Algorithm 1
+As mentioned previously, the strength of Algorithm 1 is that the signature validation is not performed modulo p and q, or separately modulo their blinding values r1 and r2 as in [11, 20, 21], but instead modulo n, and after the signature has been CRT-recombined but before the signature has been unblinded. Moreover, the validation computation is infective in nature and also does not yield a constant value.
+We should first establish that the CRT-RSA parameters p, q, dp, dq, iq are error-free; for example, using CRC techniques as was proposed by Ciet-Joye [11]. Another possible protective measure is to provide the parameter n, since it would then be computationally infeasible for an attacker to modify p, for example, and modify n accordingly without knowing q. Otherwise, in this case, if an attacker can change p into p and n is not provided, but is instead computed internally as n = pq, then a gcd attack is applicable using the original n as in (4).
+
+The question now is how can an attacker inject a fault in a computation modulo one of the moduli only and successfully bypass the final validation so that the gcd attack can be mounted. In order to achieve that goal, the attacker may choose to inject a fault in variables and/or computations modulo p, and not those modulo q, or vice-versa, then inject one or more subsequent faults in order to counteract and/or bypass the blinding of these values. He may target dp, mp , s~p or their blinding values/computations.
+
+We first focus on injected faults that alter a value in a register or memory location, then we discuss faults that alter the value of the program counter. We are not concerned herein with faults that alter the status register values since Algorithm 1 does not rely on conditional checks.
+
+Following Wagner's framework notation as recalled in Sect. 4.2 and emphasizing only the affected steps of the computation, we examine the following scenario: An attacker injects a fault in dp such that dp  dp (mod p - 1). Note that if an attacker knows how to modify dp into dp  dp (mod p - 1), then the attacker also knows p and has no need for a faulty signature. On the other hand, injecting a random fault that completely modifies dp will succeed with probability around 1/p. Moreover, if the attacker succeeds in making dp  dp (mod p - 1), then the scheme is not affected, and there will be no fault in s~p that can enable a gcd attack.
+
+dp 1 dp  dp
+
+(mod p - 1) ,
+
+s~p  s~p
+
+(mod p) ,
+
+s~  md t (1-e) (s~b)e  mb
+s  s~t trunc(mb-mb)+(e-1)) mod n)  md t  mdq t
+
+(mod n) , (mod n) , (mod n) , (mod n) , (mod q) ,
+
+ sq
+
+(mod q) ,
+
+where b = t e and  = mb - mb mod n. Can the attacker, by injecting other precise faults, modify any of the values of the algorithm to reduce  to 0? This would require modifying m in Step 14 to a precise value that the attacker cannot compute without knowing b or m. More generally, is it possible to inject a combination of precise faults that would result in s  sp while still s  sq? As another illustration, an attacker can apply the same attack as the one we demonstrated on Kim-Quisquater's [20, 21] in 4.4: The attacker can inject a fault in mp in 8, which would result in the following sequence
+
+mp
+
+1 mp  mp
+s~p  s~p s~  md t (1-e)
+(s~b)e  mb s  md t  mdq t  sq
+
+(mod p) , (mod p) ,
+(mod n) , (mod n) , (mod n) , (mod q) , (mod q) ,
+
+which leaves the attacker in the same position, needing to modify m in Step 14 to an unknown value. Attacks on s~p
+
+directly result in similar conclusions; the attacker has the power to alter any variables but has no knowledge of their expected values.
+Our validation is performed on the recombined signature itself, not on each modular component, as in the previous countermeasures [2, 5, 6, 11, 18, 20, 21]. This yields a new strength: when our infective validation fails, it infects both signature components.
+If the attacker opts to inject a random fault, then the smallest candidate value to change is the exponent in Step 14 which is the outcome of the truncation function. The bit length of that outcome, then, is a security parameter that depends on the bit length of e and . Specifically,  is chosen based on a compromise between performance and security (see bit-length suggestions in Sect. 5).
+Can the attacker modify the sequence of the algorithm in order to avoid countermeasure instructions? For example, can the attacker skip the multiplications instructions mp bp mod p and mq bq mod q that blind the message and then skip the unblinding multiplication in Step 14? We assume this is possible. However, with careful implementation, it can be ensured that the result would be an unpredictable value:
+To illustrate this design concept, let registers A and B hold the values mp and bp , respectively. Then, register A should not be the target of the multiplication, otherwise, if it is skipped, then it would hold the same value without applying the blinding. If we let the target register be C, we should make certain that C contains no values of sensitive nature that would aid the attacker. Along the same lines, we should ensure that the final register/location from which the signature is copied to the output buffer does not contain any sensitive values produced during the execution of the entire algorithm. We must also assume here that register addressing operations are sufficiently protected to render the attacker unable to precisely control which register locations are being manipulated.
+5. PERFORMANCE EVALUATION
+Regarding the time requirement of Algorithm 1, as was mentioned in Sect. 3, r1 and r2 are not chosen as prime or even coprime integers [5, 6, 11, 18, 20, 21]); hence, there is no requirement to compute their totient values as in the cited countermeasures that include a random multiplier of p and q. Moreover, there is no inversion required modulo the RSA moduli or their multiplier(s) as was the case in several countermeasures [5, 6, 11, 21, 28]. Therefore, there is no need for a precomputation phase. Nevertheless, Steps 2 to 7 can be performed before the next message to be signed is available.
+The following are the overhead computations compared to an unprotected CRT-RSA scheme, where |a| denotes the bit length of a value a (Suggested bit lengths for random values are typical for 1024-bit RSA; they are large enough in order to thwart multiple attacker attempts without much affecting the time and memory requirements):
+1. A general overhead of O(|ri|2) where |ri| = max(|r1|, |r2|) in all modular multiplications modulo the prime mod-
+
+uli, as a result of blinding; r1 and r2 may be 32 bits long (e.g., [17, 27]).
+2. An overhead of O(|||ri|2) where || = max(|p|, |q|) in the two main exponentiations resulting from the exponent blinding; p and q may be 32 bits long.
+3. Two exponentiations modulo p and q, respectively, where the exponent is e and t is a random value of the same bit length as p and q. For example, if e = 216 + 1 then  may be 15 bits long. Note that if we eliminate the assumption that an attacker can directly set the value of the validation exponent in Step 14, then we can set  = 1. The validation exponent would then always be expected to have the value e - 1.
+4. Four modular multiplications in Steps 10 and 11(which include the overhead mentioned in item 1 above).
+5. A CRT recombination in Step 13.
+6. A multiplication and an exponentiation modulo n in Step 14 where the exponent is of bit length |e|.
+The blinding overhead, including the cost of randomness generation, is typical for all protected CRT-RSA implementations. In fact, the message blinding technique we adapted [1] is more advantageous since it requires no inversion as in other countermeasures [14, 21]. The main new overhead we introduce is in the implicit verification in Step 14. For example, for a 1024-bit n, e = 216 + 1 and a 15-bit , this overhead is roughly 12.5% of the unprotected CRT exponentiations. For a 2048-bit n, the overhead is reduced to 6.25%, since e is proportionally smaller.
+As for the space requirement, the extra values that would need to be stored are bq and bp which can be later replaced by b. Other values to be stored are t and  which are typically used in countermeasures that blind the message [20, 21]. Also the extension of the prime moduli should be taken into account in the extra storage needed, if employed.
+6. CONCLUSION
+In this paper, we have presented a CRT-RSA countermeasure designed to resist a powerful attacker who can inject bit-set-reset faults in the same execution step or across different steps, control the algorithm clocking and target specific small locations. We have also assumed that the attacker can skip one or more intermediate instructions and can alter the result of conditional checks.
+We have presented and analysed the performance and security of a new CRT-RSA countermeasure:
+· The scheme allows easy randomization for each signature, since there are no requirements on the random values used to blind the moduli, the exponents or the message.
+· The blinding computation does not require precomputation.
+· The CRT recombination does not require the computation of q-1, i.e., the inverse of one of the blinded moduli.
+
+· Unlike previous countermeasures, the validation of the blinded signature is implicitly performed modulo n after the CRT recombination rather than prior to it. In case the validation fails, the entire blinded signature is infected and the unblinding yields a random value modulo both p and q. Hence, it is infeasible for a powerful attacker to precisely inject one or more faults aiming at modifying one signature component without affecting the other one and mounting a gcd attack.
+References
+[1] A. Antipa. Method and apparatus for exponentiation in an RSA cryptosystem. United States Patent #7,177,423, February 13, 2007.
+[2] C. Aumu¨ller, P. Bier, W. Fischer, P. Hofreiter, and J.P. Seifert. Fault attacks on RSA with CRT: Concrete results and practical countermeasures. In Cryptographic Hardware and Embedded Systems ­ CHES '02, volume 2523 of LNCS, pages 260­275. Springer-Verlag, 2002.
+[3] H. Bar-el, H. Choukri, D. N. M. Tunstall, and C. Whelan. The sorcerer's apprentice guide to fault attacks. In Workshop on Fault Diagnosis and Tolerance in Cryptography - FDTC '04 in association with the International Conference on Dependable Systems and Networks - DSN '04, pages 330­342, 2004.
+[4] H. Bar-el, H. Choukri, D. N. M. Tunstall, and C. Whelan. The sorcerer's apprentice guide to fault attacks. Proceedings of the IEEE, 94(2):370­382, Feb. 2006. An earlier version of this paper appeared in [3]. Also available at http://eprint.iacr.org/2004/100.pdf.
+[5] J. Bl¨omer and M. Otto. Wagner's attack on a secure CRT-RSA algorithm reconsidered. In Workshop on Fault Diagnosis and Tolerance in Cryptography ­ FDTC '06, volume 4236 of LNCS, pages 13­23. Springer-Verlag, 2006.
+[6] J. Bl¨omer, M. Otto, and J.-P. Seifert. A new CRTRSA algorithm secure against Bellcore attacks. In ACM Conference on Computer and Communications Security ­ CCS '03, pages 311­320. ACM Press, 2003.
+[7] D. Boneh, R. A. DeMillo, and R. J. Lipton. On the importance of eliminating errors in cryptographic computations. In Advances in Cryptology ­ EUROCRYPT '97, volume 1233, pages 37­ 51. Springer-Verlag, 1997. This paper appeared after a Bellcore press release in 1996, for example see http://findarticles.com/p/articles/mi_ m0EIN/is_1996_Sept_26/ai_18720539/pg_1.
+[8] D. Boneh, R. A. DeMillo, and R. J. Lipton. On the importance of eliminating errors in cryptographic computations. Journal of Cryptology, 14:101­119, 2001. This is an expanded version of an earlier paper that appeared in [7].
+[9] A. Boscher, H. Handschuh, and E. Trichina. Blinded fault resistant exponentiation revisited. In Workshop on Fault Diagnosis and Tolerance in Cryptography ­ FDTC '09, pages 3­9. IEEE Computer Society, 2009.
+
+[10] A. Boscher, R. Naciri, and E. Prouff. CRT RSA algorithm protected against fault attacks. In Information Security Theory and Practices. Smart Cards, Mobile and Ubiquitous Computing Systems ­ WISTP '07, volume 4462 of LNCS, pages 229­243. Springer-Verlag, 2007.
+[11] M. Ciet and M. Joye. Practical fault countermeasures for Chinese remaindering based RSA. In Workshop on Fault Diagnosis and Tolerance in Cryptography ­ FDTC '05, pages 124­131, 2005.
+[12] J.-S. Coron. Resistance against differential power analysis for elliptic curve cryptosystems. In Cryptographic Hardware and Embedded Systems ­ CHES '99, volume 1717 of LNCS, pages 292­302. Springer-Verlag, 1999.
+[13] B. den Boer, K. Lemke, and G. Wicke. A DPA attack against the modular reduction within a CRT implementation of RSA. In Cryptographic Hardware and Embedded Systems ­ CHES '02, volume 2523 of LNCS, pages 228­243. Springer-Verlag, 2002.
+[14] G. Fumaroli and D. Vigilant. Blinded fault resistant exponentiation. In Workshop on Fault Diagnosis and Tolerance in Cryptography ­ FDTC '06, volume 4236 of LNCS, pages 62­70. Springer-Verlag, 2006.
+[15] H. L. Garner. The residue number system. IRE Transactions on Electronic Computers, 8(6):140­147, 1959.
+[16] C. Giraud. Fault resistant RSA implementation. In Workshop on Fault Diagnosis and Tolerance in Cryptography ­ FDTC '05, pages 142­151, 2005.
+[17] C. Giraud. An RSA implementation resistant to fault attacks and to simple power analysis. IEEE Transactions on Computers, 55(9):1116­1120, 2006. An earlier version appeared in [16].
+[18] M. Joye, P. Paillier, and S.-M. Yen. Secure evaluation of modular functions. In Cryptology and Network Security ­ CNS '01, pages 227­229, 2001.
+[19] M. Joye and S.-M. Yen. The Montgomery powering ladder. In Cryptographic Hardware and Embedded Systems ­ CHES '02, volume 2523 of LNCS, pages 291­ 302. Springer-Verlag, 2002.
+[20] C. H. Kim and J.-J. Quisquater. Fault attacks for CRT based RSA: New attacks, new results, and new countermeasures. In Information Security Theory and Practices. Smart Cards, Mobile and Ubiquitous Computing Systems ­ WISTP '07, volume 4462 of LNCS, pages 215­228. Springer-Verlag, 2007.
+[21] C. H. Kim and J.-J. Quisquater. How can we overcome both side channel analysis and fault attacks on RSACRT? In Workshop on Fault Diagnosis and Tolerance in Cryptography ­ FDTC '07, pages 21­29. IEEE Computer Society Press, 2007.
+[22] P. Kocher, J. Jaffe, and B. Jun. Differential power analysis. In Advances in Cryptology ­ CRYPTO '99, volume 1666 of LNCS. Springer-Verlag, 1999.
+
+[23] T. S. Messerges, E. A. Dabbish, and R. H. Sloan. Power analysis attacks of modular exponentiation in smart cards. In Cryptographic Hardware and Embedded Systems ­ CHES '99, volume 1717 of LNCS, pages 144­ 157. Springer-Verlag, Aug. 1999.
+[24] J.-J. Quisquater and C. Couvreur. Fast decipherment algorithm for RSA public-key cryptosystem. IEE Electronics Letters, 18(21):905­907, 1982.
+[25] R. L. Rivest, A. Shamir, and L. Adleman. A method for obtaining digital signatures and public-key cryptosystems. Communications of the ACM, 21:120­126, 1978. An earlier version appeared as Technical Report MIT/LCS/TM-82 (1977).
+[26] W. Schindler. A timing attack against RSA with the Chinese Remainder Theorem. In Cryptographic Hardware and Embedded Systems ­ CHES '00, volume 1965 of LNCS, pages 109­124. Springer-Verlag, 2000.
+[27] A. Shamir. Method and apparatus for protecting public key schemes from timing and fault attacks. United States Patent #5,991,415, November 23, 1999. Presented earlier at the rump session of EUROCRYPT '97.
+[28] D. Vigilant. RSA with CRT: A new cost-effective solution to thwart fault attacks. In Cryptographic Hardware and Embedded Systems ­ CHES '08, volume 5154 of LNCS, pages 130­145. Springer-Verlag, 2008.
+[29] D. Wagner. Cryptanalysis of a provably secure CRTRSA algorithm. In ACM Conference on Computer and Communications Security ­ CCS '04, pages 92­97. ACM Press, 2004.
+[30] S.-M. Yen and M. Joye. Checking before output may not be enough against fault-based cryptanalysis. IEEE Transactions on Computers, 49(9):967­970, 2000.
+[31] S.-M. Yen, S. Kim, S. Lim, and S.-J. Moon. RSA speedup with residue number system immune against hardware fault cryptanalysis. In Information Security and Cryptology ­ ICISC '01, pages 397­413, 2001.
+[32] S.-M. Yen, S. Kim, S. Lim, and S.-J. Moon. RSA speedup with Chinese Remainder Theorem immune against hardware fault cryptanalysis. IEEE Trans. Computers, 52(4):461­472, 2003. An earlier version of this paper appeared in [31].
+
+
