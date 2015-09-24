@@ -1,6 +1,6 @@
 """
-Created: 20th Sept 2015
-@author: Jaiwant, Amitayush Thakur
+Created On: 20th Sept 2015
+@author: Amitayush Thakur,Jaiwant Rawat,Ashish Tilokani
 """
 from django.db import models
 

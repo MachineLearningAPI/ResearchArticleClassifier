@@ -2,6 +2,7 @@
 Created On: 20th Sept 2015
 @author: Amitayush Thakur
 """
+from django.views.generic.base import RedirectView
 
 """ResearchArticleClassifier URL Configuration
 
@@ -24,12 +25,15 @@ from django.contrib import admin
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^myapp/',include('myapp.urls')),
+    url(r'^uploadFile/$', RedirectView.as_view(url='/myapp/list/', permanent=True)),
 ]
 
 urlpatterns += patterns('GUI.views',
     url(r'^home/$','loadHome'),
     url(r'^results/$','showResults'),
     url(r'^generateText/$','trainingDataList'),
-    url(r'^addWordToDb/$','populateWordDb')
+    url(r'^addWordToDb/$','populateWordDb'),
+    url(r'^KNN/$','applyKNN'),
 )
 

@@ -1,4 +1,8 @@
-from django.shortcuts import render
+"""
+Created On: 20th Sept 2015
+@author: Amitayush Thakur,Jaiwant Rawat,Ashish Tilokani
+"""
+
 from DatabaseParser.models import WordTable, DocFreqTable, DocClass
 import os
 

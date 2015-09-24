@@ -45,6 +45,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'GUI',
     'DatabaseParser',
+    'myapp',
 )
 
 MIDDLEWARE_CLASSES = (
