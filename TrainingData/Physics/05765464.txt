@@ -1,0 +1,790 @@
+2538
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 7, JULY 2011
+
+Harmonic Beamforming in Time-Modulated
+Linear Arrays
+Lorenzo Poli, Graduate Student Member, IEEE, Paolo Rocca, Member, IEEE, Giacomo Oliveri, Member, IEEE,
+and Andrea Massa, Member, IEEE
+
+Abstract—In this paper, the synthesis of simultaneous multibeams through time-modulated linear arrays is studied. Unlike
+classical phased arrays where the antenna aperture is usually
+shared to generate multiple beams, the periodic on-off sequences
+controlling the static excitations are properly defined by means of
+an optimization strategy based on the Particle Swarm algorithm to
+afford desired multiple patterns at harmonic frequencies to make
+practical application of these harmonic beams which are typically
+regarded as an undesirable effect in time-modulated arrays. The
+synthesis of simultaneous broadside sum and difference patterns,
+flat-top and narrow beam patterns, and steered multibeams is enabled as assessed by a set of selected results reported and discussed
+to show the potentialities of the proposed method. Comparisons
+with previously published results are reported, as well.
+Index Terms—Harmonic beams, particle swarm optimization,
+time-modulated linear arrays.
+
+I. INTRODUCTION
+ULTIBEAM antennas are radiating systems devoted
+to generate multiple patterns from the same aperture.
+Originally, they were used for surveillance and tracking in
+radar systems [1], but multiple beam antennas are recently
+also playing a key role in communication systems installed
+on satellites and ground stations [2]. As for radars, widebeam
+patterns are required for search and detection functions, while
+narrow beams with high angular resolution capabilities are
+needed for tracking purposes. On the other hand, the advantages of using multiple beams for communication purposes lie
+in the possibility to manage more communications/services
+from different spatial directions and to operate over multiple
+frequency bands. Moreover, patterns with different shapes can
+be used in adaptive systems to maintain reliable wireless links
+in the presence of jammers or interference signals or to properly
+address different requests of service.
+Two different solutions have been principally considered in
+designing multibeam antennas. The former considers reflector
+antennas, either parabolic structures or reflectarrays, where the
+
+M
+
+Manuscript received January 31, 2010; revised October 29, 2010; accepted
+November 26, 2010. Date of publication May 10, 2011; date of current version
+July 07, 2011. This work supported in part by the Italian National Project: Wireless multiplatform MIMO Active access networks for QoS-demanding multimedia delivery (WORLD), under Grant 2007R989S.
+The authors are with the Department of Information Engineering and
+Computer Science, University of Trento, Povo 38050 Trento, Italy (e-mail:
+lorenzo.poli@disi.unitn.it; paolo.rocca@disi.unitn.it; giacomo.oliveri@disi.
+unitn.it; andrea.massa@ing.unitn.it).
+Color versions of one or more of the figures in this paper are available online
+at http://ieeexplore.ieee.org.
+Digital Object Identifier 10.1109/TAP.2011.2152323
+
+primary source is composed by multiple feeds whose output signals can be shared between adjacent patterns to reduce the costs
+and the complexity of the feeding structure [1]. The other exploits antenna arrays and, nowadays, is the preferred solution
+since it allows a direct control of the illumination on the aperture
+and an electronic beam steering. Moreover, array architectures
+generally have a lighter weight and they can be made conformal.
+Dealing with arrays, many strategies have been proposed to
+synthesize switchable [3] and reconfigurable arrays [4]–[6]. The
+excitations of switchable arrays are selected among a list of
+predetermined configurations, whereas the excitations are adaptively controlled (usually only the phase weights to simplify the
+hardware implementation) in reconfigurable arrays. Since the
+whole set of array elements is optimized to generate each pattern, high radiation performances can be yielded even though
+only one beam can be generated at each time instant. To avoid
+this drawback, other solutions have been proposed to simultaneously radiate multiple patterns. Sub-arrayed antennas as well
+as interleaved arrays have proved to work properly in both radar
+[7]–[10] and biomedical [11], [12] applications.
+Another approach for the simultaneous generation of multiple-patterns is based on time-modulation (TM). Although its
+theoretical formulation [13] and the first practical implementations to obtain average ultra-low sidelobe patterns [14] date back
+to the 1960s, there is nowadays a renewed and growing interest
+towards such a solution as confirmed by the number of contributions in the reference literature on antennas as well as the applications where timed arrays have been successfully applied.
+The main limitation of these systems is related to the presence of
+the sideband radiation (SR) due to the periodic on-off commutations of the RF switches of the beam forming network. However,
+optimization strategies based on evolutionary algorithms (e.g.,
+differential evolution [15], simulated annealing [16], genetic algorithms [17], and particle swarm optimizer [18]) have recently
+provided efficient switching schemes to properly address such
+an issue. It is also worth noting that the theory of TM arrays has
+been recently revised and formalized in a rigorous mathematical fashion [19], [20], [21] in order to derive analytical relationships for exactly quantifying the power dispersions associated
+to the SR. For completeness, let us consider that further studies
+have dealt with the evaluation of the directivity and gain [22]
+and their optimization [23]. As for the applications, time-modulated arrays have been employed to generate ultra-low sidelobe patterns for the suppression of interferences and clutters
+[14] and shaped beams [24] with reduced dynamic range ratios.
+The synthesis of pulse doppler radars [25] and compromise patterns for monopulse radars [26] has been also analyzed, but experimental prototypes have been implemented [17], [27] in a
+
+0018-926X/$26.00 © 2011 IEEE
+
+POLI et al.: HARMONIC BEAMFORMING IN TIME-MODULATED LINEAR ARRAYS
+
+few cases and further researches are expected in such a framework. In these works, the harmonic beams are power losses to
+be minimized, while other approaches consider a different point
+of view by exploiting the generation of simultaneous patterns at
+different sidebands. More specifically, patterns with the same
+shape generated at different harmonics and pointing at different
+angular directions have been used in radar systems to enable
+the electronic beam scanning by means of a progressive on-off
+switching of the array elements [28]. The same concept has
+been recently revisited in [29] and extended to the estimation
+of the directions of arrival [30]. Accurate radar localization and
+tracking capabilities have been assessed in [31] by synthesizing
+a two-element TM array providing a monopulse-like behavior
+where two beams (one with a peak and another with a null along
+the broadside direction) have been generated at the central and
+first harmonic, respectively.
+In this paper, an optimization-based technique for the synthesis of TM linear arrays able to generate multiple beams at different sidebands with different shapes and features is presented.
+Such a strategy can be used for multi-function radars devoted to
+surveillance and security purposes [28], [31] as well as for selectively receiving different signals at different sidebands. Moreover, the diversity of different beam patterns with various shapes
+can be of interest in mobile communications for designing innovative base stations as well as in multiple-input multiple-output
+(MIMO) systems. The harmonic beamforming is obtained by
+determining the periodic on-off time sequence that modulates
+the static excitations of the array by considering an iterative optimization evolving according to the particle swarm (PS) strategy
+[32]. For a numerical assessment of the proposed approach, simultaneous broadside sum and difference patterns, flat-top and
+narrow beams, as well as steered multibeams are synthesized.
+The paper is organized as follows. The problem is mathematically formulated in Section II where the synthesis procedure
+is described, as well. Selected results from a set of numerical
+experiments are presented (Section III) to point out the potentialities of the proposed multibeam strategy. Eventually, some
+conclusions are drawn (Section IV).
+II. MATHEMATICAL FORMULATION
+Let us consider a time-modulated linear antenna array
+(TMLA) where a set of
+radio-frequency switches is
+used to modulate the static excitations of amplitudes
+,
+, and phases
+,
+. Such
+a linear arrangement of
+isotropic sources displaced along
+the axis at the positions ,
+, radiates the
+following field [19]
+
+(1)
+
+2539
+
+is the central angular frequency,
+is the
+where
+free-space wavenumber, being the speed of light in vacuum,
+and denotes the angular direction. The RF switches are con,
+,
+trolled by means of digital signals,
+of period mathematically modeled as rectangular pulse funcwithin the normalized (with retions with values
+,
+being
+spect to ) duration
+the switch-on (raise) and switch-off (fall) time instants, respectively, and
+for the remaining part of the modulation
+period. Because of the time periodicity, each pulse function can
+,
+be expanded into a Fourier series,
+where
+and the expansion coefficients are equal to
+. Accordingly, (1) can
+be rewritten as an (ideally) infinite number of radiated patterns
+from
+shifted of
+
+(2)
+whose
+
+th
+
+term
+
+is
+
+given by
+,
+being the equivalent excitation. In
+particular, the pattern at the central frequency is given by
+and the corresponding
+Fourier coefficients are real and equal to
+,
+. Otherwise, those at the harmonic
+frequencies
+are complex and given by [23] (3), shown
+at the bottom of the page.
+It follows that to synthesize desired patterns at the central
+frequency
+and at its harmonics
+the set of the
+pulse durations,
+, and the values
+of the switch-on instants,
+, can be
+properly optimized. Whether necessary, the sets of amplitudes,
+, and phases,
+, of the static excitations can be also properly
+tuned.
+However, it is worthwhile to point out that without suitable
+countermeasures the power associated to the SR decreases as
+the harmonic index increases [19] and only the first harmonic
+modes
+are expected to generate “useful” patterns. In order to overcome this drawback in view of multiple
+harmonic beams, the following PS-based optimization procedure is proposed:
+• Definition of the Static Excitations— and
+The values of the static excitations are generally a-priori
+defined according to the following motivations depending
+on the problem at hand. The use of unitary amplitude
+weights (i.e.,
+,
+) is generally
+preferred in order to simplify the complexity of the beam
+
+.
+
+(3)
+
+2540
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 7, JULY 2011
+
+forming network [16], [17] and to avoid additional amplifiers/attenuators as shown in synthesizing ultra-low
+sidelobe patterns [14], [33] with a reduced dynamic range.
+Differently, non-uniform (complex) weights can be used
+to generate a desired quiescent (without time-modulating
+the element excitations) pattern at the central frequency
+. From an algorithmic point of view, a smaller
+number of control variables reduces the computational
+burden required by the optimization process. Otherwise,
+a better matching of the synthesized solutions with the
+user-defined requirements can be achieved when more
+degrees-of-freedom are available;
+• Definition of the TM Pulse Sequence— and
+The parameters modeling the rectangular digital signals,
+namely the pulse durations, , and the switch-on instants, ,
+are determined by minimizing the cost function, , aimed
+at enforcing the desired patterns both at the central fre, and at the first sideband (upper and
+quency,
+lower) radiations,
+,
+
+(4)
+
+where
+is the set of unknown quantities (i.e.,
+) and is the Heaviside
+function. Moreover,
+denotes the target/desired value
+along the direction of the sidelobe level
+,
+the first null beamwidth
+, the sideband level
+, and the ripple level
+of the
+th harmonic pattern. The same notation holds true for the
+. Furthermore,
+is a real and
+current value
+positive coefficient weighting each term of the cost function according to the problem requirements.
+In order to minimize (4), a standard PS optimization algorithm [32] is used by iteratively ( being the iteration index,
+) applying the following updating equations
+
+(5)
+
+is the inertial weight coefficient and
+and
+where
+are the cognitive and social acceleration coefficients,
+respectively. Moreover,
+and
+are uniformly-distributed random variables. As far as the swarm is concerned,
+is the index of the th particle,
+is the personal best
+particle, while
+is
+the global best of the whole swarm at the th iteration.
+
+0
+
+N
+
+d =
+jhj
+
+Fig. 1. 6 1 configuration ( = 16, =
+2)—optimized (a) pulse sequence and (b) relative power patterns at the central frequency ( = 0—sum
+= 1—difference pattern).
+pattern) and at the fundamental frequency (
+
+h
+
+III. NUMERICAL RESULTS
+The first experiment deals with the generation of a sum pattern at the central frequency and a difference pattern at the funuseful in monopulse radars for
+damental one
+search-and-track purposes. A linear array with
+equally,
+,
+spaced elements located at
+being the inter-element distance, is the reference architecture. Amplitude-only static excitations with unitary gains
+and
+,
+)
+have been chosen (i.e.,
+to yield a simple beamforming network. According to the guidelines in [31], here applied to the synthesis of arrays with more
+than two elements [34], it is enough to energize the two halves of
+in the time pulse sequence to obtain
+the array with a shift of
+a pattern with a null on boresight. Therefore, the pulse durations
+,
+,
+have been set to
+and only half elements of the TM array have been optimized by
+minimizing (4) with
+and
+,
+,
+1, the reference values being fixed to
+,
+, and
+. Moreover, the
+initial configuration of the unknowns has been set to afford a
+at
+.
+Dolph-Chebyshev pattern with
+Fig. 1(a) shows the configuration of the switch-on times obof the PS procedure carried
+tained after
+
+POLI et al.: HARMONIC BEAMFORMING IN TIME-MODULATED LINEAR ARRAYS
+
+2541
+
+TABLE I
+Sum-Difference Configurations (
+,
+
+N = 16 d = =2)—PATTERN INDEXES
+
+601
+jhj = 1
+
+N = 16 d = =2
+
+Fig. 3.
+configuration (
+,
+)—relative power patterns at
+the central frequency (
+—sum pattern) and at the fundamental frequency
+—difference pattern) synthesized with the PS optimization and in [34].
+(
+
+601
+
+N = 16 d = =2
+
+Fig. 2.
+configuration (
+,
+)—percentage of the individual power associated to the harmonic radiations.
+
+out with a swarm of
+and the control paramand
+eters set to a standard configuration [23]:
+. The radiated patterns are given in Fig. 1(b) for
+and
+, while the corresponding pattern indexes are reported in Table I (
+configuration). As expected, most of
+the power is radiated at the central frequency and at the funand
+damental one with a percentage equal to
+of the total power (
+being the power associated to the pattern at the th harmonic radiation), respectively.
+Such an outcome is further pointed out in Fig. 2 where the power
+content of each pattern up to the 9th harmonic mode is reported.
+The amount of power rapidly tends to zero when the harmonic
+index grows. For completeness, the solution with the proposed
+approach and that in [34] are compared in Fig. 3 to also point
+out that an unavoidable trade-off exists. As a matter of fact, if
+can be oba more accurate control of the sidelobes for
+tained through the PS optimizer, on the other hand, the SLL at
+increases with respect to that in [34].
+As for the minimization process, Fig. 4 gives an indication of
+the optimization process by showing the plot of the cost function
+throughout the iterations.
+The second experiment still considers the synthesis of sum
+and difference patterns, even though now the sum beam is
+
+601
+
+h=0
+
+N = 16 d = =2
+
+Fig. 4.
+configuration (
+,
+)—behavior of the cost
+function throughout the optimization process and its the individual terms.
+
+, while the difference one at the central
+synthesized at
+. Towards this end, the odd symmetry
+frequency
+of the excitations is enforced to generate a difference beam
+,
+by adding to the phase values of half array (i.e.,
+). The value
+has been set to 1
+. Moreover,
+dB since only one main beam is required at
+the thresholds
+have been chosen
+and all terms of the cost function have been equally weighted.
+The optimized switch-on times and the corresponding
+and difference
+patterns are shown
+sum
+in Fig. 5(a) and (b), respectively. From the quantitative
+configuration), it turns
+pattern indexes in Table I (
+out that both patterns are quite similar in terms of sidelobe
+) and sideband
+levels (i.e.,
+. Moreover,
+and
+values
+(Fig. 6). Concerning the sideband radiation,
+the values of the SBLs of the first 30 harmonic modes of the
+solution are reported in Fig. 7(a) and compared with
+configuration, as well. Whether for
+those of the
+the SBLs have similar behaviors, the advantages of the
+solution are non-negligible at the fundamental frequency (i.e.,
+vs.
+—Table I).
+
+2542
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 7, JULY 2011
+
+106
+
+N = 16 d = =2
+jhj = 1
+
+Fig. 5.
+configuration (
+,
+)—optimized
+(a) pulse sequence and (b) relative power patterns at the central frequency
+(
+—difference pattern) and at the fundamental frequency (
+—sum
+pattern).
+
+h=0
+
+106
+
+N = 16, d = =2)—relative power patterns of
+jhj = 1, 2, 3.
+
+Fig. 6.
+configuration (
+the sideband radiation for
+
+For completeness, the radiation patterns at
+, 3 are
+displayed in Fig. 7(b).
+The following experiments are concerned with two design solutions suitable for intercepting signals impinging on an array of
+elements spaced by
+from different angular directions without phase shifters in the array architecture. In the
+
+N = 16, d = =2)—comparison of
+SBL when h 2 [1; 30] and (b) the
+
+Fig. 7. Sum-difference configurations (
+(a) the behavior of the sideband levels
+harmonic patterns radiated at
+, 3.
+
+jhj = 2
+
+first example, the approach exploits the guidelines in [28], recently also considered in [29], where the beam steering at the
+first harmonic mode is forced by controlling the pulse sequence.
+Likewise [29], the pattern is requested to be directed at broadand
+are the diside at , while
+and
+rections of the desired beams at the first upper
+lower
+sideband, respectively. Towards this purpose,
+the cost function has been defined by setting
+. Moreover, the reference level of the
+and
+has been fixed to 20 dB.
+secondary lobes at
+The PS-optimized solution is summarized in Fig. 8 where
+the on-off sequence [Fig. 8(a)] and the corresponding radiated
+patterns are shown [Fig. 8(b)]. The indexes in Table II (Harmonic Beam Steering) confirm the effectiveness of the proposed
+strategy in yielding a satisfactory solution that fits the user requirements. The possibility to selectively and simultaneously
+receive signals from three different directions is the main advantage of such a solution, even though an ad-hoc receiver able
+to separate each harmonic component [29] would be necessary.
+An alternative solution is presented in Fig. 9 where only one
+pattern, characterized by two main beams pointing at
+, is generated at the first sideband either at
+and not at
+or vice versa. Although it is not possible to
+distinguish whether the signals impinge from
+or
+, the
+
+POLI et al.: HARMONIC BEAMFORMING IN TIME-MODULATED LINEAR ARRAYS
+
+N = 16 d = =2
+( = 0 )
+( = 030 ) h = 01
+
+Fig. 8. Harmonic beam steering (
+,
+)—optimized
+(a) pulse sequence and (b) relative power patterns at the central frequency
+[
+—broadside beam
+] and at the fundamental frequen—steered beam
+;
+—steered beam
+cies [
+].
+
+h =0
+h = 1
+( = 30 )
+
+TABLE II
+Harmonic Beam Steering—Double Sum Configuration (
+)—PATTERN INDEXES
+
+d = =2
+
+N = 16,
+
+HW implementation is less complex in this case since the received power is collected only at
+and
+. The
+indexes describing the synthesized Double Sum Beam are summarized in Table II where the performances of the Harmonic
+Beam Steering solution are also reported for comparison.
+The last test case is a representative example aimed at
+showing some other potentialities of the proposed approach.
+and
+More specifically, the synthesis of a flat-top pattern at
+of a sum pattern at
+is addressed by considering an array
+
+2543
+
+N = 16 d = =2
+( = 0 )
+ = 630
+
+Fig. 9. Double sum configuration (
+,
+)—optimized
+(a) pulse sequence and (b) relative power patterns at the central frequency
+(
+—broadside beam
+] and at the fundamental frequency
+].
+—steered beam,
+[
+
+h=0
+jhj = 1
+
+TABLE III
+Flat top and Sum Configuration (
+,
+)—INITIAL
+SETTING [35] FOR THE ITERATIVE OPTIMIZATION
+
+N = 12 d = =2
+
+(k = 0)
+
+of
+half-wavelength spaced elements with uniform
+,
+). The
+amplitude weights (i.e.,
+phase weights, , and switch-on times, , have been initialized
+to afford a flat-top beam as in [35] and their normalized
+values are reported in Table III. The synthesis targets have been
+fixed to
+and
+.
+The pulse sequence determined with the PS is shown
+in Fig. 10(a) together with the synthesized two patterns
+[Fig. 10(b)] whose descriptive indexes are reported in
+
+2544
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 7, JULY 2011
+
+to avoid, have been profitably exploited to design an antenna
+system providing simultaneous multiple patterns. Towards
+this purpose, an optimization procedure has been applied to
+determine the time-domain descriptors of the digital time sequence that controls the RF switches devoted to implement the
+time-modulation of the array. Since the power associated to the
+harmonic modes rapidly reduces for higher harmonic modes,
+the desired patterns have been synthesized at the central and the
+first harmonics. Although further investigations are currently
+under development, the results of the numerical assessment
+provide a proof that time-modulated arrays are an effective and
+reliable architectural solution for those applications requiring a
+multiple and simultaneous beamforming.
+ACKNOWLEDGMENT
+The authors are grateful to the anonymous reviewers for their
+technical comments and suggestions.
+REFERENCES
+
+N = 12 d = =2
+h =1
+
+Fig. 10. Flat top and sum configuration (
+,
+)—optimized
+(a) pulse sequence and (b) relative power patterns at the central frequency (
+—flat-top pattern) and at the fundamental frequency [j j
+—sum pattern)].
+
+0
+
+h=
+
+TABLE IV
+Flat top and Sum Configuration (
+,
+
+N = 12 d = =2)—PATTERN INDEXES
+
+Table IV. As it can be observed, the beams satisfy the design constraints with the level of the secondary lobes equal
+,
+, and the peak
+to
+of the sum beam with value
+. Moreover,
+with a maximum
+the flat-top region presents a ripple level
+.
+oscillation of
+IV. CONCLUSIONS
+In this paper, the synthesis of multiple harmonic beams in
+time modulated linear arrays has been addressed. The sideband
+radiations arising from the periodic time-modulation of the
+static excitations of the array, usually regarded as power losses
+
+[1] I. M. Skolnik, Radar Handbook, 3rd ed. New York: McGraw-Hill,
+2008.
+[2] C. A. Balanis, Antenna Theory: Analysis and Design, 3rd
+ed. Hoboken, NJ: Wiley, 2005.
+[3] M. Barba, J. E. Page, J. A. Encinar, and J. R. Montejo-Garai, “A
+switchable multiple beam antenna for GSM-UMTS base stations in
+planar technology,” IEEE Trans. Antennas Propag., vol. 54, no. 11,
+pp. 3087–3094, Nov. 2006.
+[4] M. Durr, A. Trastoy, and F. Ares, “Multiple-pattern linear antenna arrays with single prefixed amplitude distributions: Modified WoodwardLawson synthesis,” Electron. Lett., vol. 36, no. 16, pp. 1345–1346,
+Aug. 2000.
+[5] A. Trastoy, Y. Rahmat-Samii, F. Ares, and E. Moreno, “Two-pattern
+linear array antenna: Synthesis and analysis of tolerance,” IEE Proc.
+Microw. Antennas Propag., vol. 151, no. 2, pp. 127–130, Apr. 2004.
+[6] M. Comisso and R. Vescovo, “Multi-beam synthesis with null constraints by phase control for antenna arrays of arbitrary geometry,”
+Electron. Lett., vol. 43, no. 7, pp. 374–375, Mar. 2007.
+[7] R. L. Haupt, “Interleaved thinned linear arrays,” IEEE Trans. Antennas
+Propag., vol. 53, no. 9, pp. 2858–2864, Sep. 2005.
+[8] I. E. Lager, C. Trampuz, M. Simeoni, and L. P. Ligthart, “Interleaved
+array antennas for FMCW radar applications,” IEEE Trans. Antennas
+Propag., vol. 57, no. 8, pp. 2486–2490, Aug. 2009.
+[9] G. Oliveri and A. Massa, “Fully-interleaved linear arrays with predictable sidelobes based on almost difference sets,” IET Radar Sonar
+Navigat., vol. 4, no. 5, pp. 649–661, 2010.
+[10] G. Oliveri, P. Rocca, and A. Massa, “Interleaved linear arrays with
+difference sets,” Electron. Lett., vol. 46, no. 5, pp. 323–324, 2010.
+[11] A. Austeng and S. Holm, “Sparse 2-D arrays for 3-D phased array
+imaging—Design methods,” IEEE Trans. Ultrason., Ferroelect., Freq.
+Contr., vol. 49, no. 8, pp. 1073–1086, Aug. 2002.
+[12] G. Oliveri and A. Massa, “ADS-based array design for 2D and 3D ultrasound imaging,” IEEE Trans. Ultrason., Ferroelect., Freq. Contr.,
+vol. 57, no. 7, pp. 1568–1582, Jul. 2010.
+[13] H. E. Shanks and R. W. Bickmore, “Four-dimensional electromagnetic
+radiators,” Canad. J. Phys., vol. 37, pp. 263–275, Mar. 1959.
+[14] W. H. Kummer, A. T. Villeneuve, T. S. Fong, and F. G. Terrio,
+“Ultra-low sidelobes from time-modulated arrays,” IEEE Trans.
+Antennas Propag., vol. 11, no. 6, pp. 633–639, Jun. 1963.
+[15] S. Yang, Y. B. Gan, and A. Qing, “Sideband suppression in time-modulated linear arrays by the differential evolution algorithm,” IEEE Antennas Wireless Propag. Lett., vol. 1, pp. 173–175, 2002.
+[16] J. Fondevila, J. C. Brégains, F. Ares, and E. Moreno, “Optimizing uniformly excited linear arrays through time modulation,” IEEE Antennas
+Wireless Propag. Lett., vol. 3, pp. 298–301, 2004.
+[17] S. Yang, Y. B. Gan, A. Qing, and P. K. Tan, “Design of a uniform amplitude time modulated linear array with optimized time sequences,” IEEE
+Trans. Antennas Propag., vol. 53, no. 7, pp. 2337–2339, Jul. 2005.
+[18] L. Poli, P. Rocca, L. Manica, and A. Massa, “Handling sideband radiations in time-modulated arrays through particle swarm optimization,”
+IEEE Trans. Antennas Propag., vol. 58, no. 4, pp. 1408–1411, Apr.
+2010.
+
+POLI et al.: HARMONIC BEAMFORMING IN TIME-MODULATED LINEAR ARRAYS
+
+[19] J. C. Brégains, J. Fondevila, G. Franceschetti, and F. Ares, “Signal radiation and power losses of time-modulated arrays,” IEEE Trans. Antennas Propag., vol. 56, no. 6, pp. 1799–1804, Jun. 2008.
+[20] L. Poli, P. Rocca, L. Manica, and A. Massa, “Pattern synthesis in timemodulated linear arrays through pulse shifting,” IET Microw., Antennas
+Propag., vol. 4, no. 9, pp. 1157–1164, 2010.
+[21] L. Poli, P. Rocca, L. Manica, and A. Massa, “Time modulated planar
+arrays—Analysis and optimization of the sideband radiations,” IET Microw. Antennas Propag., vol. 4, no. 9, pp. 1157–1164, 2010.
+[22] S. Yang, Y. B. Gan, and P. K. Tan, “Evaluation of directivity and gain
+for time-modulated linear antenna arrays,” Microw. Opt. Technol. Lett.,
+vol. 42, no. 2, pp. 167–171, Jul. 2004.
+[23] L. Manica, P. Rocca, L. Poli, and A. Massa, “Almost time-independent
+performance in time-modulated linear arrays,” IEEE Antennas Wireless
+Propag. Lett., vol. 8, pp. 843–846, 2009.
+[24] S. Yang, Y. B. Gan, and P. K. Tan, “A new technique for power-pattern
+synthesis in time-modulated linear arrays,” IEEE Antennas Wireless
+Propag. Lett., vol. 2, pp. 285–287, 2003.
+[25] G. Li, S. Yang, and Z. Nie, “A study on the application of time modulated antenna arrays to airborne pulsed doppler radar,” IEEE Trans.
+Antennas Propag., vol. 57, no. 5, pp. 1579–1583, May 2009.
+[26] J. Fondevila, J. C. Brégains, F. Ares, and E. Moreno, “Application of
+time modulation in the synthesis of sum and difference patterns by
+using linear arrays,” Microw. Opt. Technol. Lett., vol. 48, no. 5, pp.
+829–832, May 2006.
+[27] A. Tennant and B. Chambers, “Time-switched array analysis of phaseswitched screens,” IEEE Trans. Antennas Propag., vol. 57, no. 3, pp.
+808–812, Mar. 2009.
+[28] H. Shanks, “A new technique for electronic scanning,” IRE Trans. Antennas Propag., vol. 9, no. 2, pp. 162–166, Mar. 1961.
+[29] G. Li, S. Yang, Y. Chen, and Z. Nie, “A novel electronic beam steering
+technique in time modulated antenna arrays,” Progr. Electromagn.
+Res., vol. 97, pp. 391–405, 2009.
+[30] G. Li, S. Yang, and Z. Nie, “Direction of arrival estimation in time modulated antenna arrays with unidirectional phase center motion,” IEEE
+Trans. Antennas Propag., vol. 58, no. 4, pp. 1105–1111, Apr. 2009.
+[31] A. Tennant and B. Chambers, “Two-element time-modulated array
+with direction-finding properties,” IEEE Antennas Wireless Propag.
+Lett., vol. 6, pp. 64–65, 2007.
+[32] J. Kennedy, R. C. Eberhart, and Y. Shi, Swarm Intelligence. San
+Francisco, CA: Morgan Kaufmann, 2001.
+[33] S. Yang, “Study of low sidelobe time modulated linear antenna arrays
+at millimeter-waves,” Int. J. Infrared Milli. Waves, vol. 26, no. 3, pp.
+443–456, Mar. 2005.
+[34] A. Tennant and B. Chambers, “Control of the harmonic radiation patterns of time-modulated antenna arrays,” presented at the IEEE AP-S
+Int. Symp., San Diego, CA, Jul. 5–12, 2008.
+[35] Y. U. Kim and R. S. Elliot, “Shaped-pattern synthesis using pure real
+distributions,” IEEE Trans. Antennas Propag., vol. 36, no. 11, pp.
+1645–1649, Nov. 1988.
+Lorenzo Poli (S’10) received the M.S. degree in
+telecommunication engineering from the University
+of Trento, Italy, in 2008.
+He is with the International Graduate School
+in Information and Communication Technologies,
+University of Trento and a member of the ELEDIA
+Research Group. His main interests are the synthesis
+of the antenna array and electromagnetic inverse
+scattering.
+
+2545
+
+Paolo Rocca (M’09) received the B.S., M.S., and
+Ph.D. degrees in telecommunications engineering
+from the University of Trento, Italy, in 2004, 2005,
+and 2009, respectively.
+He is with the International Graduate School in
+Information and Communication Technologies, University of Trento and a member of the ELEDIA Research Group. His main interests are in the framework of antenna synthesis and design, electromagnetic inverse scattering, and optimization techniques
+for electromagnetics.
+
+Giacomo Oliveri (M’09) received the B.S. and M.S.
+degrees in telecommunications engineering and the
+Ph.D. degree in space sciences and engineering from
+the University of Genoa, Italy, in 2003, 2005, and
+2009, respectively.
+Since 2008, he has been a member of the Electromagnetic Diagnostic Laboratory, University of
+Trento, Italy. His research work is mainly focused
+on cognitive radio systems, electromagnetic direct
+and inverse problems, and antenna array design and
+synthesis.
+
+Andrea Massa (M’03) received the “Laurea” degree
+in electronic engineering and Ph.D. degree in electronics and computer science from the University of
+Genoa, Genoa, Italy, in 1992 and 1996, respectively.
+From 1997 to 1999, he was an Assistant Professor
+of electromagnetic fields at the Department of
+Biophysical and Electronic Engineering, University
+of Genoa, teaching the university course of Electromagnetic Fields 1. From 2001 to 2004, he was
+an Associate Professor and, since 2005, he has been
+a Full Professor of electromagnetic fields at the
+University of Trento, where he currently teaches electromagnetic fields, inverse
+scattering techniques, antennas and wireless communications, and optimization
+techniques. At present, he is the Director of the ELEDIALab, University of
+Trento and Deputy Dean of the Faculty of Engineering. His research work since
+1992 has been principally on electromagnetic direct and inverse scattering,
+microwave imaging, optimization techniques, wave propagation in presence of
+nonlinear media, wireless communications and applications of electromagnetic
+fields to telecommunications, medicine and biology.
+Prof. Massa is a member of the PIERS Technical Committee, the Inter-University Research Center for Interactions Between Electromagnetic Fields and
+Biological Systems (ICEmB) and Italian representative in the General Assembly
+of the European Microwave Association (EuMA).
+
+

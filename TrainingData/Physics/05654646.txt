@@ -1,0 +1,1367 @@
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+467
+
+Bayesian Compressive Sampling for Pattern Synthesis
+With Maximally Sparse Non-Uniform Linear Arrays
+Giacomo Oliveri, Member, IEEE, and Andrea Massa, Member, IEEE
+
+Abstract—A numerically-efficient technique based on the
+) for the design of maxiBayesian compressive sampling (
+mally-sparse linear arrays is introduced. The method is based on
+a probabilistic formulation of the array synthesis and it exploits a
+fast relevance vector machine (
+) for the problem solution.
+The proposed approach allows the design of linear arrangements
+fitting desired power patterns with a reduced number of non-uniformly spaced active elements. The numerical validation assesses
+the effectiveness and computational efficiency of the proposed
+approach as a suitable complement to existing state-of-the-art
+techniques for the design of sparse arrays.
+Index Terms—Array synthesis, Bayesian compressive sampling
+(BCS), linear arrays, relevance vector machine, sparse arrays.
+
+I. INTRODUCTION
+YNTHESIZING antenna arrays with a minimum number
+of elements is a problem of high importance in those
+applications (e.g., satellite communications, radars, biomedical
+imaging, acoustics, and remote sensing) where the weight, the
+consumption, and the hardware/software complexity of the
+radiating device have a strong impact on the whole cost of the
+overall system [1], [2].
+Non-uniform arrangements have potential advantages with
+respect to uniform layouts [3] such as (a) significantly increased resolution (i.e., decreased mainlobe width) [4], (b)
+sidelobe level control/reduction [5], and (c) enhanced efficiency in dealing with physically-constrained geometries (e.g.,
+conformal architectures) [6]. However, sparsening array elements has the main drawback of reducing the control of the
+beam shape [1]–[7] and several approaches for the design and
+optimization of sparse arrangements have been proposed in the
+last 50 years [1]–[31] to properly address such an issue.
+Dealing with beam shape control, two different problems
+are usually considered in the state-of-the-art literature [20]:
+by
+(I) the minimization of the peak sidelobe level
+determining a fixed set of element positions over an aperture
+and sometimes the corresponding weights; (II) the synthesis
+of a maximally-sparse array1 radiating a desired pattern. A
+
+S
+
+Manuscript received March 19, 2010; revised June 26, 2010; accepted August 14, 2010. Date of publication December 03, 2010; date of current version
+February 02, 2011.
+The authors are with the Department of Information Engineering and Computer Science, University of Trento, Povo 38050 Trento, Italy (e-mail: giacomo.
+oliveri@disi.unitn.it; andrea.massa@ing.unitn.it).
+Color versions of one or more of the figures in this paper are available online
+at http://ieeexplore.ieee.org.
+Digital Object Identifier 10.1109/TAP.2010.2096400
+1An array with the minimum number of active elements,
+(regular or irregular) of N positions.
+
+P , over a lattice
+
+wide set of methods concerned with Problem I [2] has been
+investigated including random approaches [11], [15], dynamic
+-filter design [16], stochastic optiprogramming [12],
+mization methods [17], [18], [20], [24], [27]–[29], analytical
+techniques [22], [31], and hybrid algorithms [25], [30], as well.
+On the contrary, Problem II has received less attention and few
+methods have been developed [2], [3], [13], [14], [19]–[21],
+[23], [26]. Because of the limitations of available computers,
+first attempts relied on techniques requiring as few computational resources as possible such as the steepest descent method
+[13] and the iterative least-square technique [14]. However,
+those approaches have strong limitations as, for example, the
+need to a-priori know the number of active elements of the
+array and the aperture size [13], [14]. In order to overcome
+these drawbacks, a technique exploiting the simplex search
+was developed in [3] to find the sparsest array matching a
+given reference pattern. Moreover, a mixed linear programming
+approach was introduced in [19] with the same aim. Further
+developments ranging from a recursive inversion algorithm
+based on the Legendre transform [21], [26] up to the use of
+a stochastic optimizer based on the simulated annealing technique [20] or a generalized Gaussian quadrature approach [23]
+have been successively analyzed. More recently, Problem II
+has been solved by means of an innovative technique based on
+the matrix pencil method
+[7]. Thanks to its efficiency,
+generally outperforms other synthesis techniques
+the
+in terms of convergence speed and array performances [7].
+Despite its effectiveness, such an approach presents some
+limitations as follows.
+, of the active elements of
+1) The locations ,
+the array are proportional to the complex values of the nonzero roots of the generalized eigenvalue problem described
+in [7]. Consequently, unphysical complex solutions (i.e.,
+) can be generated [7] and an approximation [i.e.,
+] is required (p. 2957—[7]) whose impact
+on the array performances cannot be a-priori estimated nor
+neglected;
+2) No requirements on the element positions [7] can be stated.
+Thus, no geometrical regularity or user-desired geometric
+features on the synthesized array can be a-priori enforced;
+3) The method may fail in synthesizing/matching shaped
+,
+beam patterns because of the imaginary parts of
+are not usually negligible ([7, p. 2958]).
+This paper is aimed at proposing an innovative, flexible,
+and computationally-efficient complement to the existing synthesis methods that solve Problem II. The method, based on
+[32] (a robust
+the Bayesian Compressive Sampling
+and theoretically solid technique to produce sparse models in
+
+0018-926X/$26.00 © 2010 IEEE
+
+468
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+regression and classification problems [33]–[35]),2 is devoted
+to find the maximally-sparse array with the highest a-posteriori
+probability to match a user-defined reference pattern. Towards
+solver exploiting a fast relevance
+this end, an efficient
+algorithm [32], [36] is adopted.
+vector machine
+The outline of the paper is as follows. Section II is aimed
+at mathematically formulating the synthesis problem and describing an algorithm for minimizing a suitable cost function
+that depends on the degree of sparseness of the array and the
+mismatch between the desired power pattern and the actual one.
+Section III provides a selected set of numerical results to validate the proposed approach as well as to compare its performances with state-of-the-art techniques. Finally, some conclusions are drawn (Section IV).
+
+To recast the problem at hand as a
+problem, the following three steps are necessary. Let us first rewrite the -norm
+as3 [35]
+constraint
+(2)
+where
+is a zero mean Gaussian error vector
+[32], [34], [35] with an user-defined variance proportional to
+the mismatching with the reference pattern (i.e.,
+). Then,
+through a Gaussian likelihood
+let us model
+
+(3)
+to recast the original problem as the following linear regression
+one with sparseness constraints
+
+II. MATHEMATICAL FORMULATION
+
+LRSC Problem—Given
+find
+and
+which maximize the a-posteriori probability
+subject to the constraint that is maximally-sparse.
+
+Formulation
+
+A.
+
+Let us consider a symmetric linear arrangement of
+(
+if an even number of elements is at hand,
+otherwise) isotropic elements,
+being the real
+. The synexcitation of the -th element pair
+thesis problem is that of finding the set of array weights such
+that (a) the radiated pattern is sufficiently close to a given ref, and (b) the number
+of active (i.e.,
+erence one,
+,
+,
+being the Kronecker
+function) array elements is as small as possible [3]. Towards this
+formulation is considered and similarly to [3] the
+end, the
+following assumptions are taken into account: (a) the reference
+angular posipattern is approximated in an arbitrary set of
+, within the visible range
+;
+tions ,
+(b) the set of active positions are constrained to a large, but
+(i.e.,
+) candidate locations
+finite, user-chosen set of
+not necessarily belonging to a regular lattice. Mathematically,
+the problem can be formulated as follows:
+Synthesis Problem—Given a set of
+samples of the
+, and a fidelity factor
+reference pattern,
+find the set of array weights, , which is maximally sparse
+subject to
+where
+
+is
+
+the
+
+-norm,
+,
+
+,
+whose -th entry is given
+,
+being the
+by
+the distance of the -th location from the array
+wavelength,
+center (
+if
+), and
+is the Neumann’s number [9]
+if
+, and
+otherwise.
+defined as
+The synthesized pattern samples can be then expressed as
+(1)
+
+Finally, the sparseness of
+[34], [35] is enforced. As regards the Bayesian formulation, such a task is accomplished
+by introducing a sparseness prior4 over [32]. Hereinafter, the
+Gaussian hierarchical prior [33]–[35] is invoked
+(4)
+where
+and
+is the -th
+independent hyperparameter controlling the strength of the prior
+[33]. To fully specify (4), the hyperpriors over [i.e.,
+over
+] and
+[i.e.,
+] have to be defined. The Gamma
+distributions are here considered [33]
+(5)
+and
+(6)
+is the -th scale prior,
+, and
+is the
+gamma function [33]. Thanks to (4), (5), and (6), the original
+synthesis problem can be finally formulated as
+where
+
+BCS Problem—Given
+, and
+which maximize
+B.
+
+Solver—The
+
+, find
+
+,
+.
+
+Procedure
+
+-th element is given by
+
+In order to determine the desired sparse solution (i.e., the
+,
+, and
+), the
+unknown parameters
+method [32], [33], which theoretically guarantees to solve the
+
+full treatment of BCS in terms of convergence theory, performances in
+benchmark and illustrative problems and relations with other classification and
+regression techniques can be found in [33]–[36].
+
+3It is worth pointing out that (2) and the ` -norm constraint are mathematically equivalent [35].
+4In Bayesian inference, a prior represents the a-priori knowledge about an
+unknown quantity in probabilistic terms.
+
+where
+2A
+
+and its
+.
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+BCS Problem [34], is applied. Towards this end, let us consider
+that the posterior over all unknowns can be expressed as
+
+turns
+
+out
+
+to
+
+be
+
+equal
+
+469
+
+to
+
+the
+
+posterior
+given by
+
+mean
+
+of
+
+(14)
+(7)
+Moreover, because of (3) and (4), the posterior distribution over
+III.
+(8)
+turns out to be equal to the following multivariate Gaussian distribution [35]
+
+(9)
+where the posterior mean and the covariance are given by
+and
+, respectively,
+being
+.
+As for the second term on the right-hand side of (7), the
+delta-function approximation is used [33] to model the hyperparameter posterior
+(10)
+are the most probable values,
+, also
+called hyperparameter posterior modes. In order to determine
+their values, let us consider that
+where
+
+and
+
+(11)
+and
+and let us assume uniform scale priors. Then,
+become constant values [33] and the maximization of (11) is
+, whose logaequivalent to maximize the term
+rithm is given by [33]
+
+SYNTHESIS METHOD—ALGORITHMIC
+IMPLEMENTATION
+
+-based pattern
+The algorithmic implementation of the
+synthesis consists of the following steps:
+, the grid
+1) Input Phase—Set the reference pattern
+), the set of
+of admissible locations ( ;
+), the target
+pattern sampling points ( ;
+of the error term , and its initial estimate
+variance
+for the sequential solver of the
+algorithm (see the
+Appendix);
+,
+2) Matrix Definition—Fill the entries of the matrices
+, , and
+;
+3) Hyperparameter Posterior Modes Estimation—Find
+by maximizing (12) as described in the
+Appendix;
+by (14);
+4) Array Weights Estimation—Find
+5) Output Phase—Return the estimated array weights,
+, the number of active array elements,
+,5 and the corresponding hyperparameter
+.
+modes
+Starting from an user-required pattern
+(i.e., its sam), the control parameters of the synpled representation
+;
+thesis process are the following variables: (a) ,
+; (c) , and (d) . Consequently, it is
+(b) ,
+possible to synthesize arbitrary reference patterns specifying the
+pattern matching accuracy (c) and the sequential solver initialmethod allows one to enforce
+ization (d). Moreover, the
+pattern constraints within the whole or in a subset of the visible
+range (b) as well as to set suitable geometrical features of the
+array arrangement (a).
+IV. NUMERICAL ANALYSIS AND ASSESSMENT
+
+(12)
+. It is worthwhile to point out
+where
+that it is not possible to perform the maximization of the “marginal likelihood” (12) in an exact fashion, but a type-II maximum likelihood procedure [35] can be profitably exploited for
+. Such
+determining an iterative re-estimation of
+a technique, whose Matlab implementation is available in [37],
+is summarized in the Appendix.
+Finally, by substituting (9) and (10) in (7), one obtains that
+
+(13)
+The posterior over all unknowns results a multivariate
+Gaussian function (9) only depending on the unknown set
+once
+have been determined. Therefore, the
+value of
+
+This section is devoted to numerically assess potentialities
+approach for the design
+and limitations of the proposed
+of sparse linear arrays. The numerical analysis is carried out
+by considering a set of representative/benchmark reference patin
+terns to evaluate the effectiveness and reliability of the
+approximating a user-desired pattern. In order to evaluate the
+“degree of optimality” of the array designs, the following metrics and pattern descriptors are used: the matching error defined as6
+(15)
+the aperture length , the mean inter-element spacing
+, and the minimum spacing
+.
+5In this paper kxk is the ` -norm of x (i.e., the number of non-zero elements
+of x).
+6Only u
+
+2 [0; 1] is considered in the definition of  for symmetry reasons.
+
+470
+
+A.
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+Sensitivity Analysis
+
+As a first numerical experiment, the synthesis of a non-uniform array matching a Dolph-Chebyshev pattern [2] is considand
+ered. A broadside Dolph-Chebyshev pattern with
+is assumed as reference. Let us notice that
+such a pattern can be synthesized through a uniform array with
+-spaced elements. The
+synthesis has
+at points (
+,
+been carried out by sampling
+,
+) and assuming the following grid of admissible locations
+(16)
+results by reporting the matching
+Fig. 1(a) describes the
+error versus the number of active elements
+for dif,
+ferent values of the control parameters:
+,
+, and
+. The Pareto
+is indicated, as
+front of the solution set in the plane
+well. As it can be observed, different
+trade-off solutions
+are obtained with accuracy and element number in the range
+and
+, respectively. By comparing the
+patterns related to three representative points of the Pareto front
+) with the reference one [Fig. 1(b)], it
+(i.e.,
+elements provides a
+turns out that the solution with
+, while a reliable reconvery poor matching
+is yielded choosing the solution
+struction
+having
+[Fig. 1(b)] with a non-negligible saving
+-spaced uniform array
+of array elements with respect to the
+). As a general by-product, it results
+(i.e.,
+that a value of the accuracy index around the threshold
+identifies an optimal trade-off
+solution, whereas lower
+values usually require more radiating elements [
+,
+—Fig. 1(b)] without significant/relevant improvements in the matching of the reference pattern. As regards
+the resulting layouts, it is worth pointing out that the optimal
+array
+has an aperture and an excitation
+displacement [Fig. 1(c)] close to those of the uniform array.
+This proves the effective non-uniform sampling of the ideal
+. Otherwise, different
+current distribution affording
+vs.
+]
+apertures [e.g.,
+and weights [Fig. 1(c)] are synthesized in correspondence with
+greater values of . As for the element arrangement, a positive
+feature of the
+arrays is the enlarged inter-element spacing
+with respect to the corresponding uniform array [Fig. 1(c)] despite the closely-spaced admissible locations [(16)].
+In order to provide a deeper understanding about the senperformances on the control parameters,
+sitivity of the
+Figs. 2 and 3 summarize the results of a comprehensive numerical analysis. More specifically, the matching error has
+, or
+, or
+by
+been evaluated as a function of , or
+setting the other parameters to the values used to obtain the
+(i.e.,
+,
+,
+optimal trade-off with
+,
+). For completeness, the behavior
+of
+has been reported, as well. As expected [Fig. 2(a)],
+the pattern matching improves as the number of samples
+of
+increases. However, does not further decreases
+slightly above the Nyquist
+beyond a threshold value
+
+BCS Sensitivity Analysis (Dolph-Chebyshev: L = 9:5, PSL =
+020 dB)—Plot of the representative points of a set of BCS solutions in the
+
+Fig. 1.
+
+) plane (a). Power patterns (b) and corresponding layouts (c) of the
+( , P
+reference and of a set of representative BCS arrays.
+
+threshold (
+) even though the corresponding
+still grows. A sampling value
+number of array elements
+between
+and
+turns out to be a reliable choice as confirmed by the behaviour of the plots of
+for
+[Fig. 3(a)], as
+gives the poorest fitting
+well. Indeed, the lowest value of
+—Fig. 3(a)], while satisfactory reconstructions
+[
+.A
+are obtained when
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+Fig. 2.
+
+BCS Sensitivity Analysis (Dolph-Chebyshev: L = 9:5, PSL = 020 dB)—Behaviours of  and P
+
+further increment of only marginally enhances the accuracy
+[
+—Fig. 3(a)].
+, the integral error has
+Concerning the sensitivity to
+, while it sharply insmall variations for
+creases afterwards [Fig. 2(b)] as pointed out by the plots
+in correspondence with a set of
+of
+(i.e.,
+)
+representative values of of
+[Fig. 3(b)]. More sparse arrays are synthesized in corresponat the expense of higher values
+dence with larger values of
+[Fig. 2(b)]. Good tradeoffs between accuracy and element
+. Such an
+reduction then arise by setting
+performances are significantly
+outcome indicates that the
+less sensitive to than to . As a matter of fact, a reduction of
+of about one order in magnitude requires a variation of of
+about 10–20% [Fig. 2(a)], while the same effect holds true for a
+variation of of more than two orders in magnitude [Fig. 2(b)].
+Similar deductions can be drawn from the behaviour of the
+integral error versus . Moreover, the matching error increases
+values are
+almost monotonically with , whereas low
+obtained within the range
+[Fig. 2(c)]. Such a range can be also assumed as reference
+guideline since smaller
+values only marginally improve the
+,
+—Fig. 3(c)],
+matching accuracy [
+,
+while higher values do not allow reliable syntheses [
+—Fig. 3(c)].
+
+471
+
+versus (a) K , (b)  , (c)  , and (d) N .
+
+Finally, the plots in Fig. 2(d) are concerned with the sension . By analyzing the behaviour of
+,
+tivity of the
+it comes out that great care must be exercised on the choice of
+to obtain a sparse array matching with a good accuracy the
+reference one. A good receipt coming also from other heuristic
+.
+analyses suggests to choose
+B.
+
+Assessment—Synthesis of Broadside Patterns
+
+The second set of experiments is aimed at assessing in a more
+when dealing
+exhaustive fashion the performances of the
+with broadside patterns. More specifically, Dolph-Chebyand
+shev reference patterns with
+have been used and the Pareto
+fronts of the
+solutions are shown in Fig. 4(a). As expected, wider apertures require more elements to reach the
+(e.g.,
+,
+accuracy threshold
+, and
+).
+On the contrary,
+does not generally change when
+varying the peak sidelobe level (e.g.,
+). The
+method allows a saving of about 30–35% of the array elements with respect to the corresponding uniformly
+-spaced
+array still keeping a very accurate pattern matching (i.e.,
+) [Table I]. This implies an increasing of the average inter-element distance
+
+472
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+= 9 5 PSL = 020 dB)—Plots of E
+
+Fig. 3. BCS Sensitivity Analysis (Dolph-Chebyshev: L
+: ,
+computed at different values of (a) K , (b)  , (c)  , and (d) N .
+
+and, usually, of the minimum spacing between adjacent eleexcept for the case with
+ments (
+and
+). However, it is worth observing that the array element saving does not yield a significant
+—Table I).
+directivity reduction (
+Despite the lower number of elements, the directivity of the
+resulting sparse array is very close to that of the corresponding
+ability to
+fully-populated arrangement thanks to the
+match a reference pattern with a high accuracy. Therefore and
+unlike previous array thinning techniques, no specific constraints (e.g., on the maximum percentage of antenna elements
+that can be thinned from an array) have to be enforced to
+guarantee a good directivity.
+On the other hand, the array aperture only slightly reduces
+when
+and
+(e.g.,
+) since it controls the mainlobe pattern matching.
+As far as the “shape” of the
+Pareto front is concerned
+[Fig. 4(a)], the plot of the matching error shows a step-like beconditions. Morehaviour whatever the array aperture and
+below which the
+over, it exists a threshold value of
+cannot provide an accurate matching for a given
+. For
+shows that
+example, the case
+decreases of more than two orders in magnitude passing from
+to
+. This is visually pointed out in
+
+j
+
+(u) E
+0
+
+(u)
+
+j
+
+of representative
+
+BCS solutions
+
+for
+Fig. 4(c) where the plots of
+are compared to the reference pattern.
+Such a behaviour is further confirmed by the results in
+Fig. 4(b) where Taylor patterns [1] with transition index
+and different sizes (i.e.,
+) and
+s
+) are taken into account.
+(i.e.,
+Also in this case, a small variation of
+leads to a significant improvement of the reconstruction accuracy
+.
+provide also for Taylor
+The reliable solutions with
+syntheses an accurate matching of the reference pattern with
+negligible errors confined to very low sidelobes, far from the
+mainlobe [see the inset of Fig. 4(d)], which do not contain
+relevant portions of the radiated power.
+-spaced
+As for the element saving with respect to the
+arrangement, the values in Table I confirm that
+as well as the conclusion drawn for the
+Dolph-Chebyshev patterns on the distribution of the array
+) and on the arising
+elements (i.e.,
+—Table I). Condirectivity (
+cerning the computational issues, the
+turns out to be very
+—Table I) whatever the broadside
+efficient (
+reference pattern, despite the non-optimized implementation of
+the Matlab code.
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+Fig. 4. BCS Assessment (Broadside Pattern Synthesis)—Pareto fronts in the (; P
+when matching (a), (c) Dolph-Chebyshev and (b), (d) Taylor reference patterns.
+
+) plane (a), (b) and power patterns (c), (d) of representative
+
+473
+
+BCS solutions
+
+TABLE I
+
+BCS Assessment (Broadside Pattern Synthesis)—ARRAY PERFORMANCE INDEXES
+
+In order to complete the analysis of the performance of
+the
+approach when dealing with broadside patterns,
+comparisons with state-of-the-art techniques have been carried
+approach [7]7
+out, as well. Towards this purpose, the
+has been considered because of its efficiency and the enhanced
+matching accuracy compared to similar methods such as the
+
+Prony technique [7]. The results from the analysis of different Dolph-Chebyshev references are summarized in Fig. 5
+8
+for both
+and
+where the plots of versus
+arrays are shown. Let us consider the test case characterized
+defined over
+by a reference pattern with
+a linear aperture of length
+[Fig. 5(a)]. In such
+
+7A MATLAB implementation of the MPM has been used for the numerical tests (mpencil function—http://www.mathworks.se/matlabcentral/index.
+html) by setting the default parameters as suggested in [7].
+
+8Please notice that only the MPM arrays with SV D -truncation parameter below 10 have been reported in order to guarantee an accurate pattern
+matching [7].
+
+474
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+Fig. 5. BCS Assessment (Broadside Pattern Synthesis)—Representative points in the (; P ) plane of BCS and MPM solutions synthesized when matching
+the reference Dolph-Chebyshev patterns characterized by: (a) L = 9:5 PSL = 30 [dB], (b) L = 14:5 PSL = 30 [dB], (c) L = 19:5 PSL =
+30 [dB], (d) L = 19:5
+PSL = 20 [dB], and (e) L = 19:5 PSL = 40 [dB].
+
+0
+
+0
+
+0
+
+0
+0
+
+a case, the
+provides a more accurate fitting than
+whatever the number of array elements (e.g.,
+the
+vs.
+[7]) and the
+generally requires a larger to satisfy the
+(
+condition
+vs.
+). The
+performances come closer to those of the
+as increases
+—Fig. 5(b) and
+—Fig. 5(c)] and some[
+outperforms the
+in terms of fitting
+times the
+
+0
+0
+
+0
+
+0
+
+0
+
+index for both small and large values of [Fig. 5(b) and (c)].
+Moreover and with reference to Fig. 5(c)–(e), it results
+enhances when
+rethat the efficiency of the
+overcomes the
+duces. As a matter of fact, the
+when
+and
+[Fig. 5(d)],
+for the aperture
+with
+while
+[Fig. 5(e)] as also pictorially pointed out
+and
+synthesized with
+by the plots of
+-element arrangement [inset of
+the corresponding
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+475
+
+Fig. 6. BCS Assessment (Broadside Pattern Synthesis)—Representative points in the (; P ) plane of BCS and MPM solutions synthesized when matching
+the reference Taylor patterns characterized by: (a) L = 9:5 PSL = 30 [dB], (b) L = 14:5 PSL = 30 [dB], (c) L = 19:5 PSL = 30 [dB],
+(d) L = 19:5 PSL = 20 [dB], and (e) L = 19:5, PSL = 40 [dB].
+
+0
+
+0
+
+0
+
+0
+
+0
+
+Fig. 5(e)]. As it can be observed, the
+properly matches
+the reference pattern within the entire visible range, while
+accuracy worsen near the mainlobe and in the far
+the
+sidelobes.
+Similar conclusions hold true when dealing with Taylor ref(Fig. 6) still inerence patterns. The behavior of versus
+outperforms the
+concerning the
+dicates that the
+when
+minimum to reach the matching threshold
+
+0
+
+0
+
+0
+
+0
+
+dealing with small arrays and high
+s[
+vs.
+—Fig. 6(a)], while the
+betters the
+performance for larger with low peak sidelobe levels [
+vs.
+—Fig. 6(e)]. This is further confirmed by the patterns of the optimal trade-off solutions displayed in the insets of
+the pictures of Fig. 6.
+
+476
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+=54
+
+(; P ) plane of BCS and MPM solutions synthesized when
+= 030 [dB], and (c) PSL = 040 [dB]. Array excitations (d).
+
+Fig. 7. BCS Assessment (Shaped Pattern Synthesis: L
+:  [38])—Representative points in the
+, (b) PSL
+matching the reference Shaped patterns [38] characterized by: (a) PSL
+
+= 020 dB
+
+TABLE II
+
+BCS Assessment (Shaped Pattern Synthesis: L = 5:4 [38])—ARRAY PERFORMANCE INDEXES
+
+C.
+
+Assessment—Synthesis of Shaped Patterns
+
+In order to evaluate the flexibility of the proposed approach,
+numerical tests concerned with shaped patterns have been also
+performed. The first experiment deals with the reconstruction
+of flat top patterns defined over an aperture of
+with
+s as in [38]. The plots of as a function of
+different
+show that neither the
+nor the
+is able to reduce
+the number of array elements of the uniform array (being
+its inter-element distance) synthesized in [38] still keeping a
+
+good accuracy, although the
+[
+—Fig. 7(a)] reduces the array aperture with respect
+—Table II). On the contrary, the
+to [38] (
+defines wider arrangements
+, as
+shown in Fig. 7(d), without yielding a good matching with
+the reference patterns (
+—Table II). The
+is also pointed out by the
+enhanced accuracy of the
+,
+, and
+in the insets of
+plots of
+Figs. 7(a)–7(c) related to the arrays with
+. For completeness, the distributions of the array excitations
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+477
+
+TABLE III
+
+BCS Assessment (Shaped Pattern Synthesis: L = 8:5 [39])—ARRAY
+PERFORMANCE INDEXES
+
+=85
+
+Fig. 8. BCS Assessment (Flat-Top Pattern Synthesis: L
+:  [39])—Representative points in the ; P plane of BCS and MPM solutions (a), optimal
+trade-off beampatterns (b), and associated array excitations (c).
+
+(
+
+)
+
+versus
+show that the
+faithfully reconstructs the
+elereference pattern synthesizing an array of
+—Fig. 8(a)] with a reduction of
+ments [
+about 1/3 of the array elements with respect to the uniform
+. As a side effect of the approximation,
+layout
+trade-off slightly improves the
+of the
+the optimal
+vs.
+reference pattern (
+—Table III), as well. On the contrary,
+synthesis in [39] and the
+pattern genboth the
+elements do not provide an accurate
+erated with
+—Fig. 8(a)],
+fitting [
+), and
+unless using more antenna elements (e.g.,
+significantly worsen the
+as highlighted by the plots of the associated patterns [Fig. 8(b)]. For completeness, the behaviour of the array
+excitations and the corresponding figures of merit are reported
+in Fig. 8(c) and Table III, respectively. As for the computational
+costs, the
+still retains the numerical efficiency proved in
+synthesizing broadside patterns (Table III).
+Similar conclusions can be also drawn when considering
+wider reference apertures. For example, with reference to a
+Woodward reference pattern with
+[Fig. 9(a)], the
+yields an accurate approximation with less elements
+than the
+(
+vs.
+). Moreover,
+significantly worsens when using
+the accuracy of the
+the same number of active elements of the
+solution
+,
+[
+vs.
+,
+—Table IV and
+provides
+Fig. 9(b)]. As for the array arrangement, the
+a more widely-spaced design characterized by the following
+parameters:
+and
+(Table IV).
+D.
+
+along the array extension are given in Fig. 7(d). As it can
+be observed and also predicted in [7], the worsening of the
+is mainly due to the errors in
+performances of the
+estimating the element positions caused by the non-negligible
+values of the imaginary parts of the non-zero roots of the
+associated eigenvalue problem.
+The second experiment considers as reference the Woodward pattern with
+analyzed in [39]. The plots of
+
+Assessment—Constrained Synthesis
+
+This section is devoted to assess the reliability of the
+approach in solving constrained synthesis problems
+(i.e., matching a reference pattern under some explicit geometric and/or radiation constraints). Towards this aim, the
+synthesis of a Dolph-Chebyshev pattern with
+and
+under different synthesis constraints
+has been addressed. The first test case has been formulated
+by enforcing the pattern matching constraints in the angular
+
+478
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+TABLE IV
+
+BCS Assessment (Shaped Pattern Synthesis: L = 19:5)—ARRAY
+PERFORMANCE INDEXES
+
+= 19 5
+
+Fig. 9. BCS Assessment (Flat Top Pattern Synthesis: L
+: )— Representative points in the ; P plane of BCS and MPM solutions (a), optimal
+trade-off beampatterns (b), and associated array excitations (c).
+
+(
+
+)
+
+region
+, being
+and
+. As
+trade-off solution
+desired, the pattern of the optimal
+—Table V) fits in a faithful way the reference
+(
+one within the constrained region as well as in the transition
+regions close to the unconstrained angular range [Fig. 10(b)].
+It is also of interest to observe that the distribution of the array
+excitations of the
+synthesis and those of the uniform
+array quite significantly differ [Fig. 10(a)].
+
+Fig. 10. BCS Assessment [Constrained Synthesis—Dolph-Chebyshev: L
+: , u 62 : ; : ]—Array excitations (a) and power patterns (b).
+
+19 5
+
+(0 45 0 55)
+
+=
+
+To further verify the efficiency of the
+to include pattern
+constraints in the synthesis process without affecting the reliability of the matching in the remaining portion of the pattern, the
+constraint has been moved in another region of the visible range
+by setting
+and
+. As expected, the trade-off
+pattern carefully matches the reference in the constrained region
+—Table V), while uncontrolled lobes appear
+(
+[Fig. 11(b)]. The use of a directive element [e.g., a
+for
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+479
+
+TABLE V
+
+BCS Assessment (Constrained Synthesis—Dolph-Chebyshev: L = 19:5)—ARRAY PERFORMANCE INDEXES
+
+=
+
+Fig. 11. BCS Assessment (Constrained Synthesis—Dolph-Chebyshev: L
+: , u 62 : ; : )—Array excitations (a) and power patterns when using
+isotropic or directive elements (b).
+
+19 5
+
+(0 8 1 0]
+
+radiating element] might then enable the control of the
+sidelobes in the whole visible region [Fig. 11(b)] with a significant saving of active elements in comparison with the uniform
+array synthesizing the entire Dolph pattern (
+vs.
+).
+The last part of the numerical assessment is aimed at analyzing the capability of the
+approach to also take into
+account geometrical constraints. Towards this end and considering the same reference pattern of the previous experiments,
+two different aperture-blockage problems have been defined:
+(i)
+and (ii)
+. The plots
+of the synthesized trade-off arrangements assess the effectivetechnique in constraining the
+ness and reliability of the
+element positions to desired locations [Figs. 12(a) and 13(a)],
+
+Fig. 12.
+
+BCS Assessment [Constrained Synthesis—Dolph-Chebyshev: L =
+
+19:5, d 62 (5:3; 6:5)]—Array excitations (a) and power patterns (b).
+
+while designing sparse arrangements (
+—Table V)
+with reduced apertures
+, as well. It is also
+worthwhile to point out that, notwithstanding the non-negligible reduction of the admissible spatial region for the array elpattern
+ements (more than 10% in both cases), the
+matches the reference
+with a great care [Fig. 12(b)
+and Fig. 13(b)] as confirmed by the values of the matching index
+and (ii)
+—Table V].
+[(i)
+V. CONCLUSIONS
+In this paper, the
+has been proposed as an innovative,
+flexible, and computationally-efficient complement to the existing state-of-the-art methods for the synthesis of sparse arrays
+with desired radiation properties. The pattern matching problem
+
+480
+
+IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION, VOL. 59, NO. 2, FEBRUARY 2011
+
+• despite no specific constraints (e.g., on the maximum percentage of antenna elements that can be thinned) have been
+enforced and unlike previous array thinning techniques, the
+sparse arrays is very close to that of
+directivity of
+their fully-populated counterparts (Table I–IV);
+•
+usually outperforms
+when dealing with
+shaped beampatterns (Section III-C);
+• application-specific constraints on either the radiation pattern or the geometrical characteristics of the array can be
+easily and efficiently taken into account (Section III-D).
+Subjects of future researches will be the analysis of the mutual coupling effects in the presence of realistic array elements
+as well as an enhanced exploitation of directive elements.
+Further extensions, out-of-the-scope of the present paper, will
+concern with complex excitations and non-symmetric layouts.
+Moreover, further works will be done on the sensitivity on
+control parameters, performances and on the reduction of the
+computational complexity of the method.
+APPENDIX
+
+Fig. 13.
+: , d
+
+19 5
+
+BCS Assessment [Constrained Synthesis—Dolph-Chebyshev: L =
+62 (0:0; 1:0)]—Array excitations (a) and power patterns (b).
+
+has been properly reformulated in a suitable Bayesian framework and successively solved with a fast solver. An extensive
+numerical validation has been carried out dealing with different
+reference patterns, array sizes, and constraints to assess the feasibility and reliability of the
+approach as well as its efficiency, flexibility, and accuracy. Selected comparisons with
+state-of-the-art techniques have highlighted the advantages and
+(in some special cases) limitations of the
+synthesis in
+terms of sensitivity on control parameters, performances, and
+computational complexity. The proposed technique has shown
+the following main features:
+• several tradeoffs solutions can be easily obtained by means
+of simple modifications of the control parameters ( , ,
+, and ) (Section III-A);
+•
+favorably compares with state-of-the-art techniques
+such as the
+[7] in terms of accuracy, array sparseness, and computational burden when matching reference
+broadside patterns (Section III-B);
+• on average the number of active elements in a
+array
+turns out to be smaller than the corresponding uniform arrangement
+still providing
+a high accuracy in matching the reference pattern (i.e.,
+);
+
+Sequential Solver for the Maximization of
+: The
+marginal likelihood maximization algorithm proposed in [35]
+is hereinafter customized to deal with user-defined pattern
+and
+matching problems. Starting from the knowledge of
+, the following sequence is iteratively ( being the iteration
+index) applied:
+—Set
+1) Initialization
+and the -th entry of the diagonal matrix
+as follows
+(17)
+if
+and
+otherwise, and
+being ranand the -th column
+domly picked integers within
+of , respectively;
+and
+2) Update—Evaluate
+to compute the sparsity factors
+,
+and the quality
+,
+where
+factors
+;
+3) Candidate Basis Vector Evaluation—Select the -th can,
+, and compute
+didate basis vector9
+. If
+, then update the value of
+by means of (17), otherwise set
+;
+4) Convergence Check—Compute the value of
+. If
+( being the tolerance factor
+[37]), then terminate. Otherwise, upusually set to
+date the iteration index
+and go to step 2.
+ACKNOWLEDGMENT
+The authors wish to thank Dr. S. Ji, Dr. Y. Xue, and Prof.
+L. Carin for sharing the
+code online.
+9Please
+
+refer to [35] for a review of the strategies for candidate selection.
+
+OLIVERI AND MASSA: BCS FOR PATTERN SYNTHESIS WITH MAXIMALLY SPARSE NON-UNIFORM LINEAR ARRAYS
+
+REFERENCES
+[1] C. A. Balanis, Antenna Theory: Analysis and Design, 2nd ed. New
+York: Wiley, 1997.
+[2] R. J. Mailloux, Phased Array Antenna Handbook, 2nd ed. Norwood,
+MA: Artech House, 2005.
+[3] R. M. Leahy and B. D. Jeffs, “On the design of maximally sparse beamforming arrays,” IEEE Trans. Antennas Propag., vol. 39, no. 8, pp.
+1178–1187, Aug. 1991.
+[4] D. King, R. Packard, and R. Thomas, “Unequally spaced, broadband
+antenna arrays,” IRE Trans. Antennas Propag., vol. AP-8, pp. 380–384,
+Jul. 1960.
+[5] A. Maffett, “Array factors with nonuniform spacing arrays,” IRE Trans.
+Antennas Propag., vol. AP-10, pp. 131–136, Mar. 1962.
+[6] N. Balakrishan, P. Murthy, and S. Ramakrishna, “Synthesis of antenna
+arrays with spatial and excitation constraints,” IEEE Trans. Antennas
+Propag., vol. AP-29, pp. 690–696, Sep. 1962.
+[7] Y. Liu, Z. Nie, and Q. H. Liu, “Reducing the number of antenna elements in a linear antenna array by the matrix pencil method,” IEEE
+Trans. Antennas Propag., vol. 56, no. 9, pp. 2955–2962, Sep. 2008.
+[8] R. F. Harrington, “Sidelobe reduction by nonuniform element spacing,”
+IEEE Trans. Antennas Propag., vol. AP-9, p. 187, Mar. 1961.
+[9] M. G. Andreasan, “Linear arrays with variable interelement spacings,”
+IEEE Trans. Antennas Propag., vol. AP-10, pp. 137–143, Mar. 1962.
+[10] A. Ishimaru, “Theory of unequally-spaced arrays,” IEEE Trans. Antennas Propag., vol. AP-11, pp. 691–702, Nov. 1962.
+[11] Y. T. Lo, “A mathematical theory of antenna arrays with randomly
+spaced elements,” IEEE Trans. Antennas Propag., vol. 12, no. 3, pp.
+257–268, May 1964.
+[12] M. I. Skolnik, G. Nemhauser, and J. W. Sherman, “Dynamic programming applied to unequally-space arrays,” IRE Trans. Antennas Propagat., vol. AP-12, pp. 35–43, Jan. 1964.
+[13] J. Perini and M. Idselis, “Note on antenna pattern synthesis using numerical iterative methods,” IEEE Trans. Antennas Propag., vol. 19, no.
+2, pp. 284–286, Mar. 1971.
+[14] R. W. Redlich, “Iterative least-squares of nonuniformly spaced linear
+arrays,” IEEE Trans. Antennas Propag., vol. AP-21, no. 1, pp. 106–108,
+Jan. 1973.
+[15] B. Steinberg, “The peak sidelobe of the phased array having randomly
+located elements,” IEEE Trans. Antennas Propag., vol. 20, no. 2, pp.
+129–136, Mar. 1972.
+[16] P. Jarske, T. Sramaki, S. K. Mitra, and Y. Neuvo, “On the properties
+and design of nonuniformly spaced linear arrays,” IEEE Trans. Acoust.,
+Speech, Signal Processing, vol. 36, pp. 372–380, Mar. 1988.
+[17] R. L. Haupt, “Thinned arrays using genetic algorithms,” IEEE Trans.
+Antennas Propag., vol. 42, no. 7, pp. 993–999, Jul. 1994.
+[18] V. Murino, A. Trucco, and C. S. Regazzoni, “Synthesis of unequally
+spaced arrays by simulated annealing,” IEEE Trans. Signal Processing,
+vol. 44, no. 1, pp. 119–123, Jan. 1996.
+[19] S. Holm, B. Elgetun, and G. Dahl, “Properties of the beampattern of
+weight- and layout-optimized sparse arrays,” IEEE Trans. Ultrason.,
+Ferroelectr., Freq. Control, vol. 44, no. 5, pp. 983–991, Sep. 1997.
+[20] A. Trucco and V. Murino, “Stochastic optimization of linear sparse
+arrays,” IEEE J. Ocean. Engrg., vol. 24, no. 3, pp. 291–299, Jul. 1999.
+[21] B. P. Kumar and G. R. Branner, “Design of unequally spaced arrays
+for performance improvement,” IEEE Trans. Antennas Propag., vol.
+47, pp. 511–523, Mar. 1999.
+[22] D. G. Leeper, “Isophoric arrays—Massively thinned phased arrays with
+well-controlled sidelobes,” IEEE Trans. Antennas Propag., vol. 47, no.
+12, pp. 1825–1835, Dec. 1999.
+[23] F. B. T. Marchaud, G. D. de Villiers, and E. R. Pike, “Element positioning for linear arrays using generalized Gaussian quadrature,” IEEE
+Trans. Antennas Propag., vol. 51, no. 6, pp. 1357–1363, Jun. 2003.
+[24] D. G. Kurup, M. Himdi, and A. Rydberg, “Synthesis of uniform amplitude unequally spaced antenna array using the differential evolution
+algorithm,” IEEE Trans. Antennas Propag., vol. 51, pp. 2210–2217,
+Sep. 2003.
+[25] S. Caorsi, A. Lommi, A. Massa, and M. Pastorino, “Peak sidelobe reduction with a hybrid approach based on GAs and difference sets,” IEEE
+Trans. Antennas Propag., vol. 52, no. 4, pp. 1116–1121, Apr. 2004.
+[26] B. P. Kumar and G. R. Branner, “Generalized analytical technique for
+the synthesis of unequally spaced arrays with linear, planar, cylindrical
+or spherical geometry,” IEEE Trans. Antennas Propag., vol. 53, pp.
+621–633, Feb. 2005.
+[27] T. G. Spence and D. H. Werner, “Thinning of aperiodic antenna arrays
+for low side-lobe levels and broadband operation using genetic algorithms,” in Proc. IEEE Antennas Propag. Society Int. Symp., Jul. 9–14,
+2006, pp. 2059–2062.
+
+481
+
+[28] T. G. Spence and D. H. Werner, “Design of broadband planar arrays
+based on the optimization of aperiodic tilings,” IEEE Trans. Antennas
+Propag., vol. 56, no. 1, pp. 76–86, Jan. 2008.
+[29] R. L. Haupt and D. H. Werner, Genetic Algorithms in Electromagnetics. Hoboken, NJ: Wiley, 2007.
+[30] P. J. Bevelacqua and C. A. Balanis, “Minimum sidelobe levels for
+linear arrays,” IEEE Trans. Antennas Propag., vol. 55, pp. 2210–2217,
+Dec. 2007.
+[31] G. Oliveri, M. Donelli, and A. Massa, “Linear array thinning exploiting
+almost difference sets,” IEEE Trans. Antennas Propag., vol. 57, no. 12,
+pp. 3800–3812, Dec. 2009.
+[32] S. Ji, Y. Xue, and L. Carin, “Bayesian compressive sensing,” IEEE
+Trans. Signal Process., vol. 56, no. 6, pp. 2346–2356, Jun. 2008.
+[33] M. E. Tipping, “Sparse bayesian learning and the relevance vector machine,” J. Machine Learning Res., vol. 1, pp. 211–244, 2001.
+[34] A. C. Faul and M. E. Tipping, “Analysis of sparse Bayesian learning,”
+in Advances in Neural Information Processing Systems (NIPS 14), T.
+G. Dietterich, S. Becker, and Z. Ghahramani, Eds., 2002, pp. 383–389
+[Online]. Available: http://citeseer.ist.psu.edu/faul01analysis.html
+[35] M. E. Tipping and A. C. Faul, “Fast marginal likelihood maximization
+for sparse Bayesian models,” in Proc. 9th Int. Workshop Artificial Intelligence and Statistics, C. M. Bishop and B. J. Frey, Eds., 2003 [Online].
+Available: http://citeseer.ist.psu.edu/611465.html
+[36] M. E. Tipping, “The relevance vector machine,” in Advances in Neural
+Information Processing Systems, S. A. Solla, T. K. Leen, and K.-R.
+Muller, Eds. Cambridge, MA: MIT Press, 2000, vol. 12, pp. 652–658.
+[37] S. Ji, Y. Xue, and L. Carin, Bayesian Compressive Sensing Code 2009
+[Online]. Available: http://people.ee.duke.edu/~lihan/cs/
+[38] F. Ares and E. Moreno, “The convolution applied on the synthesis
+shaped beam,” in Proc. 20th Eur. Microwave Conf., Oct. 1990, vol.
+2, pp. 1491–1494.
+[39] S. Yang, Y. Liu, and Q. H. Liu, “Combined strategies based on matrix pencil method and tabu search algorithm to minimize elements of
+non-uniform antenna array,” Progr. Electromagn. Res. B, vol. 18, pp.
+259–277, 2009.
+
+Giacomo Oliveri (M’10) received the B.S. and M.S.
+degrees in telecommunications engineering and the
+Ph.D. degree in space sciences and engineering from
+the University of Genoa, Italy, in 2003, 2005, and
+2009 respectively.
+Since 2008, he has been a member of the Electromagnetic Diagnostic Laboratory, University of
+Trento, Italy. His research work is mainly focused
+on cognitive radio systems, electromagnetic direct
+and inverse problems, and antenna array design and
+synthesis.
+
+Andrea Massa (M’96) received the “Laurea” degree
+in electronic engineering and Ph.D. degree in electronics and computer science from the University of
+Genoa, Genoa, Italy, in 1992 and 1996, respectively.
+From 1997 to 1999, he was an Assistant Professor
+of electromagnetic fields in the Department of
+Biophysical and Electronic Engineering, University
+of Genoa, teaching the university course, Electromagnetic Fields 1. From 2001 to 2004, he was an
+Associate Professor at the University of Trento,
+Trento, Italy, where, since 2005, he has been a
+Full Professor teaching electromagnetic fields, inverse scattering techniques,
+antennas and wireless communications, and optimization techniques. He is
+also the Director of the ELEDIALab at the University of Trento and Deputy
+Dean of the Faculty of Engineering. Since 1992, his research has focused on
+electromagnetic direct and inverse scattering, microwave imaging, optimization
+techniques, wave propagation in presence of nonlinear media, wireless communications and applications of electromagnetic fields to telecommunications,
+medicine and biology.
+Prof. Massa is a member of the IEEE Society, the PIERS Technical Committee, and the Inter-University Research Center for Interactions Between Electromagnetic Fields and Biological Systems (ICEmB). He is the Italian representative in the general assembly of the European Microwave Association (EuMA).
+
+

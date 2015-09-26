@@ -1,0 +1,2274 @@
+158
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+Ontology Matching: State of the Art
+and Future Challenges
+Pavel Shvaiko and Je´roˆme Euzenat
+Abstract—After years of research on ontology matching, it is reasonable to consider several questions: is the field of ontology
+matching still making progress? Is this progress significant enough to pursue further research? If so, what are the particularly promising
+directions? To answer these questions, we review the state of the art of ontology matching and analyze the results of recent ontology
+matching evaluations. These results show a measurable improvement in the field, the speed of which is albeit slowing down. We
+conjecture that significant improvements can be obtained only by addressing important challenges for ontology matching. We present
+such challenges with insights on how to approach them, thereby aiming to direct research into the most promising tracks and to
+facilitate the progress of the field.
+Index Terms—Semantic heterogeneity, semantic technologies, ontology matching, ontology alignment, schema matching
+
+Ç
+1
+
+INTRODUCTION
+
+T
+
+HE
+
+progress of information and communication technologies has made available a huge amount of disparate
+information. The problem of managing heterogeneity
+among various information resources is increasing. For
+example, most of the database research self-assessment
+reports recognize that the thorny question of semantic
+heterogeneity, that is of handling variations in meaning or
+ambiguity in entity interpretation, remains open [1]. As a
+consequence, various solutions have been proposed to
+facilitate dealing with this situation, and specifically, to
+automate integration of distributed information sources.
+Among these, semantic technologies have attracted particular attention. In this paper, we focus on a kind of semantic
+technologies, namely, ontology matching.
+An ontology typically provides a vocabulary that describes a domain of interest and a specification of the
+meaning of terms used in the vocabulary. Depending on the
+precision of this specification, the notion of ontology
+encompasses several data and conceptual models, including, sets of terms, classifications, thesauri, database schemas, or fully axiomatized theories [2]. When several
+competing ontologies are used in different applications,
+most often these applications cannot immediately interoperate. In this paper, we consider ontologies expressed in
+OWL as a typical example of a knowledge representation
+language on which most of the issues can be illustrated.
+OWL is succeeding to a large degree as a knowledge
+representation standard, for instance, used for building
+knowledge systems. However, several matching systems
+
+. P. Shvaiko is with TasLab, Informatica Trentina, Via G. Gilli 2, 38121
+Trento, Italy. E-mail: pavel.shvaiko@infotn.it.
+. J. Euzenat is with INRIA & LIG, INRIA Grenoble Rhoˆne-Alpes, 655
+avenue de l’Europe, 38334 Montbonnot Saint-Martin, France.
+E-mail: jerome.euzenat@inria.fr.
+Manuscript received 7 Feb. 2011; revised 15 Nov. 2011; accepted 18 Nov.
+2011; published online 8 Dec. 2011.
+Recommended for acceptance by C. Clifton.
+For information on obtaining reprints of this article, please send e-mail to:
+tkde@computer.org, and reference IEEECS Log Number TKDE-2011-02-0056.
+Digital Object Identifier no. 10.1109/TKDE.2011.253.
+1041-4347/13/$31.00 ß 2013 IEEE
+
+discussed in the paper are able to deal with RDFS or SKOS
+as well. Although database schemas are different from
+ontologies (by not providing explicit semantics for their
+data), these are also similar since they both provide a
+vocabulary of terms and somewhat constrain the meaning
+of terms used in the vocabulary. Moreover, in real-life
+situations schemas and ontologies have both well defined
+and obscure entities and structures. Hence, they often share
+similar matching solutions [3], [4], [5], [6], [7]. Therefore, we
+discuss in this paper approaches that come from semantic
+web and artificial intelligence as well as from databases.
+Overcoming semantic heterogeneity is typically achieved
+in two steps, namely: 1) matching entities to determine an
+alignment, i.e., a set of correspondences, and 2) interpreting
+an alignment according to application needs, such as data
+translation or query answering. We focus only on the
+matching step.
+Ontology matching is a solution to the semantic heterogeneity problem. It finds correspondences between semantically related entities of ontologies. These correspondences
+can be used for various tasks, such as ontology merging,
+query answering, or data translation. Thus, matching
+ontologies enables the knowledge and data expressed with
+respect to the matched ontologies to interoperate [2].
+Diverse solutions for matching have been proposed in the
+last decades [8], [9]. Several recent surveys [10], [11], [12],
+[13], [14], [15], [16] and books [2], [7] have been written on
+the topic1 as well.
+As evaluations of the recent years indicate, the field of
+ontology matching has made a measurable improvement,
+the speed of which is albeit slowing down. In order to
+achieve similar or better results in the forthcoming years,
+actions have to be taken. We believe this can be done
+through addressing specifically promising challenges that
+we identify as:
+i.
+ii.
+
+large-scale matching evaluation,
+efficiency of matching techniques,
+
+1. See http://www.ontologymatching.org for more details on the topic.
+Published by the IEEE Computer Society
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+159
+
+Fig. 2. The ontology matching operation.
+
+Fig. 1. Two simple ontologies and an alignment.
+
+iii. matching with background knowledge,
+iv. matcher selection, combination and tuning,
+v. user involvement,
+vi. explanation of matching results,
+vii. social and collaborative matching, and
+viii. alignment management: infrastructure and support.
+This paper is an expanded and updated version of an
+earlier invited conference paper [17]. The first contribution
+of this work is a review of the state of the art backed up
+with analytical and experimental comparisons. Its second
+contribution is an in-depth discussion of the challenges in
+the field, of the recent advances made in the areas of each
+of the challenges, and an outline of potentially useful
+approaches to tackle the challenges identified.
+The remainder of the paper is organized as follows:
+Section 2 presents the basics of ontology matching. Section 3
+outlines some ontology matching applications. Sections 4
+and 5 discuss the state of the art in ontology matching
+together with analytical and experimental comparisons.
+Section 6 overviews the challenges of the field, while
+Sections 7, 8, 9, 10, 11, 12, 13, and 14 discuss them in detail.
+Finally, Section 15 provides the major conclusions.
+
+2
+
+THE ONTOLOGY MATCHING PROBLEM
+
+In this section, we first discuss a motivating example
+(Section 2.1) and then we provide some basics of ontology
+matching (Section 2.2).
+
+2.1 Motivating Example
+In order to illustrate the matching problem let us use the
+two simple ontologies, O1 and O2, of Fig. 1. Classes are
+shown in rectangles with rounded corners, e.g., in O1,
+Book being a specialization (subclass) of Product, while
+relations are shown without the latter, such as price being
+an attribute defined on the integer domain and creator
+being a property. Albert Camus: La chute is a shared
+instance. Correspondences are shown as thick arrows that
+link an entity from O1 with an entity from O2. They are
+annotated with the relation that is expressed by the
+
+correspondence: for example, Person in O1 is less general
+(v ) than Human in O2.
+Assume that an e-commerce company acquires another
+one. Technically, this acquisition requires the integration of
+their information sources, and hence, of the ontologies of
+these companies. The documents or instance data of both
+companies are stored according to ontologies O1 and O2,
+respectively. In our example these ontologies contain
+subsumption statements, property specifications and instance descriptions. The first step in integrating ontologies is
+matching, which identifies correspondences, namely the
+candidate entities to be merged or to have subsumption
+relationships under an integrated ontology. Once the
+correspondences between two ontologies have been determined, they may be used, for instance, for generating query
+expressions that automatically translate instances of these
+ontologies under an integrated ontology [18]. For example,
+the attributes with labels title in O1 and in O2 are the
+candidates to be merged, while the class with label Monograph in O2 should be subsumed by the class Product in O1.
+
+2.2 Problem Statement
+There have been different formalizations of the matching
+operation and its result [11], [14], [19], [20], [21]. We follow
+the work in [2] that provided a unified account over the
+previous works.
+The matching operation determines an alignment A0 for a
+pair of ontologies O1 and O2. Hence, given a pair of
+ontologies (which can be very simple and contain one entity
+each), the matching task is that of finding an alignment
+between these ontologies. There are some other parameters
+that can extend the definition of matching, namely: 1) the
+use of an input alignment A, which is to be extended; 2) the
+matching parameters, for instance, weights, or thresholds;
+and 3) external resources, such as common knowledge and
+domain specific thesauri, see Fig. 2.
+We use interchangeably the terms matching operation,
+thereby focussing on the input and the result; matching
+task, thereby focussing on the goal and the insertion of the
+task in a wider context; and matching process, thereby
+focussing on its internals.
+It can be useful to specifically consider matching more
+than two ontologies within the same process [22], though
+this is out of the scope of this paper.
+An alignment is a set of correspondences between entities
+belonging to the matched ontologies. Alignments can be of
+various cardinalities: 1:1 (one-to-one), 1:m (one-to-many),
+n:1 (many-to-one) or n:m (many-to-many).
+Given two ontologies, a correspondence is a 4-uple:
+hid; e1 ; e2 ; ri;
+
+160
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+such that:
+id is an identifier for the given correspondence;
+e1 and e2 are entities, e.g., classes and properties of
+the first and the second ontology, respectively;
+. r is a relation, e.g., equivalence ð¼Þ, more general
+ðwÞ, disjointness ð?Þ, holding between e1 and e2 .
+The correspondence hid; e1 ; e2 ; ri asserts that the relation
+r holds between the ontology entities e1 and e2 . For
+example, hid7;1 ; Book; Monograph; wi asserts that Book in
+O1 is more general (w ) than Monograph in O2. Correspondences have some associated metadata, such as the correspondence author name. A frequently used metadata
+element is a confidence in the correspondence (typically
+in the ½0; 1 range). The higher the confidence, the higher the
+likelihood that the relation holds.
+.
+.
+
+3
+
+APPLICATIONS
+
+Ontology matching is an important operation in traditional
+applications, e.g., ontology evolution [23], ontology integration [24], data integration [25], and data warehouses [26].
+These applications are characterized by heterogeneous
+models, e.g., database schemas or ontologies, that are
+analyzed and matched manually or semi-automatically at
+design time. In such applications, matching is a prerequisite
+to running the actual system.
+There are some emerging applications that can be
+characterized by their dynamics, such as peer-to-peer
+information sharing [27], web service composition [28],
+search [29], and query answering [22]. Such applications,
+contrary to traditional ones, require (ultimately) a runtime
+matching operation and take advantage of more explicit
+conceptual models. A detailed description of these
+applications as well as of the requirements they pose to
+matching can be found in [2]. We illustrate only some of
+these applications with the help of two short real-world
+examples in order to facilitate the comprehension of the
+forthcoming material.
+Cultural heritage. A typical situation consists of having
+several large thesauri, such as: Iconclass2 (25.000 entities) and
+the Aria collection (600 terms) from the Rijksmuseum.3 The
+documents indexed by these thesauri are illuminated manuscripts and masterpieces, i.e., image data. The labels are gloss
+like, i.e., sentences or phrases describing the concept, since
+they have to capture what is depicted on a masterpiece.
+Examples of labels from Iconclass include: city-view, and
+landscape with man-made constructions and earth, world as
+celestial body. In contrast to Iconclass, Aria uses simple terms
+as labels. Examples of these include: landscapes, personifications, and wild animals. Matching between these thesauri
+(that can be performed at design time) is required in order to
+enable an integrated access to the masterpieces of both
+collections. Specifically, alignments can be used as navigation links within a multifaceted browser to access a collection
+via thesauri it was not originally indexed with [30].
+Geo-information (GI). A typical situation at a urban
+planning department of a public administration consists of
+2. http://www.iconclass.nl/.
+3. http://www.rijksmuseum.nl/collectie/index.jsp?lang=en.
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+a simple keyword-like request for a map generation, such
+as: “hydrography, Trento, January 2011”. This request is a
+set of terms covering spatial (Trento) and temporal (January
+2011) aspects to be addressed while looking for a specific
+theme, that is of hydrography. Handling such a request
+involves interpreting at runtime the user query and creating
+an alignment between the relevant GI resources, such as
+those having up to date (January 2011) topography and
+hydrography maps of Trento in order to ultimately
+compose these into a single one. Technically, alignments
+are used in such a setting for query expansion. For what
+concerns thematic part, e.g., hydrography, standard matching technology can be widely reused [2], [32], [33], [34],
+while the spatial and temporal counterparts that constitute
+the specificity of GI applications have not received enough
+attention so far in the ontology matching field (with
+exceptions, such as [35], [36]), and hence, this gap will
+have to be covered in future.
+
+4
+
+RECENT MATCHING SYSTEMS
+
+We now review several state-of-the-art matching systems
+(Sections 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, and 4.7) that appeared in
+the recent years and have not been covered by the previous
+surveys (Section 1).
+Among the several dozens of systems that have appeared
+in these recent years, we selected some which 1) have
+repeatedly participated to the Ontology Alignment Evaluation Initiative (OAEI) campaigns4 (see Section 5) in order to
+have a basis for comparisons and 2) have corresponding
+archival publications, hence the complete account of these
+works is also available.
+An overview of the considered systems is presented in
+Table 1. The first half of the table provides a general outlook
+over the systems. The input column presents the input
+format used by the systems, the output column describes the
+cardinality of the computed alignment (see Section 2.2), the
+GUI column shows if a system is equipped with a graphical
+user interface, and the operation column describes the ways
+in which a system can process alignments. The second half
+of the table classifies the available matching methods
+depending on which kind of data the algorithms work on:
+strings (terminological), structure (structural), data instances
+(extensional) or models (semantics). Strings and structures are
+found in the ontology descriptions, e.g., labels, comments,
+attributes and their types, relations of entities with other
+entities. Instances constitutes the actual population of an
+ontology. Models are the result of semantic interpretation
+and usually use logic reasoning to deduce correspondences.
+Table 1 illustrates particular matching methods employed
+by the systems under consideration. Below, we discuss
+these systems in more details.
+
+4.1 SAMBO (Linko¨pings U.)
+SAMBO is a system for matching and merging biomedical
+ontologies [37]. It handles ontologies in OWL and outputs
+1:1 alignments between concepts and relations. The system
+uses various similarity-based matchers, including:
+4. http://oaei.ontologymatching.org.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+161
+
+TABLE 1
+Analytical Comparison of the Recent Matching Systems
+
+.
+
+.
+
+.
+
+terminological: n-gram, edit distance, comparison of
+the lists of words of which the terms are composed.
+The results of these matchers are combined via a
+weighted sum with predefined weights;
+structural, through an iterative algorithm that checks
+if two concepts occur in similar positions with
+respect to is-a or part-of hierarchies relative to
+already matched concepts, with the intuition that
+the concepts under consideration are likely to be
+similar as well;
+background knowledge based, using
+
+a relationship between the matched entities in
+Unified Medical Language System (UMLS) [38]
+and
+a corpus of knowledge collected from the
+published literature exploited through a naive
+Bayes classifier.
+The results produced by these matchers are combined
+based on user-defined weights. Then, filtering based on
+thresholds is applied to come up with an alignment
+suggestion, which is further displayed to the user for
+feedback (approval, rejection or modification). Once matching has been accomplished, the system can merge the
+matched ontologies, compute the consequences, check the
+newly created ontology for consistency, etc. SAMBO has
+been subsequently extended into a toolkit for evaluation of
+ontology matching strategies, called KitAMO [39].
+-
+
+4.2 Falcon (Southeast U.)
+Falcon is an automatic divide-and-conquer approach to
+ontology matching [40]. It handles ontologies in RDFS and
+OWL. It has been designed with the goal of dealing with
+large ontologies (of thousands of entities). The approach
+operates in three phases: 1) partitioning ontologies,
+2) matching blocks, and 3) discovering alignments. The
+first phase starts with a structure-based partitioning to
+separate entities (classes and properties) of each ontology
+
+into a set of small clusters. Partitioning is based on
+structural proximities between classes and properties, e.g.,
+how closely are the classes in the hierarchies of rdfs:subClassOf relations and on an extension of the Rock
+agglomerative clustering algorithm [41]. Then, it constructs
+blocks out of these clusters. In the second phase the blocks
+from distinct ontologies are matched based on anchors
+(pairs of entities matched in advance), i.e., the more
+anchors are found between two blocks, the more similar
+the blocks are. In turn, the anchors are discovered by
+matching entities with the help of the I-SUB string
+comparison technique [42]. The block pairs with high
+similarities are selected based on a cutoff threshold. Notice
+that each block is just a small fragment of an ontology.
+Finally, in the third phase the results of the so-called V-Doc
+(a linguistic matcher) and GMO (an iterative structural
+matcher) techniques are combined via sequential composition to discover alignments between the matched block
+pairs. Ultimately, the output alignment is extracted through
+a greedy selection.
+
+4.3 DSSim (Open U., Poznan U. of Economics)
+DSSim is an agent-based ontology matching framework.
+The system handles large-scale ontologies in OWL and
+SKOS and computes 1:1 alignments with equivalence and
+subsumption relations between concepts and properties. It
+uses the Dempster-Shafer [43] theory in the context of query
+answering [44], [45]. Specifically, each agent builds a belief
+for the correctness of a particular correspondence hypothesis. Then, these beliefs are combined into a single more
+coherent view in order to improve correspondence quality.
+The ontologies are initially partitioned into fragments. Each
+concept or property of a first ontology fragment is viewed
+as a query, which is expanded based on hypernyms from
+WordNet [46], viewed as background knowledge. These
+hypernyms are used as variables in the hypothesis to
+enhance the beliefs. The expanded concepts and properties
+
+162
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+are matched syntactically to the similar concepts and
+properties of the second ontology in order to identify a
+relevant graph fragment of the second ontology. Then, the
+query graph of the first ontology is matched against the
+relevant graph fragment of the second ontology. For that
+purpose, various terminological similarity measures are
+used, such as Monger-Elkan and Jaccard distances, which
+are combined using Dempster’s rule. Similarities are
+viewed as different experts in the evidence theory and are
+used to assess quantitative similarity values (converted into
+belief mass functions) that populate the similarity matrices.
+The resulting correspondences are selected based on the
+highest belief function over the combined evidences.
+Eventual conflicts among beliefs are resolved by using a
+fuzzy voting approach equipped with four ad hoc if-then
+rules. The system does not have a dedicated user interface
+but uses that of the AQUA question answering system [31]
+able to handle natural language queries.
+
+4.4
+
+RiMOM (Tsinghua U., Hong Kong U. of Science
+and Technology)
+RiMOM is a dynamic multistrategy ontology matching
+framework [47]. It extends a previous version of the system
+[48] that focused on combining multiple matching strategies, through risk minimization of Bayesian decision. The
+new version [47] quantitatively estimates the similarity
+characteristics for each matching task. These characteristics
+are used for dynamicly selecting and combining the
+multiple matching methods. Two basic matching methods
+are employed: 1) linguistic similarity (edit distance over
+entity labels, vector distance among comments and instances of entities) and 2) structural similarity (a variation
+of Similarity Flooding [49] implemented as three similarity
+propagation strategies: concept-to-concept, property-toproperty, and concept-to-property). In turn, the strategy
+selection uses label and structure similarity factors,
+obtained as a preprocessing of the ontologies to be
+matched, in order to determine what information should
+be employed in the matching process. Specifically, the
+strategy selection dynamically regulates the concrete
+feature selection for linguistic matching, the combination
+of weights for similarity combination, and the choice of the
+concrete similarity propagation strategy. After similarity
+propagation, the matching process concludes with alignment refinement and extraction of the final result.
+4.5 ASMOV (INFOTECH Soft, Inc., U. of Miami)
+Automatic Semantic Matching of Ontologies with Verification (ASMOV) is an automatic approach for ontology
+matching which targets information integration for bioinformatics [50]. Overall, the approach can be summarized in
+two steps: 1) similarity calculation, and 2) semantic
+verification. It takes as input two OWL ontologies and an
+optional input alignment and returns as output an n:m
+alignment between ontology entities (classes and properties). In the first step it uses lexical (string equality, a
+variation of Levenshtein distance), structural (weighted sum
+of the domain and range similarities) and extensional
+matchers to iteratively compute similarity measures between two ontologies, which are then aggregated into a
+single one as a weighted average. It also uses several sources
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+of general and domain specific background knowledge,
+such as WordNet and UMLS, to provide more evidence for
+similarity computation. Then, it derives an alignment and
+checks it for inconsistency. Consistency checking is pattern
+based, i.e., that instead of using a complete solver, the
+system recognizes sets of correspondences that are proved
+to lead to an inconsistency. The semantic verification
+process examines five types of patterns, e.g., disjointsubsumption contradiction, subsumption incompleteness.
+This matching process is repeated with the obtained
+alignment as input until no new correspondences are found.
+
+4.6 Anchor-Flood (Toyohashi U. of Technology)
+The Anchor-Flood approach aims at handling efficiently
+particularly large ontologies [51]. It inputs ontologies in
+RDFS and OWL and outputs 1:1 alignments. The system
+starts with a pair of similar concepts from two ontologies
+called an anchor, e.g., all exactly matched normalized
+concepts are considered as anchors. Then, it gradually
+proceeds by analyzing the neighbors, i.e., superconcepts,
+subconcepts, siblings, of each anchor, thereby building
+small segments (fragments) out of the ontologies to be
+matched. The size of the segments is defined dynamically
+starting from an anchor and exploring the neighboring
+concepts until either all the collected concepts are explored
+or no new matching pairs are found. The system focuses
+on (local) segment-to-segment comparisons, thus it does
+not consider the entire ontologies which improves the
+system scalability. It outputs a set of correspondences
+between concepts and properties of the semantically
+connected segments. For determining the correspondences
+between segments the approach relies on terminological
+(WordNet and Winkler-based string metrics) and structural similarity measures, which are further aggregated by
+also considering probable misalignments. The similarity
+between two concepts is determined by the ratio of the
+number of terminologically similar direct superconcepts on
+the number of total direct superconcepts. Retrieved (local)
+matching pairs are considered as anchors for further
+processing. The process is repeated until there is no more
+matching pairs to be processed.
+4.7 AgreementMaker (U. of Illinois at Chicago)
+AgreementMaker is a system comprising a wide range of
+automatic matchers, an extensible and modular architecture, a multipurpose user interface, a set of evaluation
+strategies, and various manual, e.g., visual comparison, and
+semiautomatic features, e.g., user feedback [52]. It has been
+designed to handle large-scale ontologies based on the
+requirements coming from various domains, such as the
+geospatial and biomedical domains. The system handles
+ontologies in XML, RDFS, OWL, N3 and outputs 1:1, 1:m,
+n:1, n:m alignments. In general, the matching process is
+organized into two modules: similarity computation and
+alignment selection. The system combines matchers using
+three layers:
+.
+
+The matchers of the first layer compare concept
+features, such as labels, comments, instances, which
+are represented as TFÁIDF vectors used with a cosine
+similarity metric. Other string-based measures, e.g.,
+edit distance, substrings, may be used as well.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+The second layer uses structural ontology properties
+and includes two matchers called descendants
+similarity inheritance (if two nodes are matched
+with high similarity, then the similarity between the
+descendants of those nodes should increase) and
+siblings similarity contribution (which uses the
+relationships between sibling concepts) [33].
+. At the third layer, a linear weighted combination is
+computed over the results coming from the first two
+layers, whose results are further pruned based on
+thresholds and desired output cardinalities of the
+correspondences.
+The system has a sophisticated user interface deeply
+integrated with the evaluation of ontology alignment
+quality, being an integral part of the matching process, thus
+empowering users with more control over it.
+
+163
+
+.
+
+4.8 Analytical Summary
+The following can be observed concerning the considered
+systems (Sections 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, and 4.7, see also
+Table 1):
+.
+
+.
+
+.
+
+.
+
+.
+
+.
+
+.
+
+5
+
+The approaches equally pursue the development of
+generic matchers, e.g., Falcon, RiMOM, AnchorFlood, as well as those focusing on particular application domains, e.g., SAMBO, ASMOV, that target
+primarily biomedical applications.
+Most of the systems under consideration declare to
+be able to handle efficiently large-scale ontologies,
+i.e., tens of thousands of entities (see some experimental comparisons in Section 5). This is often
+achieved through employing various ontology partitioning and anchor-based strategies, such as in
+Falcon, DSSim or Anchor-Flood.
+Although all systems can deal with OWL (being an
+OAEI requirement), many of them can be applied to
+RDFS or SKOS.
+Most of the systems focus on discovering 1:1
+alignments, but yet several systems are able to
+discover n:m alignments. Moreover, most of the
+systems focus on computing equivalence relations,
+with the exception of DSSim, which is also able to
+compute subsumption relations.
+Many systems are not equipped with a graphical
+user interface, with several exceptions, such as
+SAMBO, DSSim, and AgreementMaker.
+Semantic and extensional methods are still rarely
+employed by the matching systems. In fact, most of
+the approaches are quite often based only on
+terminological and structural methods.
+Many systems have focussed on combining and
+extending the known methods. For example, the
+most popular of these are variations of edit distance
+and WordNet matchers as well as iterative similarity
+propagation as adaptation of the Similarity Flooding
+algorithm. Thus, the focus was not on inventing
+fundamentally new methods, but rather on adapting
+and extending the existing methods.
+
+RECENT MATCHING EVALUATIONS
+
+We provide a comparative experimental review of the
+matching systems described previously (Section 4) in order
+
+Fig. 3. Benchmarks: comparison of matching quality results in 20042010. More systems are mentioned in the figure with respect to those
+presented in Section 4. The results of these systems are given for the
+completeness of the presentation, see [53], [59] for further details.
+
+to observe and measure empirically the progress made in
+the field. We base our analysis on the Ontology Alignment
+Evaluation Initiative and more precisely its 2004-2010
+campaigns [53], [54], [55], [56], [57], [58], [59]. OAEI is a
+coordinated international initiative that organizes annual
+evaluations of the increasing number of matching systems.
+It proposes matching tasks to participants and their results
+are evaluated with measures inspired from information
+retrieval. These are precision (which is a measure of
+correctness), recall (which is a measure of completeness)
+and F-measure, which aggregates them.
+We consider here the three oldest test cases of OAEI in
+order to have a substantial set of data for comparison as
+well as diversity in tasks from automatically generated test
+cases to expressive ontologies. These are: benchmarks
+(Section 5.1), web directories (Section 5.2), and anatomy
+(Section 5.3). Participants were allowed to use one algorithm and the same set of parameters for all the test cases.
+Beside parameters, the input of the algorithms must be two
+ontologies to be matched and any general purpose resource
+available to everyone, i.e., resources designed especially for
+the test cases were not allowed, see for further details [53].
+
+5.1 Benchmarks
+The goal of the benchmark test case is to provide a stable
+and detailed picture of each matching algorithm. For that
+purpose, the algorithms are run on systematically generated test cases.
+Test data. The domain of this test case is bibliographic
+references. It aims at comparing an OWL-DL ontology
+containing more than 80 entities with its variations. Most of
+the variations are obtained by discarding features of the
+original ontology. Other variations select either unrelated
+ontologies or other available ontologies on the same topic.
+Evaluation results. A comparative summary of the best
+results of OAEI on the benchmarks is shown in Fig. 3. edna
+is a simple edit distance algorithm on labels, which is used
+as a baseline. For 2004, we maximized the results of the two
+best systems Fujitsu and PromptDiff. The two best systems
+of the last several years are ASMOV [50] and Lily [60]. Their
+results are very comparable. A notable progress has been
+made between 2004 and 2005 by Falcon; and the results of
+2005 were repeated in 2009 by both ASMOV and Lily.
+
+164
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+Fig. 4. Directory: comparison of matching quality results in 2006-2010.
+More systems are mentioned in the figure with respect to those
+presented in Section 4. The results of these systems are given for the
+completeness of the presentation, see for further details [53], [59].
+
+5.2 Directory
+The directory test case aims at providing a challenging task
+in the domain of large directories constructed from Google,
+Yahoo, and Looksmart web directories. These directories
+have vague terminology and modeling principles, thus, the
+matching tasks incorporate the typical uncontrolled open
+web modeling and terminological errors. The test case was
+built following the TaxMe2 methodology [61].
+Test data. The data set is presented as taxonomies where
+the nodes of the web directories are modeled as classes and
+the classification relation connecting the nodes is modeled as
+rdfs:subClassOf. There are more than 4.500 node matching
+tasks, where each node matching task is composed from the
+paths to the root of the nodes in the web directories.
+Evaluation results. A comparison of the results in 20062010 for the top-3 systems of each year based on the
+highest F-measure is shown in Fig. 4. A key observation is
+that from 2006 to 2007 we can measure a continuous
+improvement of the results, while in 2008 and 2009 the
+participating systems have either maintained or decreased
+their F-measure values. The quality of the best F-measure
+result of 2009 (0.63) achieved by ASMOV is higher than the
+best F-measure of 2008 (0.49) demonstrated by DSSim [45].
+It is higher than that of 2006 by Falcon (0.43). It equals to
+that of Prior+ [62] and is still lower than the best F-measure
+of 2007 (0.71) by OLA2 [63].
+5.3 Anatomy
+The focus of this test case is to confront existing matching
+technology with expressive and realistic ontologies in the
+biomedical domain. Two of its specificities are the specialized vocabulary of the domain and the usage of OWL
+modeling capabilities.
+Test data. The ontologies are part of the Open Biomedical
+Ontologies (OBO) designed from the NCI Thesaurus (3,304
+classes) describing the human anatomy, published by the
+National Cancer Institute and the Adult Mouse Anatomical
+Dictionary (2,744 classes). This test case has been used since
+2007, while in 2005 and 2006 it was run on a different test
+data, which we do not consider here and focus on the more
+recent results instead.
+
+Fig. 5. Anatomy: comparison of matching quality results in 2007-2010.
+More systems are mentioned in the figure with respect to those
+presented in Section 4. The results of these systems are given for the
+completeness of the presentation, see for further details [53], [59].
+
+Evaluation results. A comparison of the results in 20072010 for the top-3 systems of each year based on the highest
+F-measure is shown in Fig. 5.
+We can make two key observations. The first one is that a
+baseline label matcher based on string equality already
+provides quite good results with F-measure of 0.76. The
+second one is that in all the years the best F-measure
+remained stable around of 0.86. However, some progress
+have been made in terms of efficiency, i.e., the runtime
+reduced from days and hours to minutes and seconds. For
+example, the best runtime result of 15 s in 2009 belongs to
+Anchor-Flood (its F-measure was 0.75). While in 2007 and
+2008 the competition was clearly dominated by the AOAS
+[64] and SAMBO systems that were heavily exploiting
+background knowledge (UMLS); in turn, in 2009 the best
+result showed by Sobom [65] was obtained without using
+any background knowledge. Finally, in 2010 the best result
+was shown by AgreementMaker.
+
+5.4 Experimental Summary
+As we can see from the previous sections (Sections 5.1, 5.2,
+and 5.3) various sets of systems participate on various test
+cases, but not necessarily on all of these. Not all the systems
+participated every year, which prohibits measuring comprehensively the progress of each system over the years. In
+Table 2, when available, we report the F-measure obtained
+by these systems and the respective progress or regress
+made. From Table 2 we conclude that:
+.
+
+.
+.
+
+Individual systems improve over the years on the
+same test cases. An exception includes RiMOM on
+the directory test case, what can be explained by the
+new release of the system, which still required
+tuning (see [47]).
+Better matching quality on one task is not achieved
+at the expense of another task on the average.
+The overall average improvements made by the
+individual systems on the test cases under considerations reach 108 percent increase or 28 percentage
+points (by DSSim) in the recent years.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+165
+
+TABLE 2
+The Progress Made by Some Systems over the Recent Years (2006-2010)
+
+For each year we report the F-measure indicator obtained by the systems on three test cases: benchmarks, directory and anatomy. The empty cells
+mean that the corresponding systems did not participate on a test case in a particular year. The Æ% column stands for the progress/regress made
+over the years, calculated as a percentage increase between the first and the last participation, e.g., for SAMBO on benchmarks resulting in
+0:71 þ 24% % 0:88. The last column shows the average progress made by the systems over different years on different test cases, calculated as the
+average over %B ; %D ; %A , e.g., for AgreementMaker this results in ðÀ4 þ 115Þ=2 % þ56%.
+
+An average progress over the OAEI participants that
+have been made in the three test cases considered from the
+early years to the recent years is of $30 percent in terms of
+F-measure (the average of all progression reported in
+Table 2), i.e., an increase of $10 percentage points on Fmeasure. Moreover, on the anatomy test case, the runtime
+improved 37 times on average from 692 mn (about
+11 hours) in 2007 to 18 mn in 2009; see [53] for an indepth discussion. Thus, measurable progress is observed
+in terms of effectiveness and efficiency made by the
+automatic ontology matching systems in the recent years.
+At present, in the database community, there are no wellestablished benchmarks for comparing schema matching
+tools. However, there are many recent database schema
+matching tools and more generally model management
+infrastructures, e.g., COMA++ [4], AgreementMaker [52],
+GeRoMe [66], Harmony [67], that are able also to process
+ontologies, and hence, might be interested to test them
+within OAEI, as actually already happens, though modestly. On the other hand, OAEI has to consider including
+database schema matching tasks involving XML and
+relational schemas in order to improve the cross fertilization
+between these communities.
+
+6
+
+TOWARD THE CHALLENGES
+
+After years of work on ontology matching, several questions arise: is the field still making progress? Is this progress
+significant enough to pursue further research? If so, what are the
+particularly promising directions?
+The previous section showed that the field is indeed
+making measurable progress, but the speed of this progress
+is slowing down and becomes harder to determine. Also,
+the need for matching has risen in many different fields
+which have diverging demands, for instance, design time
+matching with correct and complete alignments, e.g.,
+required when two banks merge, versus runtime matching
+with approximate alignments, e.g., acceptable in query
+answering on the web [2]. This calls for more precise and
+more versatile evaluations of matchers.
+The second question interrogates the significance of the
+obtained results. This question requires measurements as
+well: the OAEI evaluations measured the progress of
+$ 10 percentage points in the recent five-six years (Section
+5.4). This is a sufficient result (compared to other fields of
+computer science) to peruse further research into it. Also,
+we can see from the benchmarks, that after a few years, the
+improvement rate is slowing down. Hence, in order to
+
+support a similar or a stronger growth in the forthcoming
+years some specific actions have to be taken. In particular,
+we propose to guide the evolution of the ontology matching
+field by addressing some specific challenges.
+With respect to the third question, we offer eight
+challenges for ontology matching (see Table 3). The
+challenges under consideration are among the major ontology matching topics of the recent conferences in semantic
+web, artificial intelligence, and databases.
+If the design of matchers consists of tuning further
+similarity measures or issuing other combinations of
+matchers, it is not to be expected a revolutionary progress,
+but most likely only an incremental one, as Section 5 also
+suggests. Other open issues are the computation of
+expressive alignments, e.g., correspondences across classes
+and properties [47], [68], oriented alignments (with nonequivalence relations) [69], [70], or cross-lingual matching
+[71], [72]. Such issues are gradually progressing within the
+ontology matching field. In the first years of OAEI, it was
+not possible to test such alignments because there was not
+enough matching systems able to produce them. Only
+recently, oriented matching data sets were introduced and
+there are more systems able to produce complex correspondences. Moreover, we consider these issues as too
+specific with respect to the other challenges discussed, so
+we did not retain them as challenges.
+Breakthroughs can come from either completely different
+settings or classes of systems particularly adapted to specific
+applications. We can seek for such improvements from
+recovering background knowledge (Section 9), for example,
+from the linked open data cloud as it represents a large and
+continuously growing source of knowledge. Another source
+of quality gains is expected from the working environment
+in which matching is performed. Hence, work on involving
+users in matching (Section 11) or social and collaborative
+TABLE 3
+Applications versus Challenges
+
+The checkmarks indicate the primarily impact of the challenges under
+consideration on two broad types of applications.
+
+166
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+matching (Section 13) may provide surprising results. The
+challenges have been selected by focusing on pragmatic
+issues that should help consolidating the available work in
+the field, bringing tangible results in the short-medium
+period, thus, leaving most of the theoretical and less
+promising directions aside. For example, in [17] we also
+identified as challenges uncertainty in ontology matching
+[73], [74] and reasoning with alignments [75], [76]. These are
+challenging theoretical issues, but they have a long term
+impact, hence, we do not discuss them here.
+Another point worth mentioning is the rise of linked data
+[77] and the subsequent need for data interlinking.
+Ontology matching can take advantage of linked data as
+an external source of information for ontology matching,
+this is fully relevant to the “matching with background
+knowledge” challenge. Conversely, data interlinking can
+benefit from ontology matching by using correspondences
+to focus the search for potential instance level links [78].
+OAEI since 2009 reacted to this need by hosting a specific
+instance matching track. However, data interlinking is a
+more specific topic, which is out of scope of this paper.
+The challenges are articulated as follows: We start with
+the issue of evaluating ontology matching (Section 7), since
+this theme has had a large impact on the development of
+matchers in recent years and it shows their practical
+usefulness. Then, the next three challenges (Sections 8, 9,
+and 10) are concerned with creating better (more effective
+and efficient) automatic matching technology and cover,
+respectively, such aspects as: efficiency of ontology
+matching techniques (Section 8), involving background
+knowledge (Section 9), matcher selection, combination and
+self-configuration (Section 10). These problems have
+become prevalent with the advent of applications requiring
+run time matchers. In turn, Sections 11, 12, and 13 consider
+matchers and alignments in their relation with users and,
+respectively, cover how and where to involve users of the
+matching technology (Section 11), and what explanations
+of matching results are required (Section 12). Moreover,
+users can be considered collectively when working
+collaboratively on alignments (Section 13). This, in turn,
+requires an alignment infrastructure for sharing and
+reusing alignments (Section 14). Solving these problems
+would bring ontology matching closer to final users and
+more prone to fill their needs.
+To understand better the most pressing issues for the
+different types of applications (Section 3), Table 3 crosses
+the challenges identified and two broad types of applications, i.e., those requiring design time and runtime. Half of
+the challenges are largely important for both design and
+runtime applications, while the other half is primarily
+important either to one or another type of applications,
+thereby showing commonalities and specificities of these.
+For example, efficiency of ontology matching techniques is
+vital for runtime applications, while involving background
+knowledge, matcher selection, and self-configuration are
+crucial for improving quality (precision, recall) of matching
+results in both design and runtime applications.
+Each of the challenges is articulated in three parts:
+definition of the challenge, overview of recent advances
+(that complement those discussed in Section 4), and
+discussion of potential approaches to tackle the challenge
+under consideration.
+
+7
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+LARGE-SCALE MATCHING EVALUATION
+
+The growth of matching approaches makes the issues of
+their evaluation and comparison more severe. In fact, there
+are many issues to be addressed in order to empirically
+prove the matching technology mature and reliable.
+The challenge. Large tests involving 10.000, 100.000, and
+1.000.000 entities per ontology are to be designed and
+conducted. In turn, this raises the issues of a wider
+automation for acquisition of reference alignments, e.g., by
+minimizing the human effort while increasing an evaluation
+data set size.
+We believe that the point of large-scale evaluation is of
+prime importance, though there are some other issues
+around ontology matching evaluation to be addressed as
+well:
+More accurate evaluation quality measures, beside
+precision and recall [2], are needed. Application
+specific measures have to be developed in order to
+assess whether the result of matching, e.g., Fmeasure of 40 or 80 percent, is good enough for a
+particular application, such as navigation among
+collections of masterpieces in the cultural heritage
+settings (Section 3) or web service matching. This
+should help quantifying more precisely the usefulness and differences between matching systems in
+some hard metrics, such as development time.
+. Interoperability benchmarks, testing the ability of
+exchanging data without loss of information between the ontology matching tools, have to be
+designed and conducted.
+. A methodology and test cases allowing for a
+comparative evaluation of instance-based matching
+approaches have to be designed and conducted.
+Recent advances. OAEI campaigns gave some preliminary evidence of the scalability characteristics of the ontology
+matching technology. For example, most of the test cases of
+OAEI dealt with thousands of matching tasks, with an
+exception of the very large cross-lingual resources test case
+of OAEI-2008 [57]. Similar observations can be made as well
+with respect to individual matching evaluations, e.g., [79],
+[80], [81], [82].
+Below we summarize the recent advances along the three
+previous issues:
+.
+
+.
+
+.
+
+Initial steps toward better evaluation measures have
+already been done by proposing semantic versions
+of precision and recall [83] implemented in [84] and
+in the Alignment API [85], [86]. In turn, an early
+attempt to introduce application specific measures
+was taken in the library test case (a variation of the
+cultural heritage case in Section 3) of OAEI-2008 [24].
+This is similar to the task-based evaluation used in
+ontology learning [87], [88].
+Despite efforts on metamatching systems, on composing matchers [39], [89], [90], on the Alignment
+API [85] and in the SEALS5 project promoting
+automation of evaluations, in particular for ontology
+
+5. Semantic Evaluation at Large Scale: http://www.seals-project.eu.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+matching [91], the topic of interoperability between
+matching tools remains largely unaddressed.
+. The theme of a comparative evaluation of instancebased matching approaches is in its infancy, some
+test cases that have been used in the past can be
+found in [92], [93], [94], [95], while a recent approach
+toward a benchmark for instance matching was
+proposed and implemented in OAEI-2009 and
+OAEI-2010 [58], [59], [96].
+Discussion. A plausible step toward large-scale ontology
+matching evaluation was taken within the very large crosslingual resources test case of OAEI-2008. In particular, it
+involved matching among the following three resources:
+1) WordNet which is a lexical database for English,
+2) DBPedia, which is a collection of “things”, each tied to
+an article in the English language Wikipedia, 3) GTAA,
+which is a Dutch thesaurus used by the Netherlands
+Institute for Sound and Vision to index TV programs. The
+number of entities involved from each of the resources are:
+82.000, 2.180.000, and 160.000, respectively. OAEI-2009
+made one step further by having specific instance matching
+track where the whole linked open data set6 was involved.
+Finding a large-scale real-world test case is not enough
+for running an evaluation. A reference alignment against
+which the results provided by matching systems has to be
+created. A typical approach here is to build it manually,
+however, the number of possible correspondences grows
+quadratically with the number of entities to be compared.
+This often makes the manual construction of the reference
+correspondences demanding to the point of being infeasible
+for large-scale matching tasks. A semiautomatic approach
+to the construction of reference alignment has been
+proposed in [61], which can be used as a starting point.
+It remains difficult to know which matcher fits best to
+which task or application. To this end, the notion of hardness
+[97] for matching, identifying the degree of difficulty of a
+particular test would be useful. This would allow for
+automatically generating tests with particular characteristics of required hardness. This would also allow for
+defining test profiles (specifying data set characteristics
+and measures) for different types of applications.
+
+8
+
+EFFICIENCY OF MATCHING TECHNIQUES
+
+Besides quality, the efficiency of matchers is of prime
+importance in dynamic applications, especially, when a
+user cannot wait too long for the system to respond or when
+memory is limited. Current ontology matchers are mostly
+design time tools which are usually not optimized for
+resource consumption.
+The challenge. The execution time indicates efficiency
+properties of matchers. However, good execution time can
+be achieved by using a large amount of main memory, or
+bandwidth taking on par the other computational resources,
+such as CPU.
+Thus, usage of main memory should also be measured or
+improved. Moreover, we can expect the need for matching
+on handheld computers or smartphones in the near future.
+6. www.linkeddata.org.
+
+167
+
+In overall, the challenge is to come up with scalable
+ontology matching reference solutions.
+Recent advances. As Section 4 indicates, the issue of
+efficiency was addressed explicitly by many recent systems.
+However, for instance, in the anatomy track of OAEI-2007
+[56], only a few systems, such as Falcon ( Section 4.2), took
+several minutes to complete this matching task, while other
+systems took much more time (hours and even days). In
+OAEI-2009, Anchor-Flood (Section 4.6) managed to solve it
+in 15 seconds. In the very large cross-lingual resources test
+case of OAEI-2008 only DSSim (Section 4.3) took part (out of
+13 participants), though the input files were manually split
+into fragments and then the matching system was applied
+on the pairs of these fragments.
+Discussion. Efficiency issues can be tackled through a
+number of strategies, including:
+parallelization of matching tasks, e.g., cluster computing;
+. distribution of matching tasks over peers with
+available computational resources;
+. approximation of matching results, which over time
+become better, e.g., more complete;
+. modularization of ontologies, yielding smaller more
+targeted matching tasks;
+. optimization of existing and empirically proved-tobe-useful matching methods.
+To our knowledge the first two items above remain
+largely unaddressed so far, and thus, will have to be covered
+in future. There are tasks, such as matching very large crosslingual resources of OAEI-2008, which the existing matching
+technology cannot handle automatically (the resources were
+too large). More computing power does not necessarily
+improve matching quality, but, at least at the beginning, it
+would accelerate the first run and the analysis of the
+bottlenecks. To this end, the approaches taken in the LarKC
+project [98] to realize the strategies mentioned previously
+(e.g., through divide-conquer-swap strategy, which extends
+the traditional approach of divide-and-conquer with an
+iterative procedure whose result converges toward completeness over time) should be looked for and adapted to
+ontology matching. The existing work mainly focused on
+the last three items. Below, we give insights on potential
+further developments of the themes of approximation,
+modularization, and optimization.
+The complexity of matching (in a pairwise set up) is
+usually proportional to the size of the ontologies under
+consideration and the number of matching algorithms
+employed. A straightforward approach here is to reduce
+the number of pairwise comparisons in favor of a
+(n incomplete) top-down strategy as implemented in
+QOM [99], or to avoid using computationally expensive
+matching methods, such as in RiMOM [47] by suppressing
+the structure-based strategies and by applying only a
+simple version of the linguistic-based strategies.
+Another worthwhile direction to avoid exhaustive
+pairwise comparisons, which appears to be particularly
+promising when handling large ontologies, is based on
+segment-based approaches, e.g., COMA++ [79] and Anchor-Flood (Section 4.6), thus targeting at matching only the
+similarly enough segments. This theme has to be further
+.
+
+168
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+and more systematically developed. It is also worth
+investigating how to automatically partition large ontologies into proper segments [40]. The efficiency of the
+integration of various matchers can be improved by
+minimizing (with the help of clustering, such as in
+PORSCHE [100] and XClust [101]) the target search space
+for a source ontology entity.
+Optimizations are worth performing only once the
+underlying basic techniques are stable. For example, in
+the case of S-Match [5], [102] the matching problem was
+reduced to the validity problem for the propositional
+calculus. The basic version of S-Match used a standard
+satisfiability procedure of SAT4J.7 Once it has been realized
+that the approach is promising (based on preliminary
+evaluations), the efficiency problems were tackled. Specifically, for some frequent practical cases (e.g., when the
+propositional formula, encoding a matching problem,
+appears to be Horn) satisfiability can be tested in linear
+time, while a standard propositional satisfiability solver
+would require quadratic time [5]. Finally, the LogMap
+approach [103] uses an incomplete reasoner as well as a
+number of optimizations to obtain the results faster, thereby
+exploiting several strategies to improve efficiency.
+
+9
+
+MATCHING WITH BACKGROUND KNOWLEDGE
+
+One source of difficulty for matching is that ontologies are
+designed in a particular context, with some background
+knowledge, which often do not become part of the final
+ontology specification.
+The challenge. Matching can be performed by discovering a common context or background knowledge for the
+ontologies and use it to extract relations between ontology
+entities. This context can take different forms, such as a set
+of resources (web pages, pictures, etc.) which have been
+annotated with the concepts from an ontology, which
+provides common anchors to the ontologies to be matched.
+The difficulty is a matter of balance: adding context
+provides new information, and hence, helps increasing
+recall, but this new information may also generate incorrect,
+matches which decreases precision.
+Recent advances. Various strategies have been used to
+deal with the lack of background knowledge. In particular:
+.
+
+.
+
+.
+
+.
+
+Declaring missing axioms manually as a prematch
+effort (Cupid [3], [6], COMA [104], a cluster-based
+approach proposed in [105]) or using partial input
+alignments (SAMBO [106]).
+Reusing previous matches (COMA++ [79]). More
+generally storing and sharing existing alignments
+can be used for composing alignments, which helps
+solving part of the matching problem.
+Using the web as background knowledge [107], and
+specifically, exploiting linked data as background
+knowledge [108], [109] or the work on search engine
+weighted approximate matching [110].
+Using domain specific corpora (of schemas and
+mappings) [107], [111] or schema covers [112];
+
+7. http://www.sat4j.org/.
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+Fig. 6. Use of background knowledge in Scarlet [115]. The process is
+made of two steps: 1) finding an ontology referring to the concepts to be
+matched, 2) inferring a relation between these concepts in function of
+those of the background ontology.
+
+Using domain specific ontologies, e.g., in the field of
+anatomy [64], [107], upper level ontologies [113],
+[114], or all the ontologies available on the Semantic
+Web, such as in the work on Scarlet [115].
+In addition, the work on S-Match [116] discussed an
+automatic approach to deal with the lack of background
+knowledge in matching tasks by using semantic matching
+[117], [118] iteratively. On top of S-Match, the work in [119]
+discussed the use of UMLS, instead of WordNet, as a source
+of background knowledge in medical applications.
+The techniques mentioned above have helped improving
+the results of matchers in various cases. For instance, Fig. 6
+shows two entities from the Agrovoc8 and NAL9 thesauri
+that had to be matched in the food test case of OAEI-2007.
+When considering concepts Beef and Food, the use of
+background knowledge found on the web, such as the
+TAP10 ontology, helps deduce that Beef is less general than
+Food. The same result can be also obtained with the help of
+WordNet since Beef is a hyponym (is a kind) of Food. Thus,
+multiple sources of background knowledge can simultaneously help.
+Discussion. The techniques mentioned before can
+undergo different variations based on:
+.
+
+.
+
+.
+
+.
+
+.
+
+the way background knowledge sources are identified to be useful, e.g., if there are enough entities in
+common for a particular matching task;
+the way background knowledge sources are selected, i.e., given multiple sources, such as domain
+specific ontologies and upper level ontologies,
+identified in the former step, selecting one or a
+combination of these to use;
+the way ontology entities are matched against the
+background knowledge sources, e.g., by employing
+simple string-based techniques or more sophisticated matchers;
+the way the obtained results are combined or
+aggregated, e.g., by majority voting.
+
+8. http://www.fao.org/aims/ag_intro.htm.
+9. http://www.nal.usda.gov/.
+10. http://139.91.183.30:9090/RDF/VRP/Examples/tap.rdf.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+Once the necessary knowledge has been recovered,
+e.g., through a composition of several auxiliary resources,
+the issue is how to maintain it. Several alternatives can be
+explored, including: 1) extending (privately or locally)
+general purpose resources, such as WordNet or schema.org,
+toward specific domain knowledge, 2) sharing the recovered knowledge (publicly) as linked open data.
+The insights provided above have to be systematically
+investigated, combined in a complementary fashion and
+evaluated. This is particulary important in dynamic settings, where the matching input is often shallow (especially
+when dealing with fragmented descriptions), and therefore,
+incorporates fewer clues. To this end, it is vital to identify
+the minimal background knowledge necessary, e.g., a part
+of TAP in the example of Fig. 6, to resolve a particular
+problem with sufficiently good results.
+
+10 MATCHER SELECTION, COMBINATION AND
+TUNING
+Many matchers are now available. As OAEI campaigns
+indicate (Section 5), there is no single matcher that clearly
+dominates others. Often these perform well in some cases
+and not so well in some other cases. Both for design and
+runtime matching, it is necessary to be able to take
+advantage of the best configuration of matchers.
+The challenge. There is evidence from OAEI (Section 5)
+that matchers do not necessarily find the same correct
+correspondences. Usually several competing matchers are
+applied to the same pair of entities in order to increase
+evidence toward a potential match or mismatch. This
+requires to solve several important problems: 1) selecting
+matchers and combining them, and 2) self-configuring or
+tuning matchers. On top of this, for dynamic applications it
+is necessary to perform matcher combination and selftuning at runtime, and thus, efficiency of the configuration
+search strategies becomes critical. As the number of
+available matchers increases, the problem of their selection
+will become more critical, e.g., when the task will be to
+handle more than 50 matchers within one system.
+Recent advances. The problem of matcher selection has
+been addressed, for example, through analytic hierarchy
+process [120], ad hoc rules [121], [122] or a graphical
+matching process editor [123]. Often the matcher selection
+is tackled by setting appropriate weights (in [0 1]) to
+matchers that are predefined in a pool (of usually at most
+several dozens of matchers) and to be further aggregated.
+So far, mostly design time toolboxes allow to do this
+manually [16], [79], [124].
+Another approach involves ontology metamatching [89],
+[125], i.e., a framework for combining a set of selected
+ontology matchers. Instead of least-square linear regression
+as in [126], the work in [81] uses a machine learning
+technique, called boosting (the AdaBoost algorithm) in
+order to select matchers from a pool to be further used in
+combination. Multiagent techniques have also been used for
+that purpose, e.g., [127] exploits the max-sum algorithm to
+maximize the utility of a set of agents, while [128] uses
+argumentation schemes to combine matching results.
+
+169
+
+The work in [89] proposed an approach to tune a library
+of schema matchers at design time: given a particular
+matching task, it automatically tunes a matching system by
+choosing suitable matchers, and the best parameters to be
+used, such as thresholds. The work in [129] discussed
+consensus building after many methods have been used.
+Discussion. The above-mentioned problems share common characteristics: 1) the search space is very large, and
+2) the decision is made involving multiple criteria. Resolving these two problems simultaneously at runtime makes
+ontology matching even harder.
+The work on evaluation (Section 5) can be used in
+order to assess the strengths and the weaknesses of
+individual matchers by comparing their results with task
+requirements. Often, there are many different constraints
+and requirements applied to the matching tasks, e.g.,
+correctness, completeness, execution time, main memory,
+thereby involving multidecision criteria. The main issue is
+the semiautomatic combination of matchers by looking for
+complementarities, balancing the weaknesses and reinforcing the strengths of the components. For example, the
+aggregation is usually performed following a predefined
+aggregation function, such as a weighted average. Novel
+ways of performing aggregation with provable qualities of
+alignments have to be looked for in order to go beyond
+the incremental progress that we observed in the recent
+years. For example, one of the plausible directions to
+pursue was investigated in [130], which proposed to use a
+decision tree as an aggregation function, where the nodes
+represent the similarity measures and edges are used as
+conditions on the results. Such a decision tree represents a
+plan whose elementary operations are matching algorithms. Further issues to be addressed include investigating the automatic generation of decision trees based on an
+application domain.
+In the web setting, it is natural that applications are
+constantly changing their characteristics. Therefore, approaches that attempt to tune and adapt automatically
+matching solutions to the settings in which an application
+operates are of high importance. This may involve the
+runtime reconfiguration of a matcher by finding its most
+appropriate parameters, such as thresholds, weights, and
+coefficients. The above-mentioned work in [130], also
+contributed to the theme of tuning. Specifically, since edges
+in the decision tree are used as conditions, these can be
+viewed as thresholds, personalized to each matcher. Thus,
+various ways of encoding the matcher combination and
+tuning problem have to be explored and developed further.
+
+11 USER INVOLVEMENT
+In traditional applications, the result of matching performed
+at design time is screened by human users before being
+accepted. However, the overwhelming size of data may
+render this task difficult. In dynamic applications, users are
+generally not ontology matching specialists who can be
+asked to inspect the alignments. Hence, in both cases, user
+involvement becomes crucial.
+The challenge is to design ways of involving users so
+that they can help the matching process without being lost
+in the amount of results. The issue is, both for design and
+
+170
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+runtime matching, to design interaction schemes which are
+burdenless to the user. At design time, interaction should be
+both natural and complete; at runtime, it should be hidden
+in the user task.
+Recent advances. So far, there have only been few
+studies on how to involve users in ontology matching. The
+works in [131], [132] proposed to use query logs to enhance
+match candidate generation. Several efforts were dedicated
+to design time matcher interaction, such as in [79], [133].
+Some recent works have focussed on the ergonomic aspect
+of elaborating alignments, either for designing them
+manually or for checking and correcting them, e.g., through
+learning [134], [135]. Specifically, the work in [136]
+proposed a graphical visualization of alignments based on
+cognitive studies. In turn, the work in [137] provided an
+environment for manually designing complex alignments
+through the use of connected perspective that allows for
+quickly deemphasizing non relevant aspects of the ontologies being matched while keeping the connections between
+relevant entities. The work in [138] provided the Clip tool
+that allows for explicitly specifying structural transformations by means of a visual language, in addition to value
+couplings to be associated with correspondences.
+Discussion. With the development of interactive approaches the issues of their usability will become more
+prominent. This includes scalability of visualization [139]
+and better user interfaces in general, which are expected to
+bring higher quality gains than more accurate matching
+algorithms [140].
+An interesting trend to follow concerning user involvement relies on final users in order to learn from them—given
+a matching task—what is the best system configuration to
+approach that task. Moreover, for dynamic applications, only
+the final user can help. This can be exploited by adjusting
+matching system parameters (Section 10), or by experimenting with alignment selection strategies. In order to facilitate
+this, matching tools have to be configurable and customizable. Users themselves could improve these tools, thereby
+arriving to the exact solution that best fits their needs and
+preferences. When users are given this freedom by working
+on tool customization, they can also provide useful feedback
+to system designers. Involving final users in an active
+manner in a matching project would increase its impact, as
+users who recognize the actual need, also have promising
+ideas on how to approach it [141]. When these “lead” users
+want something that is not available on the market, high
+benefits may be expected from such endeavors.
+Technically, a basic premise underlying user interaction
+design is that users of a matching system should be able to
+influence the search for an optimal alignment on various
+levels via unified interfaces. For example, by recommending relevant background knowledge in advance, by
+influencing the selection and weighting of the various
+matching components, by criticizing aspects of intermediate
+results, and by determining whether the final result is good
+enough to be put to use. Little attention has been devoted so
+far to the realization of interfaces that actually allow users
+to become active in these ways. Systems should be
+developed on the basis of continual tests with final users,
+and the ultimate success criterion will be the extent to
+which the system has value for them.
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+Finally, as more systems will become equipped with
+GUIs (see Table 1), we expect that evaluation of usability
+and customizability of such systems will become more
+prominent, e.g., included as evaluation indicators of the
+OAEI campaigns.
+
+12 EXPLANATION OF MATCHING RESULTS
+In order to better edit alignments, thereby providing
+feedback to the system, users need to understand them. It
+is often not sufficient that a matcher returns an alignment,
+for users to understand it immediately. In order for
+matching systems to gain a wider acceptance and to be
+trusted by users, it will be necessary that they provide
+explanations of their results to users or to other programs
+that exploit them. Notice that the issues of trustworthiness
+and provenance become particularly important in the web
+settings that enable social and collaborative matching
+(Section 13).
+The challenge is to provide explanations in a simple, yet
+clear and precise, way to the user in order to facilitate
+informed decision making. In particular, many sophisticated techniques used by matching systems, e.g., machine
+learning or discrete optimization, do not yield simple or
+symbolic explanations.
+Recent advances. There are only a few matching
+systems able to provide an explanation for their results
+[128], [142], [143]. The solutions proposed so far focus on
+default explanations, explaining basic matchers, explaining
+the matching process, and negotiating alignments by
+argumentation.
+More recently, the work in [80] introduced the notion of a
+matchability score, computed via a synthetic workload,
+which quantifies how well on average a given schema
+matches future schemas. Using the matchability score,
+different types of matching mistakes, such as missing a
+correspondence or predicting a wrong correspondence, can
+be analyzed, e.g., by looking into the most likely general
+reasons leading to them. Once the matchability score has
+been computed for all the entities, they are ranked by
+increasing scores. A matchability report is generated for each
+entity by grouping incorrect matches based on their underlying (general) reasons and by displaying 1) the reason, 2) an
+example to illustrate the reason, and 3) a suggestion of
+revisions to be made, thereby guiding users in revising
+correspondences by addressing the reported mistakes.
+Finally, [144] provided a mapping design wizard that uses
+data examples to systematically assist integration engineers
+in explaining and refining alignments toward a desired
+specification. The key intuition behind it is that integration
+engineers usually understand better their data than alignments. Hence, such data examples are used in explanations
+(of nuances) to clarify possible variations in interpretation of
+alignments, by including these examples into a small number
+of automatically generated yes-or-no questions.
+Discussion. Few works have addressed the theme of
+explanations in ontology matching. Therefore, the directions pursued in those works are worth considering. In
+addition, an interactive environment is still needed to help
+users accept or revise the suggested correspondences (see
+Section 14). In this respect, it would be also useful to exploit
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+the abstraction techniques extensively and build on top
+of the work on explanations in recommender systems [145].
+In the longer term, it would be helpful to standardize
+explanations of matching results in order to facilitate the
+interaction of matching systems with other applications.
+
+13 SOCIAL AND COLLABORATIVE MATCHING
+In an open environment like the web, social support has
+been the key in solving hard and large problems. This
+approach can be also applied to ontology matching.
+The challenge. Matching could be improved through
+social interaction. This may be obtained with the help of
+people explicitly arguing about correspondences or by
+implicitly voting each time a correspondence is used during
+an interaction. This calls for algorithms able to rank a
+massive amount of correspondences. The incompleteness
+and inconsistency of alignments will have to be dealt with in
+a satisfactory way. Other issues include understanding what
+tasks are relatively easy for humans, but difficult for
+machines, how to individuate and deal with malicious
+users, and which incentive schemes promise to facilitate
+user participation in establishing alignments collaboratively.
+Recent advances. The work in [146] extended the notion
+of ontology matching to community-driven ontology
+matching and discussed early experiments in which a
+community of people can share alignments over the web,
+reuse them as well as argue about them by using
+annotations. Technically this meant, among other things,
+extending correspondences with metadata covering the
+correspondence author name, application domain, his or
+her trust value in a community, etc.
+The work in [147] proposed a model (the mapping
+ontology) for representing correspondences (called mappings) collected from the user community and the metadata
+associated with it. This model was further implemented in a
+collaborative system in the area of bioinformatics for
+sharing both ontologies and correspondences. It actually
+brought together more than 30.000 such mappings. This
+allows users to share, edit, search for, and discuss the
+mappings. The strengths of this system are a user friendly
+interface with the possibility to annotate correspondences
+and the direct connection with the ontologies which helps
+users to navigate through them.
+Finally, [148] proposed an application of mechanical turk
+to enlist the multitude of users in a community to help
+matching schemas by asking users simple questions, e.g., is
+monthly-fee-rate of type DATE?, and then learn from the
+answers to improve matching accuracy, e.g., in case of a
+positive answer to the question above by using a specific
+date matcher. On the one side, the questions should be
+relatively easy for users to answer and, on the other side,
+they must affect substantially the matching accuracy. In this
+vein, three types of questions were used for three different
+purposes: 1) to verify intermediate predictions of the
+system, 2) to learn domain integrity constraints, and 3) to
+verify final match candidates. Users were classified into
+trusted and untrusted, based on their answers to a set of
+(evaluation) questions with answers known in advance. The
+answers from trusted users were further combined using a
+voting scheme. Ultimately, two user participation schemes
+
+171
+
+have been analyzed: a standard volunteering scheme and a
+scheme in which users have to “pay” by answering first
+several questions in order to use a desired service.
+Discussion. A promising way of tackling the matching
+task is by taking advantage of the network effect. If it is too
+cumbersome for one person to come up with a correct
+alignment between several pairs of ontologies, this can be
+more easily resolved by many people together, namely:
+1) each person has to do a very small amount of work,
+2) each person can improve on what has been done by
+others, and 3) errors remain in minority.
+Thus, the process and the dynamics of crowdsourcing
+and collaborative ontology matching in the context of
+various applications should be studied and formalized;
+some steps in this direction have already been taken within
+the (reference alignment) consensus building sessions of the
+Ontology Matching workshops.11 In general, the experiences with collaborative knowledge construction [149] and,
+in particular, with the collaborative development of ontologies [150], [151] as well as with the community information
+management systems [152] should be monitored and
+whenever promising adapted for collaborative matching.
+The success of the social and collaborative matching
+techniques will largely depend on the creation of a critical
+mass of users in communities of interest that actually use
+them—similar to what happens to any data on the
+web—once an alignment has been established, either
+manually or automatically, it should be (publicly) shared,
+thereby enabling its further reuse (Section 14). In turn, this
+requires an adequate support for handling trustworthiness
+and provenance of alignments (Section 12).
+
+14 ALIGNMENT MANAGEMENT: INFRASTRUCTURE
+AND SUPPORT
+Storing and sharing alignments, as well as collaborative
+matching, should be supported by adequate tools and
+infrastructure, especially in dynamic applications.
+The challenge. The challenge is to provide convenient
+and interoperable support, on which tools and, more
+importantly, on which applications, can rely in order to
+store and share alignments. This involves using standard
+ways to communicate alignments and retrieve them. Hence,
+alignment metadata and annotations should be properly
+taken into account.
+Recent advances. We can distinguish two types of
+software in alignment management: 1) the infrastructure
+middleware, and 2) the support environments that provide
+application specific access to alignments. The support
+environments can be dedicated to alignment edition [133],
+alignment processing, alignment sharing and discussing [82],
+[147], [153], or model management [140]. The two levels may
+be kept clearly separated [154] or mixed in a single system
+[67], [147]. As a recent example of the latter, the Harmony
+workbench [67] made its way into a collaborative effort,
+called OpenII,12 to create a suite of open-source tools for
+information integration, e.g., for matching and merging.
+11. http://om2008.ontologymatching.org/.
+12. http://openintegration.org/.
+
+172
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+Other systems have been designed for offering a variety
+of matching methods and a library of mappings [82], [133],
+[155]. However, these systems were meant as a component
+for design time integration and not as a service that can be
+used at runtime.
+In turn, the Alignment server [154] has been designed as
+a middleware component with these goals in mind. It
+supports, in particular, alignment storing, correspondence
+annotation, and sharing. It is accessible from other tools and
+applications through a versatile interface (HTTP, REST,
+SOAP, FIPA ACL). The NeOn toolkit Alignment plug-in13
+embeds it into an environment similar to Prote´ge´14. The
+plug-in allows to manipulate alignments locally or to access
+them on the Alignment server.
+Finally, the Cupboard system is a runtime environment
+for supporting networked ontology organization [156]. It
+allows users to find alignments on the web, to match them
+through the Alignment server and to register them in their
+own workspace. These alignments can be ranked by other
+users and this information is made available to all the
+Cupboard users.
+Discussion. A first step in promoting sharing, manipulating, and reusing alignments is to be able to use a
+standard for alignments. No such a standard exists at the
+moment. In a longer term, such a standard may be
+proposed. At present, the Alignment format [85] exploited
+by the OAEI evaluations is used by many systems [153].
+Since it is extensible and does not make assumptions about
+the type of matched ontologies, e.g., it can be applied to
+SKOS thesauri and to any structure whose elements can be
+identified by URIs, it would be a natural starting point for
+standardization.
+As soon as ontologies evolve, new alignments have to be
+produced following the evolution of the ontology. This can
+be achieved by transforming the changes made to ontologies into an alignment (from one ontology version to the
+next one), which can be composed with the old alignment
+for obtaining an updated alignment.
+
+JANUARY 2013
+
+ACKNOWLEDGMENTS
+The first author appreciates support from the Trentino as a
+Lab initiative of the European Network of the Living Labs
+at Informatica Trentina. The second author has been
+partially supported by the European integrated project
+NeOn (IST-2005-027595) and the RNTL project WebContent.
+They are grateful to Fausto Giunchiglia (University of
+Trento), Lorenzino Vaccari (European Comission, DG
+Environment), Mathieu d’Aquin and Marta Sabou (Open
+University), Chan Le Duc and Antoine Zimmermann
+(INRIA), Antoine Isaac, Zharko Aleksovski, Marjolein van
+Gendt (Vrije Universiteit Amsterdam), Malgorzata Mochol
+(Free University of Berlin), Juan Sequeda (University of
+Texas at Austin) for their insightful comments on various
+aspects of ontology matching covered in this paper.
+
+REFERENCES
+[1]
+
+[2]
+[3]
+
+15 CONCLUSIONS
+
+13. http://alignapi.gforge.inria.fr/neontk/.
+14. http://protege.stanford.edu/.
+
+NO. 1,
+
+expectations and will want to experiment with them more
+intensively. In particular, the increasing involvement of
+final users in matching projects should help keeping focus
+on capturing the values of ontology matching based on the
+usefulness that it brings, and thus, accelerating progress of
+the field during its precommercial phase and ultimately
+turning matching technologies into mainstream.
+
+[4]
+
+We have introduced the basics of ontology matching with
+the help of examples. We outlined various matching
+applications as well as ontology matching use cases
+developed in collaboration with final users. We discussed
+the state of the art in ontology matching and made some
+analytical and empirical comparisons. The outcome of this
+analysis is that ontology matching is making a measurable
+progress, though it is slowing down. In order to address
+this situation, we presented eight challenges for ontology
+matching, accompanied for each of these with an overview
+of the recent advances in the field and a discussion of the
+potentially useful ways to approach the challenges under
+consideration. We believe that addressing the outlined
+challenges should accelerate the progress of the ontology
+matching field. Moreover, these challenges are not isolated
+from each other, e.g., collaborative matching requires an
+alignment infrastructure, and have to be considered in
+relation with each other.
+We expect that, as ontology matching technologies are
+becoming more mature, practitioners will increase their
+
+VOL. 25,
+
+[5]
+[6]
+[7]
+[8]
+[9]
+[10]
+[11]
+[12]
+[13]
+[14]
+[15]
+
+R. Agrawal, A. Ailamaki, P.A. Bernstein, E.A. Brewer, M.J. Carey,
+S. Chaudhuri, A. Doan, D. Florescu, M.J. Franklin, H. GarciaMolina, J. Gehrke, L. Gruenwald, L.M. Haas, A.Y. Halevy, J.M.
+Hellerstein, Y.E. Ioannidis, H.F. Korth, D. Kossmann, S. Madden,
+R. Magoulas, B.C. Ooi, T. O’Reilly, R. Ramakrishnan, S. Sarawagi,
+M. Stonebraker, A.S. Szalay, and G. Weikum, “The Claremont
+Report on Database Research,” SIGMOD Record, vol. 37, no. 3,
+pp. 9-19, 2008.
+J. Euzenat and P. Shvaiko, Ontology Matching. Springer, 2007.
+J. Madhavan, P. Bernstein, and E. Rahm, “Generic Schema
+Matching with Cupid,” Proc. 27th Int’l Conf. Very Large Data Bases
+(VLDB), pp. 48-58, 2001.
+D. Aumu¨ller, H.-H. Do, S. Maßmann, and E. Rahm, “Schema and
+Ontology Matching with COMA++,” Proc. 24th ACM SIGMOD
+Int’l Conf. Management of Data (SIGMOD), Demo Track, pp. 906-908,
+2005.
+F. Giunchiglia, M. Yatskevich, and P. Shvaiko, “Semantic
+Matching: Algorithms and Implementation,” J. on Data Semantics,
+vol. 9, pp. 1-38, 2007.
+P.A. Bernstein, J. Madhavan, and E. Rahm, “Generic Schema
+Matching, Ten Years Later,” Proc. VLDB, vol. 4, no. 11, pp. 695701, 2011.
+Schema Matching and Mapping, Z. Bellahsene, A. Bonifati, and
+E. Rahm, eds. Springer, 2011.
+C. Batini, M. Lenzerini, and S. Navathe, “A Comparative Analysis
+of Methodologies for Database Schema Integration,” ACM
+Computing Surveys, vol. 18, no. 4, pp. 323-364, 1986.
+S. Spaccapietra and C. Parent, “Conflicts and Correspondence
+Assertions in Interoperable Databases,” SIGMOD Record, vol. 20,
+no. 4, pp. 49-54, 1991.
+E. Rahm and P. Bernstein, “A Survey of Approaches to Automatic
+Schema Matching,” The VLDB J., vol. 10, no. 4, pp. 334-350, 2001.
+Y. Kalfoglou and M. Schorlemmer, “Ontology Mapping: The State
+of the Art,” The Knowledge Eng. Rev., vol. 18, no. 1, pp. 1-31, 2003.
+N. Noy, “Semantic Integration: A Survey of Ontology-Based
+Approaches,” SIGMOD Record, vol. 33, no. 4, pp. 65-70, 2004.
+A. Doan and A. Halevy, “Semantic Integration Research in the
+Database Community: A Brief Survey,” AI Magazine, vol. 26, no. 1,
+special issue on semantic integration, pp. 83-94, 2005.
+P. Shvaiko and J. Euzenat, “A Survey of Schema-Based Matching
+Approaches,” J. Data Semantics, vol. 4, pp. 146-171, 2005.
+N. Choi, I.-Y. Song, and H. Han, “A Survey on Ontology
+Mapping,” SIGMOD Record, vol. 35, no. 3, pp. 34-41, 2006.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+[16] A. Gal and P. Shvaiko, “Advances in Ontology Matching,”
+Advances in Web Semantics I, T.S. Dillon, E. Chang, R. Meersman,
+and K. Sycara, eds., pp. 176-198, Springer, 2009.
+[17] P. Shvaiko and J. Euzenat, “Ten Challenges for Ontology
+Matching,” Proc. Seventh Int’l Conf. Ontologies, DataBases, and
+Applications of Semantics (ODBASE), pp. 1163-1181, 2008.
+[18] R. Fagin, L.M. Haas, M.A. Herna´ndez, R.J. Miller, L. Popa, and Y.
+Velegrakis, “Clio: Schema Mapping Creation and Data Exchange,”
+Conceptual Modeling: Foundations and Applications, pp. 198-236,
+Springer, 2009.
+[19] P. Bernstein, A. Halevy, and R. Pottinger, “A Vision of Management of Complex Models,” SIGMOD Record, vol. 29, no. 4, pp. 5563, 2000.
+[20] M. Lenzerini, “Data Integration: A Theoretical Perspective,” Proc.
+21st Symp. Principles of Database Systems (PODS), pp. 233-246, 2002.
+[21] A. Zimmermann, M. Kro¨tzsch, J. Euzenat, and P. Hitzler,
+“Formalizing Ontology Alignment and its Operations with
+Category Theory,” Proc. Fourth Int’l Conf. Formal Ontology in
+Information Systems (FOIS), pp. 277-288, 2006.
+[22] B. He and K. Chang, “Automatic Complex Schema Matching
+Across Web Query Interfaces: A Correlation Mining Approach,”
+ACM Trans. Database Systems, vol. 31, no. 1, pp. 346-395, 2006.
+[23] N.F. Noy, A. Chugh, W. Liu, and M.A. Musen, “A Framework for
+Ontology Evolution in Collaborative Environments,” Proc. Fifth
+Int’l Semantic Web Conf. (ISWC), pp. 544-558, 2006.
+[24] A. Isaac, S. Wang, C. Zinn, H. Matthezing, L. van der Meij, and S.
+Schlobach, “Evaluating Thesaurus Alignments for Semantic
+Interoperability in the Library Domain,” IEEE Intelligent Systems,
+vol. 24, no. 2, pp. 76-86, Mar./Apr. 2009.
+[25] P.P. Talukdar, Z.G. Ives, and F. Pereira, “Automatically Incorporating New Sources in Keyword Search-Based Data Integration,”
+Proc. 29th ACM SIGMOD Int’l Conf. Management of Data
+(SIGMOD), pp. 387-398, 2010.
+[26] S. Dessloch, M.A. Herna´ndez, R. Wisnesky, A. Radwan, and J.
+Zhou, “Orchid: Integrating Schema Mapping and ETL,” Proc. 24th
+Int’l Conf. Data Eng. (ICDE), pp. 1307-1316, 2008.
+[27] M. Atencia, J. Euzenat, G. Pirro`, and M.-C. Rousset, “AlignmentBased Trust for Resource Finding in Semantic p2p Networks,”
+Proc. 10th Int’l Semantic Web Conf. (ISWC), pp. 51-66, 2011.
+[28] L. Vaccari, P. Shvaiko, and M. Marchese, “A Geo-Service Semantic
+Integration in Spatial Data Infrastructures,” J. Spatial Data
+Infrastructures Research, vol. 4, pp. 24-51, 2009.
+[29] Y. Kitamura, S. Segawa, M. Sasajima, S. Tarumi, and R.
+Mizoguchi, “Deep Semantic Mapping Between Functional Taxonomies for Interoperable Semantic Search,” Proc. Third Asian
+Semantic Web Conf. (ASWC), pp. 137-151, 2008.
+[30] M. van Gendt, A. Isaac, L. van der Meij, and S. Schlobach,
+“Semantic Web Techniques for Multiple Views on Heterogeneous
+Collections: A Case Study,” Proc. 10th European Conf. Research and
+Advanced Technology for Digital Libraries (ECDL), pp. 426-437, 2006.
+[31] V. Lopez, M. Pasin, and E. Motta, “AquaLog: An OntologyPortable Question Answering System for the Semantic Web,” Proc.
+Second European Semantic Web Conf. (ESWC), pp. 546-562, 2005.
+[32] I.F. Cruz, W. Sunna, N. Makar, and S. Bathala, “A Visual Tool for
+Ontology Alignment to Enable Geospatial Interoperability,”
+J. Visual Languages and Computing, vol. 18, no. 3, pp. 230-254, 2007.
+[33] I.F. Cruz and W. Sunna, “Structural Alignment Methods with
+Applications to Geospatial Ontologies,” Trans. in Geographic
+Information Science, vol. 12, no. 6, pp. 683-711, 2008.
+[34] L. Vaccari, P. Shvaiko, J. Pane, P. Besana, and M. Marchese, “An
+Evaluation of Ontology Matching in Geo-Service Applications,”
+GeoInformatica, vol. 16, pp. 31-66, 2011.
+[35] C. Parent, S. Spaccapietra, and E. Zima´nyi, Conceptual Modeling for
+Traditional and Spatio-Temporal Applications: The MADS Approach.
+Springer, 2006.
+[36] A. Schwering, “Approaches to Semantic Similarity Measurement
+Between Geo-Spatial Data - A Survey,” Trans. in Geographic
+Information Science, vol. 12, no. 1, pp. 5-29, 2008.
+[37] P. Lambrix and H. Tan, “SAMBO - A System for Aligning and
+Merging Biomedical Ontologies,” J. Web Semantics, vol. 4, no. 1,
+pp. 196-206, 2006.
+[38] O. Bodenreider, “The Unified Medical Language System (UMLS):
+Integrating Biomedical Terminology,” Nucleic Acids Research,
+vol. 32, pp. 267-270, 2004.
+[39] P. Lambrix and H. Tan, “A Tool for Evaluating Ontology
+Alignment Strategies,” J. Data Semantics, vol. 8, pp. 182-202, 2007.
+
+173
+
+[40] W. Hu, Y. Qu, and G. Cheng, “Matching Large Ontologies: A
+Divide-and-Conquer Approach,” Data and Knowledge Eng., vol. 67,
+no. 1, pp. 140-160, 2008.
+[41] S. Guha, R. Rastogi, and K. Shim, “Rock: A Robust Clustering
+Algorithm for Categorical Attributes,” Proc. 15th Int’l Conf. Data
+Eng. (ICDE), pp. 512-521, 1999.
+[42] G. Stoilos, G. Stamou, and S. Kollias, “A String Metric for
+Ontology Alignment,” Proc. Fourth Int’l Semantic Web Conf.
+(ISWC), pp. 624-637, 2005.
+[43] G. Shafer, A Math. Theory of Evidence. Princeton Univ. Press, 1976.
+[44] M. Nagy and M. Vargas-Vera, “Towards an Automatic Semantic
+Data Integration: Multi-Agent Framework Approach,” Semantic
+Web, G. Wu, ed., chapter 7, pp. 107-134, InTech, 2010.
+[45] M. Nagy, M. Vargas-Vera, and P. Stolarski, “Dssim Results for
+OAEI 2009,” Proc. Fourth Int’l Workshop Ontology Matching (OM) at
+the Int’l Semantic Web Conf. (ISWC), pp. 160-169, 2009.
+[46] G. Miller, “WordNet: A Lexical Database for English,” Comm.
+ACM, vol. 38, no. 11, pp. 39-41, 1995.
+[47] J. Li, J. Tang, Y. Li, and Q. Luo, “Rimom: A Dynamic Multistrategy
+Ontology Alignment Framework,” IEEE Trans. Knowledge and Data
+Eng., vol. 21, no. 8, pp. 1218-1232, Aug. 2009.
+[48] J. Tang, J. Li, B. Liang, X. Huang, Y. Li, and K. Wang, “Using
+Bayesian Decision for Ontology Mapping,” J. Web Semantics, vol. 4,
+no. 1, pp. 243-262, 2006.
+[49] S. Melnik, H. Garcia-Molina, and E. Rahm, “Similarity Flooding: A
+Versatile Graph Matching Algorithm,” Proc. 18th Int’l Conf. Data
+Eng. (ICDE), pp. 117-128, 2002.
+[50] Y.R. Jean-Mary, E.P. Shironoshita, and M.R. Kabuka, “Ontology
+Matching with Semantic Verification,” J. Web Semantics, vol. 7,
+no. 3, pp. 235-251, 2009.
+[51] M.S. Hanif and M. Aono, “An Efficient and Scalable Algorithm for
+Segmented Alignment of Ontologies of Arbitrary Size,” J. Web
+Semantics, vol. 7, no. 4, pp. 344-356, 2009.
+[52] I.F. Cruz, F.P. Antonelli, and C. Stroe, “Agreementmaker: Efficient
+Matching for Large Real-World Schemas and Ontologies,” Proc.
+VLDB, vol. 2, no. 2, pp. 1586-1589, 2009.
+[53] J. Euzenat, C. Meilicke, P. Shvaiko, H. Stuckenschmidt, and C.
+Trojahn dos Santos, “Ontology Alignment Evaluation Initiative: Six
+Years of Experience,” J. Data Semantics, vol. 15, pp. 158-192, 2011.
+[54] Proc. K-CAP Workshop Integrating Ontologies, B. Ashpole, M. Ehrig,
+J. Euzenat, and H. Stuckenschmidt, eds., 2005.
+[55] J. Euzenat, M. Mochol, P. Shvaiko, H. Stuckenschmidt, O. Svab, V.
+Svatek, W. van Hage, and M. Yatskevich, “Results of the Ontology
+Alignment Evaluation Initiative 2006,” Proc. First Int’l Workshop
+Ontology Matching (OM) at the Int’l Semantic Web Conf. (ISWC),
+pp. 73-95, 2006.
+[56] J. Euzenat, A. Isaac, C. Meilicke, P. Shvaiko, H. Stuckenschmidt,
+ ´ b, V. Sva´tek, W.R. van Hage, and M. Yatskevich, “Results of
+O. Sva
+the Ontology Alignment Evaluation Initiative 2007,” Proc. Second
+Int’l Workshop Ontology Matching (OM) at the Int’l Semantic Web
+Conf. (ISWC) and Asian Semantic Web Conf. (ASWC), pp. 96-132,
+2007.
+[57] C. Caracciolo, J. Euzenat, L. Hollink, R. Ichise, A. Isaac, V. Malaise´,
+ ´b
+C. Meilicke, J. Pane, P. Shvaiko, H. Stuckenschmidt, O. Sva
+Zamazal, and V. Sva´tek, “Results of the Ontology Alignment
+Evaluation Initiative 2008,” Proc. Third Int’l Workshop Ontology
+Matching (OM) at the Int’l Semantic Web Conf. (ISWC), pp. 73-119,
+2008.
+[58] J. Euzenat, A. Ferrara, L. Hollink, A. Isaac, C. Joslyn, V. Malaise´, C.
+Meilicke, A. Nikolov, J. Pane, M. Sabou, F. Scharffe, P. Shvaiko, V.
+Spiliopoulos, H. Stuckenschmidt, O. Sva´b-Zamazal, V. Sva´tek,
+C.T. dos Santos, G.A. Vouros, and S. Wang, “Results of the
+Ontology Alignment Evaluation Initiative 2009,” Proc. Fourth Int’l
+Workshop Ontology Matching (OM) at the Int’l Semantic Web Conf.
+(ISWC), pp. 73-126, 2009.
+[59] J. Euzenat, A. Ferrara, C. Meilicke, J. Pane, F. Scharffe, P. Shvaiko,
+ ´ b Zamazal, V. Svatek, and C. Trojahn,
+H. Stuckenschmidt, O. Sva
+“Results of the Ontology Alignment Evaluation Initiative 2010,”
+Proc. Fifth Int’l Workshop Ontology Matching (OM) at the Int’l
+Semantic Web Conf. (ISWC), pp. 85-125, 2010.
+[60] P. Wang and B. Xu, “Lily: Ontology Alignment Results for OAEI
+2009,” Proc. Fourth Int’l Workshop Ontology Matching (OM) at the
+Int’l Semantic Web Conf. (ISWC), pp. 186-192, 2009.
+[61] F. Giunchiglia, M. Yatskevich, P. Avesani, and P. Shvaiko, “A
+Large Scale Dataset for the Evaluation of Ontology Matching
+Systems,” The Knowledge Eng. Rev., vol. 24, no. 2, pp. 137-157,
+2009.
+
+174
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+[62] M. Mao, Y. Peng, and M. Spring, “An Adaptive Ontology
+Mapping Approach with Neural Network Based Constraint
+Satisfaction,” J. Web Semantics, vol. 8, no. 1, pp. 14-25, 2010.
+[63] J. Euzenat and P. Valtchev, “Similarity-Based Ontology Alignment
+in OWL-Lite,” Proc. 15th European Conf. Artificial Intelligence
+(ECAI), pp. 333-337, 2004.
+[64] S. Zhang and O. Bodenreider, “Experience in Aligning Anatomical Ontologies,” Int’l J. Semantic Web and Information Systems,
+vol. 3, no. 2, pp. 1-26, 2007.
+[65] P. Xu, H. Tao, T. Zang, and Y. Wang, “Alignment Results of
+SOBOM for OAEI 2009,” Proc. Fourth Int’l Workshop Ontology
+Matching (OM) at the Int’l Semantic Web Conf. (ISWC), pp. 216223, 2009.
+[66] D. Kensche, C. Quix, X.L. 0002, Y. Li, and M. Jarke, “Generic
+Schema Mappings for Composition and Query Answering,” Data
+and Knowledge Eng., vol. 68, no. 7, pp. 599-621, 2009.
+[67] P. Mork, L. Seligman, A. Rosenthal, J. Korb, and C. Wolf, “The
+Harmony Integration Workbench,” J. Data Semantics, vol. 11,
+pp. 65-93, 2008.
+[68] C. Ghidini and L. Serafini, “Reconciling Concepts and Relations in
+Heterogeneous Ontologies,” Proc. Third European Semantic Web
+Conf. (ESWC), pp. 50-64, 2006.
+[69] P. Shvaiko, F. Giunchiglia, and M. Yatskevich, “Semantic
+Matching with S-Match,” Semantic Web Information Management,
+R. D. Virgilio, F. Giunchiglia, and L. Tanca, eds., pp. 183-202,
+Springer, 2009.
+[70] V. Spiliopoulos, G.A. Vouros, and V. Karkaletsis, “On the
+Discovery of Subsumption Relations for the Alignment of
+Ontologies,” J. Web Semantics, vol. 8, no. 1, pp. 69-88, 2010.
+[71] B. Fu, R. Brennan, and D. O’Sullivan, “Using Pseudo Feedback to
+Improve Cross-Lingual Ontology Mapping,” Proc. Eighth Extended
+Semantic Web Conf. (ESWC), pp. 336-351, 2011.
+[72] D. Spohr, L. Hollink, and P. Cimiano, “A Machine Learning
+Approach to Multilingual and Cross-Lingual Ontology Matching,” Proc. 10th Int’l Semantic Web Conf. (ISWC), pp. 665-680,
+2011.
+[73] A. Gal, Uncertain Schema Matching. Morgan & Claypool Publishers, 2011.
+[74] R. Tournaire, J.-M. Petit, M.-C. Rousset, and A. Termier, “Discovery
+of Probabilistic Mappings Between Taxonomies: Principles and
+Experiments,” J. Data Semantics, vol. 15, pp. 66-101, 2011.
+[75] L. Serafini and A. Tamilin, “DRAGO: Distributed Reasoning
+Architecture for the Semantic Web,” Proc. Second European
+Semantic Web Conf. (ESWC), pp. 361-376, 2005.
+[76] C. Meilicke, H. Stuckenschmidt, and A. Tamilin, “Reasoning
+Support for Mapping Revision,” J. Logic and Computation, vol. 19,
+no. 5, pp. 807-829, 2009.
+[77] T. Heath and C. Bizer, Linked Data: Evolving the Web into a Global
+Data Space, series Synthesis Lectures on the Semantic Web: Theory
+and Technology. Morgan & Claypool, 2011.
+[78] A. Nikolov, V. Uren, E. Motta, and A. de Roeck, “Overcoming
+Schema Heterogeneity between Linked Semantic Repositories to
+Improve Coreference Resolution,” Proc. Fourth Asian Semantic Web
+Conf. (ASWC), pp. 332-346, 2009.
+[79] H.-H. Do and E. Rahm, “Matching Large Schemas: Approaches
+and Evaluation,” Information Systems, vol. 32, no. 6, pp. 857-885,
+2007.
+[80] X. Chai, M. Sayyadian, A. Doan, A. Rosenthal, and L. Seligman,
+“Analyzing and Revising Mediated Schemas to Improve Their
+Matchability,” Proc. VLDB, vol. 1, no. 1, pp. 773-784, 2008.
+[81] A. Marie and A. Gal, “Boosting Schema Matchers,” Proc. 16th Int’l
+Conf. Cooperative Information Systems (CoopIS), pp. 283-300, 2008.
+[82] A. Ghazvinian, N.F. Noy, C. Jonquet, N.H. Shah, and M.A. Musen,
+“What Four Million Mappings can Tell You About Two Hundred
+Ontologies,” Proc. Eighth Int’l Semantic Web Conf. (ISWC), pp. 229242, 2009.
+[83] J. Euzenat, “Semantic Precision and Recall for Ontology Alignment Evaluation,” Proc. 20th Int’l Joint Conf. Artificial Intelligence
+(IJCAI), pp. 248-253, 2007.
+[84] D. Fleischhacker and H. Stuckenschmidt, “A Practical Implementation of Semantic Precision and Recall,” Proc. Fourth Int’l Conf.
+Complex, Intelligent and Software Intensive Systems (CISIS), pp. 986991, 2010.
+[85] J. Euzenat, “An API for Ontology Alignment,” Proc. Third Int’l
+Semantic Web Conf. (ISWC), pp. 698-712, 2004.
+[86] J. David, J. Euzenat, F. Scharffe, and C.T. dos Santos, “The
+Alignment Api 4.0,” Semantic Web J., vol. 2, no. 1, pp. 3-10, 2011.
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+[87] R. Porzel and R. Malaka, “A Task-Based Approach for Ontology
+Evaluation,” Proc. Workshop Ontology Learning and Population at the
+16th Eureopean Conf. Artificial Intelligence (ECAI), 2004.
+[88] E. Zavitsanos, G. Paliouras, and G.A. Vouros, “Gold Standard
+Evaluation of Ontology Learning Methods through Ontology
+Transformation and Alignment,” IEEE Trans. Knowledge and Data
+Eng., vol. 23, no. 11, pp. 1635-1648, Nov. 2011.
+[89] Y. Lee, M. Sayyadian, A. Doan, and A. Rosenthal, “eTuner: Tuning
+Schema Matching Software Using Synthetic Scenarios,” The VLDB
+J., vol. 16, no. 1, pp. 97-122, 2007.
+[90] M. Ehrig, S. Staab, and Y. Sure, “Bootstrapping Ontology
+Alignment Methods with APFEL,” Proc. Fourth Int’l Semantic
+Web Conf. (ISWC), pp. 186-200, 2005.
+[91] J. Euzenat, C. Meilicke, H. Stuckenschmidt, and C. Trojahn dos
+Santos, “A Web-Based Evaluation Service for Ontology Matching,” Proc. Ninth Int’l Semantic Web Conf. (ISWC), Demo Track,
+pp. 93-96, 2010.
+[92] A. Doan, J. Madhavan, R. Dhamankar, P. Domingos, and A.
+Halevy, “Learning to Match Ontologies on the Semantic Web,”
+The VLDB J., vol. 12, no. 4, pp. 303-319, 2003.
+[93] J. Wang, J.-R. Wen, F. Lochovsky, and W.-Y. Ma, “Instance-Based
+Schema Matching for Web Databases by Domain-Specific Query
+Probing,” Proc. 30th Int’l Conf. Very Large Data Bases (VLDB),
+pp. 408-419, 2004.
+[94] A. Bilke and F. Naumann, “Schema Matching Using Duplicates,”
+Proc. 21st Int’l Conf. Data Eng. (ICDE), pp. 69-80, 2005.
+[95] H. Nottelmann and U. Straccia, “A Probabilistic, Logic-Based
+Framework for Automated Web Directory Alignment,” Soft
+Computing in Ontologies and the Semantic Web, series Studies in
+fuzziness and soft computing, Z. Ma, ed. Springer, vol. 204,
+pp. 47-77, Springer, 2006.
+[96] A. Ferrara, S. Montanelli, J. Noessner, and H. Stuckenschmidt,
+“Benchmarking Matching Applications on the Semantic Web,”
+Proc. Eighth Extended Semantic Web Conf. (ESWC), pp. 108-122,
+2011.
+[97] I. Gent and T. Walsh, “Easy Problems are Hard,” Artificial
+Intelligence, vol. 70, no. 1, pp. 335-345, 1994.
+[98] E. Oren, S. Kotoulas, G. Anadiotis, R. Siebes, A. Ten Teije, and F.
+Van Harmelen, “Marvin: Distributed Reasoning Over Large-Scale
+Semantic Web Data,” J. Web Semantics, vol. 7, no. 4, pp. 305-316,
+2009.
+[99] M. Ehrig and S. Staab, “QOM - Quick Ontology Mapping,” Proc.
+Third Int’l Semantic Web Conf. (ISWC), pp. 683-697, 2004.
+[100] K. Saleem, Z. Bellahsene, and E. Hunt, “Porsche: Performance
+Oriented Schema Mediation,” Information Systems, vol. 33, nos. 7/
+8, pp. 637-657, 2008.
+[101] M.L. Lee, L.H. Yang, W. Hsu, and X. Yang, “XClust: Clustering
+XML Schemas for Effective Integration,” Proc. 11th Int’l Conf.
+Information and Knowledge Management (CIKM), pp. 292-299, 2002.
+[102] F. Giunchiglia, A. Autayeu, and J. Pane, “S-Match: An Open
+Source Framework for Matching Lightweight Ontologies,” Semantic Web J., vol. 3, no. 3, pp. 307-317, 2012.
+[103] E. Jime´nez-Ruiz and B.C. Grau, “Logmap: Logic-Based and
+Scalable Ontology Matching,” Proc. 10th Int’l Semantic Web Conf.
+(ISWC), pp. 273-288, 2011.
+[104] H.-H. Do and E. Rahm, “COMA - A System for Flexible
+Combination of Schema Matching Approaches,” Proc. 28th Int’l
+Conf. Very Large Data Bases (VLDB), pp. 610-621, 2002.
+[105] S. Duan, A. Fokoue, K. Srinivas, and B. Byrne, “A ClusteringBased Approach to Ontology Alignment,” Proc. 10th Int’l Semantic
+Web Conf. (ISWC), pp. 146-161, 2011.
+[106] P. Lambrix and Q. Liu, “Using Partial Reference Alignments to
+Align Ontologies,” Proc. Sixth European Semantic Web Conf.
+(ESWC), pp. 188-202, 2009.
+[107] Z. Aleksovski, “Using Background Knowledge in Ontology
+Matching,” PhD dissertation, Vrije U. Amsterdam, 2008.
+[108] P. Jain, P. Hitzler, A. Sheth, K. Verma, and P. Yeh, “Ontology
+Alignment for Linked Open Data,” Proc. Ninth Int’l Semantic Web
+Conf. (ISWC), pp. 402-417, 2010.
+[109] W. Hu, J. Chen, H. Zhang, and Y. Qu, “How Matchable are Four
+Thousand Ontologies on the Semantic Web,” Proc. Eighth Extended
+Semantic Web Conf. (ESWC), pp. 290-304, 2011.
+[110] R. Gligorov, W. ten Kate, Z. Aleksovski, and F. van Harmelen,
+“Using Google Distance to Weight Approximate Ontology
+Matches,” Proc. 16th Int’l World Wide Web Conf. (WWW), pp. 767776, 2007.
+
+SHVAIKO AND EUZENAT: ONTOLOGY MATCHING: STATE OF THE ART AND FUTURE CHALLENGES
+
+[111] J. Madhavan, P. Bernstein, A. Doan, and A. Halevy, “CorpusBased Schema Matching,” Proc. 21st Int’l Conf. Data Eng. (ICDE),
+pp. 57-68, 2005.
+[112] B. Saha, I. Stanoi, and K.L. Clarkson, “Schema Covering: A Step
+Towards Enabling Reuse in Information Integration,” Proc. 27th
+Int’l Conf. Data Eng. (ICDE), pp. 285-296, 2010.
+[113] V. Mascardi, A. Locoro, and P. Rosso, “Automatic Ontology
+Matching via Upper Ontologies: A Systematic Evaluation,” IEEE
+Trans. Knowledge and Data Eng., vol. 22, no. 5, pp. 609-623, May
+2010.
+[114] P. Jain, P.Z. Yeh, K. Verma, R.G. Vasquez, M. Damova, P. Hitzler,
+and A.P. Sheth, “Contextual Ontology Alignment of LOD with an
+Upper Ontology: A Case Study with Proton,” Proc. Eighth Extended
+Semantic Web Conf. (ESWC), pp. 80-92, 2011.
+[115] M. Sabou, M. d’Aquin, and E. Motta, “Exploring the Semantic
+Web as Background Knowledge for Ontology Matching,” J. Data
+Semantics, vol. 11, pp. 156-190, 2008.
+[116] F. Giunchiglia, P. Shvaiko, and M. Yatskevich, “Discovering
+Missing Background Knowledge in Ontology Matching,” Proc.
+17th European Conf. Artificial Intelligence (ECAI), pp. 382-386, 2006.
+[117] F. Giunchiglia, P. Shvaiko, and M. Yatskevich, “Semantic
+Matching,” Encyclopedia of Database Systems, pp. 2561-2566,
+Springer, 2009.
+[118] F. Giunchiglia, P. Shvaiko, and M. Yatskevich, “Semantic Schema
+Matching,” Proc. 13rd Int’l Conf. Cooperative Information Systems
+(CoopIS), pp. 347-365, 2005.
+[119] J. Shamdasani, T. Hauer, P. Bloodsworth, A. Branson, M. Odeh,
+and R. McClatchey, “Semantic Matching Using the UMLS,” Proc.
+Sixth European Semantic Web Conf. (ESWC), pp. 203-217, 2009.
+[120] M. Mochol, A. Jentzsch, and J. Euzenat, “Applying an Analytic
+Method for Matching Approach Selection,” Proc. First Int’l
+Workshop Ontology Matching (OM) at the Int’l Semantic Web Conf.
+(ISWC), pp. 37-48, 2006.
+[121] M. Huza, M. Harzallah, and F. Trichet, “OntoMas: A Tutoring
+System Dedicated to Ontology Matching,” Proc. First Int’l Workshop Ontology Matching (OM) at the Int’l Semantic Web Conf. (ISWC),
+pp. 228-323, 2006.
+[122] M. Mochol and A. Jentzsch, “Towards a Rule-Based Matcher
+Selection,” Proc. 16th Int’l Conf. Knowledge Eng.: Practice and
+Patterns (EKAW), pp. 109-119, 2008.
+[123] E. Peukert, J. Eberius, and E. Rahm, “Amc - A Framework for
+Modelling and Comparing Matching Systems as Matching
+Processes,” Proc. 27th Int’l Conf. Data Eng. (ICDE), pp. 1304-1307,
+2011.
+[124] A. Algergawy, R. Nayak, N. Siegmund, V. Ko¨ppen, and G. Saake,
+“Combining Schema and Level-Based Matching for Web Service
+Discovery,” Proc. 10th Int’l Conf. Web Eng. (ICWE), pp. 114-128,
+2010.
+[125] K. Eckert, C. Meilicke, and H. Stuckenschmidt, “Improving
+Ontology Matching Using Meta-Level Learning,” Proc. Sixth
+European Semantic Web Conf. (ESWC), pp. 158-172, 2009.
+[126] A. Doan, P. Domingos, and A. Halevy, “Reconciling Schemas of
+Disparate Data Sources: A Machine-Learning Approach,” Proc.
+20th ACM SIGMOD Int’l Conf. Management of Data (SIGMOD),
+pp. 509-520, 2001.
+[127] V. Spiliopoulos and G.A. Vouros, “Synthesizing Ontology Alignment Methods Using the Max-Sum Algorithm,” IEEE Trans.
+Knowledge and Data Eng., vol. 24, no. 5, rapid post, pp. 940-951,
+May 2012.
+[128] C. Trojahn dos Santos, J. Euzenat, V. Tamma, and T. Payne,
+“Argumentation for Reconciling Agent Ontologies,” Semantic
+Agent Systems, A. Eli, M. Kon, and M. Orgun, eds., chapter 5,
+pp. 89-111, Springer, 2011.
+[129] C. Domshlak, A. Gal, and H. Roitman, “Rank Aggregation for
+Automatic Schema Matching,” IEEE Trans. Knowledge and Data
+Eng., vol. 19, no. 4, pp. 538-553, Apr. 2007.
+[130] F. Duchateau, Z. Bellahsene, and R. Coletta, “A Flexible Approach
+for Planning Schema Matching Algorithms,” Proc. 16th Int’l Conf.
+Cooperative Information Systems (CoopIS), pp. 249-264, 2008.
+[131] H. Elmeleegy, M. Ouzzani, and A.K. Elmagarmid, “Usage-Based
+Schema Matching,” Proc. 24th Int’l Conf. Data Eng. (ICDE), pp. 2029, 2008.
+[132] A. Nandi and P.A. Bernstein, “Hamster: Using Search Clicklogs
+for Schema and Taxonomy Matching,” Proc. VLDB, vol. 2, no. 1,
+pp. 181-192, 2009.
+
+175
+
+[133] N. Noy and M. Musen, “The PROMPT Suite: Interactive Tools for
+Ontology Merging and Mapping,” Int’l J. Human-Computer Studies,
+vol. 59, no. 6, pp. 983-1024, 2003.
+[134] F. Shi, J. Li, J. Tang, G.T. Xie, and H. Li, “Actively Learning
+Ontology Matching via User Interaction,” Proc. Eighth Int’l
+Semantic Web Conf. (ISWC), pp. 585-600, 2009.
+[135] S. Duan, A. Fokoue, and K. Srinivas, “One Size Does not Fit All:
+Customizing Ontology Alignment Using User Feedback,” Proc.
+Ninth Int’l Semantic Web Conf. (ISWC), pp. 177-192, 2010.
+[136] S.M. Falconer and M.-A. D. Storey, “A Cognitive Support
+Framework for Ontology Mapping,” Proc. Sixth Int’l Semantic
+Web Conf. (ISWC) and Second Asian Semantic Web Conf. (ASWC),
+pp. 114-127, 2007.
+[137] A. Mocan, E. Cimpian, and M. Kerrigan, “Formal Model for
+Ontology Mapping Creation,” Proc. Fifth Int’l Semantic Web Conf.
+(ISWC), pp. 459-472, 2006.
+[138] A. Raffio, D. Braga, S. Ceri, P. Papotti, and M.A. Herna´ndez, “Clip:
+A Visual Language for Explicit Schema Mappings,” Proc. 24th Int’l
+Conf. Data Eng. (ICDE), pp. 30-39, 2008.
+[139] G.G. Robertson, M.P. Czerwinski, and J.E. Churchill, “Visualization of Mappings between Schemas,” Proc. 12th Conf. Human
+Factors in Computing Systems (CHI), pp. 431-439, 2005.
+[140] P.A. Bernstein and S. Melnik, “Model Management 2.0: Manipulating Richer Mappings,” Proc. 26th ACM SIGMOD Int’l Conf.
+Management of Data (SIGMOD), pp. 1-12, 2007.
+[141] E. von Hippel, Democratizing Innovation. MIT Press, 2005.
+[142] P. Shvaiko, F. Giunchiglia, P. Pinheiro da Silva, and D.
+McGuinness, “Web Explanations for Semantic Heterogeneity
+Discovery,” Proc. Second European Semantic Web Conf. (ESWC),
+pp. 303-317, 2005.
+[143] R. Dhamankar, Y. Lee, A. Doan, A. Halevy, and P. Domingos,
+“iMAP: Discovering Complex Semantic Matches Between Database Schemas,” Proc. 23rd ACM SIGMOD Int’l Conf. Management of
+Data (SIGMOD), pp. 383-394, 2004.
+[144] B. Alexe, L. Chiticariu, R.J. Miller, and W.C. Tan, “Muse: Mapping
+Understanding and Design by Example,” Proc. 24th Int’l Conf. Data
+Eng. (ICDE), pp. 10-19, 2008.
+[145] N. Tintarev and J. Masthoff, “A Survey of Explanations in
+Recommender Systems,” Proc. 23rd Int’l Conf. Data Eng. Workshops
+(ICDE Workshops), pp. 801-810, 2007.
+[146] A. Zhdanova and P. Shvaiko, “Community-Driven Ontology
+Matching,” Proc. Third European Semantic Web Conf. (ESWC),
+pp. 34-49, 2006.
+[147] N. Noy, N. Griffith, and M. Musen, “Collecting Community-Based
+Mappings in an Ontology Repository,” Proc. Seventh Int’l Semantic
+Web Conf. (ISWC), pp. 371-386, 2008.
+[148] R. McCann, W. Shen, and A. Doan, “Matching Schemas in Online
+Communities: A Web 2.0 Approach,” Proc. 24th Int’l Conf. Data
+Eng. (ICDE), pp. 110-119, 2008.
+[149] N. Noy, A. Chugh, and H. Alani, “The CKC Challenge: Exploring
+Tools for Collaborative Knowledge Construction,” IEEE Intelligent
+Systems, vol. 23, no. 1, pp. 64-68, Jan./Feb. 2008.
+[150] T. Tudorache, N. Noy, S.W. Tu, and M.A. Musen, “Supporting
+Collaborative Ontology Development in Prote´ge´,” Proc. Seventh
+Int’l Semantic Web Conf. (ISWC), pp. 17-32, 2008.
+[151] S. Pinto, C. Tempich, and S. Staab, “Ontology Engineering and
+Evolution in a Distributed World Using DILIGENT,” Handbook on
+Ontologies, S. Staab and R. Studer, eds., pp. 153-176, Springer,
+2009.
+[152] A. Doan, P. Bohannon, R. Ramakrishnan, X. Chai, P. DeRose, B.J.
+Gao, and W. Shen, “User-Centric Research Challenges in Community Information Management Systems,” IEEE Data Eng. Bull.,
+vol. 30, no. 2, pp. 32-40, June 2007.
+[153] L. van der Meij, A. Isaac, and C. Zinn, “A Web-Based Repository
+Service for Vocabularies and Alignments in the Cultural Heritage
+Domain,” Proc. Seventh Extended Semantic Web Conf. (ESWC),
+pp. 394-409, 2010.
+[154] J. Euzenat, “Alignment Infrastructure for Ontology Mediation and
+Other Applications,” Proc. Int’l Workshop Mediation in Semantic
+Web Services (MEDIATE), pp. 81-95, 2005.
+[155] M. Ehrig, Ontology Alignment: Bridging the Semantic Gap. Springer,
+2007.
+[156] M. d’Aquin and H. Lewen, “Cupboard - a Place to Expose Your
+Ontologies to Applications and the Community,” Proc. Sixth
+European Semantic Web Conf. (ESWC), Demo Track, pp. 913-918,
+2009.
+
+176
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+Pavel Shvaiko is an innovation and research manager at Informatica
+Trentina SpA, Italy. He has provided various consulting services,
+including the eGovernment Interoperability Framework consultancy for
+the government of Mozambique, evaluation of research, and/or
+innovation project proposals. He coauthored and coedited a number of
+books, e.g., the first book published by Springer in the area of ontology
+matching together with Je´roˆme Euzenat, contributed to, and published in
+various international journals and conferences in the fields of Semantic
+Web, artificial intelligence, and information systems. He also ran a
+number of international initiatives as well as gave invited talks and
+tutorials devoted to the semantic integration themes. His specialties
+include: strategic consulting and planning, innovation management,
+research and business development with topics involving semantic
+heterogeneity and semantic integration.
+
+VOL. 25,
+
+NO. 1,
+
+JANUARY 2013
+
+Je´roˆme Euzenat is a senior research scientist at INRIA (Montbonnot,
+France). He has set up and leads the INRIA Exmo team dedicated to
+“Computer-mediated communication of structured knowledge” which is
+also part of the Laboratoire d’Informatique de Grenoble (Grenoble
+computer science lab). He has contributed to reasoning maintenance
+systems, object-based knowledge representation, symbolic temporal
+granularity, collaborative knowledge base construction, multimedia
+document adaptation, and Semantic Web technologies. His all time
+interests are tied to the relationships holding between various
+representations of the same situation. This covers connecting heterogeneous ontologies and interpreting their relations.
+
+. For more information on this or any other computing topic,
+please visit our Digital Library at www.computer.org/publications/dlib.
+
+

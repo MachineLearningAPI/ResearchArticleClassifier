@@ -1,0 +1,1741 @@
+896
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+Improving Aggregate Recommendation
+Diversity Using Ranking-Based Techniques
+Gediminas Adomavicius, Member, IEEE, and YoungOk Kwon
+Abstract—Recommender systems are becoming increasingly important to individual users and businesses for providing personalized
+recommendations. However, while the majority of algorithms proposed in recommender systems literature have focused on improving
+recommendation accuracy (as exemplified by the recent Netflix Prize competition), other important aspects of recommendation quality,
+such as the diversity of recommendations, have often been overlooked. In this paper, we introduce and explore a number of item
+ranking techniques that can generate substantially more diverse recommendations across all users while maintaining comparable
+levels of recommendation accuracy. Comprehensive empirical evaluation consistently shows the diversity gains of the proposed
+techniques using several real-world rating data sets and different rating prediction algorithms.
+Index Terms—Recommender systems, recommendation diversity, ranking functions, performance evaluation metrics, collaborative
+filtering.
+
+Ç
+1
+
+INTRODUCTION
+
+I
+
+N the current age of information overload, it is becoming
+increasingly harder to find relevant content. This problem
+is not only widespread but also alarming [28]. Over the last
+10-15 years, recommender systems technologies have been
+introduced to help people deal with these vast amounts of
+information [1], [7], [9], [30], [36], [39], and they have been
+widely used in research as well as e-commerce applications,
+such as the ones used by Amazon and Netflix.
+The most common formulation of the recommendation
+problem relies on the notion of ratings, i.e., recommender
+systems estimate ratings of items (or products) that are yet
+to be consumed by users, based on the ratings of items
+already consumed. Recommender systems typically try to
+predict the ratings of unknown items for each user, often
+using other users’ ratings, and recommend top N items
+with the highest predicted ratings. Accordingly, there have
+been many studies on developing new algorithms that can
+improve the predictive accuracy of recommendations.
+However, the quality of recommendations can be evaluated
+along a number of dimensions, and relying on the accuracy
+of recommendations alone may not be enough to find the
+most relevant items for each user [24], [32]. In particular, the
+importance of diverse recommendations has been previously
+emphasized in several studies [8], [10], [14], [33], [46], [54],
+[57]. These studies argue that one of the goals of
+recommender systems is to provide a user with highly
+idiosyncratic or personalized items, and more diverse
+
+. G. Adomavicius is with the Department of Information and Decision
+Sciences, Carlson School of Management, University of Minnesota,
+Minneapolis, MN 55455. E-mail: gedas@umn.edu.
+. Y. Kwon is with the Division of Business Administration, Sookmyung
+Women’s University, 53-12 Chungpa-Dong 2-Ka, Yongsan-Ku, Seoul,
+140-742, Korea. E-mail: yokwon@sm.ac.kr.
+Manuscript received 25 Aug. 2009; revised 29 Apr. 2010; accepted 25 Sept.
+2010; published online 21 Dec. 2011.
+Recommended for acceptance by D. Cook.
+For information on obtaining reprints of this article, please send e-mail to:
+tkde@computer.org, and reference IEEECS Log Number TKDE-2009-08-0630.
+Digital Object Identifier no. 10.1109/TKDE.2011.15.
+1041-4347/12/$31.00 ß 2012 IEEE
+
+recommendations result in more opportunities for users to
+get recommended such items. With this motivation, some
+studies proposed new recommendation methods that can
+increase the diversity of recommendation sets for a given
+individual user, often measured by an average dissimilarity
+between all pairs of recommended items, while maintaining
+an acceptable level of accuracy [8], [33], [46], [54], [57].
+These studies measure recommendation diversity from an
+individual user’s perspective (i.e., individual diversity).
+In contrast to individual diversity, which has been
+explored in a number of papers, some recent studies [10],
+[14] started examining the impact of recommender systems
+on sales diversity by considering aggregate diversity of
+recommendations across all users. Note that high individual diversity of recommendations does not necessarily
+imply high aggregate diversity. For example, if the system
+recommends to all users the same five best selling items that
+are not similar to each other, the recommendation list for
+each user is diverse (i.e., high individual diversity), but only
+five distinct items are recommended to all users and
+purchased by them (i.e., resulting in low aggregate diversity
+or high sales concentration).
+While the benefits of recommender systems that provide
+higher aggregate diversity would be apparent to many
+users (because such systems focus on providing wider
+range of items in their recommendations and not mostly
+bestsellers, which users are often capable of discovering by
+themselves), such systems could be beneficial for some
+business models as well [10], [11], [14], [20]. For example, it
+would be profitable to Netflix if the recommender systems
+can encourage users to rent “long-tail” type of movies (i.e.,
+more obscure items that are located in the tail of the sales
+distribution [2]) because they are less costly to license and
+acquire from distributors than new-release or highly
+popular movies of big studios [20]. However, the impact
+of recommender systems on aggregate diversity in realworld e-commerce applications has not been well understood. For example, one study [10], using data from online
+clothing retailer, confirms the “long-tail” phenomenon that
+refers to the increase in the tail of the sales distribution (i.e.,
+Published by the IEEE Computer Society
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+the increase in aggregate diversity) attributable to the usage
+of the recommender system. On the other hand, another
+study [14] shows a contradictory finding that recommender
+systems actually can reduce the aggregate diversity in sales.
+This can be explained by the fact that the idiosyncratic items
+often have limited historical data and, thus, are more
+difficult to recommend to users; in contrast, popular items
+typically have more ratings and, therefore, can be recommended to more users. For example, in the context of
+Netflix Prize competition [6], [22], there is some evidence
+that, since recommender systems seek to find the common
+items (among thousands of possible movies) that two users
+have watched, these systems inherently tend to avoid
+extremes and recommend very relevant but safe recommendations to users [50].
+As seen from this recent debate, there is a growing
+awareness of the importance of aggregate diversity in
+recommender systems. Furthermore, while, as mentioned
+earlier, there has been significant amount of work done on
+improving individual diversity, the issue of aggregate
+diversity in recommender systems has been largely untouched. Therefore, in this paper, we focus on developing
+algorithmic techniques for improving aggregate diversity of
+recommendations (which we will simply refer to as diversity
+throughout the paper, unless explicitly specified otherwise),
+which can be intuitively measured by the number of
+distinct items recommended across all users.
+Higher diversity (both individual and aggregate), however, can come at the expense of accuracy. As known well,
+there is a tradeoff between accuracy and diversity because
+high accuracy may often be obtained by safely recommending to users the most popular items, which can clearly lead
+to the reduction in diversity, i.e., less personalized
+recommendations [8], [33], [46]. And conversely, higher
+diversity can be achieved by trying to uncover and
+recommend highly idiosyncratic or personalized items for
+each user, which often have less data and are inherently
+more difficult to predict, and, thus, may lead to a decrease
+in recommendation accuracy.
+Table 1 illustrates an example of accuracy and diversity
+tradeoff in two extreme cases where only popular items or
+long-tail type items are recommended to users, using
+MovieLens rating data set (data sets used in this paper are
+discussed in Section 5.1). In this example, we used a popular
+recommendation technique, i.e., neighborhood-based collaborative filtering (CF) technique [9], to predict unknown
+ratings. Then, as candidate recommendations for each user,
+we considered only the items that were predicted above the
+predefined rating threshold to assure the acceptable level of
+accuracy, as is typically done in recommender systems.
+Among these candidate items for each user, we identified the
+item that was rated by most users (i.e., the item with the
+largest number of known ratings) as a popular item, and the
+item that was rated by least number of users (i.e., the item
+with the smallest number of known ratings) as a long-tail
+item. As illustrated by Table 1, if the system recommends
+each user the most popular item (among the ones that had a
+sufficiently high predicted rating), it is much more likely for
+many users to get the same recommendation (e.g., the best
+selling item). The accuracy measured by precision-in-top-1
+metric (i.e., the percentage of truly “high” ratings among
+those that were predicted to be “high” by the recommender
+system) is 82 percent, but only 49 popular items out of
+
+897
+
+TABLE 1
+Accuracy-Diversity Tradeoff: Empirical Example
+
+Note: Recommendations (top-1 item for each user) are generated for
+2,828 users among the items that are predicted above the acceptable
+threshold 3.5 (out of 5), using a standard item-based collaborative
+filtering technique with 50 neighbors on MovieLens Data set.
+
+approximately 2,000 available distinct items are recommended across all users. The system can improve the
+diversity of recommendations from 49 up to 695 (a 14-fold
+increase) by recommending the long-tail item to each user
+(i.e., the least popular item among highly predicted items for
+each user) instead of the popular item. However, high
+diversity in this case is obtained at the significant expense of
+accuracy, i.e., drop from 82 to 68 percent.
+The above example shows that it is possible to obtain
+higher diversity simply by recommending less popular
+items; however, the loss of recommendation accuracy in
+this case can be substantial. In this paper, we explore new
+recommendation approaches that can increase the diversity
+of recommendations with only a minimal (negligible)
+accuracy loss using different recommendation ranking
+techniques. In particular, traditional recommender systems
+typically rank the relevant items in a descending order
+of their predicted ratings for each user and then recommend
+top N items, resulting in high accuracy. In contrast, the
+proposed approaches consider additional factors, such as
+item popularity, when ranking the recommendation list to
+substantially increase recommendation diversity while
+maintaining comparable levels of accuracy. This paper
+provides a comprehensive empirical evaluation of the
+proposed approaches, where they are tested with various
+data sets in a variety of different settings. For example, the
+best results show up to 20-25 percent diversity gain with
+only 0.1 percent accuracy loss, up to 60-80 percent gain with
+1 percent accuracy loss, and even substantially higher
+diversity improvements (e.g., up to 250 percent) if some
+users are willing to tolerate higher accuracy loss.
+In addition to providing significant diversity gains, the
+proposed ranking techniques have several other advantageous characteristics. In particular, these techniques are
+extremely efficient, because they are based on scalable
+sorting-based heuristics that make decisions based only on
+the “local” data (i.e., only on the candidate items of each
+individual user) without having to keep track of the “global”
+information, such as which items have been recommended
+across all users and how many times. The techniques are also
+parameterizable, since the user has the control to choose the
+acceptable level of accuracy for which the diversity will be
+maximized. Also, the proposed ranking techniques provide a
+flexible solution to improving recommendation diversity
+because: they are applied after the unknown item ratings
+have been estimated and, thus, can achieve diversity gains in
+conjunction with a number of different rating prediction
+techniques, as illustrated in the paper; as mentioned above,
+the vast majority of current recommender systems already
+
+898
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+employ some ranking approach, thus, the proposed techniques would not introduce new types of procedures into
+recommender systems (they would replace existing ranking
+procedures); the proposed ranking approaches do not
+require any additional information about users (e.g., demographics) or items (e.g., content features) aside from the
+ratings data, which makes them applicable in a wide variety
+of recommendation contexts.
+The remainder of the paper is organized as follows:
+Section 2 reviews relevant literature on traditional recommendation algorithms and the evaluation of recommendation quality. Section 3 describes our motivations for
+alternative recommendation ranking techniques, such as
+item popularity. We then propose several additional
+ranking techniques in Section 4, and the main empirical
+results follow in Section 5. Additional experiments are
+conducted to further explore the proposed ranking techniques in Section 6. Lastly, Section 7 concludes the paper by
+summarizing the contributions and future directions.
+
+2
+2.1
+
+RELATED WORK
+
+Recommendation Techniques for Rating
+Prediction
+Recommender systems are usually classified into three
+categories based on their approach to recommendation:
+content-based, collaborative, and hybrid approaches [1], [3].
+Content-based recommender systems recommend items
+similar to the ones the user preferred in the past.
+Collaborative filtering recommender systems recommend
+items that users with similar preferences (i.e., “neighbors”)
+have liked in the past. Finally, hybrid approaches can
+combine content-based and collaborative methods in
+several different ways. Recommender systems can also be
+classified based on the nature of their algorithmic technique
+into heuristic (or memory-based) and model-based approaches [1], [9]. Heuristic techniques typically calculate
+recommendations based directly on the previous user
+activities (e.g., transactional data or rating values). One of
+the commonly used heuristic techniques is a neighborhoodbased approach that finds nearest neighbors that have
+tastes similar to those of the target user [9], [13], [34], [36],
+[40]. In contrast, model-based techniques use previous user
+activities to first learn a predictive model, typically using
+some statistical or machine-learning methods, which is then
+used to make recommendations. Examples of such techniques include Bayesian clustering, aspect model, flexible
+mixture model, matrix factorization, and other methods [4],
+[5], [9], [25], [44], [48].
+In real-world settings, recommender systems generally
+perform the following two tasks in order to provide
+recommendations to each user. First, the ratings of unrated
+items are estimated based on the available information
+(typically using known user ratings and possibly also
+information about item content or user demographics)
+using some recommendation algorithm. And second, the
+system finds items that maximize the user’s utility based on
+the predicted ratings, and recommends them to the user.
+Ranking approaches proposed in this paper are designed to
+improve the recommendation diversity in the second task of
+finding the best items for each user.
+Because of the decomposition of rating estimation and
+recommendation ranking tasks, our proposed ranking
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+approaches provide a flexible solution, as mentioned
+earlier: they do not introduce any new procedures into
+the recommendation process and also can be used in
+conjunction with any available rating estimation algorithm.
+In our experiments, to illustrate the broad applicability of
+the proposed recommendation ranking approaches, we
+used them in conjunction with the most popular and widely
+employed CF techniques for rating prediction: a heuristic
+neighborhood-based technique and a model-based matrix
+factorization technique.
+Before we provide an overview of each technique, we
+introduce some notation and terminology related to
+recommendation problem. Let U be the set of users of a
+recommender system, and let I be the set of all possible
+items that can be recommended to users. Then, the utility
+function that represents the preference of item i 2 I by user
+u 2 U is often defined as R : U Â I ! Rating, where Rating
+typically represents some numeric scale used by the users to
+evaluate each item. Also, in order to distinguish between
+the actual ratings and the predictions of the recommender
+system, we use the Rðu; iÞ notation to represent a known
+rating (i.e., the actual rating that user u gave to item i), and
+the RÃ ðu; iÞ notation to represent an unknown rating (i.e.,
+the system-predicted rating for item i that user u has not
+rated before).
+
+2.1.1 Neighborhood-Based CF Technique
+There exist multiple variations of neighborhood-based CF
+techniques [9], [36], [40]. In this paper, to estimate RÃ (u, i),
+i.e., the rating that user u would give to item i, we first
+compute the similarity between user u and other users u0
+using a cosine similarity metric [9], [40]:
+P
+0
+i2Iðu;u0 Þ Rðu; iÞ Á Rðu ; iÞ
+0
+q
+ﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃ
+ﬃ ; ð1Þ
+simðu; u Þ ¼ qﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃ
+P
+P
+2
+2
+0
+i2Iðu;u0 Þ Rðu; iÞ
+i2Iðu;u0 Þ Rðu ; iÞ
+where Iðu; u0 Þ represents the set of all items rated by both
+user u and user u0 . Based on the similarity calculation, set
+NðuÞ of nearest neighbors of user u is obtained. The size of
+set N(u) can range anywhere from 1 to jUj À 1, i.e., all other
+users in the data set. Then, RÃ ðu; iÞ is calculated as the
+adjusted weighted sum of all known ratings Rðu0 ; iÞ, where
+u0 2 NðuÞ [13], [34]:
+P
+0
+0
+0
+u0 2NðuÞ simðu; u ÞÁðRðu ; iÞ À Rðu ÞÞ
+Ã
+P
+R ðu; iÞ ¼ RðuÞ þ
+: ð2Þ
+0
+u0 2NðuÞ jsimðu; u Þj
+Here, RðuÞ represents the average rating of user u.
+A neighborhood-based CF technique can be user-based
+or item-based, depending on whether the similarity is
+calculated between users or items. Formulas (1) and (2)
+represent the user-based approach, but they can be
+straightforwardly rewritten for the item-based approach
+because of the symmetry between users and items in all
+neighborhood-based CF calculations [40]. In our experiments, we used both user-based and item-based approaches
+for rating estimation.
+
+2.1.2 Matrix Factorization CF Technique
+Matrix factorization techniques have been the mainstay of
+numerical linear algebra dating back to the 1970s [16], [21],
+[27] and have recently gained popularity in recommender
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+systems applications because of their effectiveness in
+improving recommendation accuracy [41], [47], [52], [55].
+Many variations of matrix factorization techniques have
+been developed to solve the problems of data sparsity,
+overfitting, and convergence speed, and they turned out to
+be a crucial component of many well-performing algorithms
+in the popular Netflix Prize1 competition [4], [5], [6], [15],
+[22], [29], [30]. We implemented the basic version of this
+technique, as presented in [15]. With the assumption that a
+user’s rating for an item is composed of a sum of preferences
+about the various features of that item, this model is induced
+by Singular Value Decomposition (SVD) on the user-item
+ratings matrix. In particular, using K features (i.e., rank-K
+SVD), user u is associated with a user-factor vector pu (the
+user’s preferences for K features), and item i is associated
+with an item-factor vector qi (the item’s importance weights
+for K features). The preference of how much user u likes
+item i, denoted by RÃ ðu; iÞ, is predicted by taking an inner
+product of the two vectors, i.e.,
+RÃ ðu; iÞ ¼ pTu qi :
+
+ð3Þ
+
+All values in user- and item-factor vectors are initially
+assigned to arbitrary numbers and estimated with a simple
+gradient descent technique as described in (4). User- and
+item-factor vectors are iteratively updated with learning
+rate parameter () as well as regularization parameter (),
+which is used to minimize overfitting, until the minimum
+improvement in predictive accuracy or a predefined
+number of iterations per feature is reached. One learning
+iteration is defined as
+For each rating Rðu; iÞ
+err ¼ Rðu; iÞ À pTu qi
+pu ¼ pu þ ðerr Â qi À  Â pu Þ
+qi ¼ qi þ ðerr Â pu À  Â qi Þ
+End For
+
+(4)
+
+Finally, unknown ratings are estimated with the final two
+vectors pu and qi as stated in (3). More details on variations
+of matrix factorization techniques used in recommender
+systems can be found in [4], [5], [30], [52], [55].
+
+2.2 Accuracy of Recommendations
+Numerous recommendation techniques have been developed over the last few years, and various metrics have been
+employed for measuring the accuracy of recommendations,
+including statistical accuracy metrics and decision-support
+measures [24]. As examples of statistical accuracy metrics,
+mean absolute error (MAE) and root mean squared error
+(RMSE) metrics measure how well a system can predict an
+exact rating value for a specific item. Examples of decisionsupport metrics include precision (the percentage of truly
+“high” ratings among those that were predicted to be
+“high” by the recommender system), recall (the percentage
+of correctly predicted “high” ratings among all the ratings
+known to be “high”), and F-measure, which is a harmonic
+mean of precision and recall. In particular, the ratings of the
+data sets that we used in our experiments are integers
+between 1 and 5, inclusive, where higher value represents a
+better liked item. As commonly done in recommender
+systems literature, we define the items greater than 3.5
+1. More information can be found at www.netflixprize.com.
+
+899
+
+(threshold for “high” ratings, denoted by TH ) as “highly
+ranked” and the ratings less than 3.5 as “nonhighly
+ranked.” Furthermore, in real-world settings, recommender
+systems typically recommend the most highly ranked
+N items since users are usually interested in only several
+most relevant recommendations, and this list of N items for
+user u can be defined as LN ðuÞ ¼ fi1 ; . . . ; iN g, where
+RÃ ðu; ik Þ ! TH for all k 2 f1; 2; ::; Ng. Therefore, in our
+paper, we evaluate the recommendation accuracy based
+on the percentage of truly “highly ranked” ratings, denoted
+by correctðLN ðuÞÞ, among those that were predicted to be
+the N most relevant “highly ranked” items for each user,
+i.e., using the popular precision-in-top-N metric [24]. The
+metric can be written formally as
+X
+X
+jcorrectðLN ðuÞÞj
+jLN ðuÞj;
+precision-in-top-N ¼
+u2U
+
+u2U
+
+where correctðLN ðuÞÞ ¼ fi 2 LN ðuÞjRðu; iÞ ! TH g. However, relying on the accuracy of recommendations alone
+may not be enough to find the most relevant items for a
+user. It has often been suggested that recommender systems
+must be not only accurate, but also useful [24], [32]. For
+example, McNee et al. [32] suggest new user-centric
+directions for evaluating recommender systems beyond
+the conventional accuracy metrics. They claim that serendipity in recommendations or user experiences and
+expectations also should be considered in evaluating the
+recommendation quality. Among many different aspects
+that cannot be measured by accuracy metrics alone, in this
+paper, we focus on the notion of the diversity of recommendations, which is discussed next.
+
+2.3 Diversity of Recommendations
+As mentioned in Section 1, the diversity of recommendations
+can be measured in two ways: individual and aggregate.
+Most of recent studies have focused on increasing the
+individual diversity, which can be calculated from each user’s
+recommendation list (e.g., an average dissimilarity between
+all pairs of items recommended to a given user) [8], [33],
+[46], [54], [57]. These techniques aim to avoid providing too
+similar recommendations for the same user. For example,
+some studies [8], [46], [57] used an intralist similarity metric
+to determine the individual diversity. Alternatively, Zhang
+and Hurley [54] used a new evaluation metric, item novelty,
+to measure the amount of additional diversity that one item
+brings to a list of recommendations. Moreover, the loss of
+accuracy, resulting from the increase in diversity, is
+controlled by changing the granularity of the underlying
+similarity metrics in the diversity-conscious algorithms [33].
+On the other hand, except for some work that examined
+sales diversity across all users of the system by measuring a
+statistical dispersion of sales [10], [14], there have been
+few studies that explore aggregate diversity in recommender
+systems, despite the potential importance of diverse
+recommendations from both user and business perspectives, as discussed in Section 1. Several metrics can be used
+to measure aggregate diversity, including the percentage of
+items that the recommender system is able to make
+recommendations for (often known as coverage) [24]. Since
+we intend to measure the recommender systems performance based on the top-N recommended items lists that the
+system provides to its users, in this paper, we use the total
+number of distinct items recommended across all users as
+
+900
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+an aggregate diversity measure, which we will refer to as
+diversity-in-top-N and formally define as follows:
+
+
+
+
+diversity-in-top-N ¼  [ LN ðuÞ:
+u2U
+
+Note that the diversity-in-top-N metric can also serve as
+an indicator of the level of personalization provided by a
+recommender system. For example, a very low diversityin-top-N indicates that all users are being recommended
+the same top-N items (low level of personalization),
+whereas a very high diversity-in-top-N points to the fact
+that every user receives her own unique top-N items (high
+level of personalization).
+In summary, the goal of the proposed ranking approaches is to improve the diversity of recommendations;
+however, as described in Section 1, there is a potential
+tradeoff between recommendation accuracy and diversity.
+Thus, in this paper, we aim to find techniques that can
+improve aggregate diversity of recommendations while
+maintaining adequate accuracy.
+
+3
+
+MOTIVATIONS FOR RECOMMENDATION
+RERANKING
+
+In this section, we discuss how reranking of the candidate
+items whose predictions are above TH can affect the
+accuracy-diversity tradeoff and how various item ranking
+factors, such as popularity-based approach, can improve
+the diversity of recommendations. Note that the general
+idea of personalized information ordering is not new; e.g.,
+its importance has been discussed in information retrieval
+literature [35], [45], including some attempts to reduce
+redundancy and promote the diversity of retrieved results
+by reranking them [12], [38], [53].
+
+3.1 Standard Ranking Approach
+Typical recommender systems predict unknown ratings
+based on known ratings, using any traditional recommendation technique such as neighborhood-based or matrix
+factorization CF techniques, discussed in Section 2.1. Then,
+the predicted ratings are used to support the user’s decision
+making. In particular, each user u gets recommended a list
+of top-N items, LN ðuÞ, selected according to some ranking
+criterion. More formally, item ix is ranked ahead of item iy
+(i.e., ix 0 iy ) if rankðix Þ < rankðiy Þ, where rank: I ! IR is a
+function representing the ranking criterion. The vast
+majority of current recommender systems use the predicted
+rating value as the ranking criterion:
+rankStandard ðiÞ ¼ RÃ ðu; iÞÀ1 :
+The power of À1 in the above expression indicates that
+the items with highest predicted (as opposed to lowest
+predicted) ratings RÃ ðu; iÞ are the ones being recommended
+to user. In the paper, we refer to this as the standard ranking
+approach, and it shares the motivation with the widely used
+probability ranking principle in information retrieval
+literature that ranks the documents in order of decreasing
+probability of relevance [37].
+Note that, by definition, recommending the most highly
+predicted items selected by the standard ranking approach
+is designed to help improve recommendation accuracy, but
+not recommendation diversity. Therefore, new ranking
+
+Fig. 1. Performance of the standard ranking approach and itempopularity-based approach with its parameterized versions.
+
+criteria are needed in order to achieve diversity improvement. Since recommending best selling items to each user
+typically leads to diversity reduction, recommending less
+popular items intuitively should have an effect toward
+increasing recommendation diversity. And, as seen from
+the example in Table 1 (in Section 1), this intuition has
+empirical support. Following this motivation, we explore
+the possibility to use item popularity as a recommendation
+ranking criterion, and in the next section, we show how this
+approach can affect the recommendation quality in terms of
+accuracy and diversity.
+
+3.2
+
+Proposed Approach: Item-Popularity-Based
+Ranking
+Item-popularity-based ranking approach ranks items directly based on their popularity, from lowest to highest,
+where popularity is represented by the number of known
+ratings that each item has. More formally, item-popularitybased ranking function can be written as follows:
+rankItemPop ðiÞ ¼ jUðiÞj; where UðiÞ ¼ fu 2 U j 9Rðu; iÞg:
+We compared the performance of the item-popularitybased ranking approach with the standard ranking approach using MovieLens data set and item-based CF, and we
+present this comparison using the accuracy-diversity plot in
+Fig. 1. In particular, the results show that, as compared to the
+standard ranking approach, the item-popularity-based
+ranking approach increased recommendation diversity from
+385 to 1,395 (i.e., 3.6 times!); however, recommendation
+accuracy dropped from 89 to 69 percent. Here, despite the
+significant diversity gain, such a significant accuracy loss
+(20 percent) would not be acceptable in most real-life
+personalization applications. Therefore, next we introduce
+a general technique to parameterize recommendation ranking approaches, which allows to achieve significant diversity
+gains while controlling accuracy losses (e.g., according to
+how much loss is tolerable in a given application).
+
+3.3
+
+Controlling Accuracy-Diversity Tradeoff:
+Parameterized Ranking Approaches
+The item-popularity-based ranking approach as well as all
+other ranking approaches proposed in this paper (to be
+discussed in Section 4) are parameterized with “ranking
+threshold” TR 2 ½TH ; Tmax  (where Tmax is the largest possible
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+901
+
+Fig. 2. General overview of ranking-based approaches for improving recommendation diversity.
+
+rating on the rating scale, e.g., Tmax ¼ 5) to allow user the
+ability to choose a certain level of recommendation accuracy.
+In particular, given any ranking function rankX ðiÞ, ranking
+threshold TR is used for creating the parameterized version
+of this ranking function, rankX ði; TR Þ, which is formally
+defined as
+8
+if RÃ ðu; iÞ
+rankx ðiÞ;
+>
+>
+>
+<
+2 ½TR ; Tmax ;
+rankx ði; TR Þ ¼
+>
+þ
+rank
+ðiÞ;
+if
+RÃ ðu; iÞ
+
+Standard
+>
+> u
+:
+2 ½TH ; TR Þ;
+where IuÃ ðTR Þ ¼ fi 2 IjRÃ ðu; iÞ ! TR g; u ¼ max
+rankx ðiÞ:
+Ã
+i2Iu ðTR Þ
+
+Simply put, items that are predicted above ranking
+threshold TR are ranked according to rankX ðiÞ, while items
+that are below TR are ranked according to the standard
+ranking approach rankStandard ðiÞ. In addition, all items that
+are above TR get ranked ahead of all items that are below TR
+(as ensured by u in the above formal definition). Thus,
+increasing the ranking threshold TR 2 ½TH ; Tmax  toward
+Tmax would enable choosing the most highly predicted items
+resulting in more accuracy and less diversity (becoming
+increasingly similar to the standard ranking approach); in
+contrast, decreasing the ranking threshold TR 2 ½TH ; Tmax 
+toward TH would make rankX ði; TR Þ increasingly more
+similar to the pure ranking function rankX ðiÞ, resulting in
+more diversity with some accuracy loss.
+Therefore, choosing different TR values in between the
+extremes allows the user to set the desired balance between
+accuracy and diversity. In particular, as Fig. 1 shows, the
+recommendation accuracy of item-popularity-based ranking approach could be improved by increasing the ranking
+threshold. For example, the item-popularity-based ranking
+approach with ranking threshold 4.4 could minimize the
+accuracy loss to 1.32 percent, but still could obtain 83 percent
+diversity gain (from 385 to 703), compared to the standard
+
+ranking approach. An even higher threshold 4.7 still makes
+it possible to achieve 20 percent diversity gain (from 385 to
+462) with only 0.06 percent of accuracy loss.
+Also note that, even when there are less than N items
+above the ranking threshold TR , by definition, all the items
+above TR are recommended to a user, and the remaining
+top-N items are selected according to the standard ranking
+approach. This ensures that all the ranking approaches
+proposed in this paper provide the same exact number of
+recommendations as their corresponding baseline techniques (the ones using the standard ranking approach), which
+is very important from the experimental analysis point of
+view as well in order to have a fair performance comparison
+of different ranking techniques.
+
+3.4 General Steps for Recommendation Reranking
+The item-popularity-based ranking approach described
+above is just one example of possible ranking approaches
+for improving recommendation diversity, and a number of
+additional ranking functions, rankX ðiÞ, will be introduced
+in Section 4. Here, based on the previous discussion in
+Section 3, we summarize the general ideas behind the
+proposed ranking approaches, as illustrated by Fig. 2.
+The first step, shown in Fig. 2a, represents the standard
+approach, which, for each user, ranks all the predicted items
+according to the predicted rating value and selects top-N
+candidate items, as long as they are above the highly
+predicted rating threshold TH . The recommendation quality
+of the overall recommendation technique is measured in
+terms of the precision-in-top-N and the diversity-in-top-N,
+as shown in the accuracy-diversity plot at the right side of
+the example (a).
+The second step, illustrated in Fig. 2b, shows the
+recommendations provided by applying one of the proposed
+ranking functions, rankX ðiÞ, where several different items
+(that are not necessarily among N most highly predicted, but
+are still above TH ) are recommended to the user. This way, a
+
+902
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+Fig. 3. Relationships between various item ranking criteria and predicted rating value, for highly predicted ratings (MovieLens data).
+
+user can get recommended more idiosyncratic, long-tail, less
+frequently recommended items that may not be as widely
+popular, but can still be very relevant to this user (as
+indicated by relatively high predicted rating). Therefore,
+reranking the candidate items can significantly improve the
+recommendation diversity although, as discussed, this
+typically comes at some loss of recommendation accuracy.
+The performance graph of the second step (b) demonstrates
+this accuracy-diversity tradeoff.
+The third step, shown in Fig. 2c, can significantly
+minimize accuracy loss by confining the reranked recommendations to the items above newly introduced ranking
+threshold TR (e.g., 3.8 out of 5). In this particular illustration,
+note that the increased ranking threshold makes the fifth
+recommended item in step (b) (i.e., item with predicted
+rating value of 3.65) filtered out and the next possible item
+above the new ranking threshold (i.e., the item predicted as
+3.81) is recommended to user u. Averaged across all users,
+this parameterization helps to make the level of accuracy
+loss fairly small with still a significant diversity gain (as
+compared to the standard ranking approach), as shown in
+the performance graph of step (c).
+We now introduce several additional item ranking
+functions, and provide empirical evidence that supports
+our motivation of using these item criteria for diversity
+improvement.
+
+4
+
+ADDITIONAL RANKING APPROACHES
+
+In many personalization applications (e.g., movie or book
+recommendations), there often exist more highly predicted
+ratings for a given user than can be put in her top-N list.
+This provides opportunities to have a number of alternative
+ranking approaches, where different sets of items can
+possibly be recommended to the user. In this section, we
+introduce six additional ranking approaches that can be
+
+used as alternatives to rankStandard to improve recommendation diversity, and the formal definitions of each ranking
+approach (provided below) are illustrated in Fig. 3 with
+empirical evidence. Because of the space limitations, in this
+section we show the empirical results from MovieLens data
+set; however, consistently similar patterns were found in
+other data sets (discussed in Section 5.1) as well.
+In particular, in our empirical analysis, we consistently
+observed that popular items, on average, are likely to have
+higher predicted ratings than less popular items, using both
+heuristic- and model-based techniques for rating prediction,
+as shown in Fig. 3a. As discussed in Section 3, recommending less popular items helps to improve recommendation
+diversity; therefore, as can be immediately suggested from
+the monotonic relationship between average item popularity and predicted rating value, recommending not as highly
+predicted items (but still predicted to be above TH ) likely
+implies recommending, on average, less popular items,
+potentially leading to diversity improvements. Therefore,
+we propose to use predicted rating value itself as an item
+ranking criterion:
+.
+
+Reverse Predicted Rating Value, i.e., ranking the
+candidate (highly predicted) items based on their
+predicted rating value, from lowest to highest (as a
+result choosing less popular items, according to
+Fig. 3a). More formally:
+rankRevPred ðiÞ ¼ RÃ ðu; iÞ:
+
+We now propose several other ranking criteria that
+exhibit consistent relationships to predicted rating value,
+including average rating, absolute likeability, relative likeability, item rating variance, and neighbors’ rating variance,
+as shown in Figs. 3b, 3c, 3d, 3e, and 3f. In particular, the
+relationship between predicted rating values and the
+average actual rating of each item (as explicitly rated by
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+users), shown in Fig. 3b, also supports a similar conjecture
+that items with lower average rating, on average, are more
+likely to have lower predicted rating values (likely
+representing less popular items, as shown earlier). Thus,
+such items could be recommended for better diversity.
+.
+
+TABLE 2
+Basic Information of Movie Rating Data Sets
+
+Item Average Rating, i.e., ranking items according to
+an average of all known ratings for each item:
+
+rankAvgRating ðiÞ ¼ RðiÞ; where RðiÞ ¼
+
+1 X
+Rðu; iÞ:
+jUðiÞj u2UðiÞ
+
+Similarly, the relationship between predicted rating
+values and item absolute (or relative) likeability, shown in
+Figs. 3c and 3d, also suggests that the items with lower
+likeability, on average, are more likely to have lower
+predicted rating values (likely representing less popular
+movies) and, thus, could be recommended for better
+diversity.
+.
+
+.
+
+Item Absolute Likeability, i.e., ranking items according to how many users liked them (rated the item
+above TH ):
+
+Item Relative Likeability, i.e., ranking items according to the percentage of the users who liked an item
+(among all users who rated it):
+rankRelLike ðiÞ ¼ jUH ðiÞj=jUðiÞj:
+
+We can also use two different types of rating variances to
+improve recommendation diversity. With any traditional
+recommendation technique, each item’s rating variance
+(which can be computed from known ratings submitted for
+that item) can be used for reranking candidate items. Also,
+if any neighborhood-based recommendation technique is
+used for prediction, we can use the rating variance of
+neighbors whose ratings are used to predict the rating for
+reranking candidate items. As shown in Figs. 3e and 3f, the
+relationship between the predicted rating value and each
+item’s rating variance and the relationship between predicted rating value and 50 neighbors’ rating variance
+obtained by using a neighborhood-based CF technique
+demonstrate that highly predicted items tend to be low in
+both item rating variance and neighbors’ rating variance. In
+other words, among the highly predicted ratings (i.e., above
+TH ), there is more user consensus for higher predicted items
+than for lower predicted ones. These findings indicate that
+reranking recommendation list by rating variance and
+choosing the items with higher variance could improve
+recommendation diversity.
+.
+
+Item Rating Variance, i.e., ranking items according
+to each item’s rating variance (rating variance of
+users who rated the item):
+rankItemVar ðiÞ ¼
+
+1 X
+ðRðu; iÞ À RðiÞÞ2 :
+jUðiÞj u2UðiÞ
+
+Neighbors’ Rating Variance, i.e., ranking items
+according to the rating variance of neighbors of a
+particular user for a particular item. The closest
+neighbors of user u among the users who rated the
+particular item i, denoted by u0 , are chosen from the
+set of UðiÞ \ NðuÞ.
+rankNeighborVar ðiÞ
+X
+1
+ðRðu0 ; iÞ À Ru ðiÞÞ2 ;
+¼
+jUðiÞ \ NðuÞj u0 2ðUðiÞ\NðuÞÞ
+
+rankAbsLike ðiÞ ¼ jUH ðiÞj;
+where UH ðiÞ ¼ fu 2 UðiÞjRðu; iÞ ! TH g:
+.
+
+903
+
+where Ru ðiÞ ¼
+
+X
+1
+Rðu0 ; iÞ:
+jUðiÞ \ NðuÞj u0 2ðUðiÞ\NðuÞÞ
+
+In summary, there exist a number of different ranking
+approaches that can improve recommendation diversity by
+recommending items other than the ones with topmost
+predicted rating values to a user. In addition, as indicated
+in Fig. 1, the degree of improvement (and, more importantly, the degree of tolerable accuracy loss) can be
+controlled by the chosen ranking threshold value TR . The
+next section presents comprehensive empirical results
+demonstrating the effectiveness and robustness of the
+proposed ranking techniques.
+
+5
+
+EMPIRICAL RESULTS
+
+5.1 Data
+The proposed recommendation ranking approaches were
+tested with several movie rating data sets, including
+MovieLens (data file available at grouplens.org), Netflix
+(data file available at netflixprize.com), and Yahoo! Movies
+(individual ratings collected from movie pages at movies.
+yahoo.com). We preprocessed each data set to include users
+and movies with significant rating history, which makes it
+possible to have sufficient number of highly predicted items
+for recommendations to each user (in the test data). The
+basic statistical information of the resulting data sets is
+summarized in Table 2. For each data set, we randomly
+chose 60 percent of the ratings as training data and used
+them to predict the remaining 40 percent (i.e., test data).
+5.2 Performance of Proposed Ranking Approaches
+We conducted experiments on the three data sets described
+in Section 5.1, using three widely popular recommendation
+
+904
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+techniques for rating prediction, including two heuristicbased (user-based and item-based CF) and one modelbased (matrix factorization CF) techniques, discussed in
+Section 2.1. All seven proposed ranking approaches were
+used in conjunction with each of the three rating prediction
+techniques to generate top-N (N ¼ 1, 5, 10) recommendations to each user on each data set, with the exception of
+neighbors’ variance-based ranking of model-based predicted ratings. In particular, because there is no concept of
+neighbors in a pure matrix factorization technique, the
+ranking approach based on neighbors’ rating variance was
+applied only with heuristic-based techniques. We set
+predicted rating threshold as TH ¼ 3:5 (out of 5) to ensure
+that only relevant items are recommended to users, and
+ranking threshold TR was varied from 3.5 to 4.9. The
+performance of each ranking approach was measured in
+terms of precision-in-top-N and diversity-in-top-N (N ¼ 1,
+5, 10), and, for comparison purposes, its diversity gain and
+precision loss with respect to the standard ranking
+approach was calculated.
+Consistently with the accuracy-diversity tradeoff discussed in Section 1, all the proposed ranking approaches
+improved the diversity of recommendations by sacrificing
+the accuracy of recommendations. However, with each
+ranking approach, as ranking threshold TR increases, the
+accuracy loss is significantly minimized (smaller precision
+loss) while still exhibiting substantial diversity improvement. Therefore, with different ranking thresholds, one can
+obtain different diversity gains for different levels of
+tolerable precision loss, as compared to the standard
+ranking approach. Following this idea, in our experiments,
+we compare the effectiveness (i.e., diversity gain) of
+different recommendation ranking techniques for a variety
+of different precision loss levels (0.1-10 percent).
+While, as mentioned earlier, a comprehensive set of
+experiments was performed using every rating prediction
+technique in conjunction with every recommendation
+ranking function on every data set for different number of
+top-N recommendations; the results were very consistent
+across all experiments and, therefore, for illustration
+purposes and because of the space limitations, we show
+only three results: each using all possible ranking techniques
+on a different data set, a different recommendation
+technique, and a different number of recommendations.
+(See Table 3.)
+For example, Table 3a shows the performance of the
+proposed ranking approaches used in conjunction with
+item-based CF technique to provide top-5 recommendations
+on the MovieLens data set. In particular, one can observe
+that, with the precision loss of only 0.001 or 0.1 percent (i.e.,
+with precision of 0.891, down from 0.892 of the standard
+ranking approach), item average rating-based ranking
+approach can already increase recommendation diversity
+by 20 percent (i.e., absolute diversity gain of 78 on top of the
+385 achieved by the standard ranking approach). If users
+can tolerate precision loss up to 1 percent (i.e., precision of
+0.882 or 88.2 percent), the diversity could be increased by
+81 percent with the same ranking technique; and 5 percent
+precision loss (i.e., 84.2 percent) can provide diversity gains
+up to 189 percent for this recommendation technique on this
+data set. Substantial diversity improvements can be observed across different ranking techniques, different rating
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+prediction techniques, and different data sets, as shown in
+Tables 3a, 3b, and 3c.
+In general, all proposed ranking approaches were able to
+provide significant diversity gains, and the best performing
+ranking approach may be different depending on the
+chosen data set and rating prediction technique. Thus,
+system designers have the flexibility to choose the most
+desirable ranking approach based on the data in a given
+application. We would also like to point out that, since the
+proposed approaches essentially are implemented as sorting algorithms based on certain ranking heuristics, they are
+extremely scalable. For example, it took, on average, less
+than 6 seconds to rank all the predicted items and select
+top-N recommendations for nearly 3,000 users in our
+experiments with MovieLens data.
+
+5.3 Robustness Analysis for Different Parameters
+In this section, we present robustness analysis of the
+proposed techniques with respect to several parameters:
+number of neighbors used in heuristic-based CF, number of
+features used in matrix factorization CF, number of top-N
+recommendations provided to each user, the value of
+predicted rating threshold TH , and the level of data sparsity.
+We tested the heuristic-based technique with a different
+number of neighbors (15, 20, 30, and 50 neighbors) and the
+model-based technique with a different number of features
+(K ¼ 8, 16, 32, and 64). For illustration purposes, Figs. 4a
+and 4b show how two different ranking approaches for both
+heuristic-based and model-based rating prediction techniques are affected by different parameter values. While
+different parameter values may result in slightly different
+performance (as is well known in recommender systems
+literature), the fundamental behavior of the proposed
+techniques remains robust and consistent, as shown in
+Figs. 4a and 4b. In other words, using the recommendation
+ranking techniques with any of the parameter values, it is
+possible to obtain substantial diversity improvements with
+only a small accuracy loss.
+We also vary the number of top-N recommendations
+provided by the system. Note that, while it is intuitively
+clear that top-1, top-5, and top-10 recommendations will
+provide different accuracy and diversity levels (i.e., it is
+much easier to accurately recommend one relevant item
+than relevant 10 items, and it is much easier to have more
+aggregate diversity when you can provide more recommendations), again we observe that, with any number of top-N
+recommendations, the proposed techniques exhibit robust
+and consistent behavior, i.e., they allow to obtain substantial
+diversity gains at a small accuracy loss, as shown in Fig. 4c.
+For example, with only 1 percent precision loss, we were
+able to increase the diversity from 133 to 311 (134 percent
+gain) using the reverse predicted rating value-based ranking
+approach in the top-1 recommendation task, and from 385 to
+655 (70 percent gain) using the item-popularity-based
+ranking approach in the top-5 recommendation task.
+In addition, our finding that the proposed ranking
+approaches help to improve recommendation diversity is
+also robust with respect to the “highly predicted” rating
+threshold value TH . In particular, with a different threshold, the baseline recommendation accuracy and diversity
+of the standard ranking approach could be very different,
+and the number of actual recommendations that are
+produced by the system (i.e., in case there is a limited
+number of items that are predicted higher than the
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+905
+
+TABLE 3
+Diversity Gains of Proposed Ranking Approaches for Different Levels of Precision Loss
+
+Note: Precision Loss ¼ [Precision-in-top-N of proposed ranking approach] À [Precision-in-top-N of standard ranking approach]. Diversity Gain
+(column 1) ¼ [Diversity-in-top-N of proposed ranking approach] À [Diversity-in-top-N of standard ranking approach]. Diversity Gain (column 2) ¼
+[Diversity-in-top-N of proposed ranking approach] / [Diversity-in-top-N of standard ranking approach].
+
+minimum threshold) may change. However, again we
+observe the same consistent ability of the proposed
+ranking approaches to achieve substantial diversity gains
+with only a small accuracy loss. For example, as shown in
+Table 4, with a different predicted rating threshold (i.e.,
+TH ¼ 4:5) and 1 percent precision loss, we could obtain
+68 percent diversity gain by ranking the recommendations
+based on item average rating in top-1 recommendation
+task on MovieLens data set using item-based CF for rating
+prediction. Similar improvements were observed for other
+data sets and rating prediction techniques as well. Also
+note that there is an implicit natural assumption of
+recommender systems selectivity that is associated with
+some reranking approaches, i.e., the assumption that
+recommender systems will use some reasonably high
+value of TH which substantially narrows the set of possible
+recommendations to only the relevant items for each user.
+If recommender systems are not selective (i.e., if a huge
+number of items are considered relevant to each user),
+then personalized reranking approaches (such as based on
+reverse predicted rating value) would retain better ability
+to provide more aggregate diversity in recommendations
+
+than nonpersonalized reranking approaches (such as based
+on item popularity).
+Finally, the data sets we used for our experiments (see
+Table 2) were obtained using a specific sampling (preprocessing) strategy—by choosing items and users with largest
+number of ratings (i.e., strategy of top users and top items,
+described as Data 3 in Table 5), which resulted in relatively
+dense rating data sets. Thus, for robustness analysis, we
+generated sparser data sets (Data 1 and 2 in Table 5) from the
+original MovieLens data set by applying different sampling
+strategies that have been used in prior literature [51]. Table 5
+summarizes the basic characteristics of these resulting data
+sets, including the strategies for choosing items and users.
+Fig. 5 illustrates the impact of data sparsity on the
+recommendation results using one of the proposed reranking approaches as an example (i.e., average rating). More
+importantly, as shown in Fig. 5, the behavior of the proposed
+reranking techniques remains consistent with different data
+sampling approaches, i.e., it is possible to obtain diversity
+improvements with only a small accuracy loss.
+
+906
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+Fig. 4. Performance of the proposed ranking approaches with different parameters.
+
+TABLE 4
+Performance of Proposed Ranking Approaches with a Different Predicted Rating Threshold (TH ¼ 4:5)
+
+6
+
+DISCUSSION AND ADDITIONAL ANALYSIS
+
+In this section, we explore and discuss several additional
+issues related to the proposed ranking approaches.
+
+6.1 Random Ranking Approach
+As mentioned earlier, the vast majority of traditional
+recommender systems adopt the standard ranking approach that ranks the candidate items according to their
+predicted rating values and, thus, recommends to users the
+topmost highly predicted items. As discussed in Section 3,
+since the more highly predicted items, on average, tend to
+be among the more popular items, using this ranking
+approach will often result in lower recommendation
+diversity. While the proposed ranking approaches improve
+the diversity by considering alternative item ranking
+functions, such as item popularity, we also found that
+reranking the candidate items even at random can provide
+diversity improvements as compared to the standard
+ranking approach. Here, we defined the random ranking as
+RankRandom ðiÞ ¼ Randomð0; 1Þ;
+where Random(0,1) is a function that generates uniformly
+distributed random numbers in the [0, 1] interval. We
+
+compare some of the proposed ranking approaches with
+this random ranking approach in Fig. 6. For example, as
+shown in Fig. 6a, the random ranking approach increased
+the diversity from 385 to 596 (55 percent gain) with
+1 percent precision loss using heuristic-based CF technique
+on MovieLens data set. While this gain was not as big as
+the diversity gain of the average rating-based approach
+TABLE 5
+MovieLens Data Sets with Different Sampling Strategies
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+907
+
+Fig. 5. Diversity gains with sparse data sets.
+
+(80 percent gain), it actually outperformed the neighbors’
+rating variance-based approach (35 percent gain). As
+another example, as shown in Fig. 6b, with only 0.5 percent
+precision loss on Netflix data set using model-based CF
+technique, the random ranking approach produced the
+results that were almost as good (27 percent diversity gain)
+as several best performing ranking approaches (i.e.,
+30 percent gain for the reverse predicted rating-based
+approach or 33 percent gain for the relative likeabilitybased approach).
+This provides a valuable insight that, if the goal is to
+improve recommendation diversity (without significant
+accuracy loss), even a random recommendation ranking
+approach can significantly outperform the traditional and
+widely used standard ranking approach (based on the
+predicted rating value). Furthermore, as illustrated in
+Figs. 6a and 6b, the random ranking approach works
+consistently well with different data sets and in conjunction with different CF techniques.
+
+6.2
+
+Impact of Proposed Ranking Approaches on the
+Distribution of Recommended Items
+Since we measure recommendation diversity as the total
+number of distinct items that are being recommended
+across all users, one could possibly argue that, while the
+diversity can be easily improved by recommending a few
+new items to some users, it may not be clear whether the
+proposed ranking approaches would be able to shift the
+overall distribution of recommended items toward more
+idiosyncratic, “long-tail” recommendations. Therefore, in
+this section, we explore how the proposed ranking
+approaches change the actual distribution of recommended
+items in terms of their popularity. Following the popular
+“80-20 rule” or the Pareto principle, we define the top20 percent of the most frequently rated items in the training
+data set as “bestsellers” and the remaining 80 percent of
+items as “long-tail” items. We calculated the percentage of
+long-tail items among the items recommended across all
+users by the proposed ranking approaches as well as by the
+standard ranking approach. The results are shown in Fig. 7.
+For example, with the standard ranking approach, the
+long-tail items consist of only 16 percent of total recommendations (i.e., 84 percent of recommendations were of
+bestsellers) when recommending top-5 items to each user
+using item-based CF technique on MovieLens data set,
+confirming some findings in prior literature that recommender systems often gravitate toward recommending
+
+Fig. 6. Diversity gain of the random ranking approach with different
+levels of precision loss.
+
+bestsellers and not long-tail items [14]. However, as shown
+in Fig. 7, the proposed ranking approaches are able to
+recommend significantly more long-tail items with a small
+level of accuracy loss, and this distribution becomes even
+more skewed toward long-tail items if more accuracy loss
+can be tolerated. For example, with 1 percent precision loss,
+the percentage of recommended long-tail items increased
+from 16 to 21 percent with neighbors’ rating variance-based
+ranking approach, or to 32 percent with item popularity and
+item absolute likeability-based approaches. And with 2.5 or
+5 percent precision loss, the proportion of long-tail items
+can grow up to 43 and 58 percent, respectively (e.g., using
+item-popularity ranking technique).
+This analysis provides further empirical support to the
+fact that the proposed ranking approaches increase not
+just the number of distinct items recommended, but also
+the proportion of recommended long-tail items, thus,
+confirming that the proposed techniques truly contribute
+toward more diverse and idiosyncratic recommendations
+across all users.
+Furthermore, in addition to the distributional analysis
+based on the simple proportion of the long-tail items, we
+have also used three more sophisticated metrics: entropy
+[43], Gini coefficient [19], and Herfindahl index [23]. All of
+these measures provide different ways of measuring
+distributional dispersion of recommended items across all
+users, by showing the degree to which recommendations
+are concentrated on a few popular items (i.e., low diversity)
+or are more equally spread out across all candidate items
+(i.e., high diversity). In particular, the entropy-based
+diversity metric Entropy-Diversity is calculated as
+
+908
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+n 
+X
+
+ 
+
+nþ1Ài
+recðiÞ
+Gini-Diversity ¼ 2
+Â
+;
+nþ1
+total
+i¼1
+
+n 
+X
+recðiÞ 2
+:
+Herfindahl-Diversity ¼ 1 À
+total
+i¼1
+
+Fig. 7. Proportion of long-tail items among recommended items. Note:
+Percentage of Long-Tail Items = Percentage of recommended items that
+are not among top-20 percent most popular items.
+
+Entropy-Diversity ¼ À
+
+ 
+
+n 
+X
+recðiÞ
+recðiÞ
+ln
+;
+total
+total
+i¼1
+
+where rec(i) is the number of users who got recommended
+item i, n is the total number of candidate items that were
+available for recommendation, and total is the total number
+of top-N recommendations made across all users (i.e.,
+total ¼ NjUj). We also use the original Gini coefficient,
+which is a commonly used measure of wealth distribution
+inequality [19], to calculate the Gini-Diversity metric, and
+the original Herfindahl index [23], also known as the
+concentration index, to calculate the Herfindahl-Diversity
+metric. However, we reverse the scale for the two metrics
+for more intuitiveness (i.e., so that smaller values represent
+lower diversity and larger values higher diversity). As a
+result, these metrics are calculated as
+
+Importantly, Fig. 8 (the top three graphs) demonstrates
+that all three distributional inequality metrics are very
+highly correlated with our diversity-in-top-N metric for
+our various ranking-based approaches. This means that our
+proposed ranking techniques do not just manipulate our
+simple diversity-in-top-N metric to increase the number of
+different items among the recommendations, but also
+fundamentally change the distribution of recommended
+items toward more evenly distributed representation. Fig. 8
+(the bottom three graphs) also shows that the ranking
+approaches exhibit similar patterns of diversity gains (or,
+more generally, of the accuracy-diversity tradeoff) using
+these more sophisticated distributional inequality metrics.
+This provides an additional confirmation that the proposed
+reranking techniques truly contribute toward more diverse
+and idiosyncratic recommendations across all users.
+
+6.3 Global Optimization-Based Approach
+While the focus of this paper is on ranking-based
+techniques for improving recommendation diversity, we
+would also like to discuss the feasibility of the more direct,
+global optimization approach to deal with this problem.
+Intuitively, one can conceptualize our problem as a multicriteria optimization problem, where the system should
+provide recommendations that are as diverse and as
+accurate as possible. Because of the inherent tradeoff
+between these two metrics, we can use a common approach
+to solving multicriteria optimization problems that optimizes only one of the criteria and converts the others to
+constraints. In particular, given some diversity metric d and
+the target diversity level D, we can search the space of all
+possible top-N recommendation configurations for all users
+until an optimal configuration is found. Here, every
+
+Fig. 8. Using distributional diversity metrics: correlation with diversity-in-top-N and performance of the proposed approaches.
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+recommendation configuration LN consists of jUj sets of
+top-N items (one set LN ðuÞ for each user u), and the optimal
+recommendation configuration maximizes the sum of
+predicted rating values (as a proxy for high predictive
+accuracy) while having diversity value at least D:
+X X
+max
+RÃ ðu; iÞ; subject to dðLN Þ ! D:
+LN
+
+u2U i2LN ðuÞ
+
+Because of the sheer size of the solution space and
+potential complexity of some diversity metrics d (e.g., such
+as the distributional diversity metrics discussed in Section 6.2), this problem formulation based on the global
+optimization is not practical for many real-world applications, e.g., Netflix, which has 100,000s of users, each of
+which can possibly be recommended 10,000s of movies.
+While the global optimization-based approach can promise
+the highest predictive accuracy for the given level of
+diversity, this approach would be prohibitive even for
+applications that are much smaller than Netflix’s.
+Note that, for the simpler diversity measures, such as
+diversity-in-top-N which simply counts the number of
+different items that appear in the recommendations, it may
+be feasible to design efficient optimization-based heuristics.
+For example, one such heuristic for the diversity-in-top-N
+metric could be: find the most frequently recommended
+item imax ; replace one recommendation of imax for some user
+who has another item inew among the candidate items that
+has not appeared in any recommendations; and repeat until
+there are no such replacements possible. Our exploration of
+several such simple heuristics has resulted in the following
+two insights. First, our proposed ranking approaches based
+only on local information (i.e., where recommendation
+decision can be made within each user, by performing a
+simple sort on a single numeric value) are significantly
+faster than even such simple global heuristics that have to
+keep track which items have been recommended across all
+users and how many times. And second, while these global
+heuristics perform well for the simple diversity-in-top-N
+metric, they are “overspecialized” for it, i.e., they do not
+fundamentally change the distribution of recommended
+movies toward more even representation. In particular, for
+a given level of accuracy loss, while the optimization-based
+heuristics were able to achieve better diversity-in-top-N as
+compared to our proposed ranking techniques, they
+performed worse according to the distributional diversity
+metrics (entropy, Gini, and Herfindahl), which further
+emphasizes the robustness of the proposed techniques that
+demonstrated substantial improvements according to both
+types of diversity measures.
+Because the focus of this paper is on ranking-based
+techniques, the comprehensive exploration of optimizationbased approaches is beyond the scope of this paper.
+However, the development of fast and robust optimization-based approaches that are capable of improving
+recommendation diversity while maintaining an acceptable
+level of accuracy constitutes an interesting issue for future
+research.
+
+6.4
+
+Improving both Accuracy and Diversity:
+Recommending Fewer Items
+Empirical results in this paper consistently show that the
+proposed ranking approaches can obtain significant diversity gains (with a small amount of accuracy loss) as
+
+909
+
+compared to the standard ranking approach that ranks
+recommended items based on their predicted rating value.
+Therefore, another interesting topic for future research
+would be to explore possibilities to improve both accuracy
+and diversity.
+Based on the findings described in this paper, a possible
+approach to improving both the accuracy and diversity of
+the standard technique would be to modify the proposed
+recommendation reranking techniques, which are already
+known to produce diversity gains, in a way that increases
+their accuracy. Perhaps counterintuitively, one of the
+possible ways to do this involves recommending fewer
+items. In particular, the parameterized versions of the
+proposed ranking techniques use threshold TR to differentiate the items that should be ranked by the proposed
+technique from the ones to be ranked by the standard
+ranking technique, as discussed in Section 3.3. However, TR
+can be used not only for ranking, but also for filtering
+purposes, i.e., by updating the parameterized ranking
+function as follows:
+
+rankx ðiÞ;
+if RÃ ðu; iÞ 2 ½TR ; Tmax ;
+rankx ði; TR Þ ¼
+Remove item; if RÃ ðu; iÞ 2 ½TH ; TR Þ:
+This will recommend only items that are predicted to
+be not only above TH , but above TR as well (where
+always TR ! TH ), consequently improving the recommendation accuracy.
+While the comprehensive exploration of this phenomenon is beyond the scope of this paper, in Fig. 9, we illustrate
+how the item-popularity-based ranking approach can be
+modified using the above-mentioned strict filtering policy
+to improve upon the standard approach both in terms of
+accuracy and diversity. As Fig. 9 demonstrates, itempopularity-based ranking approach with TR ¼ 4:1 (out of
+5) generates only 56.6 percent of all possible item
+recommendations that could be obtained from standard
+ranking approach (because the recommendations with
+predicted rating < 4:1 were removed). Interestingly, however, despite the smaller number of recommendations, this
+ranking approach increased the recommendation accuracy
+by 4.6 percent (from 83.5 to 88.1 percent) and diversity by
+70 items or 7.8 percent (from 881 to 951). As shown in Fig. 9,
+using different TR values allows to produce different
+accuracy and diversity gains.
+As discussed above, this approach would not be able to
+provide all N recommendations for each user, but it nevertheless may be useful in the cases where system designers
+need the flexibility to apply other recommendation strategies
+to fill out the remaining top-N item slots. For example, some
+recommender systems may want to adopt “explorationversus-exploitation” strategy [49], where some of the recommendations are tailored directly toward the user’s tastes and
+preferences (i.e., exploitation), and the proposed ranking
+techniques with strict filtering can be used to fill out this part
+of the recommendation list for each user (providing both
+accuracy and diversity benefits over the standard approach).
+Meanwhile, the remaining recommendations can be designed to learn more about the user (i.e., exploration), e.g.,
+using active learning techniques [26], [56], so that the system
+can make better recommendations to the users in the future.
+
+910
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 24, NO. 5,
+
+MAY 2012
+
+important step in this line of research. Furthermore,
+exploration of recommendation diversity when recommending item bundles [17] or sequences [42] (instead of
+individual items) also constitutes interesting topics for
+future research. In summary, we hope that this paper will
+stimulate further research on improving recommendation
+diversity and other aspects of recommendation quality.
+
+ACKNOWLEDGMENTS
+The research reported in this paper was supported in part by
+the US National Science Foundation (NSF) grant IIS-0546443.
+
+REFERENCES
+Fig. 9. Improving both accuracy and diversity of recommendations (in
+parentheses: percentage of possible recommendations generated).
+
+7
+
+CONCLUSIONS AND FUTURE WORK
+
+Recommender systems have made significant progress in
+recent years and many techniques have been proposed to
+improve the recommendation quality. However, in most
+cases, new techniques are designed to improve the accuracy
+of recommendations, whereas the recommendation diversity has often been overlooked. In particular, we showed
+that, while ranking recommendations according to the
+predicted rating values (which is a de facto ranking standard
+in recommender systems) provides good predictive accuracy, it tends to perform poorly with respect to recommendation diversity. Therefore, in this paper, we proposed a
+number of recommendation ranking techniques that can
+provide significant improvements in recommendation
+diversity with only a small amount of accuracy loss. In
+addition, these ranking techniques offer flexibility to system
+designers, since they are parameterizable and can be used
+in conjunction with different rating prediction algorithms
+(i.e., they do not require the designer to use only some
+specific algorithm). They are also based on scalable sortingbased heuristics and, thus, are extremely efficient. We
+provide a comprehensive empirical evaluation of the
+proposed techniques and obtain consistent and robust
+diversity improvements across multiple real-world data
+sets and using different rating prediction techniques.
+This work gives rise to several interesting directions for
+future research. In particular, additional important item
+ranking criteria should be explored for potential diversity
+improvements. This may include consumer-oriented or
+manufacturer-oriented ranking mechanisms [18], depending on the given application domain, as well as external
+factors, such as social networks [31]. Also, as mentioned
+earlier, optimization-based approaches could be used to
+achieve further improvements in recommendation diversity, although these improvements may come with a
+(possibly significant) increase in computational complexity.
+Moreover, because of the inherent tradeoff between the
+accuracy and diversity metrics, an interesting research
+direction would be to develop a new measure that captures
+both of these aspects in a single metric. In addition, user
+studies exploring users’ perceptions and acceptance of the
+diversity metrics as well as the users’ satisfaction with
+diversity-sensitive recommender systems would be an
+
+[1]
+
+[2]
+[3]
+[4]
+[5]
+[6]
+[7]
+[8]
+[9]
+[10]
+
+[11]
+
+[12]
+
+[13]
+[14]
+[15]
+[16]
+[17]
+[18]
+[19]
+[20]
+
+G. Adomavicius and A. Tuzhilin, “Toward the Next Generation of
+Recommender Systems: A Survey of the State-of-the-Art and
+Possible Extensions,” IEEE Trans. Knowledge and Data Eng., vol. 17,
+no. 6, pp. 734-749, June 2005.
+C. Anderson, The Long Tail. Hyperion, 2006.
+M. Balabanovic and Y. Shoham, “Fab: Content-Based, Collaborative Recommendation,” Comm. ACM, vol. 40, no. 3, pp. 66-72,
+1997.
+R. Bell, Y. Koren, and C. Volinsky, “The BellKor Solution to the
+Netflix Prize,” www.netflixprize.com/assets/ProgressPrize2007_
+KorBell.pdf, 2007.
+R.M. Bell, Y. Koren, and C. Volinsky, “The Bellkor 2008 Solution to
+the Netflix Prize,” http://www.research.att.com/~volinsky/
+netflix/ProgressPrize2008BellKorSolution.pdf, 2008.
+J. Bennett and S. Lanning, “The Netflix Prize,” Proc. KDD-Cup and
+Workshop at the 13th ACM SIGKDD Int’l Conf. Knowledge and Data
+Mining, 2007.
+D. Billsus and M. Pazzani, “Learning Collaborative Information
+Filters,” Proc. Int’l Conf. Machine Learning, 1998.
+K. Bradley and B. Smyth, “Improving Recommendation Diversity,” Proc. 12th Irish Conf. Artificial Intelligence and Cognitive
+Science, 2001.
+S. Breese, D. Heckerman, and C. Kadie, “Empirical Analysis of
+Predictive Algorithms for Collaborative Filtering,” Proc. 14th Conf.
+Uncertainty in Artificial Intelligence, 1998.
+E. Brynjolfsson, Y.J. Hu, and D. Simester, “Goodbye Pareto
+Principle, Hello Long Tail: The Effect of Search Costs on the
+Concentration of Product Sales,” Management Science, vol. 57,
+no. 8, pp. 1373-1386, 2011.
+E. Brynjolfsson, Y. Hu, and M.D. Smith, “Consumer Surplus in the
+Digital Economy: Estimating the Value of Increased Product
+Variety at Online Booksellers,” Management Science, vol. 49, no. 11,
+pp. 1580-1596, 2003.
+J. Carbonell and J. Goldstein, “The User of MMR, Diversity-Based
+Reranking for Reordering Documents and Producing Summaries,” Proc. ACM Conf. Research and Development in Information
+Retrieval (SIGIR), pp. 335-336, 1998.
+J. Delgado and N. Ishii, “Memory-Based Weighted-Majority
+Prediction for Recommender Systems,” Proc. ACM SIGIR Workshop Recommender Systems: Algorithms and Evaluation, 1999.
+D. Fleder and K. Hosanagar, “Blockbuster Culture’s Next Rise or
+Fall: The Impact of Recommender Systems on Sales Diversity,”
+Management Science, vol. 55, no. 5, pp. 697-712, 2009.
+S. Funk, “Netflix Update: Try This at Home” http://sifter.org/
+~simon/journal/20061211.html, 2006.
+K.R. Gabriel and S. Zamir, “Lower Rank Approximation of
+Matrices by Least Squares with Any Choice of Weights,”
+Technometrics, vol. 21, pp. 489-498, 1979.
+R. Garfinkel, R. Gopal, A. Tripathi, and F. Yin, “Design of a
+Shopbot and Recommender System for Bundle Purchases,”
+Decision Support Systems, vol. 42, no. 3, pp. 1974-1986, 2006.
+A. Ghose and P. Ipeirotis, “Designing Novel Review Ranking
+Systems: Predicting Usefulness and Impact of Reviews,” Proc.
+Ninth Int’l Conf. Electronic Commerce (ICEC), 2007.
+C. Gini, “Measurement of Inequality and Incomes,” The Economic
+J., vol. 31, pp 124-126, 1921.
+D.G. Goldstein and D.C. Goldstein, “Profiting from the Long
+Tail,” Harvard Business Rev., vol. 84, no. 6, pp. 24-28, June 2006.
+
+ADOMAVICIUS AND KWON: IMPROVING AGGREGATE RECOMMENDATION DIVERSITY USING RANKING-BASED TECHNIQUES
+
+[21] G.H. Golub and C. Reinsche, “Singular Value Decomposition and
+Least Squares Solution,” Numerische Mathematik, vol. 14, pp. 403420, 1970.
+[22] K. Greene, “The $1 Million Netflix Challenge,” Technology,
+Review.www.technologyreview.com/read_article.aspx?id=
+17587&ch = biztech, Oct. 2006.
+[23] O.C. Herfindahl, “Concentration in the Steel Industry,” Unpublished PhD dissertation, Columbia Univ., New York, 1950.
+[24] J.L. Herlocker, J.A. Konstan, L.G. Terveen, and J. Riedl, “Evaluating Collaborative Filtering Recommender Systems,” ACM Trans.
+Information Systems, vol. 22, no. 1, pp. 5-53, 2004.
+[25] T. Hofmann, “Collaborative Filtering via Gaussian Probabilistic
+Latent Semantic Analysis,” Proc. 26th Ann. Int’l ACM SIGIR Conf.,
+2003.
+[26] Z. Huang, “Selectively Acquiring Ratings for Product Recommendation,” Proc. Int’l Conf. Electronic Commerce, 2007.
+[27] V. Klema and A. Laub, “The Singular Value Decomposition: Its
+Computation and Some Applications,” IEEE Trans. Automatic
+Control, vol. AC-25, no. 2, pp. 164-176, Apr. 1980.
+[28] W. Knight, “Info-Mania’ Dents IQ More than Marijuana,” New
+Scientist.comNews, http://www.newscientist.com/article.ns?id=
+dn7298, 2005.
+[29] Y. Koren, “Tutorial on Recent Progress in Collaborative Filtering,”
+Proc. ACM Conf. Recommender Systems, pp. 333-334, 2008.
+[30] Y. Koren, “Collaborative Filtering with Temporal Dynamics,”
+Proc. 15th ACM SIGKDD Int’l Conf. Knowledge Discovery and Data
+Mining, pp. 447-456, 2009.
+[31] D. Lemire, S. Downes, and S. Paquet, “Diversity in Open Social
+Networks,” technical report, University of Quebec, Montreal,
+2008.
+[32] S.M. McNee, J. Riedl, and J.A. Konstan, “Being Accurate Is Not
+Enough: How Accuracy Metrics Have Hurt Recommender
+Systems,” Proc. Conf. Human Factors in Computing Systems,
+pp. 1097-1101, 2006.
+[33] D. McSherry, “Diversity-Conscious Retrieval,” Proc. Sixth European Conf. Advances in Case-Based Reasoning, pp. 219-233, 2002.
+[34] A. Nakamura and N. Abe, “Collaborative Filtering Using
+Weighted Majority Prediction Algorithms,” Proc. 15th Int’l Conf.
+Machine Learning, 1998.
+[35] S.T. Park and D.M. Pennock, “Applying Collaborative Filtering
+Techniques to Movie Search for Better Ranking and Browsing,”
+Proc. 13th ACM SIGKDD Int’l Conf. Knowledge Discovery and Data
+Mining, pp. 550-559, 2007.
+[36] P. Resnick, N. Iakovou, M. Sushak, P. Bergstrom, and J. Riedl,
+“GroupLens: An Open Architecture for Collaborative Filtering of
+Netnews,” Proc. Computer Supported Cooperative Work Conf., 1994.
+[37] S.E. Robertson, “The Probability Ranking Principles in IR,”
+Readings in Information Retrieval, pp. 281-286, Morgan Kaufmann
+Publishers, 1997.
+[38] M. Sanderson, J. Tang, T. Arni, and P. Clough, “What Else Is
+There? Search Diversity Examined,” Proc. European Conf. Information Retrieval, pp. 562-569, 2009.
+[39] B.M. Sarwar, G. Karypis, J. Konstan, and J. Riedl, “Analysis of
+Recommender Algorithms for E-Commerce,” Proc. ACM Conf.
+Electronic Commerce, pp. 158-167, 2000.
+[40] B. Sarwar, G. Karypis, J. Konstan, and J. Riedl, “Item-Based
+Collaborative Filtering Recommendation Algorithms,” Proc. 10th
+Int’l Conf. World Wide Web (WWW), 2001.
+[41] B. Sarwar, G. Karypis, J. Konstan, and J. Riedl, “Application of
+Dimensionality Reduction in Recommender Systems—A Case
+Study,” Proc. ACM WebKDD Workshop, 2000.
+[42] G. Shani, D. Heckerman, and R. Brafman, “An MDP-Based
+Recommender System,” J. Machine Learning Research, vol. 6,
+pp. 1265-1295, 2005.
+[43] C.E. Shannon, “A Mathematical Theory of Communication,” Bell
+System Technical J., vol. 27, pp. 379-423 and 623-656, 1948.
+[44] L. Si and R. Jin, “Flexible Mixture Model for Collaborative
+Filtering,” Proc. 20th Int’l Conf. Machine Learning, 2003.
+[45] B. Smyth and K. Bradley, “Personalized Information Ordering: A
+Case-Study in Online Recruitment,” J. Knowledge-Based Systems,
+vol. 16, nos. 5/6, pp. 269-275, 2003.
+[46] B. Smyth and P. McClave, “Similarity vs. Diversity,” Proc. Fourth
+Int’l Conf. Case-Based Reasoning: Case-Based Reasoning Research and
+Development, 2001.
+[47] N. Srebro and T. Jaakkola, “Weighted Low-Rank Approximations,” Proc. Int’l Conf. Machine Learning (ICML), T. Fawcett and
+N. Mishra, eds., pp. 720-727, 2003.
+
+911
+
+[48] X. Su and T.M. Khoshgoftaar, “Collaborative Filtering for MultiClass Data Using Belief Nets Algorithms,” Proc. Eighth IEEE Int’l
+Conf. Tools with Artificial Intelligence, pp. 497-504, 2006.
+[49] S. ten Hagen, M. van Someren, and V. Hollink, “Exploration/
+Exploitation in Adaptive Recommender Systems,” Proc. European
+Symp. Intelligent Technologies, Hybrid Systems and Their Implementation on Smart Adaptive Systems, 2003.
+[50] C. Thompson, “If You Liked This, You’re Sure to Love That,” The
+New York Times, http://www.nytimes.com/2008/11/23/
+magazine/23Netflix-t.html, Nov. 2008.
+[51] A. Umyarov and A. Tuzhilin, “Using External Aggregate Ratings
+for Improving Individual Recommendations,” ACM Trans. Web,
+vol. 5, p. 3, 2011.
+[52] M. Wu, “Collaborative Filtering via Ensembles of Matrix
+Factorization,” Proc. KDDCup 2007, pp. 43-47, 2007.
+[53] C. Zhai, W.W. Cohen, and J. Lafferty, “Beyond Independent
+Relevance: Methods and Evaluation Metrics for Subtopic Retrieval,” Proc. ACM Conf. Research and Development in Information
+Retrieval (SIGIR), 2003.
+[54] M. Zhang and N. Hurley, “Avoiding Monotony: Improving the
+Diversity of Recommendation Lists,” Proc. ACM Conf. Recommender Systems, pp. 123-130, 2008.
+[55] S. Zhang, W. Wang, J. Ford, F. Makedon, and J. Pearlman, “Using
+Singular Value Decomposition Approximation for Collaborative
+Filtering,” Proc. Seventh IEEE Int’l Conf. E-Commerce Technology
+(CEC ’05), pp. 257-264, 2005.
+[56] Z. Zheng and B. Padmanabhan, “Selectively Acquiring Customer
+Information: A New Data Acquisition Problem and an Active
+Learning-Based Solution,” Management Science, vol. 50, no. 5,
+pp. 697-712, 2006.
+[57] C-N. Ziegler, S.M. McNee, J.A. Konstan, and G. Lausen,
+“Improving Recommendation Lists through Topic Diversification,” Proc. 14th Int’l World Wide Web Conf., pp. 22-32, 2005.
+Gediminas Adomavicius received the PhD
+degree in computer science from New York
+University in 2002. He is an associate professor
+of information and decision sciences at the
+Carlson School of Management, University of
+Minnesota. His research interests include personalization, recommender systems, data
+mining, and complex electronic market mechanisms. His research has been published in
+several leading computer science and information systems journals and conferences, including IEEE Transactions on
+Knowledge and Data Engineering, ACM Transactions on Information
+Systems, Data Mining and Knowledge Discovery, IEEE Intelligent
+Systems, ACM SIGKDD Conference on Data Mining and Knowledge
+Discovery, Information Systems Research, MIS Quarterly, and INFORMS Journal on Computing. He serves on editorial boards of
+Information Systems Research and INFORMS Journal on Computing.
+He is a member of the ACM, the IEEE, and the IEEE Computer Society.
+YoungOk Kwon received the PhD degree in
+information and decision sciences from the
+Carlson School of Management, University of
+Minnesota in 2011. She is an assistant professor
+of management information systems at the
+Division of Business Administration, Sookmyung
+Women’s University, Seoul, Korea. Her research
+interests include recommender systems, data
+mining, and business intelligence. Her research
+has been published in IEEE Intelligent Systems
+and presented at a number of computer science and information systems
+conferences.
+
+. For more information on this or any other computing topic,
+please visit our Digital Library at www.computer.org/publications/dlib.
+
+

@@ -1,0 +1,667 @@
+Expert Systems with Applications 37 (2010) 4772–4778
+
+Contents lists available at ScienceDirect
+
+Expert Systems with Applications
+journal homepage: www.elsevier.com/locate/eswa
+
+Use of social network information to enhance collaborative ﬁltering performance
+Fengkun Liu a, Hong Joo Lee b,*
+a
+b
+
+Department of Management & Information Systems, College of Business Administration, Kent State University, Kent, Ohio 44242, USA
+Department of Business Administration, The Catholic University of Korea, Yeokgokhoejuro 63, Wonmi, Bucheon, Gyeonggi, 420-836, Republic of Korea
+
+a r t i c l e
+
+i n f o
+
+Keywords:
+Information ﬁltering
+Personalization
+Social network information
+
+a b s t r a c t
+When people make decisions, they usually rely on recommendations from friends and acquaintances.
+Although collaborative ﬁltering (CF), the most popular recommendation technique, utilizes similar neighbors to generate recommendations, it does not distinguish friends in a neighborhood from strangers who
+have similar tastes. Because social networking Web sites now make it easy to gather social network information, a study about the use of social network information in making recommendations will probably
+produce productive results.
+In this study, we developed a way to increase recommendation effectiveness by incorporating social
+network information into CF. We collected data about users’ preference ratings and their social network
+relationships from a social networking Web site. Then, we evaluated CF performance with diverse neighbor groups combining groups of friends and nearest neighbors. Our results indicated that more accurate
+prediction algorithms can be produced by incorporating social network information into CF.
+Ó 2009 Elsevier Ltd. All rights reserved.
+
+1. Introduction
+When Internet surfers search for information, they rely on recommendations from other people, customer reviews, or recommender systems (Ansari, Essegaier, & Kohli, 2000; Resnick &
+Varian, 1997; Shardanand & Maes, 1995; Sinha & Swearingen,
+2001). Recently, various kinds of recommender systems have attempted to reduce information overload and retain customers by
+providing personalized recommendations based on preferences.
+These recommender systems use diversiﬁed algorithms to ﬁlter
+data and generate recommendations about items such as books,
+news, music, Web pages, and even virtual items (Cho, Kim, &
+Kim, 2002; Kim, Kim, & Cho, 2006; Kim, Lee, Cho, & Kim, 2004;
+Lee & Park, 2007). Among those various recommender systems,
+collaborative ﬁltering (CF) has become the most popular recommendation algorithm (Herlocker, Konstan, Terveen, & Riedl,
+2004). This system predicts user preferences based on the opinions
+of other similar users who have rated the items according to preference (Herlocker et al., 2004; Resnick, Iacovou, Suchak, Bergstrom,
+& Riedl, 1994). By calculating the level of similarity between users
+in a rating data set, it becomes possible to ﬁnd the nearest neighbors with the highest similarity values among all users. Once a
+user’s neighborhood is identiﬁed, particular items can be evaluated
+by forming a weighted summation of neighbors’ opinions (Herlocker et al., 2004). This is the generic CF procedure.
+* Corresponding author. Tel./fax: +82 2 2164 4009.
+E-mail address: hongjoo@catholic.ac.kr (H.J. Lee).
+0957-4174/$ - see front matter Ó 2009 Elsevier Ltd. All rights reserved.
+doi:10.1016/j.eswa.2009.12.061
+
+One drawback of CF is that it is unable to distinguish neighbors
+as friends or strangers with similar taste; while it utilizes neighbors to generate recommendations, it is currently unable to reﬂect
+how people seek information using their social networks. Sinha
+and Swearingen (2001) compared the quality of recommendations
+made by recommender systems and by users’ friends. They found
+that users preferred recommendations from friends to recommendations made by recommender systems such as Amazon.com.
+In the early days of the Internet, identifying the close friends of
+a user was difﬁcult. Now, social networking Web sites such as
+Facebook, MySpace, and Cyworld make gathering social network
+information easy, allowing one to combine social network information and CF when generating recommendations. Therefore, a study
+about how to utilize social network information in making recommendations should yield valuable information.
+In this study, we developed a way to increase recommendation
+effectiveness by combining social network information and CF
+methods. First, we collected data about users’ preference ratings
+and their social network relationships from a social networking
+Web site. Next, we developed approaches for selecting neighbors
+and amplifying friends’ data. Finally, we generated recommendations about items using CF and the suggested neighbor groups,
+and compared the performances of diverse algorithms in terms
+of the mean absolute error (MAE).
+Section 2 summarizes related studies about recommender systems and social networks. Section 3 sets out the procedures used
+for data collection and proﬁle building. Section 4 introduces the diverse experiments that have incorporated collaborative ﬁltering
+
+F. Liu, H.J. Lee / Expert Systems with Applications 37 (2010) 4772–4778
+
+and social networks. Section 5 presents the experimental results,
+and Section 6 discusses the ﬁndings and presents our conclusions.
+2. Social networks and collaborative ﬁltering
+2.1. Recommender systems
+A recommender system is one that provides content or information about products users may like (Iijima & Ho, 2007; Resnick &
+Varian, 1997; Sinha & Swearingen, 2001). Many recommender systems and commercial Web sites now provide personalized recommendations, including Amazon, idiomag,1 Last.fm,2 Netﬂix,
+Pandora.3 Recommender systems can beneﬁt both customers and
+businesses. They can reduce search time and cost when customers
+seek out information or items online and may provide unexpected
+goods (Haubl & Murray, 2006; Haubl & Trifts, 2000; Pennock, Horvitz, & Giles, 2000; Sinha & Swearingen, 2001; Tam & Ho, 2006); they
+can also make online businesses’ commercial systems easier to use
+and increase the possibility of cross-selling, thereby helping businesses retain customers and increase revenue.
+Of the several categories of recommender systems, we focused
+on CF algorithms because they can easily incorporate social network information. CF-based recommender systems provide recommendations to consumers about items that people with similar
+tastes and preferences have liked in the past. Many algorithms
+use different approaches to ﬁlter information. The most common
+approach is to ﬁnd the nearest neighborhood by calculating Pearson’s correlation coefﬁcients between users (Adomavicius & Tuzhilin, 2005; Herlocker et al., 2004). By ﬁnding the top N nearest
+neighbors with similar interests, predictive recommendations can
+be calculated using the following algorithms.
+
+v i ¼
+
+1 X
+v i;j
+jIi j j2I
+
+ð1Þ
+
+i
+
+Eq. (1) calculates the mean value of ratings of user i (Breese, Heckerman, & Kadie, 1998), where v i;j is the voting of user i on item j and
+Ii is the set of items.
+
+P
+ðv a;j À v a Þðv i;j À v i Þ
+q
+ﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃﬃ
+xða; iÞ ¼ P j
+P
+ 2 j ðv i;j À v i Þ2
+j ðv a;j À v a Þ
+
+ð2Þ
+
+Eq. (2) calculates Pearson’s correlation coefﬁcients (Breese et al.,
+1998). The top N nearest neighbors can be obtained by sorting the
+Pearson’s correlation coefﬁcients.
+The ﬁnal step in CF is predicting a customer’s product preferences. The predicted preference score, P ij , of user i on item j can
+be calculated by taking the weighted average of all the ratings
+for item j with user i’s average rating score on other items (Eq.
+(3)). Raters refers to the set of users who rated item j.
+
+Pij ¼ v i þ
+
+P
+
+P
+
+À
+
+v a;j À v a
+
+Á
+
+wða;iÞ
+jw
+j
+ð
+a;i
+Þ
+a2Raters
+
+a2Raters
+
+ð3Þ
+
+2.2. Social networks and collaborative ﬁltering
+Granovetter (1973) argued that people generally use social networks to obtain information. Dissemination of information and
+recommendations generally take place within an informal community of collaborators, colleagues, or friends (Granovetter, 1973;
+Kautz, Selman, & Shah, 1997). Existing social networks permit serendipitous connections and social referrals (Kautz et al., 1997), and
+1
+2
+3
+
+http://www.idiomag.com.
+http://www.last.fm.
+http://www.pandora.com.
+
+4773
+
+thereby offer many opportunities for recommendations. CF algorithms are based on everyday life, in which we rely on recommendations from other people (Resnick & Varian, 1997).
+Therefore, prediction methodologies that incorporate social
+network information may be more accurate than those based on
+mere mathematical algorithms. Some studies have already used
+social networks for making recommendations and enhancing the
+performance of recommender systems (Golbeck, 2006; Kautz
+et al., 1997; Liu & Maes, 2005; Ryu, Kim, Cho, & Kim, 2006).
+Social networks have been utilized for making recommendations
+in diverse application domains such as movies (Golbeck, 2006), Web
+pages (Kautz et al., 1997), and a broad range of other interests (Liu &
+Maes, 2005). Kautz et al. (1997) investigated existing social networks by mining public documents found on the Internet for data
+and then generated recommendations via chains of named experts
+in these social networks. Liu and Maes (2005) gathered interests
+and passions from free-form natural language in Web-based social
+networks and developed ‘‘InterestMap,” a system based on co-occurring keywords used to describe interests and identities, to recommend items by spreading activation over the networks.
+Other studies have incorporated social network elements into
+traditional CF systems (Avesani, Massa, & Tiella, 2005; Massa &
+Avesani, 2007; Ryu et al., 2006). Ryu et al. (2006) identiﬁed the
+nearest neighbors of a user based on Pearson’s correlations. Ryu
+et al. (2006) considered this to be a form of social network; they
+expanded this network by connecting neighbors’ neighbors. This
+expanded network, based on Pearson’s correlations, can generate
+recommendations efﬁciently with a similar level of recommendation quality. Golbeck (2006) studied the utility of trust level in social networks. They obtained subjective trust values about a
+particular user from each rater, and then selected only raters with
+the highest trust values. Ziegler and Lausen (2004) found a positive
+correlation between trust and interest similarity by comparing
+user similarity between trusted peers and all peers in a book reader
+community (Ziegler & Lausen, 2004). Users can express their trust
+of other users on community Web sites such as product review
+sites, and the level of expressed trust can be a good predictor of
+user preference. Avesani et al. (2005) and Massa and Avesani
+(2007) utilized trust expressions on a ski mountaineering site
+and epinions.com, respectively, to predict user preferences based
+on propagated trust metrics. The performance of these trust-aware
+recommendations was better than those using traditional CF. Thus,
+recommendations based on trust are possible in situations when
+users express their trust of other users.
+In this study, we developed diverse approaches to selecting
+neighbors based on a user’s social network information to enhance
+recommendation accuracy, and compared the performance of the
+proposed methods. We began by collecting users’ social network
+information and preference data from a social networking Web site
+through a Web-based survey.
+3. Data collection
+We distributed a survey to users of Cyworld, a social networking Web site, to obtain data about their preferences and their social
+network. Cyworld was launched in 1999 as a personal contact Web
+site with photo sharing and blogging, and is currently the most
+popular social networking Web site in South Korea(Schonfeld,
+2006). Users of Cyworld connect to their immediate circle of
+friends by adding them as ‘‘ilchon” (close friends). Cyworld currently has 18 million members and has launched Chinese, Japanese, and American versions.4 Fig. 1 is a screen shot of the
+4
+The URLs for the Korean, Chinese, Japanese, and American Cyworld Web sites are
+www.cyworld.com, www.cyworld.com.cn, www.jp.cyworld.com, and www.us.cyworld.com, respectively.
+
+4774
+
+F. Liu, H.J. Lee / Expert Systems with Applications 37 (2010) 4772–4778
+
+Fig. 1. Sample Cyworld mini-home page.
+
+Cyworld mini-home page; it includes personal space for a photo gallery, message board, guestbook, and bulletin board.
+Users have the option to decorate their mini-home page and
+mini-room by buying from tens of thousands of digital items:
+home page skins (wallpapers for their mini-home page, see
+Fig. 3), background music, and virtual appliances. Each week, Cyworld users buy thousands of ‘skin items.’ Users pay more to use
+the skin items for a longer time; e.g., they pay US$1 to use a skin
+for 1 week. Fig. 2 is a screenshot showing thumbnails of skin items
+available for purchase.
+We conducted a Web survey over a period of 9 weeks from April
+1 to June 10, 2007. In total, 30 skin items were presented to survey
+participants, who were asked to rate their preferences using a 5point scale with 5 indicating ‘best.’ These skin items were the 30
+
+most popular skin items listed on the Cyworld gift-shop Web page
+on March 22, 2007.
+Fig. 3 shows part of the survey Web page: the highlighted area
+bordered with bold lines shows one of the 30 Cyworld skins.
+Respondents use navigation buttons labeled ‘‘Previous” and ‘‘Next”
+to switch between skin items. Typically, it took respondents about
+10 min to rate all the items.
+When selecting participants, we ﬁrst found volunteers from a
+Korean university who had more than ten Cyworld friends; this
+was the ‘distributor’ group. Distributors had two tasks: participate
+in the survey and distribute the survey to their friends. Their
+friends, who may have attended the same university or different
+universities, also completed the survey after receiving the survey
+URL from distributors. All survey participants were Cyworld users.
+
+Fig. 2. Thumbnails of Cyworld skin items for purchase.
+
+F. Liu, H.J. Lee / Expert Systems with Applications 37 (2010) 4772–4778
+
+4775
+
+Fig. 3. A screenshot of the Web survey.
+
+Participants included 42 distributors, each of whom had at least
+one friend complete the survey. Of the distributors, we selected 27
+who had more than ten friends complete the survey; this was classiﬁed as the ﬁnal distributor set. Distributors had a total of 313
+friends; the maximum number of friends was 27, and the number
+of friends averaged 11.59. Subjects also included 119 users who
+had no relationship as a friend with any distributor. Subjects ranged in age from 13 to 38 years and averaged 24.64 years. Subjects
+had been using Cyworld for an average of 3.64 years, but the largest fraction of subjects had been using it for more than 4 years.
+
+number of predictions, pi is the predicted rating for item i, and r i
+is the actual rating for item i. Lower MAE values indicate more
+accurate predictions
+
+4. Hybrid approaches
+
+1. From the data set of all distributors (A, refer to Fig. 5), randomly
+select 30% of each distributor’s ratings and set the value of those
+ratings to ‘‘Null.” This transformed set (A-TR) is merged with
+other users’ preference data (B) as the training set. The selected
+30% of each distributor’s ratings are the test set (A-TE).
+2. For each distributor, calculate Pearson’s correlations between
+the distributor and users in the training set formed in step 1.
+3. For each distributor, obtain the Top 30 nearest neighbors by
+sorting the Pearson’s correlations calculated in step 2.
+4. By using the prediction algorithm (Eq. (3)), predict the ratings of
+the particular distributor in the test set with the neighbors
+obtained in step 3.
+5. Repeat steps 2–4 until all distributors’ ratings in the test set are
+predicted.
+6. By comparing the predicted value and the real value of the ratings, calculate the MAE.
+7. Repeat the above steps 30 times and calculate the average MAE
+of this experiment.
+
+Simply replacing the nearest neighbors with a social network
+group is easy, but this method is probably less effective than traditional CF because the set of social network members is much smaller. We conducted experiments using this method to compare the
+outcome with other algorithms. Next, we introduced new algorithms that could simultaneously handle nearest neighbors and social network members. For example, if social network members are
+also in the nearest neighbor set, then the members’ preference can
+be emphasized, while leaving other nonsocial network members’
+preference weights unchanged.
+We performed four experiments. For the ﬁrst experiment, we
+generated predictive recommendations through CF using nearest
+neighbors. For the second experiment, we utilized friends instead
+of nearest neighbors to make predictions. For the third experiment,
+we combined nearest neighbors and friends into a new neighbor
+group. In the fourth experiment, we devised another hybrid approach incorporating levels of interaction to emphasize the inﬂuence of friends among neighbors. Fig. 4 presents a brief overview
+of the differences among the four experiments.
+We assessed the differences in prediction accuracy among the
+four methods by comparing MAE values; the MAE between ratings
+and predictions is a widely used metric in recommender systems
+(Herlocker et al., 2004). In the following equation, N is the total
+
+PN
+MAE ¼
+
+i¼1 jpi
+
+À ri j
+
+N
+
+ð4Þ
+
+4.1. Experiment 1: CF with nearest neighbors (traditional)
+This experiment used the following methodology:
+
+4.2. Experiment 2: CF with friends (Social)
+This experiment used the following methodology:
+1. Same as step 1 from Experiment 1.
+
+4776
+
+F. Liu, H.J. Lee / Expert Systems with Applications 37 (2010) 4772–4778
+
+Fig. 4. Overview of the four experiments.
+
+Fig. 5. Training and test set.
+
+2. For each distributor, calculate Pearson’s correlations between
+the distributor and the distributor’s friends in the training set
+formed in step 1.
+3. By using the prediction algorithm (Eq. (3)), predict the ratings of
+the particular distributor in the test set with friends’ preference
+data and Pearson’s correlations obtained in step 2.
+4. Repeat steps 2–4 until all distributors’ ratings in the test set are
+predicted.
+5. By comparing the predicted value and the real value of the ratings, calculate the MAE.
+6. Repeat the above steps 30 times and calculate the average MAE
+of this experiment.
+
+4.3. Experiment 3: CF with nearest neighbors
+and friends (combined)
+This experiment used the following methodology:
+1. Select a distributor whose ratings will be predicted.
+2. Insert preference data of non-friends of the distributor to the
+training set.
+3. Randomly select 30% of the distributor’s ratings and set the
+value of those ratings to ‘‘Null.” This transformed set is merged
+with the training set as new training set. The selected 30% of the
+distributor’s ratings are the test set.
+
+4777
+
+F. Liu, H.J. Lee / Expert Systems with Applications 37 (2010) 4772–4778
+
+4. Calculate Pearson’s correlations between the distributor and
+users in the training set formed in step 3.
+5. Find the Top M nearest neighbors by sorting Pearson’s correlations, where M = 30 – the number of friends, and merge the
+friends of the distributor with the nearest neighbor group to a
+new neighbor group.
+6. By using the prediction algorithm (Eq. (3)), predict the ratings of
+the particular distributor in the test set with the neighbor group
+selected in step 5.
+7. Repeat the above steps until all distributors’ ratings in the test
+set are predicted.
+8. By comparing the predicted value and the real value of the ratings, calculate the MAE.
+9. Repeat the above steps 30 times and calculate the average MAE
+of this experiment.
+
+Fig. 6. Performance of each experiment.
+
+Table 1
+Normality test results.
+
+4.4. Experiment 4: CF with nearest neighbors and amplifying friends’
+preferences (ampliﬁed)
+This experiment used the following methodology:
+1. Same as step 1 from Experiment 1.
+2. For each distributor, calculate Pearson’s correlations between
+the distributor and users in the training set formed in step 1.
+3. For each distributor, obtain the Top 30 nearest neighbors by
+sorting the Pearson’s correlations calculated in step 2.
+4. If friends of the distributor are in the Top 30 neighbors, amplify
+the preference data of the friends (the ampliﬁcation method
+used in this study is explained after the description of Experiment 4).
+5. By using the prediction algorithm (Eq. (3)), predict the ratings of
+the particular distributor in the test set with the neighbors
+obtained in steps 3 and 4.
+6. Repeat steps 2–5 until all distributors’ ratings in the test set are
+predicted.
+7. By comparing the predicted value and the real value of the ratings, calculate the MAE.
+8. Repeat the above steps 30 times and calculate the average MAE
+of this experiment.
+The closeness and similarity of two individuals in a social networking Web site can be measured by the frequency of interactions between them. We can use the term ‘level of interaction’ as
+a factor in calculating prediction values. By counting the total number of messages a friend has left for the user during the past year,
+we can determine a rudimentary level of interaction between the
+two users. We counted the total number of messages from friends
+of a distributor (N all;j , refer to Eq. (5)) and also counted the number
+of messages from a speciﬁc friend of the distributor ðN i;j Þ.
+Previous studies of recommender systems have used a variety
+of ampliﬁcation methods (Breese et al., 1998). Our goal was to amplify user i’s preference to predict user j’s ratings, so we ampliﬁed
+the Pearson’s correlation between users i and j as follows
+
+
+
+ 
+Ni;j
+;1
+Min qij Â 1 þ
+Nall;j
+
+ð5Þ
+
+In this formula, qij is the Pearson’s correlation coefﬁcient between
+user i and user j, Ni;j is the number of messages from user ito user
+j, and N all;j is the total number of messages from user j’s friends to
+user j. Because the correlation coefﬁcient cannot be greater than
+1, we chose the minimum value between the ampliﬁed correlation
+coefﬁcient and 1.
+
+Group
+Experiment
+Experiment
+Experiment
+Experiment
+
+Top 30 (p-value) Top 40 (p-value) Top 50 (p-value)
+1
+2
+3
+4
+
+Traditional
+Social
+Combined
+Ampliﬁed
+
+0.189
+0.921
+0.543
+0.817
+
+0.194
+
+0.636
+
+0.662
+0.529
+
+0.625
+0.750
+
+*Signiﬁcance level (alpha) = 0.05.
+
+5. Results
+This section compares the performance of each experiment described in Section 4. Fig. 6 shows the average MAE values from the
+four experiments when the number of neighbors was set at 30, 40,
+and 50.
+As shown in Fig. 6 and Table 2, the average MAE values differed
+considerably among the four approaches. Incorporating the level of
+interaction data and Pearson’s correlations simultaneously did not
+appear to improve the accuracy compared to traditional CF methodology. However, when the nearest neighbors and social network
+group were combined, accuracy improved signiﬁcantly from an
+average MAE of 0.79 to approximately 0.71, when calculated at
+the level of Top 30, Top 40, and Top 50.
+We performed the Jarque-Bera test5 to assess normality in our
+data sets using XLSTAT. Next, we compared their means, which are
+summarized in Table 1. The null hypothesis was that the sample
+would have a normal distribution. Since all the computed p-values
+were above the level of signiﬁcance, we accepted the null hypothesis
+for all data sets.
+Table 2 presents the results of the experiments at the level of
+Top 30, Top 40, and Top 50. Generally, the MAE values were highest
+in Experiment 2 and lowest in Experiment 3.
+To test differences among the MAE values in the four experiments, we conducted an ANOVA and Duncan’s test. The null
+hypothesis was that the experiments would produce identical
+average MAE values. Since all the computed p-values were lower
+than the level of acceptance, we rejected the null hypothesis. The
+lower-right part of Table 2 shows the difference in performance
+among experiments statistically using the results of Duncan’s test.
+Generally, the average MAE values can be interpreted as lowest in
+Experiment 3 and highest in Experiment 2. The average MAE values were similar in Experiments 1 and 4, and were at a level between the values from Experiments 2 and 3.
+
+5
+From Wikipedia, URL:http://en.wikipedia.org/wiki/Jarque-Bera_test, accessed
+January 15, 2008.
+
+4778
+
+F. Liu, H.J. Lee / Expert Systems with Applications 37 (2010) 4772–4778
+
+Table 2
+Performance of each experiment.
+Group
+Experiment
+Experiment
+Experiment
+Experiment
+*
+
+Top 30
+1
+2
+3
+4
+
+Traditional
+Social
+Combined
+Ampliﬁed
+
+0.7915
+0.8216a
+0.7125
+0.7899
+
+Top 40
+
+Top 50
+
+Top 30 F-value (p-value)
+
+0.7828
+
+0.7968
+
+78.751 (0.0001)
+
+0.7098
+0.7915
+
+0.7139
+0.7859
+
+Duncan’s
+2 > 1; 4 > 3
+
+*
+
+Top 40 F-value (p-value)
+101.143 (0.0001)
+Duncan’s
+2 > 1; 4 > 3
+
+*
+
+Top 50 F-value (p-value)
+73.812 (0.0001)*
+Duncan’s
+2 > 1; 4 > 3
+
+a
+Because Experiment 2 only used friends’ data of a distributor, its performance was not related to the number of neighbors.
+Signiﬁcance level(alpha) = 0.05.
+
+6. Discussion and conclusions
+Our results indicate that hybrid approaches utilizing social network information are effective in CF methodologies for enhancing
+recommendation performance. Combining the nearest neighbors
+and social network information greatly improves prediction accuracy. In addition, utilizing a social network group as a neighborhood group dramatically reduces the computation required for
+traditional CF, while achieving similar levels of prediction
+accuracy.
+Commercial Web sites may contain either explicit or implicit
+social network information. Social networking Web sites have explicit social network information, enabling users to connect and
+interact in various ways as friends within a network. Incorporating
+the social network information from social networking Web sites
+enables more accurate prediction performance. In contrast, nonsocial networking Web sites may contain implicit social network
+information. If a Web site allows group interaction functions such
+as community and group discussion forums, we can gather implicit
+membership information from it. Future research will be required
+to test how this implicit social network information affects recommendation performance.
+Our experiments were conducted in a laboratory environment,
+which differs to some extent from a real-world information-seeking context. In addition, social networks exist worldwide, and our
+research was limited to the Cyworld Web site in South Korea. Future research should include a larger scope of social network systems extending to multinational social networks. Previous
+studies have investigated social networks at Level 2 (e.g., friends
+of friends of a user), while our work only reached Level 1 (friends
+of a user). Future research may extend to Levels 2 or 3 in a social
+network.
+When we applied friends’ preference information, we utilized
+data from all friends of a distributor because we only collected
+information from a small number of friends, 12 on average. If a social networking Web site includes many friends for each user, it
+should be possible to use friends’ data selectively; this selective
+usage of friends’ data will be a topic for future research.
+Acknowledgement
+This work was supported by the Catholic University of Korea,
+Research Fund, 2007.
+References
+Adomavicius, G., & Tuzhilin, A. (2005). Personalization technologies: A processoriented perspective. Communication of the ACM, 48(10), 83–90.
+
+Ansari, A., Essegaier, S., & Kohli, R. (2000). Internet recommendation systems.
+Journal of Marketing Research, 37(3), 363–375.
+Avesani, P., Massa, P., & Tiella, R. (2005). A trust-enhanced recommender system
+application: Moleskiing. In SAC ’05: Proceedings of the 2005 ACM symposium on
+applied computing.
+Breese, J. S., Heckerman, D., & Kadie, C. (1998). Empirical analysis of predictive
+algorithms for collaborative ﬁltering. Paper presented at the 14th conference on
+uncertainty in artiﬁcial intelligence, Madison, WI, USA.
+Cho, Y. H., Kim, J. K., & Kim, S. H. (2002). A personalized recommender system based
+on web usage mining and decision tree induction. Expert Systems with
+Applications, 23(3), 329–342.
+Golbeck, J. (2006). Generating predictive movie recommendations from trust in social
+networks. Paper presented at the iTrust.
+Granovetter, M. S. (1973). The strength of weak ties. The American Journal of
+Sociology, 78(6), 1360–1380.
+Haubl, G., & Murray, K. B. (2006). Double agent: Assessing the role of electronic
+product-recommendation systems. Sloan Management Review, 47(3), 8–12.
+Haubl, G., & Trifts, V. (2000). Consumer decision making in online shopping
+environments: The effects of interactive decision aids. Marketing Science, 19(1),
+4–21.
+Herlocker, J. L., Konstan, J. A., Terveen, L. G., & Riedl, J. T. (2004). Evaluating
+collaborative ﬁltering recommender systems. ACM Transactions on Information
+Systems, 22(1), 5–53.
+Iijima, J., & Ho, S. (2007). Common structure and properties of ﬁltering systems.
+Electronic Commerce Research and Applications, 6(2), 139–145.
+Kautz, H., Selman, B., & Shah, M. (1997). ReferralWeb: Combining social networks
+and collaborative ﬁltering. Communications of the ACM, 40(3), 77–87.
+Kim, J. K., Kim, H. K., & Cho, Y. H. (2006). A user-oriented contents recommendation
+system in peer-to-peer architecture. Expert Systems with Applications.
+Kim, C. Y., Lee, J. K., Cho, Y. H., & Kim, D. H. (2004). Viscors: A visual-content
+recommender for the mobile web. IEEE Intelligent Systems, 19(6), 32–39.
+Lee, H. J., & Park, S. J. (2007). MONERS: A news recommender for the mobile web.
+Expert Systems with Applications, 32(1), 143–150.
+Liu, H., & Maes, P. (2005). InterestMap: Harvesting social network proﬁles for
+recommendations. Paper presented at the IUI’05, San Diego, California.
+Massa, P., & Avesani, P. (2007). Trust-aware recommender systems. In RecSys ’07:
+Proceedings of the 2007 ACM conference on recommender systems.
+Pennock, D. M., Horvitz, E., & Giles, C. L. (2000). Social choice theory and
+recommender systems: Analysis of the axiomatic foundations of collaborative
+ﬁltering. In Paper presented at the proceedings of the 17th national conference on
+artiﬁcial intelligence (AAAI-2000).
+Resnick, P., Iacovou, N., Suchak, M., Bergstrom, P., & Riedl, J. (1994). GroupLens: An
+open architecture for collaborative ﬁltering of netnews. In Paper presented at the
+proceedings of the 1994 ACM conference on computer supported cooperative work
+Chapel Hill, North Carolina, United States.
+Resnick, P., & Varian, H. R. (1997). Recommender systems. Communications of the
+ACM, 40(3), 56–58.
+Ryu, Y., Kim, H. K., Cho, Y. H., & Kim, J. K. (2006). Peer-oriented content
+recommendation in a social network. In Paper presented at the 16th workshop
+on informaton techonologies and systems (WITS 2006).
+Schonfeld, E. (2006). Cyworld attacks! business 2.0 (Vol. 7(7)).
+Shardanand, U., & Maes, P. (1995). Social information ﬁltering: Algorithms for
+automating word of mouth. In Paper presented at the ACM CHI’95 conference on
+human factors in computing systems.
+Sinha, R., & Swearingen, K. (2001). Comparing recommendations made by online
+systems and friends. In Paper presented at the second DELOS network of excellence
+workshop on personalization and recommender systems in digital libraries.
+Tam, K. Y., & Ho, S. Y. (2006). Understanding the impact of web personalization on
+user information processing and decision outcomes. MIS Quarterly, 30(4),
+865–890.
+Ziegler, C.-N., & Lausen, G. (2004). Analyzing correlation between trust and user
+similarity in online communities. In Paper presented at the second international
+conference on trust management.
+
+

@@ -1,0 +1,1739 @@
+1200
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+Differential Privacy via Wavelet Transforms
+Xiaokui Xiao, Guozhang Wang, and Johannes Gehrke
+Abstract—Privacy-preserving data publishing has attracted considerable research interest in recent years. Among the existing
+solutions, -differential privacy provides the strongest privacy guarantee. Existing data publishing methods that achieve -differential
+privacy, however, offer little data utility. In particular, if the output data set is used to answer count queries, the noise in the query
+answers can be proportional to the number of tuples in the data, which renders the results useless. In this paper, we develop a data
+publishing technique that ensures -differential privacy while providing accurate answers for range-count queries, i.e., count queries
+where the predicate on each attribute is a range. The core of our solution is a framework that applies wavelet transforms on the data
+before adding noise to it. We present instantiations of the proposed framework for both ordinal and nominal data, and we provide a
+theoretical analysis on their privacy and utility guarantees. In an extensive experimental study on both real and synthetic data, we show
+the effectiveness and efficiency of our solution.
+Index Terms—Privacy-preserving data publishing, differential privacy, wavelets.
+
+Ç
+1
+
+INTRODUCTION
+
+T
+
+HE boisterous sea of liberty is never without a wave.—
+Thomas Jefferson.
+Numerous organizations, like census bureaus and
+hospitals, maintain large collections of personal information
+(e.g., census data and medical records). Such data collections are of significant research value, and there is much
+benefit in making them publicly available. Nevertheless, as
+the data are sensitive in nature, proper measures must be
+taken to ensure that its publication does not endanger the
+privacy of the individuals that contributed the data. A
+canonical solution to this problem is to modify the data
+before releasing them to the public, such that the modification prevents inference of private information while
+retaining statistical characteristics of the data.
+A plethora of techniques have been proposed for
+privacy-preserving data publishing (see [1], [2] for surveys).
+Existing solutions make different assumptions about the
+background knowledge of an adversary who would like to
+attack the data—i.e., to learn the private information about
+some individuals. Assumptions about the background
+knowledge of the adversary determine what types of
+attacks are possible [3], [4], [5]. A solution that makes very
+conservative assumptions about the adversary’s background knowledge is -differential privacy [6]. Informally,
+-differential privacy requires that the data to be published
+should be generated using a randomized algorithm G, such
+that the output of G is not very sensitive to any particular
+tuple in the input.
+
+. X. Xiao is with the School of Computer Engineering, Nanyang
+Technological University, 50 Nanyang Avenue, Singapore 639798.
+E-mail: xkxiao@ntu.edu.sg.
+. G. Wang and J. Gehrke are with the Department of Computer Science,
+Cornell University, Ithaca, NY 14853.
+E-mail: {guoz, johannes}@cs.cornell.edu.
+Manuscript received 16 Mar. 2010; revised 21 July 2010; accepted 18 Aug.
+2010; published online 15 Dec. 2010.
+For information on obtaining reprints of this article, please send e-mail to:
+tkde@computer.org, and reference IEEECS Log Number
+TKDESI-2010-03-0156.
+Digital Object Identifier no. 10.1109/TKDE.2010.247.
+1041-4347/11/$26.00 ß 2011 IEEE
+
+The simplest method to enforce -differential privacy, as
+proposed by Dwork et al. [6], is to first compute the frequency
+distribution of the tuples in the input data and then publish a
+noisy version of the distribution. For example, given the
+medical records in Table 1, Dwork et al.’s method first maps
+the records to the frequency matrix in Table 2, where each entry
+in the first (second) column stores the number of diabetes
+(nondiabetes) patients in Table 1 that belong to a specific age
+group. After that, Dwork et al.’s method adds independent
+noise1 with Âð1Þ variance to each entry in Table 2 (we will
+review this in detail in Section 2.2) and then publishes the
+noisy frequency matrix.
+Intuitively, the noisy frequency matrix preserves privacy,
+as it conceals the exact data distribution. In addition, the
+matrix can provide approximate results for all queries about
+Table 1. For instance, if a user wants to know the number of
+diabetes patients with age under 50, then she can obtain an
+approximate answer by summing up the first three entries
+in the first column of the noisy frequency matrix.
+Motivation. Dwork et al.’s method provides reasonable
+accuracy for queries about individual entries in the
+frequency matrix, as it injects only a small noise (with a
+constant variance) into each entry. For aggregate queries
+that involve a large number of entries, however, Dwork
+et al.’s method fails to provide useful results. In particular,
+for a count query answered by taking the sum of a constant
+fraction of the entries in the noisy frequency matrix, the
+approximate query result has a ÂðmÞ noise variance, where
+m denotes the total number of entries in the matrix. Note
+that m is typically an enormous number, as practical data
+sets often contain multiple attributes with large domains.
+Hence, a ÂðmÞ noise variance can render the approximate
+result meaningless, especially when the actual result of the
+query is small.
+Our contributions. In this paper, we introduce privacypreserving wavelet (Privelet), a data publishing technique
+that not only ensures -differential privacy, but also provides
+1. Throughout the paper, we use the term “noise” to refer to a random
+variable with a zero mean.
+Published by the IEEE Computer Society
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+1201
+
+TABLE 1
+Medical Records
+
+Fig. 1. A hierarchy of countries.
+
+accurate results for all range-count queries, i.e., count queries
+where the predicate on each attribute is a range. Specifically,
+Privelet guarantees that any range-count query can be
+answered with a noise variance that is polylogarithmic in
+m. This significantly improves over the OðmÞ noise variance
+bound provided by Dwork et al.’s method.
+The effectiveness of Privelet results from a novel
+application of wavelet transforms, a type of linear transformations that has been widely adopted for image processing
+[7] and approximate query processing [8], [9]. As with
+Dwork et al.’s method, Privelet preserves privacy by
+modifying the frequency matrix M of the input data.
+Instead of injecting noise directly into M, however, Privelet
+first applies a wavelet transform on M, converting M to
+another matrix C. Privelet then adds a polylogarithmic noise
+to each entry in C and maps C back to a noisy frequency
+matrix M Ã . The matrix M Ã thus obtained has an interesting
+property: The result of any range-count query on M Ã can be
+expressed as a weighted sum of a polylogarithmic number
+of entries in C. Furthermore, each of these entries contributes at most polylogarithmic noise variance to the
+weighted sum. Therefore, the variance of the noise in the
+query result is bounded by a polylogarithm of m.
+The remainder of the paper is organized as follows:
+Section 2 gives a formal problem definition and reviews
+Dwork et al.’s solution. In Section 3, we present the Privelet
+framework for incorporating wavelet transforms in data
+publishing, and we establish a sufficient condition for
+achieving -differential privacy under the framework. We
+then instantiate the framework with four differential
+wavelet transforms. Our first instantiation in Section 4 is
+based on the Haar wavelet transform [7], and it is applicable
+for one-dimensional ordinal data. Our second instantiation
+in Section 5 is based on a novel nominal wavelet transform,
+which is designed for tables with a single nominal attribute.
+Our third instantiation in Section 6 is a composition of the
+first two and can handle multidimensional data with both
+TABLE 2
+Frequency Matrix
+
+ordinal and nominal attributes. Our fourth instantiation in
+Section 7 further improves the third instantiation with a
+novel heuristic approach. We conduct a rigorous analysis
+on the properties of each instantiation, and we provide
+theoretical bounds on privacy and utility guarantees, as
+well as time complexities. In Section 8, we demonstrate the
+effectiveness and efficiency of Privelet through extensive
+experiments on both real and synthetic data. Section 9
+discusses related work. In Section 10, we conclude with
+directions for future work.
+
+2
+
+PRELIMINARIES
+
+2.1 Problem Definition
+Consider that we want to publish a relational table T that
+contains d attributes A1 , A2 ; . . . ; Ad , each of which is either
+ordinal (i.e., discrete and ordered) or nominal (i.e., discrete
+and unordered). Following previous work [10], [11], we
+assume that each nominal attribute Ai in T has an
+associated hierarchy, which is a tree where 1) each leaf is a
+value in the domain of Ai , and 2) each internal node
+summarizes the leaves in its subtree. Fig. 1 shows an
+example hierarchy of countries. We define n as the number
+of tuples in T , and m as the size of the Q
+multidimensional
+domain on which T is defined, i.e., m ¼ di¼1 jAi j.
+We aim to release T using an algorithm that ensures differential privacy.
+Definition 1 (-Differential Privacy [6]). A randomized
+algorithm G satisfies -differential privacy, if 1) for any
+two tables T1 and T2 that differ only in one tuple, and 2) for
+any output O of G, we have
+P rfGðT1 Þ ¼ Og
+
+e Á P rfGðT2 Þ ¼ Og:
+
+We optimize the utility of the released data for OLAPstyle range-count queries in the following form:
+SELECT COUNT(*) FROM T
+WHERE A1 2 S1 AND A2 2 S2 AND . . . AND Ad 2 Sd
+For each ordinal attribute Ai , Si is an interval defined on the
+domain of Ai . For each nominal attribute Ai , Si is a set that
+contains either 1) a leaf in the hierarchy of Ai or 2) all leaves in
+the subtree of an internal node in the hierarchy of Ai —this is
+standard for OLAP-style navigation using roll-up or drilldown. For example, given the hierarchy in Fig. 1, examples of
+Si are fUSAg, fCanadag, and the set of all countries in North
+America. Range-count queries are essential for various
+analytical tasks, e.g., OLAP, association rule mining and
+decision tree construction over a data cube [12].
+
+2.2 Previous Approaches
+As demonstrated in Section 1, the information in T can be
+represented by a d-dimensional frequency matrix M with
+
+1202
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+m entries, such that 1) the ith (i 2 ½1; d) dimension of M is
+indexed by the values of Ai , and 2) the entry in M with a
+coordinate vector hx1 ; x2 ; . . . ; xd i stores the number of tuples
+t in T such that t ¼ hx1 ; x2 ; . . . ; xd i. (This is the lowest level
+of the data cube of T [12].) Observe that any range-count
+query on T can be answered using M, by summing up the
+entries in M whose coordinates satisfy all query predicates.
+Dwork et al. [6] prove that M can be released in a
+privacy-preserving manner by adding a small amount of
+noise to each entry in M independently. Specifically, if the
+noise  follows a Laplace distribution with a probability
+density function
+P rf ¼ xg ¼
+
+1 Àjxj=
+e
+;
+2
+
+ð1Þ
+
+then the noisy frequency matrix ensures ð2=Þ-differential
+privacy. We refer to  as the magnitude of the noise. Note
+that Laplace noise with magnitude  has a variance 22 .
+Privacy analysis. To explain why Dwork et al.’s method
+ensures privacy, suppose that we arbitrarily modify a tuple
+in T . In that case, the frequency matrix of T will change in
+exactly two entries, each of which will be decreased or
+increased by one. For example, assume that we modify the
+first tuple in Table 1, by setting its age value to “30-39.”
+Then, in the frequency matrix in Table 2, the first (second)
+entry of the second column will be decreased (increased) by
+one. Intuitively, such small changes in the entries can be
+easily offset by the noise added to the frequency matrix. In
+other words, the noisy matrix is insensitive to any
+modification to a single tuple in T . Thus, it is difficult for
+an adversary to infer private information from the noisy
+matrix. More formally, Dwork et al.’s method is based on
+the concept of sensitivity.
+Definition 2 (Sensitivity [6]). Let F be a set of functions, such
+that the output of each function f 2 F is a real number. The
+sensitivity of F is defined as
+X
+SðF Þ ¼ max
+ð2Þ
+jfðT1 Þ À fðT2 Þj;
+T1 ;T2
+
+f2F
+
+where T1 and T2 are any two tables that differ in only one tuple.
+Note that the frequency matrix M of T can be regarded
+as the outputs of a set of functions, such that each function
+maps T to an entry in M. Modifying any tuple in T will only
+change the values of two entries (in M) by one. Therefore,
+the set of functions corresponding to M has a sensitivity of
+2. The following theorem shows a sufficient condition for
+-differential privacy.
+Theorem 1 ([6]). Let F be a set of functions with a sensitivity
+SðF Þ. Let G be an algorithm that adds independent noise to the
+output of each function in F , such that the noise follows a
+Laplace distribution with magnitude . Then, G satisfies
+-differential privacy with  ¼ ðSðF Þ=Þ.
+By Theorem 1, Dwork et al.’s method guarantees ð2=Þdifferential privacy, since M corresponds to a set of queries
+on T with a sensitivity of 2.
+Utility analysis. Suppose that we answer a range-count
+query using a noisy frequency matrix M Ã generated by
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+Dwork et al.’s method. The noise in the query result has a
+variance Âðm=2 Þ in the worst case. This is because 1) each
+entry in M Ã has a noise variance 8=2 (by (1) and  ¼ 2=),
+and 2) a range-count query may cover up to m entries in
+M Ã . Therefore, although Dwork et al.’s method provides
+reasonable accuracy for queries that involve a small number
+of entries in M Ã , it offers unsatisfactory utility for large
+queries that cover many entries in M Ã .
+
+3
+
+THE PRIVELET FRAMEWORK
+
+This section presents an overview of our Privelet technique.
+We first clarify the key steps of Privelet in Section 3.1, and
+then we provide, in Section 3.2, a sufficient condition for
+achieving -differential privacy with Privelet.
+
+3.1 Overview of Privelet
+Our Privelet technique takes as input a relational table T and
+a parameter  and outputs a noisy version M Ã of the
+frequency matrix M of T . At a high level, Privelet works in
+three steps as follows:
+First, it applies a wavelet transform on M. Generally
+speaking, a wavelet transform is an invertible linear
+function, i.e., it maps M to another matrix C, such that
+1) each entry in C is a linear combination of the entries in
+M, and 2) M can be losslessly reconstructed from C. The
+entries in C are referred to as the wavelet coefficients. Note
+that wavelet transforms are traditionally only defined for
+ordinal data, and we create a special extension for nominal
+data in our setting.
+Second, Privelet adds independent Laplace noise to each
+wavelet coefficient in a way that ensures -differential
+privacy. This results in a new matrix C Ã with noisy
+coefficients. In the third step, Privelet (optionally) refines
+C Ã and then maps C Ã back to a noisy frequency matrix M Ã ,
+which is returned as the output. The refinement of C Ã may
+arbitrarily modify C Ã , but it does not utilize any information
+from T or M. In other words, the third step of Privelet
+depends only on C Ã . This ensures that Privelet does not leak
+any information about T , except for what has been
+disclosed in C Ã . Our solutions in Sections 5 and 7
+incorporate some refinement procedures to achieve better
+utility for range-count queries.
+3.2 Privacy Condition
+The privacy guarantee of Privelet relies on its second step,
+where it injects Laplace noise into the wavelet coefficient
+matrix C. To understand why this achieves -differential
+privacy, recall that, even if we arbitrarily replace one tuple
+in the input data, only two entries in the frequency matrix
+M will be altered. In addition, each of those two entries will
+be offset by exactly one. This will incur only linear changes
+in the wavelet coefficients in C, since each coefficient is a
+linear combination of the entries in M. Intuitively, such
+linear changes can be concealed, as long as an appropriate
+amount of noise is added to C.
+In general, the noise required for each wavelet coefficient
+varies, as each coefficient reacts differently to changes in M.
+Privelet decides the amount of noise for each coefficient
+based on a weight function W, which maps each coefficient to
+a positive real number. In particular, the magnitude of the
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+1203
+
+noise for a coefficient c is always set to =WðcÞ, i.e., a larger
+weight leads to a smaller noise. To analyze the privacy
+implication of such a noise injection scheme, we introduce
+the concept of generalized sensitivity.
+Definition 3 (Generalized Sensitivity). Let F be a set of
+functions, each of which takes as input a matrix and outputs a
+real number. Let W be a function that assigns a weight to each
+function f 2 F . The generalized sensitivity of F with
+respect to W is defined as the smallest number  such that
+X
+ðWðfÞ Á jfðMÞ À fðM 0 ÞjÞ  Á kM À M 0 k1 ;
+f2F
+0
+
+where M and M are any two
+P matrices that differ in only one
+entry, and kM À M 0 k1 ¼ v2MÀM 0 jvj is the L1 distance
+between M and M 0 .
+Generalized sensitivity captures the notion of sensitivity
+(in Definition 2) as a special case. In particular, for any set F
+of functions, the sensitivity of F equals the generalized
+sensitivity of F with respect to a function W that assigns
+each f 2 F the same weight.
+Observe that each wavelet coefficient c can be regarded
+as the output of a function f that maps the frequency matrix
+M to a real number. Thus, the wavelet transform can be
+regarded as the set of functions corresponding to the
+wavelet coefficients. The weight WðcÞ we assign to each
+coefficient c can be thought of as a weight given to the
+function associated with c. Intuitively, the generalized
+sensitivity captures the “weighted” sensitivity of the
+wavelet coefficients with respect to changes in M. The
+following lemma establishes the connection between generalized sensitivity and -differential privacy:
+Lemma 1. Let F be a set of functions that has a generalized
+sensitivity  with respect to a weight function W. Let G be a
+randomized algorithm that takes as input a table T and
+outputs a set ffðMÞ þ ðfÞ j f 2 F g of real numbers, where
+M is the frequency matrix of T , and ðfÞ is a random variable
+that follows a Laplace distribution with magnitude =WðfÞ.
+Then, G satisfies ð2=Þ-differential privacy.
+The proofs for the theorems, lemmas, and corollaries in
+this paper can be found in the Appendix, which can be
+found on the Computer Society Digital Library at http://
+doi.ieeecomputersociety.org/10.1109/TKDE.2010.247. By
+Lemma 1, if a wavelet transform has a generalized
+sensitivity  with respect to weight function W, then we
+can achieve -differential privacy by adding to each wavelet
+coefficient c some Laplace noise with magnitude 2=WðcÞ.
+This justifies the noise injection scheme of Privelet.
+
+4
+
+PRIVELET FOR ONE-DIMENSIONAL ORDINAL
+DATA
+
+This section instantiates the Privelet framework with the
+one-dimensional Haar wavelet transform [7] (HWT), a
+popular technique for processing one-dimensional ordinal
+data. The one-dimensional HWT requires the input to be a
+vector that contains totally ordered elements. Accordingly,
+we assume that the frequency matrix M has a single ordinal
+
+Fig. 2. One-dimensional Haar wavelet transform.
+
+dimension. For ease of exposition, we also assume that the
+number m of entries in M equals 2l (l 2 IN)—this can be
+ensured by inserting dummy values into M [7]. We first
+explain the HWT in Section 4.1 and then present the
+instantiation of Privelet in Section 4.2.
+
+4.1 One-Dimensional Haar Wavelet Transform
+The HWT converts M into 2l wavelet coefficients as follows:
+First, it constructs a full binary tree R with 2l leaves, such
+that the ith leaf of R equals the ith entry in M (i 2 ½1; 2l ). It
+then generates a wavelet coefficient c for each internal node
+N in R, such that c ¼ ða1 À a2 Þ=2, where a1 (a2 ) is the
+average value of the leaves in the left (right) subtree of N.
+After all internal nodes in R are processed, an additional
+coefficient (referred to as the base coefficient) is produced by
+taking the mean of all leaves in R. For convenience, we refer
+to R as the decomposition tree of M, and we slightly abuse
+notation by not distinguishing between an internal node in
+R and the wavelet coefficient generated for the node.
+Example 1. Fig. 2 illustrates an HWT on a one-dimensional
+frequency matrix M with eight entries v1 ; . . . ; v8 . Each
+number in a circle (square) shows the value of a wavelet
+coefficient (an entry in M). The base coefficient c0 equals
+the mean 5.5 of the entries in M. The coefficient c1 has a
+value À0:5, because 1) the average value of the leaves in its
+left (right) subtree equals 5 (6), and 2) ð5 À 6Þ=2 ¼ À0:5.
+Given the Haar wavelet coefficients of M, any entry v in
+M can be easily reconstructed. Let c0 be the base coefficient,
+and ci (i 2 ½1; l) be the ancestor of v at level i of the
+decomposition tree R (we regard the root of R as level 1).
+We have
+v ¼ c0 þ
+
+l
+X
+
+ðgi Á ci Þ;
+
+ð3Þ
+
+i¼1
+
+where gi equals 1 (À1) if v is in the left (right) subtree of ci .
+Example 2. In the decomposition tree in Fig. 2, the leaf v2
+has three ancestors c1 ¼ À0:5, c2 ¼ 1, and c4 ¼ 3. Note
+that v2 is in the right (left) subtree of c4 (c1 and c2 ),
+and the base coefficient c0 equals 5.5. We have
+v2 ¼ 3 ¼ c0 þ c1 þ c2 À c4 .
+
+4.2 Instantiation of Privelet
+Privelet with the one-dimensional HWT follows the threestep paradigm introduced in Section 3.1. Given a parameter
+ and a table T with a single ordinal attribute, Privelet first
+computes the Haar wavelet coefficients of the frequency
+matrix M of T . It then adds to each coefficient c a random
+
+1204
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+Laplace noise with magnitude =W Haar ðcÞ, where W Haar is a
+weight function defined as follows: For the base coefficient
+c, W Haar ðcÞ ¼ m; for a coefficient ci at level i of the
+decomposition tree, W Haar ðci Þ ¼ 2lÀiþ1 . For example, given
+the wavelet coefficients in Fig. 2, W Haar would assign
+weights 8, 8, 4, and 2 to c0 , c1 , c2 , and c4 , respectively. After
+the noisy wavelet coefficients are computed, Privelet
+converts them back to a noisy frequency matrix M Ã based
+on (3), and then it terminates by returning M Ã .
+This instantiation of Privelet with the one-dimensional
+HWT has the following property.
+Lemma 2. The one-dimensional HWT has a generalized
+sensitivity of 1 þ log2 m with respect to the weight function
+W Haar .
+By Lemmas 1 and 2, Privelet with the one-dimensional
+HWT ensures -differential privacy with  ¼ 2ð1 þ log2 mÞ=,
+where  is the input parameter. On the other hand, Privelet
+also provides strong utility guarantee for range-count
+queries, as shown in the following lemma:
+Lemma 3. Let C be a set of one-dimensional Haar wavelet
+coefficients such that each coefficient c 2 C is injected with
+independent noise with a variance at most ð=W Haar ðcÞÞ2 . Let
+M Ã be the noisy frequency matrix reconstructed from C. For
+any range-count query answered using M Ã , the variance of
+noise in the answer is at most ð2 þ log2 jM Ã jÞ=2 Á 2 .
+By Lemmas 2 and 3, Privelet achieves -differential
+privacy while ensuring that the result of any range-count
+query has a noise variance bounded by
+Á
+À
+ð2 þ log2 mÞ Á ð2 þ 2 log2 mÞ2 =2 ¼ O ðlog2 mÞ3 =2 : ð4Þ
+In contrast, as discussed in Section 2.2, with the same
+privacy requirement, Dwork et al.’s method incurs a noise
+variance of Oðm=2 Þ in the query answers.
+Before closing this section, we point out that Privelet with
+the one-dimensional HWT has an Oðn þ mÞ time complexity
+for construction. This follows from the facts that 1) mapping
+T to M takes Oðm þ nÞ time, 2) converting M to and from the
+Haar wavelet coefficients incur OðmÞ overhead [7], and
+3) adding Laplace noise to the coefficients takes OðmÞ time.
+
+5
+
+PRIVELET FOR ONE-DIMENSIONAL NOMINAL
+DATA
+
+This section extends Privelet for one-dimensional nominal
+data by adopting a novel nominal wavelet transform.
+Section 5.1 introduces the new transform, and Section 5.2
+explains the noise injection scheme for nominal wavelet
+coefficients. Section 5.3 analyzes the privacy and utility
+guarantees of the algorithm and its time complexity.
+Section 5.4 compares the algorithm with an alternative
+solution that employs the HWT.
+
+5.1 Nominal Wavelet Transform
+Existing wavelet transforms are only designed for ordinal
+data, i.e., they require that each dimension of the input
+matrix needs to have a totally ordered domain. Hence, they
+are not directly applicable on nominal data, since the values
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+Fig. 3. A nominal wavelet transform.
+
+of a nominal attribute A are not totally ordered. One way to
+circumvent this issue is to impose an artificial total order on
+the domain of A, such that for any internal node N in the
+hierarchy of A, the set of leaves in the subtree of N
+constitutes a contiguous sequence in the total order.
+For example, given a nominal attribute A with the
+hierarchy H in Fig. 3, we impose on A a total order
+v1 < v2 < Á Á Á < v6 . As such, A is transformed into an ordinal
+attribute A0 . Recall that for a nominal attribute, the rangecount query predicate “A 2 S” has a special structure: S
+either contains 1) a leaf in the hierarchy of A or 2) all leaves
+in the subtree of an internal node in the hierarchy of A.
+Therefore, S is always a contiguous range in the imposed
+total order of A. With this transformation, we can apply
+Privelet with the HWT on any one-dimensional nominal
+data. The noise variance bound thus obtained is
+Oððlog2 mÞ3 =2 Þ (see (4)).
+While using the HWT is one possible solution, Privelet
+does not stop here. We will show how to improve the above
+Oððlog2 mÞ3 =2 Þ bound to Oðh2 =2 Þ, where h is the height of
+the hierarchy H on the nominal data. (Note that h log2 m
+holds for any hierarchy where each internal node has at least
+two children.) This improvement can result in a reduction of
+noise variance by an order of magnitude or more in practice,
+as we will discuss in Section 5.4. The core of our solution is a
+novel wavelet transform that creates a different decomposition tree for generating wavelet coefficients.
+A first thought for a different decomposition tree might
+be to use the hierarchy H, i.e., to generate wavelet
+coefficients from each internal node N in H. Intuitively, if
+N has only two children, then we may produce a coefficient
+c from N as in the HWT, i.e., we first compute the average
+value a1 (a2 ) of the leaves in the left (right) subtree of N, and
+then we set c ¼ ða1 þ a2 Þ=2. But in case that N has k (k > 2)
+children, it is unclear how the wavelet coefficients should
+be computed. A straight forward approach is to generate
+one coefficient fromÀeach
+pair of subtrees of N. However,
+Á
+that will result in k2 coefficients, which is undesirable
+when k is large. Is it possible to generate coefficients
+without relying on pairwise comparison of subtrees? We
+answer this question positively with the introduction of the
+nominal wavelet transform.
+Given a one-dimensional frequency matrix M and a
+hierarchy H on the entries in M, the nominal wavelet
+transform first constructs a decomposition tree R from H by
+attaching a child node Nc to each leaf node N in H. The
+value of Nc is set to the value of the entry in M that
+corresponds to N. For example, given the hierarchy H in the
+left-hand side of Fig. 3, the decomposition tree R constructed from H is as in right-hand side of the figure. In the
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+second step, the nominal wavelet transform computes a
+wavelet coefficient for each internal node of R as follows:
+The coefficient for the root node (referred to as the base
+coefficient) is set to the sum of all leaves in its subtree, also
+called the leaf-sum of the node. For any other internal node,
+its coefficient equals its leaf-sum minus the average leafsum of its parent’s children.
+Given these nominal wavelet coefficients of M, each entry
+v in M can be reconstructed using the ancestors of v in the
+decomposition tree R. In particular, let ci be the ancestor of v
+in the ði þ 1Þth level of R, and fi be the fan-out of ci , we have
+!
+hÀ2
+h
+À2
+X
+Y
+1
+;
+ð5Þ
+ci Á
+v ¼ chÀ1 þ
+f
+j¼i j
+i¼0
+where h is the height of the hierarchy H on M. To
+understand (5), recall that c0 equals the leaf-sum of the root
+in R, while ck (k 2 ½1; h À 1) equals the leaf-sum of ck minus
+the average leaf-sum of ckÀ1 ’s children. Thus, the leaf-sum
+of c1 equals c1 þ c0 =f0 , the leaf-sum of c2 equals
+c2 þ ðc1 þ c0 =f0 Þ=f1 , and so on. It can be verified that the
+leaf-sum of chÀ1 equals exactly the right-hand side of (5).
+Since v is the only leaf of chÀ1 in R, (5) holds.
+Example 3. Fig. 3 illustrates a one-dimensional frequency
+matrix M, a hierarchy H associated with M, and a
+nominal wavelet transform on M. The base coefficient
+c0 ¼ 30 equals the sum of all leaves in the decomposition
+tree. The coefficient c1 equals 3, because 1) it has a leafsum 18, 2) the average leaf-sum of its parent’s children
+equals 15, and 3) 18 À 15 ¼ 3.
+In the decomposition tree in Fig. 3, the entry v1 has three
+ancestors, namely, c0 , c1 , and c3 , which are at levels 1, 2,
+and 3 of decomposition tree, respectively. Furthermore,
+the fan-out of c0 and c1 equal 2 and 3, respectively. We
+have v1 ¼ 9 ¼ c3 þ c0 =2=3 þ c1 =3.
+Note that our novel nominal wavelet transform is overcomplete: The number m0 of wavelet coefficients we generate
+is larger than the number m of entries in the input frequency
+matrix M. In particular, m0 À m equals the number of internal
+nodes in the hierarchy H on M. The overhead incurred by
+such overcompleteness, however, is usually negligible, as the
+number of internal nodes in a practical hierarchy H is small
+compared to the number of leaves in H.
+
+5.2 Instantiation of Privelet
+We are now ready to instantiate Privelet for one-dimensional nominal data. Given a parameter  and a table T with
+a single nominal attribute, we first apply the nominal
+wavelet transform on the frequency matrix M of T . After
+that, we inject into each nominal wavelet coefficient c a
+Laplace noise with magnitude =W Nom ðcÞ. Specifically,
+W Nom ðcÞ ¼ 1 if c is the base coefficient, otherwise
+W Nom ðcÞ ¼ f=ð2f À 2Þ, where f is the fan-out of c’s parent
+in the decomposition tree.
+Before converting the wavelet coefficients back to a noisy
+frequency matrix, we refine the coefficients with a mean
+subtraction procedure. In particular, we first divide all but
+the base coefficients into disjoint sibling groups, such that
+each group is a maximal set of noisy coefficients that have
+
+1205
+
+the same parent in the decomposition tree. For example, the
+wavelet coefficients in Fig. 3 can be divided into three
+sibling groups: fc1 ; c2 g, fc3 ; c4 ; c5 g, and fc6 ; c7 ; c8 g. After
+that, for each sibling group, the coefficient mean is
+computed and then subtracted from each coefficient in the
+group. Finally, we reconstruct a noisy frequency matrix M Ã
+from the modified wavelet coefficients (based on (5)), and
+we return M Ã as the output.
+The mean subtraction procedure is essential to the utility
+guarantee of Privelet that we will prove in Section 5.2. The
+intuition is that, after the mean subtraction procedure, all
+noisy coefficients in the same sibling group sum up to zero;
+as such, for any nonroot node N in the decomposition tree,
+the noisy coefficient corresponding to N still equals the
+noisy leaf-sum of N minus the average leaf-sum of the
+children of N’s parent; in turn, this ensures that the
+reconstruction of M Ã based on (5) is meaningful.
+We emphasize that the mean subtraction procedure does
+not rely on any information in T or M; instead, it is
+performed based only on the noisy wavelet coefficients.
+Therefore, the privacy guarantee of M Ã depends only on the
+noisy coefficients generated before the mean subtraction
+procedure, as discussed in Section 3.
+
+5.3 Theoretical Analysis
+To prove the privacy guarantee of Privelet with the nominal
+wavelet transform, we first establish the generalized
+sensitivity of the nominal wavelet transform with respect
+to the weight function W Nom used in the noise injection step.
+Lemma 4. The nominal wavelet transform has a generalized
+sensitivity of h with respect to W Nom , where h the height of the
+hierarchy associated with the input frequency matrix.
+By Lemmas 1 and 4, given a one-dimensional nominal
+table T and a parameter , Privelet with the nominal wavelet
+transform ensures -differential privacy with  ¼ 2h=,
+where h is the height of the hierarchy associated with T .
+Lemma 5. Let C 0 be a set of nominal wavelet coefficients such
+that each c0 2 C 0 contains independent noise with a variance at
+most ð=W Nom ðc0 ÞÞ2 . Let C Ã be a set of wavelet coefficients
+obtained by applying a mean subtraction procedure on C 0 , and
+M Ã be the noisy frequency matrix reconstructed from C Ã . For
+any range-count query answered using M Ã , the variance of the
+noise in the answer is less than 42 .
+By Lemmas 4 and 5, when achieving -differential
+privacy, Privelet with the nominal wavelet transform
+guarantees that each range-count query result has a noise
+variance at most
+Á
+À
+ð6Þ
+4 Á 2 Á ð2hÞ2 =2 ¼ O h2 =2 :
+As h log2 m holds in practice, the above Oðh2 =2 Þ bound
+significantly improves upon the Oðm=2 Þ bound given by
+previous work.
+Privelet with the nominal wavelet transform runs in
+Oðn þ mÞ time. In particular, computing M from T takes
+OðnÞ time; the nominal wavelet transform on M has an
+OðmÞ complexity. The noise injection step incurs OðmÞ
+overhead. Finally, with a breadth-first traversal of the
+decomposition tree R, we can complete both the mean
+
+1206
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+subtraction procedure and the reconstruction of the noisy
+frequency matrix. Such a breadth-first traversal takes
+OðmÞ time under the realistic assumption that the number
+of internal nodes in R is OðmÞ.
+
+5.4
+
+Nominal Wavelet Transform versus Haar
+Wavelet Transform
+As discussed in Section 5.1, Privelet with the HWT can
+provide an Oððlog2 mÞ3 =2 Þ noise variance bound for onedimensional nominal data by imposing a total order on the
+nominal domain. Asymptotically, this bound is inferior to
+the Oðh2 =2 Þ bound in (6), but how different are they in
+practice? To answer this question, let us consider the
+nominal attribute Occupation in the Brazil census data set
+used in our experiments (see Section 8 for details). It has a
+domain with m ¼ 512 leaves and a hierarchy with three
+levels. Suppose that we apply Privelet with the onedimensional HWT on a data set that contains Occupation
+as the only attribute. Then, by (4), we can achieve a noise
+variance bound of
+ð2 þ log2 mÞ Á ð2 þ 2 log2 mÞ2 =2 ¼ 74;400=2 :
+In contrast, if we use Privelet with the nominal wavelet
+transform, the resulting noise variance is bounded by
+4 Á 2 Á ð2hÞ2 =2 ¼ 288=2 ;
+i.e., we can obtain a 15-fold reduction in noise variance. Due
+to the superiority of the nominal wavelet transform over the
+straightforward HWT, in the remainder of the paper, we
+will always use the former for nominal attributes.
+On the other hand, for ordinal attributes, we will always
+apply the HWT instead of the nominal wavelet transform.
+This is because, Privelet with the nominal wavelet transform
+only optimizes the results of the queries that correspond to
+the nodes in the hierarchy of the attribute. As a consequence, it is unsuitable for ordinal attributes, since there
+does not exist a hierarchy on an ordinal attribute that can
+capture the quadratic number of possible range-count
+queries on the ordinal domain.
+
+6
+
+MULTIDIMENSIONAL PRIVELET
+
+This section extends Privelet for multidimensional data.
+Section 6.1 presents our multidimensional wavelet transform, which serves as the basis of the new instantiation of
+Privelet in Section 6.2. Section 6.3 analyzes properties of the
+new instantiation, while Section 6.4 further improves its
+utility guarantee.
+
+6.1 Multidimensional Wavelet Transform
+The one-dimensional wavelet transforms can be extended to
+multidimensional data using standard decomposition [7],
+which works by applying the one-dimensional wavelet
+transforms along each dimension of the data in turn. More
+specifically, given a frequency matrix M with d dimensions,
+we first divide the entries in M into one-dimensional vectors,
+such that each vector contains a maximal set of entries that
+have identical coordinates on all but the first dimensions. For
+each vector V , we convert it into a set S of wavelet coefficients
+using the one-dimensional Haar or nominal wavelet trans-
+
+Fig. 4. Multidimensional wavelet transform.
+
+form, depending on whether the first dimension of M is
+ordinal or nominal. After that, we store the coefficients in S in
+a vector V 0 , where the coefficients are sorted based on a levelorder traversal of the decomposition tree (the base coefficient
+always ranks first). The ith (i 2 ½1; S) coefficient in V 0 is
+assigned d coordinates hi; x2 ; x3 ; . . . ; xd i, where xj is the
+jth coordinate of the entries in V (j 2 ½2; d; recall that the
+jth coordinates of these entries are identical). After that, we
+organize all wavelet coefficients into a new d-dimensional
+matrix C1 according to their coordinates.
+In the second step, we treat C1 as the input data, and we
+apply a one-dimensional wavelet transform along the
+second dimension of C1 to produce a matrix C2 , in a
+manner similar to the transformation from M to C1 . In
+general, the matrix Ci generated in the ith step will be used
+as the input to the ði þ 1Þth step. In turn, the ði þ 1Þth step
+will apply a one-dimensional wavelet transform along the
+ði þ 1Þth dimension of Ci , and it will generate a new matrix
+Ciþ1 . We refer to Ci as the step-i matrix. After all
+d dimensions are processed, we stop and return Cd as the
+result. We refer to the transformation from M to Cd as an
+Haar-nominal (HN) wavelet transform. Observe that Cd can
+be easily converted back to the original matrix M, by
+applying inverse wavelet transforms along dimensions
+d; d À 1; . . . ; 1 in turn.
+Example 4. Fig. 4 illustrates an HN wavelet transform on a
+matrix M with two ordinal dimensions. In the first step
+of the transform, M is vertically divided into two vectors
+hv11 ; v12 i and hv21 ; v22 i. These two vectors are then
+converted into two new vectors hv011 ; v012 i and hv021 ; v022 i
+using the one-dimensional HWT. Note that v011 and v021
+are the base coefficients. The new matrix C1 is the step-1
+matrix.
+Next, C1 is horizontally partitioned into two vectors
+hv011 ; v021 i and hv012 ; v022 i. We apply the HWT on them and
+generate two coefficient vectors hc11 ; c21 i and hc12 ; c22 i,
+with c11 and c12 being the base coefficients. The matrix C2
+is returned as the final result.
+
+6.2 Instantiation of Privelet
+Given a d-dimensional table T and a parameter , Privelet
+first performs the HN wavelet transform on the frequency
+matrix M of T . Then, it adds Laplace noise with magnitude
+=W HN ðcÞ to each coefficient c, where W HN is a weight
+function that we will define shortly. Next, it reconstructs a
+noisy frequency matrix M Ã using the noisy wavelet
+coefficients by inverting the one-dimensional wavelet
+transforms on dimensions d; d À 1; . . . ; 1 in turn.2 Finally,
+it terminates by returning M Ã .
+2. If the ithe dimension is nominal, then, whenever we convert a vector
+V 0 in the step-i matrix back to a vector V in the step-ði À 1Þ matrix, we will
+apply the mean substraction procedure before the reconstruction of V .
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+The weight function W HN is decided by the onedimensional wavelet transforms adopted in the HN wavelet
+transform. Let W i be the weight function associated with
+the transform used to compute the step-i (i 2 ½1; d) matrix,
+i.e., W i ¼ W Haar if the ith dimension of M is ordinal,
+otherwise W i ¼ W Nom . We determine the weight W HN ðcÞ
+for each HN wavelet coefficient c as follows: First, during
+the construction of the step-1 matrix C1 , whenever we
+generate a coefficient vector V 0 , we assign to each c0 2 V 0 a
+weight W 1 ðc0 Þ. For instance, if the first dimension A1 of M is
+nominal, then W 1 ðc0 Þ ¼ 1 if c is the base coefficient,
+otherwise W 1 ðc0 Þ ¼ f=ð2f À 2Þ, where f is the fan-out of
+the parent of c0 in the decomposition tree. Due to the way
+we arrange the coefficients in C1 , if two coefficients in C1
+have the same coordinates on the first dimension, they must
+have identical weights.
+Now consider the second step of the HN wavelet
+transform. In this step, we first partition C1 into vectors
+along the second dimension, and then we apply onedimensional wavelet transforms to convert each vector V 00
+to into a new coefficient vector V Ã . Observe that all
+coefficients in V 00 should have the same weight, since they
+have identical coordinates on the first dimension. We set the
+weight of each cÃ 2 V Ã to be W 2 ðcÃ Þ times the weight shared
+by the coefficients in V 00 .
+In general, in the ith step of the HN wavelet transform,
+whenever we generate a coefficient c from a vector
+V & CiÀ1 , we always set the weight of c to the product of
+W i ðcÞ and the weight shared by the coefficients in V —all
+coefficients in V are guaranteed to have the same weight,
+because of the way we arrange the entries in CiÀ1 . The
+weight function W HN for the HN wavelet transform is
+defined as a function that maps each coefficient in Cd to its
+weight computed as above. For convenience, for each
+coefficient c 2 Ci (i 2 ½1; d À 1), we also use W HN ðcÞ to
+denote the weight of c in Ci .
+Example 5. Consider the HN wavelet transform in Fig. 4.
+Both dimensions of the frequency matrix M are nominal,
+and hence, the weight function for both dimensions is
+W Haar . In the step-1 matrix C1 , the weights of the
+coefficients v011 and v021 equal 1=2, because 1) they are the
+base coefficients in the wavelet transforms on hv11 ; v12 i
+and hv21 ; v21 i, respectively, and 2) W Haar assigns a weight
+1=2 to the base coefficient whenever the input vector
+contains only two entries.
+Now consider the coefficient c11 in the step-2 matrix
+C2 . It is generated from the HWT on hv011 ; v021 i, where
+both v011 and v012 have a weight 1=2. In addition, as c11 is
+the base coefficient, W Haar ðc11 Þ ¼ 1=2. Consequently,
+W HN ðc11 Þ ¼ 1=2 Á W Haar ðc11 Þ ¼ 1=4.
+
+6.3 Theoretical Analysis
+As Privelet with the HN wavelet transform is essentially a
+composition of the solutions in Sections 4.2 and 5.2, we can
+prove its privacy (utility) guarantee by incorporating
+Lemmas 2 and 4 (3 and 5) with an induction argument on
+the data set dimensionality d. Let us define a function P that
+takes as input any attribute A, such that
+
+1207
+
+&
+PðAÞ ¼
+
+1 þ log2 jAj; if A is ordinal;
+h;
+otherwise;
+
+where h is the height of A’s hierarchy. Similarly, let H be a
+function such that
+&
+ð2 þ log2 jAjÞ=2; if A is ordinal;
+HðAÞ ¼
+4;
+otherwise:
+We have the following theorems that show 1) the generalized sensitivity of the HN wavelet transform (Theorem 2)
+and 2) the noise variance bound provided by Privelet with
+the HN wavelet transform (Theorem 3).
+Theorem 2. The HN wavelet transform on a d-dimensional
+Qd
+matrix M has a generalized sensitivity
+i¼1 PðAi Þ with
+respect to W HN , where Ai is the ith dimension of M.
+Theorem 3. Let CdÃ be a d-dimensional HN wavelet coefficient
+matrix, such that each coefficient cÃ 2 CdÃ has a noise variance
+at most ð=W HN ðcÃ ÞÞ2 . Let M Ã be the noisy frequency matrix
+reconstructed from CdÃ , and Ai (i 2 ½1; d) be the ith dimension
+of M Ã . For any range-count query answered using M Ã , the
+noise in the query result has a variance at most
+Q
+2 Á di¼1 HðAi Þ.
+By Theorem 2, Privelet with the HN wavelet transform
+Q
+achieves -differential when  ¼ 2= Á di¼1 PðAi Þ; in that
+case, by Theorem 3, Privelet ensures that any range-count
+query result has a noise variance at most
+2 Y
+
+d
+d
+Y
+Á
+À
+PðAi Þ Á
+HðAi Þ ¼ O logOð1Þ m=2 ;
+2 2= Á
+i¼1
+
+i¼1
+
+since PðAi Þ and HðAi Þ are both logarithmic in m.
+Privelet with the HN wavelet transform has an Oðn þ mÞ
+time complexity. This is because 1) computing the frequency matrix M takes Oðn þ mÞ time, 2) each onedimensional wavelet transform on M has OðmÞ complexity,
+and 3) adding Laplace noise to the wavelet coefficients
+incurs OðmÞ overhead.
+
+6.4 A Hybrid Solution
+We have shown that Privelet outperforms Dwork et al.’s
+method asymptotically in terms of the accuracy of rangecount queries. In practice, however, Privelet can be inferior
+to Dwork et al.’s method, when the input table T contains
+attributes with small domains. For instance, if T has a single
+ordinal attribute A with domain size jAj ¼ 16, then Privelet
+provides a noise variance bound of
+À
+Á2
+2 Á 2 Á PðAÞ= Á HðAÞ ¼ 600=2 ;
+as analyzed in Section 6.3. In contrast, Dwork et al.’s
+method incurs a noise variance of at most
+À
+2 Á 2 Á jAj=Þ2 ¼ 128=2 ;
+as shown in Section 2.2. This demonstrates the fact that,
+Dwork et al.’s method is more favorable for small-domain
+attributes, while Privelet is more suitable for attributes
+whose domains are large. How can we combine the
+advantages of both solutions to handle data sets that
+contain both large- and small-domain attributes?
+
+1208
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+Fig. 6. A one-dimensional vector with 64 elements.
+
+Finally, we note that P riveletþ also runs in Oðn þ mÞ
+time. This follows from the Oðn þ mÞ time complexity of
+Privelet.
+
+Fig. 5. The P riveletþ algorithm.
+
+We answer the above question with the P riveletþ
+algorithm illustrated in Fig. 5. The algorithm takes as an
+input a table T , a parameter , and a subset SA of the
+attributes in T . It first maps T to its frequency matrix M.
+Then, it divides M into submatrices, such that each submatrix
+contains the entries in M that have the same coordinates on
+each dimension specified in SA . For instance, given the
+frequency matrix in Table 2, if SA contains only the “Has
+Diabetes?” dimension, then the matrix would be split into
+two one-dimensional submatrices, each of which contains a
+column in Table 2. In general, if M has d dimensions, then
+each submatrix should have d À jSA j dimensions.
+After that, each submatrix is converted into wavelet
+coefficients using a ðd À jSA jÞ-dimensional HN wavelet
+transform. P riveletþ injects into each coefficient c some
+Laplace noise with magnitude =W HN ðcÞ, and then it maps
+the noisy coefficients back to a noisy submatrix. In other
+words, P riveletþ processes each submatrix in the same way
+as Privelet handles a ðd À jSA jÞ-dimensional frequency
+matrix. Finally, P riveletþ puts together all noisy submatrices to obtain a d-dimensional noisy frequency matrix M Ã ,
+and then it terminates by returning M Ã .
+Observe that P riveletþ captures Privelet as a special case
+where SA ¼ ;. Compared to Privelet, it provides the
+flexibility of not applying wavelet transforms on the
+attributes in SA . Intuitively, this enables us to achieve better
+data utility by putting in SA the attributes with small
+domains, since those attributes cannot be handled well with
+Privelet. Our intuition is formalized in Corollary 1, which
+follows from Theorems 2 and 3.
+
+7
+
+PRIVELET WITH HEURISTIC NOISE REDUCTION
+
+This section presents a technique that heuristically reduces
+the amount of noise in the data produced by P riveletþ .
+Section 7.1 clarifies the rationale of the technique, and
+Section 7.2 elaborates the details.
+
+7.1 Rationale
+In the frequency matrix of a data set, adjacent entries often
+have similar values due to the following two reasons. First,
+the sparseness of real data may lead to large blocks of zero
+entries in the frequency matrix. Second, the correlations
+among the attributes in the data may also result in adjacent
+entries (in the frequency matrix) that are close to each other.
+For example, given a two-dimensional data set that stores the
+age and disease information of a large set of patients, adjacent
+entries along the disease dimension of the frequency matrix
+might not differ much, since people with similar ages are
+often equally susceptible to the same disease.
+For a frequency matrix where adjacent entries are
+similar, most of the wavelet coefficients of the matrix
+would be small. For instance, Fig. 6 shows a one-dimensional vector with 64 elements, and Fig. 7 illustrates the
+
+Corollary 1. Let T be a table that contains a set S of attributes.
+þ
+Given T , a subset SA of S, and a parameter
+Q , P rivelet
+achieves -differential privacy with  ¼ 2= Á A2SÀSA PðAÞ.
+In addition, it ensures that
+query result has a
+Q
+Q any range-count
+noise variance at most ð A2SA jAjÞ Á A2SÀSA HðAÞ.
+By Corollary 1, when -differential privacy is enforced,
+P riveletþ leads to a noise variance bound of
+!
+Y
+Y
+2
+jAj Á
+ððPðAÞÞ2 Á HðAÞÞ:
+ð7Þ
+8= Á
+A2SA
+
+A2SÀSA
+
+It is not hard to verify that, when SA contains only attributes
+A with jAj ðPðAÞÞ2 Á HðAÞ, the bound given in (7) is
+always no worse than the noise variance bounds provided
+by Privelet and Dwork et al.’s method.
+
+Fig. 7. The Haar wavelet coefficients of the vector in Fig. 6. (a) Level 1.
+(b) Level 2. (c) Level 3. (d) Level 4. (e) Level 5. (f) Level 6.
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+Haar wavelet coefficients generated from each level of the
+decomposition tree. Observe that most coefficients are close
+or equal to zero. To understand this, recall that if a Haar
+wavelet coefficient c is generated from a node N in the
+decomposition tree, then c equals half of the difference
+between the leaf-sums of the left and right subtrees of N.
+When the leaves under N have similar values, the leaf-sums
+of the two subtrees of N are roughly the same, in which case
+c should be a small value. Due to similar reasons, if
+frequency matrix contains a large number of adjacent
+entries that are similar, most of its nominal or HN wavelet
+coefficients would be insignificant.
+Consider a frequency matrix M with a set C of wavelet
+coefficients that are mostly close to zero. Let C Ã be the noisy
+version of C generated by P riveletþ , i.e., each coefficient in
+C Ã is injected with a small amount of Laplace noise.
+Observe that, if a coefficient c 2 C is small, then, with a high
+probability, its value after noise injection would also be
+small. This indicates that the majority of the coefficients in
+C Ã should be insignificant. Intuitively, if we set the
+insignificant coefficients in C Ã to zero, C Ã would become
+less noisy, since the original values of those coefficients are
+close to zero anyway. Such a noise reduction approach is
+referred to as wavelet thresholding [13], and it has been
+extensively studied in the signal processing literature (see
+the paper by Elad [14] and the references therein) for
+recovering useful information from noisy data.
+Two wavelet thresholding methods have been widely
+adopted, namely, soft-thresholding and hard-thresholding.
+Both methods are parameterized with a threshold  > 0.
+Specifically, soft-thresholding transforms each noisy wavelet coefficient cÃ using a function s as follows:
+8 Ã
+< c À ; if cÃ > ;
+Ã
+ð8Þ
+s ðc ; Þ ¼ cÃ þ ; if cÃ < À;
+:
+0;
+otherwise:
+On the other hand, hard-thresholding modifies wavelet
+coefficients with a function h as follows:
+& Ã
+c ; if jcÃ j > ;
+Ã
+ð9Þ
+h ðc ; Þ ¼
+0; otherwise:
+To ensure that applying wavelet thresholding on C Ã does
+not compromise the privacy guarantee of C Ã , the threshold 
+should be decided based only on C Ã , i.e.,  should not reveal
+any more information than C Ã does. The signal processing
+community has developed numerous methods (e.g., [13],
+[14], [15], [16], [17]) for choosing an appropriate  based only
+on the noisy wavelet coefficients. Those methods, however,
+assume that 1) the noise-free wavelet coefficients follow a
+distribution that is known in advance, or 2) the noise in each
+coefficient follows a Gaussian distribution. This renders
+those methods inapplicable for the problem studied in this
+paper, since we assume that the exact distribution of the
+wavelet coefficients is unknown, and the noise in each
+coefficient follows a Laplace distribution. To address this
+issue, in Section 7.2, we will propose a soft-thresholding
+approach tailored for P riveletþ . We focus on soft-thresholding instead of hard-thresholding, since the former is
+generally more effective (in terms of noise reduction) than
+the latter, as pointed out by Chang et al. [16].
+
+1209
+
+7.2 Algorithm
+Our soft-thresholding approach is based on the concept of
+subbands [7]. Two Haar or nominal coefficients are said to
+belong to the same subband, if they are generated from the
+same level of the decomposition tree (the base coefficient
+itself is regarded as a separate subband). For example, the
+Haar wavelet coefficients c0 ; . . . ; c7 in Fig. 2 can be divided
+into four subbands, i.e., fc0 g, fc1 g, fc2 ; c3 g, and
+fc4 ; c5 ; c6 ; c7 g. Similarly, we say that two d-dimensional
+HN wavelet coefficients are from the same subband, if for
+each i 2 ½1; d, both coefficients correspond to the same level
+of the decomposition tree for the ith dimension. For
+instance, the four HN wavelet coefficients c11 ; c12 ; c21 ; c22 in
+Fig. 4 can be divided into four subbands, each of which
+contains one coefficient. The reason is that, for the
+horizontal dimension, c11 and c12 (c21 and c22 ) are generated
+from the same level of the decomposition tree; on the other
+hand, for the vertical dimension, c11 and c21 (c12 and c22 ) are
+computed from the same decomposition tree level. In other
+words, no two coefficients are from the same decomposition
+tree level on both dimensions, and hence, each coefficient
+constitutes a subband by itself.
+Given a set of HN wavelet coefficients injected with
+Laplace noise, we first divide them into subbands, and then
+normalize each coefficient cÃ by multiplying cÃ with W HN ðcÃ Þ.
+Since the noise in each cÃ has a magnitude =W HN ðcÃ Þ, each
+normalized coefficient should have a fixed noise variance
+2 Á 2 . Therefore, in any subband, the variance of the noisy
+normalized coefficients should equal 2 Á 2 plus the variances
+of the noise-free normalized coefficients. Following existing
+work [16], [18], we make the simplifying assumption that,
+without the presence of noise, all normalized coefficients in
+the same subband are independent samples from a certain
+distribution with a zero mean. Under this assumption, given a
+subband S of noisy normalized coefficients, the variance 2 of
+the noise-free normalized coefficients can be estimated as
+2 ¼
+
+1 X Ã 2
+ðc Þ À 2 Á 2 :
+jSj À 1 cÃ 2S
+
+ð10Þ
+
+Based on (10), we propose to apply soft-thresholding on
+each noisy subband S, such that the variance of the modified
+coefficients in S equals the estimated variance 2 of the
+noise-free coefficients. In other words, we aim to mitigate
+the increase in the coefficient variance incurred by noise
+injection. Accordingly, we set the threshold  such that
+2
+X
+1
+Á
+s ðcÃ ; Þ ¼ rhs: of ð10Þ:
+jSj À 1 cÃ 2S
+
+ð11Þ
+
+Let Sþ be the set of coefficients whose absolute values are
+larger than . We have
+2
+X À Á2
+X
+cÃ À 2
+cÃ Á 
+s ðcÃ ; Þ ¼
+
+X
+cÃ 2S
+
+cÃ 2Sþ
+
+cÃ 2Sþ
+
+ð12Þ
+
+2
+
+þ jSþ j Á  :
+Based on (12), we propose the CompThresh algorithm in Fig. 8
+for identifying a threshold  that satisfies (11). Given a
+subband of (normalized) noisy coefficients and the noise
+magnitude , CompThresh first estimates the variance 2 of the
+
+1210
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+TABLE 3
+Sizes of Attribute Domains
+
+8
+
+EXPERIMENTS
+
+This section experimentally evaluates three methods:
+1) Dwork et al.’s method (referred to as Basic), 2) P riveletþ ,
+and 3) our soft-thresholding approach discussed in Section 7
+(referred to as P riveletÃ ). Section 8.1 compares their data
+utility, while Section 8.2 investigates their computational
+cost.
+Fig. 8. The CompThresh algorithm.
+
+noise-free coefficients based on (10) (Line 1 of Fig. 8). After
+that, CompThresh sorts all coefficients in descending order,
+and stores the sorted sequence in an array X (Lines 2-3). Next,
+CompThresh performs a linear scan on X, and computes
+the
+P
+following twoPvalues for each i 2 ½1; jSj: 1) i ¼ ij¼1 ðX½iÞ2 ,
+and 2) i ¼ ij¼1 X½i (Lines 4-5). By (12), a threshold 
+satisfies (11), if and only if the following equation holds for
+i ¼ minfj j X½j ! g:
+i À 2i Á  þ i Á 2 ¼ ðjSj À 1Þ Á 2 :
+
+ð13Þ
+
+Given X, i , and i (i 2 ½1; jSj), CompThresh computes and
+returns the desired threshold  based on (13) (Lines 6-10).
+In summary, our soft-thresholding approach employs a
+threshold computed based only on the noisy wavelet
+coefficients (produced by P riveletþ ) and the noise magnitude  (which is assumed to be publicly known). This ensures
+that the approach achieves the same privacy guarantee as
+P riveletþ does. In terms of utility, however, the soft-thresholding approach does not retain the noise variance bound
+provided by P riveletþ , due to the heuristic nature of the
+approach. Specifically, the effectiveness of the approach
+relies on the assumption that most of the wavelet coefficients
+are small before noise injection. Nonetheless, our approach
+tends to work well for practical data sets, as will be
+demonstrated in Section 8. Finally, it can be verified that
+the soft-thresholding approach runs in Oðn þ m log mÞ time.
+Remarks. The purpose of wavelet thresholding, as discussed in Section 7.1, is to prevent the small wavelet
+coefficients from being dominated by noise. One may
+wonder whether the same purpose can be fulfilled by
+using a noise injection algorithm that adds noise only to
+the large wavelet coefficients, while keeping the small
+coefficients intact. Such an algorithm, however, violates
+differential privacy, since the small coefficients output by
+the algorithm can be highly sensitive to some particular
+tuple in the data set. To address this issue, one possible
+solution is to introduce some randomness into the
+selection of wavelet coefficients that will be left untouched. Interested readers are referred to previous work
+[19], [20], [21] for data publishing algorithms based on
+similar ideas. The complete treatment of this alternative
+solution is beyond the scope of this paper.
+
+8.1 Accuracy of Range-Count Queries
+We use two data sets3 that contain census records of
+individuals from Brazil and the US, respectively. The Brazil
+data set has 10 million tuples and four attributes, namely, Age,
+Gender, Occupation, and Income. The attributes Age and Income
+are ordinal, while Gender and Occupation are nominal. The US
+data set also contains these four attributes (but with slightly
+different domains), and it has 8 million tuples. Table 3 shows
+the domain sizes of the attributes in the data sets. The
+numbers enclosed in parentheses indicate the heights of the
+hierarchies associated with the nominal attributes.
+For each data set, we create a set of 40,000 random rangecount queries, such that the number of predicates in each
+query is uniformly distributed in ½1; 4. Each query predicate “Ai 2 Si ” is generated as follows: First, we choose Ai
+randomly from the attributes in the data set. After that, if Ai
+is ordinal, then Si is set to a random interval defined on Ai ;
+otherwise, we randomly select a nonroot node from the
+hierarchy of Ai , and let Si contain all leaves in the subtree of
+the node. We define the selectivity of a query q as the fraction
+of tuples in the data set that satisfy all predicates in q. We
+also define the coverage of q as the fraction of entries in the
+frequency matrix that are covered by q.
+We apply Basic, P riveletþ , and P riveletÃ on each data set
+to produce noisy frequency matrices that ensure -differential privacy, varying  from 0.5 to 1.25. For P riveletþ and
+P riveletÃ , we set their input parameter SA ¼ fAge; Genderg,
+since each A of these two attributes has a relatively small
+domain, i.e., jAj ðPðAÞÞ2 Á HðAÞ, where P and H are as
+defined in Section 6.3. We use the noisy frequency matrices
+to derive approximate answers for range-count queries. The
+quality of each approximate answer x is gauged by its
+absolute error and relative error with respect to the actual
+query result act. Specifically, the absolute error of x is
+defined as jx À actj, and the relative error of x is computed
+as jx À actj=maxfact; sg, where s is a sanity bound that
+mitigates the effects of the queries with excessively small
+selectivities (we follow with this evaluation methodology
+from previous work [23], [24]). We set s to 0.1 percent of the
+number of tuples in the data set.
+In our first set of experiments, we divide the query set
+QBr for the Brazil data set into five subsets. All queries in
+3. Both data sets are publicly available as part of the Integrated Public Use
+Microdata Series [22].
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+1211
+
+Fig. 9. Average absolute error versus query coverage (Brazil). (a)  ¼ 0:5. (b)  ¼ 0:75. (c)  ¼ 1. (d)  ¼ 1:25.
+
+Fig. 10. Average absolute error versus query coverage (US). (a)  ¼ 0:5. (b)  ¼ 0:75. (c)  ¼ 1. (d)  ¼ 1:25.
+
+Fig. 11. Average relative error versus query selectivity (Brazil). (a)  ¼ 0:5. (b)  ¼ 0:75. (c)  ¼ 1. (d)  ¼ 1:25.
+
+the ith (i 2 ½1; 5) subset have coverage that falls between the
+ði À 1Þth and ith quintiles of the query coverage distribution
+in QBr . On each noisy frequency matrix generated from the
+Brazil data set, we process the five query subsets in turn,
+and plot in Fig. 9 the average absolute error in each subset
+as a function of the average query coverage. Fig. 10 shows
+the results of a similar set of experiments conducted on the
+US data set.
+The average absolute error of Basic increases linearly
+with the query coverage. In contrast, the average absolute
+error of P riveletþ is insensitive to the query coverage. The
+highest average error incurred by P riveletþ is smaller than
+that of Basic by two orders of magnitudes. This is consistent
+with our analysis that P riveletþ provides a much better
+noise variance bound than Basic does.
+On the other hand, the error of P riveletÃ is comparable
+to (considerably smaller than) that of P riveletþ when the
+query coverage is larger (smaller) than 0.01. This is
+because a query with a small coverage often has a small
+result, in which case the wavelet coefficients that correspond to the query tend to be small. As explained in
+Section 7, P riveletÃ adopts a wavelet thresholding approach that makes the small wavelet coefficients less noisy,
+and therefore, it leads to more accurate results for queries
+with small coverage. Meanwhile, a query with a large
+
+coverage usually corresponds to large wavelet coefficients,
+for which wavelet thresholding is less effective. This
+explains why the error of P riveletÃ and P riveletþ are
+similar when the query coverage is large.
+In the next experiments, we divide the query set for
+each data set into five subsets based on query selectivities. Specifically, the ith (i 2 ½1; 5) subset contains the
+queries whose selectivities are between the ði À 1Þth and
+ith quintiles of the overall query selectivity distribution.
+Figs. 11 and 12 illustrate the average relative error
+incurred by each noisy frequency matrix in answering
+each query subset. The X-axes of the figures represent the
+average selectivity of each subset of queries. The error of
+P riveletÃ is lower than (comparable to) that of P riveletþ
+when the query selectivity is smaller (larger) than 0.001,
+since P riveletÃ is more effective for small queries, as we
+have explained for the results in Figs. 11 and 12. In
+addition, the error of P riveletþ and P riveletÃ is no more
+than 25 percent in all cases, while Basic induces more
+than 70 percent error in several query subsets.
+In summary, our experiments show that P riveletÃ
+outperforms P riveletþ in terms of the accuracy of rangecount queries. In turn, P riveletþ incurs a smaller query
+error than Basic does, whenever the query coverage is larger
+than 1 percent or the query selectivity is at least 10À7 .
+
+1212
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+Fig. 12. Average relative error versus query selectivity (US). (a)  ¼ 0:5. (b)  ¼ 0:75. (c)  ¼ 1. (d)  ¼ 1:25.
+
+8.2 Computation Time
+Next, we investigate how the computation time of Basic,
+P riveletþ , and P riveletÃ varies with the number n tuples in
+the input data and the number m of entries in the frequency
+matrix. For this purpose, we generate synthetic data sets
+with various values of n and m. Each data set contains two
+ordinal attributes and two nominal attributes. The domain
+size of each attribute is m1=4 . Each nominal attribute A has a
+hierarchy H with
+pthree
+ﬃﬃﬃﬃﬃﬃﬃ levels, such that the number of level2 nodes in H is jAj. The values of the tuples are uniformly
+distributed in the attribute domains.
+In the first set of experiments, we fix m ¼ 224 , and apply
+Basic, P riveletþ , P riveletÃ on data sets with n ranging from
+1 to 5 millions. For P riveletþ and P riveletÃ , we set their
+input parameter SA ¼ ;, in which case both methods have a
+relatively large running time, since they need to perform
+wavelet transforms on all dimensions of the frequency
+matrix. Fig. 13 illustrates the computation time of Basic,
+P riveletþ , and P riveletÃ as a function of n. Observe that all
+three techniques run linear time with respect to n.
+In the second set of experiments, we set n ¼ 5 Â 106 , and
+vary m from 222 to 226 . Fig. 14 shows the computation
+overhead of Basic, P riveletþ , and P riveletÃ as a function of
+m. All techniques scale almost linearly with m.
+In summary, P riveletÃ incurs a higher computation
+overhead than P riveletþ does, and they are both less
+efficient than Basic. Nevertheless, this is justified by the facts
+that, in term of data utility, P riveletÃ outperforms P riveletþ ,
+which in turn is superior to Basic.
+
+Numerous techniques have been proposed for ensuring differential privacy in data publishing [6], [19], [20], [21], [25],
+[26], [27], [28], [29]. The majority of these techniques,
+however, are not designed for the publication of general
+
+relational tables. In particular, the solutions by Korolova et al.
+[20] and Go¨tz et al. [21] are developed for releasing query and
+click histograms from search logs. Chaudhuri and Monteleoni [25] and Kasiviswanathan et al. [27] investigate how the
+results of various machine learning algorithms can be
+published. Nissum et al. [28] propose techniques for
+releasing 1) the median value of a set of real numbers, and
+2) the centers of the clusters output from the k-means
+clustering algorithm. Machanavajjhala et al. [19] study the
+publication of commuting patterns, i.e., tables with a scheme
+hID, Origin, Destinationi where each tuple captures the
+residence and working locations of an individual.
+The work closest to ours is by Dwork et al. [6], Barak et al.
+[29], Hay et al. [30], Blum et al. [26], Li et al. [31], and Ghosh
+et al. [32]. Dwork et al.’s method, as discussed previously, is
+outperformed by our Privelet technique in terms of the
+accuracy of range-count queries. On the other hand, Barak
+et al.’s technique is designed for releasing marginals, i.e., the
+projections of a frequency matrix on various subsets of the
+dimensions. Given a set of marginals, Barak et al.’s
+technique first transforms them into the Fourier domain,
+then adds noise to the Fourier coefficients. After that, it
+refines the noisy coefficients and maps them back to a set of
+noisy marginals. Although this technique and Privelet have a
+similar framework, their optimization goals are drastically
+different. Specifically, Barak et al.’s technique does not
+provide utility guarantees for range-count queries; instead,
+it ensures that 1) every entry in the noisy marginals is a
+nonnegative integer, and 2) all marginals are mutually
+consistent, e.g., the sum of all entries in a marginal always
+equals that of another marginal.
+In addition, Barak et al’s technique requires solving a
+linear program where the number of variables equals the
+number m of entries in the frequency matrix. This can be
+computationally challenging for practical data sets with a
+large m. For instance, for the two census data sets used in our
+
+Fig. 13. Time versus n.
+
+Fig. 14. Time versus m.
+
+9
+
+RELATED WORK
+
+XIAO ET AL.: DIFFERENTIAL PRIVACY VIA WAVELET TRANSFORMS
+
+experiments, we have m > 108 . In contrast, Privelet runs in
+time linear to m and the number n of tuples in the input table.
+Independent of our work, Hay et al. [30] propose an
+approach for achieving -differential privacy while ensuring
+polylogorithmic noise variance in range-count query answers. Given a one-dimensional frequency matrix M, Hay
+et al.’s approach first computes the results of a set of rangecount queries on M, and then it adds Laplace noise to the
+results. After that, it derives a noisy frequency matrix M Ã
+based on the noisy query answers, during which it carefully
+exploits the correlations among the answers to reduce the
+amount of noise in M Ã . Although Hay et al.’s approach and
+Privelet provide the same asymptotic guarantee in terms of
+data utility [31], the former is designed exclusively for onedimensional data sets, whereas the latter is applicable on
+data sets with arbitrary dimensionalities.
+Blum et al. [26] also develop a technique for accurately
+answering range-count query in a differentially private
+manner. As pointed out by Hay et al. [30], however, Blum
+et al.’s technique is outperformed by Hay et al.’s approach in
+terms of data utility; in contrast, Privelet and Hay et al.’s
+approach achieve the same utility guarantees [31]. More
+recently, Li et al. [31] propose the matrix mechanism, a
+technique that not only generalizes both P riveletþ and Hay
+et al.’s approach but also provides higher data utility.
+Nevertheless, the computation overhead of the matrix
+mechanism is rather significant, which makes it impractical
+for data sets with large cardinalities. Ghosh et al. [32] devise a
+differentially private method that provides the optimal
+answer (in terms of utility) for a single count query.
+Nevertheless, it is unclear how the method can be extended
+for the case when multiple queries may be issued by the user.
+There also exists a large body of literature (e.g., [8], [23],
+[24]) on the application of wavelet transforms in data
+management. The focus of this line of research, however, is
+not on privacy preservation. Instead, existing work mainly
+investigates how wavelet transforms can be used to
+construct space- and time-efficient representations of multidimensional data, so as to facilitate query optimization [23],
+or approximate query processing [8], [24], just to name two
+applications.
+A preliminary version [33] of the current paper was
+published in ICDE 2010. The new contribution of current
+paper includes the P riveletÃ technique (in Section 7) and an
+experimental evaluation of its performance (in Section 8). In
+addition, the current paper features an Appendix, which can
+be found on the Computer Society Digital Library at http://
+doi.ieeecomputersociety.org/10.1109/TKDE.2010.247, that
+contains all proofs omitted in the preliminary version.
+
+10 CONCLUSIONS
+We have presented Privelet, a data publishing technique that
+utilizes wavelet transforms to ensure -differential privacy.
+Compared to the existing solutions, Privelet provides
+significantly improved theoretical guarantees on the accuracy of range-count queries. Our experimental evaluation
+demonstrates the effectiveness and efficiency of Privelet.
+For future work, we plan to extend Privelet for the case
+where the distribution of range-count queries is known in
+advance. Furthermore, currently Privelet only provides
+bounds on the noise variance in the query results; we want
+to investigate what guarantees Privelet may offer for other
+
+1213
+
+utility metrics, such as the expected relative error of the
+query answers.
+
+ACKNOWLEDGMENTS
+This material is based upon work supported by the
+Nanyang Technological University under SUG Grant
+M58020016 and AcRF Tier-1 Grant RG 35/09, by the New
+York State Foundation for Science, Technology, and Innovation under Agreement C050061, by the National Science
+Foundation under Grant 0627680, by the iAd Project funded
+by the Research Council of Norway, and by a gift from
+Microsoft Corporation. Any opinions, findings, conclusions,
+or recommendations expressed are those of the authors and
+do not necessarily reflect the views of the funding agencies.
+
+REFERENCES
+[1]
+[2]
+[3]
+[4]
+
+[5]
+[6]
+[7]
+[8]
+[9]
+[10]
+[11]
+[12]
+
+[13]
+[14]
+[15]
+
+[16]
+[17]
+[18]
+
+N.R. Adam and J.C. Worthmann, “Security-Control Methods for
+Statistical Databases: A Comparative Study,” ACM Computing
+Surveys, vol. 21, no. 4, pp. 515-556, 1989.
+B.C.M. Fung, K. Wang, R. Chen, and P.S. Yu, “Privacy-Preserving
+Data Publishing: A Survey of Recent Developments,” ACM
+Computing Surveys, vol. 42, no. 4, pp. 14:1-53, 2010.
+R.C.-W. Wong, A.W.-C. Fu, K. Wang, and J. Pei, “Minimality
+Attack in Privacy Preserving Data Publishing,” Proc. Int’l Conf.
+Very Large Data Bases (VLDB), pp. 543-554, 2007.
+S.R. Ganta, S.P. Kasiviswanathan, and A. Smith, “Composition
+Attacks and Auxiliary Information in Data Privacy,” Proc. 14th
+ACM SIGKDD Int’l Conf. Knowledge Discovery and Data Mining
+(KDD), pp. 265-273, 2008.
+D. Kifer, “Attacks on Privacy and de Finetti’s Theorem,” Proc.
+ACM SIGMOD Int’l Conf. Management of Data, pp. 127-138, 2009.
+C. Dwork, F. McSherry, K. Nissim, and A. Smith, “Calibrating
+Noise to Sensitivity in Private Data Analysis,” Proc. Third Theory of
+Cryptography Conf. (TCC), pp. 265-284, 2006.
+E.J. Stollnitz, T.D. Derose, and D.H. Salesin, Wavelets for Computer
+Graphics: Theory and Applications. Morgan Kaufmann Publishers,
+1996.
+K. Chakrabarti, M.N. Garofalakis, R. Rastogi, and K. Shim,
+“Approximate Query Processing Using Wavelets,” The VLDB J.,
+vol. 10, nos. 2/3, pp. 199-223, 2001.
+M.N. Garofalakis and P.B. Gibbons, “Wavelet Synopses with Error
+Guarantees,” Proc. ACM SIGMOD Int’l Conf. Management of Data,
+pp. 476-487, 2002.
+V. Iyengar, “Transforming Data to Satisfy Privacy Constraints,”
+Proc. Eighth ACM SIGKDD Int’l Conf. Knowledge Discovery and Data
+Mining, pp. 279-288, 2002.
+G. Ghinita, P. Karras, P. Kalnis, and N. Mamoulis, “Fast Data
+Anonymization with Low Information Loss,” Proc. Int’l Conf. Very
+Large Data Bases (VLDB), pp. 758-769, 2007.
+J. Gray, A. Bosworth, A. Layman, and H. Pirahesh, “Data Cube: A
+Relational Aggregation Operator Generalizing Group-By, CrossTab, and Sub-Total,” Proc. 12th IEEE Int’l Conf. Data Eng. (ICDE),
+pp. 152-159, 1996.
+D. Donoho and I. Johnstone, “Ideal Spatial Adaptation via
+Wavelet Shrinkage,” Biometrika, vol. 81, pp. 425-455, 1994.
+M. Elad, “Why Simple Shrinkage is Still Relevant for Redundant
+Representations?” IEEE Trans. Information Theory, vol. 52, no. 12,
+pp. 5559-5569, Dec. 2006.
+A. Chambolle, R.A. DeVore, N.-Y. Lee, and B.J. Lucier, “Nonlinear
+Wavelet Image Processing: Variational Problems, Compression,
+and Noise Removal through Wavelet Shrinkage,” IEEE Trans.
+Image Processing, vol. 7, no. 3, pp. 319-335, Mar. 1998.
+S.G. Chang, B. Yu, and M. Vetterli, “Adaptive Wavelet Thresholding for Image Denoising and Compression,” IEEE Trans. Image
+Processing, vol. 9, no. 9, pp. 1532-1546, Sept. 2000.
+D. Donoho and I. Johnstone, “Adapting to Unknown Smoothness
+via Wavelet Shrinkage,” J. Am. Statistical Assoc., vol. 90, pp. 12001224, 1995.
+S.G. Chang, B. Yu, and M. Vetterli, “Spatially Adaptive Wavelet
+Thresholding with Context Modeling for Image Denoising,” IEEE
+Trans. Image Processing, vol. 9, no. 9, pp. 1522-1531, Sept. 2000.
+
+1214
+
+IEEE TRANSACTIONS ON KNOWLEDGE AND DATA ENGINEERING,
+
+[19] A. Machanavajjhala, D. Kifer, J.M. Abowd, J. Gehrke, and L.
+Vilhuber, “Privacy: Theory Meets Practice on the Map,” Proc. 24th
+IEEE Int’l Conf. Data Eng. (ICDE), pp. 277-286, 2008.
+[20] A. Korolova, K. Kenthapadi, N. Mishra, and A. Ntoulas,
+“Releasing Search Queries and Clicks Privately,” Proc. Int’l Conf.
+World Wide Web (WWW), pp. 171-180, 2009.
+[21] M. Go¨tz, A. Machanavajjhala, G. Wang, X. Xiao, and J.
+Gehrke, “Publishing Search Logs - A Comparative Study of
+Privacy Guarantees,” to be published in IEEE Trans. Knowledge
+and Data Eng.
+[22] Minnesota Population Center, “Integrated Public Use Microdata
+Series—International: Version 5.0,” https://international.ipums.
+org, 2009.
+[23] J.S. Vitter and M. Wang, “Approximate Computation of Multidimensional Aggregates of Sparse Data Using Wavelets,” Proc.
+ACM SIGMOD Int’l Conf. Management of Data, pp. 193-204, 1999.
+[24] M.N. Garofalakis and A. Kumar, “Wavelet Synopses for General
+Error Metrics,” ACM Trans. Database Systems, vol. 30, no. 4,
+pp. 888-928, 2005.
+[25] K. Chaudhuri and C. Monteleoni, “Privacy-Preserving Logistic
+Regression,” Proc. 22nd Ann. Conf. Neural Information Processing
+Systems (NIPS), pp. 289-296, 2008.
+[26] A. Blum, K. Ligett, and A. Roth, “A Learning Theory Approach to
+Non-Interactive Database Privacy,” Proc. 40th Ann. ACM Symp.
+Theory of Computing (STOC), pp. 609-618, 2008.
+[27] S.P. Kasiviswanathan, H.K. Lee, K. Nissim, S. Raskhodnikova, and
+A. Smith, “What Can We Learn Privately?” Proc. 49th Ann. IEEE
+Symp. Foundations of Computer Science (FOCS), pp. 531-540, 2008.
+[28] K. Nissim, S. Raskhodnikova, and A. Smith, “Smooth Sensitivity
+and Sampling in Private Data Analysis,” Proc. 39th Ann. ACM
+Symp. Theory of Computing (STOC), pp. 75-84, 2007.
+[29] B. Barak, K. Chaudhuri, C. Dwork, S. Kale, F. McSherry, and K.
+Talwar, “Privacy, Accuracy, and Consistency Too: A Holistic
+Solution to Contingency Table Release,” Proc. 26th ACM SIGMODSIGACT-SIGART Symp. Principles of Database Systems (PODS),
+pp. 273-282, 2007.
+[30] M. Hay, V. Rastogi, G. Miklau, and D. Suciu, “Boosting the
+Accuracy of Differentially-Private Queries through Consistency,”
+Proc. VLDB Endowment, vol. 3, no. 1, pp. 1021-1032, 2010.
+[31] C. Li, M. Hay, V. Rastogi, G. Miklau, and A. McGregor,
+“Optimizing Linear Counting Queries under Differential Privacy,” Proc. 29th ACM SIGMOD-SIGACT-SIGART Symp. Principles
+of Database Systems (PODS), pp. 123-134, 2010.
+[32] A. Ghosh, T. Roughgarden, and M. Sundararajan, “Universally
+Utility-Maximizing Privacy Mechanisms,” Proc. Ann. ACM Symp.
+Theory of Computing (STOC), pp. 351-360, 2009.
+[33] X. Xiao, G. Wang, and J. Gehrke, “Differential Privacy via Wavelet
+Transforms,” Proc. 26th IEEE Int’l Conf. Data Eng. (ICDE), pp. 225236, 2010.
+
+VOL. 23,
+
+NO. 8,
+
+AUGUST 2011
+
+Xiaokui Xiao received the PhD degree in
+computer science from the Chinese University
+of Hong Kong in 2008. He is currently a Nanyang
+Assistant Professor at the Nanyang Technological University (NTU), Singapore. Before joining
+NTU in 2009, he was a postdoctoral associate at
+the Cornell University. His research interests
+include data privacy and spatial databases.
+
+Guozhang Wang is a PhD student in the
+Department of Computer Science at Cornell
+University. His research interests are in the
+areas of database systems, data privacy, and
+cloud computing.
+
+Johannes Gehrke is a professor in the Department of Computer Science at Cornell University.
+His research interests are in the areas of
+database systems, data mining, and data
+privacy.
+
+. For more information on this or any other computing topic,
+please visit our Digital Library at www.computer.org/publications/dlib.
+
+

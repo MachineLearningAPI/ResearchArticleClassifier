@@ -1,0 +1,655 @@
+arXiv:1104.1023v1 [math.CO] 6 Apr 2011
+
+Extended Formulations in Combinatorial
+Optimization
+Volker Kaibel∗
+April 7, 2011
+
+Abstract
+The concept of representing a polytope that is associated with some
+combinatorial optimization problem as a linear projection of a higherdimensional polyhedron has recently received increasing attention. In
+this paper (written for the newsletter Optima of the Mathematical Optimization Society), we provide a brief introduction to this topic and sketch
+some of the recent developments with respect to both tools for constructing such extended formulations as well as lower bounds on their sizes.
+
+1
+
+Introduction
+
+Linear Programming based methods and polyhedral theory form the backbone
+of large parts of Combinatorial Optimization. The basic paradigm here is to
+identify the feasible solutions to a given problem with some vectors in such a
+way that the optimization problem becomes the problem of optimizing a linear
+function over the finite set X of these vectors. The optimal value of a linear
+function over X is equal to its optimal value over the convex hull conv(X) =
+{ x∈X λx x :
+x∈X λx = 1, λ ≥ O} of X. According to the Weyl–Minkowski
+Theorem [35, 27], every polytope (i.e., the convex hull of a finite set of vectors) can be written as the set of solutions to a system of linear equations and
+inequalities. Thus one ends up with a linear programming problem.
+As for the maybe most classical example, let us consider the set M(n) of all
+matchings in the complete graph Kn = (Vn , En ) on n nodes (where a matching
+is a subset of edges no two of which share a common end-node). Identifying
+every matching M ⊆ En with its characteristic vector χ(M ) ∈ {0, 1}En (where
+χ(M )e = 1 if and only if e ∈ M ), we obtain the matching polytope
+Pmatch (n) = conv{χ(M ) : M ∈ M(n)} .
+In one of his seminal papers, Edmonds [14] proved that Pmatch (n) equals the
+n
+set of all x ∈ RE
++ that satisfy the inequalities x(δ(v)) ≤ 1 for all v ∈ Vn and
+∗ Institut f¨
+ur Mathematische Optimierung, Fakult¨
+at f¨
+ur Mathematik, Otto-von-Guericke
+Universit¨
+at Magdeburg, Universit¨
+atsplatz 2, 39108 Magdeburg, Germany, kaibel@ovgu.de
+
+1
+
+x(En (S)) ≤ |S|/2 for all subsets S ⊆ Vn of odd cardinality 3 ≤ |S| ≤ n (where
+δ(v) is the set of all edges incident to v, En (S) is the set of all edges with both
+end-nodes in S, and x(F ) = e∈F xe ). No inequality in this system, whose size
+is exponential in n, is redundant.
+The situation is quite similar for the permutahedron Pperm (n), i.e., the convex hull of all vectors that arise from permuting the components of (1, 2, . . . , n).
+Rado [31] proved that Pperm (n) is described by the equation x([n]) = n(n + 1)/2
+and the inequalities x(S) ≥ |S|(|S| + 1)/2 for all ∅ = S
+[n] (with [n] =
+{1, . . . , n}), none of the 2n − 2 inequalities being redundant. However if for
+each permutation σ : [n] → [n] we consider the corresponding permutation matrix y ∈ {0, 1}n×n (satisfying yij = 1 if and only if σ(i) = j) rather than
+the vector (σ(1), . . . , σ(n)), we obtain a much smaller description of the resulting polytope, since, according to Birkhoff [8] and von Neumann [34], the
+convex hull Pbirk (n) (the Birkhoff-Polytope) of all n × n-permutation matrices is equal to the set of all doubly-stochastic n × n-matrices (i.e., nonnegative
+n × n-matrices all of whose row- and column sums are equal to one). It is easy
+to see that the permutahedron Pperm (n) is a linear projection of the Birkhoffn
+polytope Pbirk (n) via the map defined by p(y)i = j=1 jyij . Since, for every
+n
+linear objective function vector c ∈ R , we have max{ c, x : x ∈ Pperm (n)} =
+n
+n
+max{ i=1 j=1 jci yij : y ∈ Pbirk (n)}, one can use Pbirk (n) (that can be described by the n2 nonnegativity-inequalities) instead of Pperm (n) (whose description requires 2n −2 inequalities) with respect to linear programming related
+issues.
+In general, an extension of a polytope P ⊆ Rn is a polyhedron Q ⊆ Rd
+(i.e., an intersection of finitely many affine hyperplanes and halfspaces) together
+with a linear projection p : Rd → Rn satisfying P = p(Q). Any description
+of Q by linear equations and linear inequalities then (together with p) is an
+extended formulation of P . The size of the extended formulation is the number
+of inequalities in the description. Note that we neither account for the number
+of equations (we can get rid of them by eliminating variables) nor for the number
+of variables (we can ensure that there are not more variables than inequalities
+by projecting Q to the orthogonal complement of its lineality space, where the
+latter is the space of all directions of lines contained in Q). If T ∈ Rn×d is the
+matrix with p(y) = T y, then, for every c ∈ Rn , we have max{ c, x : x ∈ P } =
+max{ T t c, y : y ∈ Q}.
+In the example described above, Pbirk (n) thus provides an extended formulation of Pperm (n) of size n2 . It is not known whether one can do something
+similar for the matching polytopes Pmatch (n) (we will be back to this question
+in Section 4.2). However there are many other examples of nice and small extended formulations for polytopes associated with combinatorial optimization
+problems. The aim of this article (that has appeared in [1]) is to show a few
+of them and to shed some light on the geometric, combinatorial and algebraic
+background of this concept that recently has received increased attention. The
+presentation is not meant to be a survey (for this purpose, we refer to Vanderbeck and Wolsey [33] as well as to Cornu´ejols, Conforti, and Zambelli [12]) but
+
+2
+
+rather an appetizer for investigating alternative possibilities to express combinatorial optimization problems by means of linear programs.
+While we will not be concerned with practical aspects here, extended formulations have also proven to be useful in computations. You can find more on this
+in Laurence Wolsey’s discussion column in [1]. Fundamental work with respect
+to understanding the concept of extended formulations and its limits has been
+done by Mihalis Yannakakis in his 1991-paper Expressing Combinatorial Optimization Problems by Linear Programs [36] (see Sect. 3.3 and 4). He discusses
+some of his thoughts on the subject in another discussion column in [1].
+
+2
+2.1
+
+Some Examples
+Spanning Trees
+
+The spanning tree polytope Pspt (n) associated with the complete graph Kn =
+(Vn , En ) on n nodes is the convex hull of all characteristic vectors of spanning
+trees, i.e., of all subsets of edges that form connected and cycle-free subgraphs.
+In another seminal paper, Edmonds [15] proved that Pspt (n) is the set of all
+n
+x ∈ RE
++ that satisfy the equation x(En ) = n−1 and the inequalities x(En (S)) ≤
+|S| − 1 for all S ⊆ Vn with 2 ≤ |S| < n. Again, none of the exponentially many
+inequalities is redundant.
+However, by introducing additional variables zv,w,u for all ordered triples
+(v, w, u) of pairwise different nodes meant to encode whether the edge {v, w}
+is contained in the tree and u is in the component of w when removing {v, w}
+from the tree, it turns out that the system consisting of the equations x{v,w} −
+zv,w,u − zw,v,u = 0 and x{v,w} + u∈[n]\{v,w} zv,u,w = 1 (for all pairwise different v, w, u ∈ Vn ) along with the nonnegativity constraints and the equation
+x(En ) = n − 1 provides an extended formulation of Pspt (n) of size O(n3 ) (with
+orthogonal projection to the space of x-variables). This formulation is due to
+Martin [25] (see also [36, 12]). You will find an alternative one in Laurence
+Wolsey’s discussion column below.
+
+2.2
+
+Disjunctive Programming
+
+If Pi ⊆ Rn is a polytope for each i ∈ [q], then clearly P = conv(P1 ∪ · · · ∪ Pq ) is
+a polytope as well, but, in general, it is difficult to derive a description by linear
+equations and inequalities in Rn from such descriptions of the polytopes Pi .
+However constructing an extended formulation for P in this situation is very
+simple. Indeed suppose that each Pi is described by a system Ai x ≤ bi of fi linear inequalities (where, in order to simplify notation, we assume that equations
+are written, e.g., as pairs of inequalities). Then the system Ai z i ≤ λi bi for all
+q
+i ∈ [q], i=1 λi = 1, λ ≥ O with variables z i ∈ Rn for all i ∈ [q] and λ ∈ Rq
+is an extended formulation for P of size f1 + · · · + fq + q, where the projection
+is given by (z 1 , . . . , z q , λ) → z 1 + · · · + z q . This has been proved first by Balas
+(see, e.g., [4]), even for polyhedra that are not necessarily polytopes (where in
+
+3
+
+this general case P needs to be defined as the topological closure of the convex
+hull of the union).
+
+2.3
+
+Dynamic Programming
+
+When a combinatorial optimization problem can be solved by a dynamic programming algorithm, one often can derive an extended formulation for the associated polytope whose size is roughly bounded by the running time of the
+algorithm.
+A simple example is the 0/1-Knapsack problem, where we are given a nonnegative integral weight vector w ∈ Nn , a weight bound W ∈ N, and a profit
+vector c ∈ Rn , and the task is to solve max{ c, x : x ∈ F (w, W )} with
+F (w, W ) = {x ∈ {0, 1}n : w, x ≤ W }. A classical dynamic programming
+algorithm works by setting up an acyclic directed graph with nodes s = (0, 0),
+t, and (i, ω) for all i ∈ [n], ω ∈ {0, 1, . . . , W } and arcs from (i, ω) to (i , ω )
+if and only if i < i and ω = ω + wi , where such an arc would be assigned
+length ci , as well as arcs from all nodes to t (of length zero). Then solving the
+0/1-Knapsack problem is equivalent to finding a longest s-t-path in this acyclic
+directed network, which can be carried out in linear time in the number α of
+arcs.
+The polyhedron Q ⊆ Rα
++ of all s-t-flows of value one in that network equals
+the convex hull of all characteristic vectors of s-t-paths (due to the total unimodularity of the node-arc incidence matrix), thus it is easily seen to be mapped to
+the associated Knapsack-polytope Pknap (w, W ) = conv(F (w, W )) via the projection given by y → x, where xi is the sum of all components of y indexed by
+arcs pointing to nodes of type (i, ). As Q is described by nonnegativity constraints, the flow-conservation equations on the nodes different from s and t and
+the equation ensuring an outflow of value one from s, these constraints provide
+an extended formulation for Pknap (w, W ) of size α.
+However quite often dynamic programming algorithms can only be formulated as longest-paths problems in acyclic directed hyper graphs with hyperarcs
+of the type (S, v) (with a subset S of nodes) whose usage in the path represents
+the fact that the optimal solution to the partial problem represented by node v
+has been constructed from the optimal solutions to the partial problems represented by the set S. Martin, Rardin, and Campbell [26] showed that, under the
+condition that one can assign appropriate reference sets to the nodes, also in
+this more general situation nonnegativity constraints and flow-equations suffice
+to describe the convex hull of the characteristic vectors of the hyperpaths. This
+generalization allows one to derive polynomial size extended formulations for
+many of the combinatorial optimization problems that can be solved in polynomial time by dynamic programming algorithms.
+
+2.4
+
+Others
+
+A common generalization of the techniques to construct extended formulations
+by means of disjunctive programming or dynamic programming is provided by
+4
+
+branched polyhedral systems (BPS ) [21]. In this framework, one starts from an
+acyclic directed graph that has associated with each of its non-sink nodes v a
+polyhedron in the space indexed by the out-neighbors of v. From these building
+blocks, one constructs a polyhedron in the space indexed by all nodes. Under
+certain conditions one can derive an extended formulation for the constructed
+polyhedron from extended formulations of the polyhedra associated with the
+nodes.
+Some very nice extended formulations have recently been given by Faenza,
+Oriolo, and Stauffer [17] for stable set polytopes of claw-free graphs. Here
+the crucial step is to glue together descriptions of stable set polytopes of certain
+building block graphs by means of strip compositions. One of their constructions
+can be obtained by applying the BPS-framework, though apparently the most
+interesting one they have cannot.
+An asymptotically smallest possible extended formulation of size O(n log n)
+for the permutahedron Pperm (n) has been found by Goemans [19]. His construction relies on the existence of sorting networks of size r = O(n log n) (Ajtai, Koml´
+os, and Szemer´edi [2]), i.e., sequences (i1 , j1 ), . . . , (ir , jr ) for which
+the algorithm that in each step s swaps elements ais and ajs if and only if
+ais > ajs sorts every sequence (a1 , . . . , an ) ∈ R into non-decreasing order. The
+construction principle of Goemans has been generalized to the framework of
+reflection relations [22], which, for instance, can be used to obtain small extended formulations for all G-permutahedra of finite reflection groups G (see,
+e.g., Humphreys [20]), including extended formulations of size O(log m) of regular m-gons, previously constructed by Ben-Tal and Nemirovski [7]. Another
+application of reflection relations yields extended formulations of size O(n log n)
+for Huffman-polytopes, i.e., the convex hulls of the leaves-to-root-distances vectors in rooted binary trees with n labelled leaves. Note that linear descriptions
+of these polytopes in the original spaces are very large, rather complicated, and
+unknown (see Nguyen, Nguyen, and Maurras [28]).
+The list of combinatorial problems for which small (and nice) extended formulations have been found comprises many others, among them perfect matching polytopes of planar graphs (Barahona [6]), perfectly matchable subgraph
+polytopes of bipartite graphs (Balas and Pulleyblank [5]), stable-set polytopes
+of distance claw-free graphs (Pulleyblank and Shepherd [30]), packing and partitioning orbitopes [16], subtour-elimination polytopes (Yannakakis [36] and, for
+planar graphs, Rivin [32], Cheung [10]), and certain mixed-integer programs
+(see, e.g., Conforti, di Summa, Eisenbrand, and Wolsey [13]).
+
+3
+3.1
+
+Combinatorial, Geometric, and Algebraic Background
+Face Lattices
+
+Any intersection of a polyhedron P with the boundary hyperplane of some affine
+halfspace containing P is called a face of P . The empty set and P itself are
+5
+
+considered to be (non-proper) faces of P as well. For instance, the proper faces
+of a three-dimensional polytope are its vertices, edges, and the polygons that
+make up the boundary of P . Partially ordered by inclusion, the faces of a
+polyhedron P form a lattice L(P ), the face lattice of P . The proper faces that
+are maximal with respect to inclusion are the facets of P . Equivalently, the
+facets of P are those faces whose dimension is one less than the dimension of P .
+An irredundant linear description of P has exactly one inequality for each facet
+of P .
+If Q ⊆ Rd is an extension of the polytope P ⊆ Rn with a linear projection p :
+d
+R → Rn , then mapping each face of P to its preimage in Q under p defines
+an embedding of L(P ) into L(Q). Figure 3.1 illustrates this embedding for the
+trivial extension Q = {y ∈ RV+ :
+x∈X yx = 1} of P = conv(X) via p(y) =
+y
+x
+for
+X
+=
+{
+❡
+,
+−
+❡
+,
+.
+.
+.
+,
+❡
+,
+−❡4 } (thus P is the cross-polytope in R4
+x
+1
+1
+4
+x∈X
+with 16 facets and Q is the standard-simplex in R8 with 8 facets). As this figure
+
+Figure 1: Embedding of the face lattice of the 4-dimensional cross-polytope into
+the face lattice of the 7-dimensional simplex.
+suggests, constructing a small extended formulation for a polytope P means to
+hide the facets of P in the fat middle part of the face lattice of an extension
+with few facets.
+
+3.2
+
+Slack Representations
+
+Let P = {x ∈ A : Ax ≤ b} ⊆ Rn be a polytope with affine hull A = aff(P ),
+A ∈ Rm×n , and b ∈ Rm . The affine map ϕ : A → Rm with ϕ(x) = b − Ax (the
+slack map of P w.r.t. Ax ≤ b) is injective. We denote its inverse (the inverse
+slack map) on its image, the affine subspace A˜ = ϕ(A) ⊆ Rm , by ϕ˜ : A˜ → A.
+
+6
+
+The polytope P˜ = A˜ ∩ Rm
++ , the slack-representation of P w.r.t. Ax ≤ b, is
+isomorphic to P with ϕ(P ) = P˜ and ϕ(
+˜ P˜ ) = P .
+m
+If Z ⊆ R+ is a finite set of nonnegative vectors whose convex conic hull
+m
+˜
+˜
+ccone(Z) = { z∈Z λz z : λ ≥ O} ⊆ Rm
++ contains P = A ∩ R+ , then we have
+P˜ = A˜ ∩ ccone(Z), and thus, the system z∈Z λz z ∈ A˜ and λz ≥ 0 (for all
+z ∈ Z) provides an extended formulation of P of size |Z| via the projection
+λ → ϕ(
+˜ z∈Z λz z). Let us call such an extension a slack extension and the
+set Z a slack generating set of P (both w.r.t. Ax ≤ b).
+Now suppose conversely that we have any extended formulation of P of size q
+defining an extension Q that is pointed (i.e., the polyhedron Q does not contain
+a line). As for polytopes above (which in particular are pointed polyhedra),
+˜ ⊆ Rq of Q and the corresponding
+we can consider a slack representation Q
+˜ Then we have ϕ(p(ψ(
+˜ Q)))
+˜
+inverse slack map ψ.
+= P˜ , where p is the projection
+map of the extension. If the system Ax ≤ b is binding for P , i.e., each of its
+inequalities is satisfied at equation by some point from P , then one can show
+(by using strong LP-duality) that there is a nonnegative matrix T ∈ Rm×q
+with
++
+˜
+˜
+˜
+˜
+ϕ(p(ψ(˜
+z ))) = T z˜ for all z˜ ∈ Q, thus P = T Q. Hence the columns of T form a
+slack generating set of P (w.r.t. Ax ≤ b), yielding a slack extension of size q. As
+every non-pointed extension of a polytope can be turned into a pointed one of
+the same size by projection to the orthogonal complement of the lineality space,
+we obtain the following result, where the extension complexity of a polytope P
+is the smallest size of any extended formulation of P .
+Theorem 1 ([18]) The extension complexity of a polytope P is equal to the
+minimum size of all slack extensions of P .
+As every slack extension of a polytope is bounded (and since all bounded polyhedra are polytopes), Theorem 1 implies that the extension complexity of a
+polytope is attained by an extension that is a polytope itself. Furthermore,
+in Theorem 1 one may take the minimum over the slack extensions w.r.t. any
+fixed binding system of inequalities describing P . In particular, all these minima
+concide.
+
+3.3
+
+Nonnegative Rank
+
+Now let P = conv(X) = {x ∈ aff(P ) : Ax ≤ b} ⊆ Rn be a polytope with
+some finite set X ⊆ Rn and A ∈ Rm×n , b ∈ Rm . The slack matrix of P
+[m]×X
+with Φi,x = b − Ai, , x . Thus the slack
+w.r.t. X and Ax ≤ b is Φ ∈ R+
+representation P˜ ⊆ Rm of P (w.r.t. Ax ≤ b) is the convex hull of the columns
+[m]×[f ]
+of Φ. Consequently, if the columns of a nonnegative matrix T ⊆ R+
+form
+[f ]×X
+a slack generating set of P , then there is a nonnegative matrix S ∈ R+
+with
+Φ = T S. Conversely, for every factorization Φ = T S of the slack matrix into
+[m]×[f ]
+[f ]×X
+and S ∈ R+
+, the columns of T form
+nonnegative matrices T ∈ R+
+a slack generating set for P .
+Therefore constructing an extended formulation of size f for P amounts to
+finding a factorization of the slack matrix Φ = T S into nonnegative matrices T
+7
+
+with f columns and S with f rows. In particular, we have derived the following
+result that essentially is due to Yannakakis [36] (see also [18]). Here, the nonnegative rank of a matrix is the minumum number f such that the matrix can
+be written as a product of two nonnegative matrices, where the first one has f
+columns and the second one has f rows.
+Theorem 2 The extension complexity of a polytope P is equal to the nonnegative rank of its slack matrix (w.r.t. any set X and binding system Ax ≤ b with
+P = conv(X) = {x ∈ aff(P ) : Ax ≤ b}).
+Clearly, the nonnegative rank of a matrix is bounded from below by its usual
+rank as known from Linear Algebra. There is also quite some interest in the
+nonnegative rank of (not necessarily slack) matrices in general (see, e.g., Cohen
+and Rothblum [11]).
+
+4
+4.1
+
+Fundamental Limits
+General Lower Bounds
+
+Every extension Q of a polytope P has at least as many faces as P , as the face
+lattice of P can be embedded into the face lattice of Q (see Sect. 3.1). Since each
+face is the intersection of some facets, one finds that the extension complexity
+of a polyhedron with β faces is at least log β (the binary logarithm of β). This
+observation has first been made by Goemans [19] in order to argue that the
+extension complexity of the permutahedron Pperm (n) is at least Ω(n log n).
+Suppose that Φ = T S is a factorization of a slack matrix Φ of the polytope P
+into nonnegative matrices T and S with columns t1 , . . . , tf and rows s1 , . . . , sf ,
+f
+respectively. Then we can write Φ = i=1 ti si as the sum of f nonnegative
+matrices of rank one. Calling the set of all non-zero positions of a matrix its
+support, we thus find that the nonnegative factorization Φ = T S provides a
+way to cover the support of Φ by f rectangles, i.e., sets of the form I × J,
+where I and J are subsets of the row- and column-indices of Φ, respectively.
+Hence, due to Theorem 2, the minimum number of rectangles by which one can
+cover the support of Φ yields a lower bound (the rectangle covering bound ) on
+the extension complexity of P (Yannakakis [36]). Actually, the rectangle covering bound dominates the bound discussed in the previous paragraph [18]. As
+Yannakakis [36] observed furthermore, the logarithm of the rectangle covering
+bound of a polytope P is equal to the nondeterministic communication complexity (see, e.g., the book of Kushilevitz and Nisan [24]) of the predicate on
+the pairs (v, f ) of vertices v and facets f of P that is true if and only if v ∈ f .
+One can equivalently describe the rectangle covering bound as the minimum
+number of complete bipartite subgraphs needed to cover the vertex-facet-nonincidence graph of the polytope P . A fooling set is a subset F of the edges
+of this graph such that no two of the edges in F are contained in a complete
+bipartite subgraph. Thus every fooling set F proves that the rectangle covering
+bound, and hence, the extension complexity of P , is at least |F |. For instance,
+
+8
+
+for the n-dimensional cube it is not too difficult to come up with a fooling set
+of size 2n, proving that for a cube one cannot do better by allowing extended
+formulations for the representation. For more details on bounds of this type we
+refer to [18].
+Unfortunately, all in all the currently known techniques for deriving lower
+bounds on extension complexities are rather limited and yield mostly quite
+unsatisfying bounds.
+
+4.2
+
+The Role of Symmetry
+
+Asking, for instance, about the extension complexity of the matching polytope
+Pmatch (n) defined in the beginning, one finds that not much is known. It might
+be anything between quadratic and exponential in n. However, in the main part
+of his striking paper [36], Yannakakis established an exponential lower bound
+on the sizes of symmetric extended formulations of Pmatch (n). Here, symmetric
+means that the extension polyhedron remains unchanged when renumbering the
+nodes of the complete graph, or more formally that, for each permutation π of
+the edges of the complete graph that is induced by a permutation of its nodes,
+there is a permutation κπ of the variables of the extended formulation that maps
+the extension polyhedron to itself such that, for every vector y in the extended
+space, applying π to the projection of y yields the same vector as projecting
+the vector obtained from y by applying κπ . Indeed, many extended formulations are symmetric in a similar way, for instance the extended formulation of
+the permutahedron by the Birkhoff-polytope mentioned in the Introduction as
+well as the extended formulation for the spanning tree polytope discussed in
+Section 2.1.
+In order to state Yannakakis’ result more precisely, denote by M (n) the set
+of all matchings of cardinality in the complete graph with n nodes, and by
+Pmatch (n) = conv{χ(M ) : M ∈ M (n)} the associated polytope. In particular,
+Pmatch
+n/2 (n) is the perfect-matching-polytope (for even n).
+Theorem 3 (Yannakakis [36]) For even n, the size of every symmetric exn
+tended formulation of Pmatch
+n/2 (n) is at least Ω( (n−2)/4 ).
+match
+(n), one easily derives the
+Since Pmatch
+n/2 (n) is (isomorphic to) a face of P
+above mentioned exponential lower bound on the sizes of symmetric extended
+formulations for Pmatch (n) from Theorem 3.
+At the core of his beautiful proof of Theorem 3, Yannakakis shows that, for
+even n, there is no symmetric extended formulation in equation form (i.e., with
+n
+equations and nonnegativity constraints only) of Pmatch
+n/2 (n) of size at most k
+with k = (n − 2)/4 . From such a hypothetical extended formulation EF1 ,
+he first constructs an extended formulation EF2 in equation form on variables
+yA for all matchings A with |A| ≤ k such that the 0/1-vector valued map s
+on the vertices of Pmatch
+n/2 (n) defined by s (χ(M ))A = 1 if and only if A ⊆ M
+is a section of EF2 , i.e., s (x) maps every vertex x to a preimage under the
+projection of EF2 that is contained in the extension polyhedron. Then it turns
+
+9
+
+out that an extended formulation like EF2 cannot exist. In fact, for an arbitrary
+partitioning of the node set into two parts V1 and V2 with |V1 | = 2k + 1, one
+can construct a nonnegative point y in the affine hull of the image of s (thus
+y is contained in the extension polyhedron of EF2 that is defined by equations
+and nonnegativity constraints only) with y{e} = 0 for all edges e connecting V1
+and V2 , which implies that the projection of the point y violates the inequality
+x(δ(V1 )) ≥ 1 that is valid for Pmatch
+n/2 (n) (since |V1 | = 2k + 1 is odd). The crucial
+ingredient for constructing EF2 from EF1 is a theorem of Bocherts’ [9] stating
+that every subgroup G of permutations of m elements that is primitive with
+|G| > m!/ (m + 1)/2 ! contains all even permutations. Yannakakis constructs a
+section s for EF1 for that he can show—by exploiting Bochert’s theorem—that
+there is a nonnegative matrix C with s(χ(M )) = C · s (χ(M )) for all M ∈
+Mn/2 (n), which makes it rather straight forward to construct EF2 from EF1 .
+With respect to the fact that his proof yields an exponential lower bound
+only for symmetric extended formulations, Yannakakis [36] remarked “we do not
+think that asymmetry helps much” in constructing small extended formulations
+of the (perfect) matching polytopes and stated as an open problem to “prove
+that the matching (. . . ) polytopes cannot be expressed by polynomial size LP’s
+without the symmetry assumption”. As indicated above, today we still do not
+know whether this is possible. However, at least it turned out recently that
+requiring symmetry can make a big difference for the smallest possible size of
+an extended formulation.
+Theorem 4 ([23]) All symmetric extended formulations of Pmatch
+log n (n) have
+Ω(log n)
+size at least n
+, while there are polynomial size non-symmetric extended
+match
+formulations for Pmatch
+log n (n) (i.e., the extension complexity of P log n (n) is bounded from above by a polynomial in n).
+Thus, at least when considering matchings of size log n instead of perfect
+(or arbitrary) matchings, asymmetry indeed helps much.
+While the proof of the lower bound on the sizes of symmetric extended
+formulations stated in Theorem 4 is a modification of Yannakakis’ proof indicated above, the construction of the polynomial size non-symmetric extended
+formulation of Pmatch
+log n (n) relies on the principle of disjunctive programming
+(see Section 2.2). For an arbitrary coloring ζ of the n nodes of the complete
+graph with 2k colors, we call a matching M (with |M | = k) ζ-colorful if, in
+each of the 2k color classes, there is exactly one node that is an end-node of
+one of the edges from M . Let us denote by Pζ the convex hull of the characteristic vectors of ζ-colorful matchings. The crucial observation is that Pζ
+can be described by O(2k + n2 ) inequalities (as opposed to Ω(2n ) inequalities
+needed to describe the polytope associated with all matchings, see the Introduction). On the other hand, according to a theorem due to Alon, Yuster, and
+Zwick [3], there is a family of q such colorings ζ1 , . . . , ζq with q = 2O(k) log n
+such that, for every 2k-element subset W of the n nodes, in at least one of
+the colorings the nodes from W receive pairwise different colors. Thus we have
+Pmatch
+(n) = conv(Pζ1 ∪ · · · ∪ Pζq ), and hence (as described in Section 2.2) we
+k
+10
+
+obtain an extended formulation of Pmatch
+(n) of size 2O(k) n2 log n, which, for
+k
+k = log n , yields the upper bound in Theorem 4.
+Yannakakis [36] moreover deduced from Theorem 3 that there are no polynomial size symmetric extended formulations for the traveling salesman polytope
+(the convex hull of the characteristic vectors of all cycles of lengths n in the
+complete graph with n nodes). Similarly to Theorem 4, one can also prove that
+there are no polynomial size symmetric extended formulations for the polytopes
+associated with cycles of length log n , while these polytopes nevertheless have
+polynomially bounded extension complexity [23].
+Pashkovich [29] further extended Yannakakis’ techniques in order to prove
+that every symmetric extended formulation of the permutahedron Pperm (n) has
+size at least Ω(n2 ), showing that the Birkhoff-polytope essentially provides an
+optimal symmetric extension for the permutahedron.
+
+5
+
+Conclusions
+
+Many polytopes associated with combinatorial optimization problems can be
+represented in small, simple, and nice ways as projections of higher dimensional
+polyhedra. Moreover, though we have not touched this topic here, sometimes
+such extended formulations are also very helpful in deriving descriptions in the
+original spaces. What we currently lack are on the one hand more techniques to
+construct extended formulations and on the other hand a good understanding
+of the fundamental limits of such representations. For instance, does every
+polynomially solvable combinatorial optimization problem admit an extended
+formulation of polynomial size? We even do not know this for the matching
+problem. How about the stable set problem in perfect graphs? The best upper
+bound on the extension complexity of these polytopes for graphs with n nodes
+still is nO(log n) (Yannakakis [36]).
+Progress on such questions will eventually shed more light onto the principle
+possiblities to express combinatorial problems by means of linear constraints.
+Moreover, the search for extended formulations yields new modelling ideas some
+of which may prove to be useful also in practical contexts. In any case, work on
+extended formulations can lead into fascinating mathematics.
+Acknowldgements We are grateful to Sam Burer, Samuel Fiorini, Kanstantsin
+Pashkovich, Britta Peis, Laurence Wolsey, and Mihalis Yannakakis for comments
+on a draft of this article and to Matthias Walter for producing Figure 3.1.
+
+References
+[1] Optima 85.
+April 2011.
+
+http://www.mathopt.org/Optima-Issues/optima85.pdf,
+
+[2] M. Ajtai, J. Koml´
+os, and E. Szemer´edi. Sorting in c log n parallel steps.
+Combinatorica, 3(1):1–19, 1983.
+11
+
+[3] Noga Alon, Raphael Yuster, and Uri Zwick. Color-coding. J. Assoc. Comput. Mach., 42(4):844–856, 1995.
+[4] Egon Balas. Disjunctive programming and a hierarchy of relaxations for
+discrete optimization problems. SIAM J. Algebraic Discrete Methods,
+6(3):466–486, 1985.
+[5] Egon Balas and William Pulleyblank. The perfectly matchable subgraph
+polytope of a bipartite graph. In Proceedings of the symposium on the
+matching problem: theory, algorithms, and applications (Gaithersburg,
+Md., 1981), volume 13, pages 495–516, 1983.
+[6] Francisco Barahona. On cuts and matchings in planar graphs. Math.
+Programming, 60(1, Ser. A):53–68, 1993.
+[7] Aharon Ben-Tal and Arkadi Nemirovski. On polyhedral approximations of
+the second-order cone. Math. Oper. Res., 26(2):193–205, 2001.
+[8] Garrett Birkhoff. Three observations on linear algebra. Univ. Nac. Tucum´
+an. Revista A., 5:147–151, 1946.
+[9] Alfred Bochert. Ueber die Zahl der verschiedenen Werthe, die eine Function
+gegebener Buchstaben durch Vertauschung derselben erlangen kann. Math.
+Ann., 33(4):584–590, 1889.
+[10] Kevin King Hin Cheung. Subtour elimination polytopes and graphs of inscribable type. ProQuest LLC, Ann Arbor, MI, 2003. Thesis (Ph.D.)–
+University of Waterloo (Canada).
+[11] Joel E. Cohen and Uriel G. Rothblum. Nonnegative ranks, decompositions,
+and factorizations of nonnegative matrices. Linear Algebra Appl., 190:149–
+168, 1993.
+[12] Michele Conforti, G´erard Cornu´ejols, and Giacomo Zambelli. Extended
+formulations in combinatorial optimization. 4OR, 8(1):1–48, 2010.
+[13] Michele Conforti, Marco Di Summa, Friedrich Eisenbrand, and Laurence A.
+Wolsey. Network formulations of mixed-integer programs. Math. Oper.
+Res., 34(1):194–209, 2009.
+[14] Jack Edmonds. Maximum matching and a polyhedron with 0, 1-vertices.
+J. Res. Nat. Bur. Standards Sect. B, 69B:125–130, 1965.
+[15] Jack Edmonds. Matroids and the greedy algorithm. Math. Programming,
+1:127–136, 1971.
+[16] Yuri Faenza and Volker Kaibel. Extended formulations for packing and
+partitioning orbitopes. Math. Oper. Res., 34(3):686–697, 2009.
+
+12
+
+[17] Yuri Faenza, Gianpaolo Oriolo, and Gautier Stauffer. The hidden matching
+structure of the composition of strips: a polyhedral perspective. Technical
+Report RR-16.2010 DII, Universit`a di Roma Tor Vergata, 2010.
+[18] Samuel Fiorini, Volker Kaibel, Kanstantsin Pashkovich, and Dirk Oliver
+Theis. Combinatorial bounds on nonnegative rank and extended formulations. In preparation.
+[19] Michel Goemans. Smallest compact formulation for the permutahedron.
+http://www-math.mit.edu/~goemans/publ.html.
+[20] James E. Humphreys. Reflection groups and Coxeter groups, volume 29 of
+Cambridge Studies in Advanced Mathematics. Cambridge University Press,
+Cambridge, 1990.
+[21] Volker Kaibel and Andreas Loos. Branched polyhedral systems. In Friedrich
+Eisenbrand and Bruce Shepherd, editors, Integer Programming and Combinatorial Optimization (Proc. IPCO XIV), volume 6080 of LNCS, pages
+177–190. Springer, 2010.
+[22] Volker Kaibel and Kanstantsin Pashkovich. Constructing extended formulations from reflection relations. In Oktay G¨
+unl¨
+uk and Gerhard Woeginger, editors, Proceedings IPCO XV, volume 6655 of LNCS, pages 287–300.
+Springer, 2011.
+[23] Volker Kaibel, Kanstantsin Pashkovich, and Dirk Oliver Theis. Symmetry
+matters for the sizes of extended formulations. In Friedrich Eisenbrand and
+Bruce Shepherd, editors, Proceedings IPCO XIV, volume 6080 of LNCS,
+pages 135–148. Springer, 2010.
+[24] Eyal Kushilevitz and Noam Nisan. Communication complexity. Cambridge
+University Press, Cambridge, 1997.
+[25] R. Kipp Martin. Using separation algorithms to generate mixed integer
+model reformulations. Oper. Res. Lett., 10(3):119–128, 1991.
+[26] R. Kipp Martin, Ronald L. Rardin, and Brian A. Campbell. Polyhedral
+characterization of discrete dynamic programming. Oper. Res., 38(1):127–
+138, 1990.
+[27] Hermann Minkowski. Geometry of numbers. (Geometrie der Zahlen.). Bibliotheca Mathematica Teubneriana. 40. New York, NY: Johnson Reprint
+Corp. vii, 256 p. , 1968 (Original print: 1896).
+[28] Viet Hung Nguyen, Thanh Hai Nguyen, and Jean-Fran¸cois Maurras. On
+the convex hull of huffman trees. Electronic Notes in Discrete Mathematics,
+36:1009–1016, 2010.
+[29] Kanstantsin Pashkovich. Tight lower bounds on the sizes of symmetric extended formulations for permutahedra and related results. In preparation.
+13
+
+[30] William R. Pulleyblank and Bruce Shepherd. Formulations for the stable
+set polytope. In Giovanni Rinaldi and Laurence A. Wolsey, editors, Integer
+Programming and Combinatorial Optimization (Proc. IPCO III), LNCS,
+pages 267–279. Springer, 1993.
+[31] Richard Rado. An inequality. J. London Math. Soc., 27:1–6, 1952.
+[32] Igor Rivin. Combinatorial optimization in geometry. Adv. in Appl. Math.,
+31(1):242–271, 2003.
+[33] Francois Vanderbeck and Laurence A. Wolsey. Reformulation and decomposition of integer programs. In Michael J¨
+unger, Thomas Liebling, Denis
+Naddef, George Nemhauser, William Pulleyblank, Gerhard Reinelt, Giovanni Rinaldi, and Laurence Wolsey, editors, 50 years of integer programming 1958–2008, pages 431–502. Springer, 2010.
+[34] John von Neumann. A certain zero-sum two-person game equivalent to the
+optimal assignment problem. In Contributions to the theory of games, vol.
+2, Annals of Mathematics Studies, no. 28, pages 5–12. Princeton University
+Press, Princeton, N. J., 1953.
+[35] Hermann Weyl. Elementare Theorie der konvexen Polyeder. Commentarii
+math. Helvetici, 7:290–306, 1935.
+[36] Mihalis Yannakakis. Expressing combinatorial optimization problems by
+linear programs. J. Comput. System Sci., 43(3):441–466, 1991.
+
+14
+
+

@@ -1,1754 +1,1710 @@
-Continued Fraction Expansion of Real Roots of Polynomial Systems
+Continued Fraction Expansion of Real Roots of Polynomial
+Systems
 Angelos Mantzaflaris, Bernard Mourrain, Elias Tsigaridas
 GALAAD, INRIA Sophia Antipolis
+
 [FirstName.LastName]@sophia.inria.fr
 
 ABSTRACT
-We present a new algorithm for isolating the real roots of a system of multivariate polynomials, given in the monomial basis. It is inspired by existing subdivision methods in the Bernstein basis; it can be seen as generalization of the univariate continued fraction algorithm or alternatively as a fully analog of Bernstein subdivision in the monomial basis. The representation of the subdivided domains is done through homographies, which allows us to use only integer arithmetic and to treat efficiently unbounded regions. We use univariate bounding functions, projection and preconditionning techniques to reduce the domain of search. The resulting boxes have optimized rational coordinates, corresponding to the first terms of the continued fraction expansion of the real roots. An extension of Vincent's theorem to multivariate polynomials is proved and used for the termination of the algorithm. New complexity bounds are provided for a simplified version of the algorithm. Examples computed with a preliminary C++ implementation illustrate the approach.
+
+polynomial taking into account the bitsize of the coefficients,
+and providing a good understanding of their behavior from a
+theoretical and practical point of view. Approximation and
+bounding techniques have been developed [2] to improve the
+local speed of convergence to the roots.
+Even more recently a new attention has been given to
+continued fraction algorithms (CF), see e.g. [16, 18] and
+references therein. They differ from previous subdivisionbased algorithms in that instead of bisecting a given initial interval and thus producing a binary expansion of the
+real roots, they compute continued fraction expansions of
+these roots. The algorithm relies heavily on computations
+of lower bounds of the positive real roots, and different ways
+of computing such bounds lead to different variants of the
+algorithm. The best known worst-case complexity of CF
+eB (d5 τ 2 ) [16], while its average complexity is O
+eB (d3 τ ),
+is O
+thus being the only complexity result that matches, even in
+the average the complexity bounds of numerical algorithms
+[15]. Moreover, the algorithm seems to be the most efficient
+in practice [6, 18].
+Subdivision methods for the approximation of isolated
+roots of multivariate systems are also investigated but their
+analysis is much less advanced. In [17], the authors used
+tensor product representation in Bernstein basis and domain
+reduction techniques based on the convex hull property to
+speed up the convergence and reduce the number of subdivisions. In [5], the emphasis is put on the subdivision
+process, and stopping criterion based on the normal cone to
+the surface patch. In [12], this approach has been improved
+by introducing pre-conditioning and univariate-solver steps.
+The complexity of the method is also analyzed in terms of
+intrinsic differential invariants.
+This work is in the spirit of [12]. The novelty of our approach is the presentation of a tensor-monomial basis algorithm that generalizes the univariate continued fraction
+algorithm and does not assume generic position. We apply
+a subdivision approach also exploiting certain properties of
+the Bernstein polynomial representation, even though no
+basis conversion takes place.
+Our contributions are as follows. We propose a new adaptive algorithm for polynomial system real solving that acts
+in monomial basis, and exploits the continued fraction expansion of (the coordinates of) the real roots. This yields the
+best rational approximation of the real roots. All computations are performed with integers, thus this is a division-free
+algorithm. We propose a first step towards the generalization of Vincent’s theorem to the multivariate case (Th. 4.2)
+We perform a (bit) complexity analysis of the algorithm,
+
+We present a new algorithm for isolating the real roots of
+a system of multivariate polynomials, given in the monomial basis. It is inspired by existing subdivision methods
+in the Bernstein basis; it can be seen as generalization of
+the univariate continued fraction algorithm or alternatively
+as a fully analog of Bernstein subdivision in the monomial
+basis. The representation of the subdivided domains is done
+through homographies, which allows us to use only integer
+arithmetic and to treat efficiently unbounded regions. We
+use univariate bounding functions, projection and preconditionning techniques to reduce the domain of search. The
+resulting boxes have optimized rational coordinates, corresponding to the first terms of the continued fraction expansion of the real roots. An extension of Vincent’s theorem to
+multivariate polynomials is proved and used for the termination of the algorithm. New complexity bounds are provided
+for a simplified version of the algorithm. Examples computed with a preliminary C++ implementation illustrate
+the approach.
+
 Categories and Subject Descriptors
-I.1.2 [Computing Methodologies]: Symbolic and Algebraic Manipulation--algebraic algorithms
+I.1.2 [Computing Methodologies]: Symbolic and Algebraic Manipulation—algebraic algorithms
+
 General Terms
 Algorithms, Theory
-Keywords
-subdivision algorithm, homography, tensor monomial basis, continued fractions, C++ implementation
-1. INTRODUCTION
-The problem of computing roots of univariate polynomials has a long mathematical history [14]. Recently, some new investigations focused on subdivision methods, where root localization is based on simple tests such as Descartes' Rule of Signs and its variant in the Bernstein basis [13, 7, 4]. Complexity analysis was developed for univariate integer
-Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. To copy otherwise, to republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. SNC'09, August 3�5, 2009, Kyoto, Japan. Copyright 2009 ACM 978-1-60558-664-9/09/08 ...$10.00.
 
-polynomial taking into account the bitsize of the coefficients, and providing a good understanding of their behavior from a theoretical and practical point of view. Approximation and bounding techniques have been developed [2] to improve the local speed of convergence to the roots.
-Even more recently a new attention has been given to continued fraction algorithms (CF), see e.g. [16, 18] and references therein. They differ from previous subdivisionbased algorithms in that instead of bisecting a given initial interval and thus producing a binary expansion of the real roots, they compute continued fraction expansions of these roots. The algorithm relies heavily on computations of lower bounds of the positive real roots, and different ways of computing such bounds lead to different variants of the algorithm. The best known worst-case complexity of CF is OeB(d5 2) [16], while its average complexity is OeB(d3 ), thus being the only complexity result that matches, even in the average the complexity bounds of numerical algorithms [15]. Moreover, the algorithm seems to be the most efficient in practice [6, 18].
-Subdivision methods for the approximation of isolated roots of multivariate systems are also investigated but their analysis is much less advanced. In [17], the authors used tensor product representation in Bernstein basis and domain reduction techniques based on the convex hull property to speed up the convergence and reduce the number of subdivisions. In [5], the emphasis is put on the subdivision process, and stopping criterion based on the normal cone to the surface patch. In [12], this approach has been improved by introducing pre-conditioning and univariate-solver steps. The complexity of the method is also analyzed in terms of intrinsic differential invariants.
-This work is in the spirit of [12]. The novelty of our approach is the presentation of a tensor-monomial basis algorithm that generalizes the univariate continued fraction algorithm and does not assume generic position. We apply a subdivision approach also exploiting certain properties of the Bernstein polynomial representation, even though no basis conversion takes place.
-Our contributions are as follows. We propose a new adaptive algorithm for polynomial system real solving that acts in monomial basis, and exploits the continued fraction expansion of (the coordinates of) the real roots. This yields the best rational approximation of the real roots. All computations are performed with integers, thus this is a division-free algorithm. We propose a first step towards the generalization of Vincent's theorem to the multivariate case (Th. 4.2) We perform a (bit) complexity analysis of the algorithm,
+Keywords
+subdivision algorithm, homography, tensor monomial basis,
+continued fractions, C++ implementation
+
+1.
+
+INTRODUCTION
+
+The problem of computing roots of univariate polynomials has a long mathematical history [14]. Recently, some
+new investigations focused on subdivision methods, where
+root localization is based on simple tests such as Descartes’
+Rule of Signs and its variant in the Bernstein basis [13, 7,
+4]. Complexity analysis was developed for univariate integer
+
+Permission to make digital or hard copies of all or part of this work for
+personal or classroom use is granted without fee provided that copies are
+not made or distributed for profit or commercial advantage and that copies
+bear this notice and the full citation on the first page. To copy otherwise, to
+republish, to post on servers or to redistribute to lists, requires prior specific
+permission and/or a fee.
+SNC’09, August 3–5, 2009, Kyoto, Japan.
+Copyright 2009 ACM 978-1-60558-664-9/09/08 ...$10.00.
 
 85
 
-when oracles for lower bounds and counting the real roots are available (Prop. 5.2) and we propose non-trivial improvements for reducing the total complexity even more (Sec. 5.3). In all cases the bounds that we derive for the multivariate case, match the best known ones for the univariate case, if we restrict ourselves to n = 1.
+when oracles for lower bounds and counting the real roots
+are available (Prop. 5.2) and we propose non-trivial improvements for reducing the total complexity even more (Sec. 5.3).
+In all cases the bounds that we derive for the multivariate
+case, match the best known ones for the univariate case, if
+we restrict ourselves to n = 1.
 
-1.1 Notation
+1.1
 
-For a polynomial f  R[x1, .., xn], deg(f ) denotes its to-
+Algorithm 1.1: Subdivision scheme
+Input: A set of equations f1 , f2 , .., fs ∈ Z[x]
+represented over a domain I.
+Output: A list of disjoint domains, each containing one
+and only one real root of f1 = · · · = fs = 0.
+Initialize a stack Q and add (I, f1 , .., fs ) on top of it;
+While Q is not empty do
 
-tal degree, while degxi (f ) denotes its degree w.r.t. xi. Let f (x) = f (x1, .., xn)  R[x1, .., xn] with degxk f = dk, k = 1, .., n. If not specified, we denote d = d(f ) = max{d1, .., dn}.
+Notation
 
+a) Pop a system (I, f1 , .., fs ) and:
+
+For a polynomial f ∈ R[x1 , .., xn ], deg(f ) denotes its total degree, while degxi (f ) denotes its degree w.r.t. xi . Let
+f (x) = f (x1 , .., xn ) ∈ R[x1 , .., xn ] with degxk f = dk , k =
+1, .., n. If not specified, we denote d = d(f ) = max{d1 , .., dn }.
 We are interested in isolating the real roots of a system
-
-of polynomials f1(x), .., fs(x)  Z[x1, .., xn], in a box I0 = [u1, v1] � � � � � [un, vn]  Rn, uk, vk  Q. We denote by ZKn (f ) = {p  Kn; f (p) = 0} the solution set in Kn of the
-
+of polynomials f1 (x), .., fs (x) ∈ Z[x1 , .., xn ], in a box I0 =
+[u1 , v1 ] × · · · × [un , vn ] ⊂ Rn , uk , vk ∈ Q. We denote by
+ZKn (f ) = {p ∈ Kn ; f (p) = 0} the solution set in Kn of the
 equation f (x) = 0, where K is R or C.
-
-In what follows OB, resp. O, means bit, resp. arithmetic, complexity and the OeB, resp. Oe, notation means that we
-
-are ignoring logarithmic factors. For a  Q, L (a)  1 is the
-
+In what follows OB , resp. O, means bit, resp. arithmetic,
+eB , resp. O,
+e notation means that we
+complexity and the O
+are ignoring logarithmic factors. For a ∈ Q, L (a) ≥ 1 is the
 maximum bit size of the numerator and the denominator.
-
-For a polynomial f  Z[x1, .., xn], we denote by L (f ) the
-
+For a polynomial f ∈ Z[x1 , .., xn ], we denote by L (f ) the
 maximum of the bitsize of its coefficients (including a bit
-
 for the sign). In the following, we will consider classes of
-
 polynomials such that log(d(f )) = O(L (f )).
-
 Also, to simplify the notation we introduce multi-indices,
-
-for the variable Xd Xd1
-sum :=
-
-vector x Xdn
-��� ,
-
-= (x1, ..!, xn), and d :=
-
-xi :!= x1i1 d1 � � �
-
-� � � x!inn , the dn . The
-
-i=0
-
-i1=0 in=0
-
+for the variable vector x = (x1 , .., xn ), xi := xi11 · · · xinn , the
+!
+!
+!
+d
+d1
+dn
+X
+X
+X
+d1
+dn
+d
+sum
+:=
+···
+, and
+:=
+···
+. The
 i
+i1
+in
+i=0
+i =0
+i =0
+1
 
-i1 in
+b) Perform a precondition process and/or a reduction
+process to refine the domain.
+c) Apply an exclusion test to identify if the domain
+contains no roots.
+d) Apply an inclusion test to identify if the domain
+contains a single root. In this case output
+(I, f1 , .., fs ).
+e) If both tests fail split the representation into a
+number of sub-domains and push them to Q.
+
+e) If both tests fail, split the representation at (1, .., 1)
+and continue.
+In the following sections, we are going to describe more
+precisely the specific steps and analyze their complexity. In
+Sec. 2, we describe the representation of domains via homographies and the connection with the Bernstein basis
+representation. Subdivision, based on shifts of univariate
+polynomials, reduction and preconditionning are analyzed
+in Sec. 3. Exclusion and inclusion tests as well as a generalization of Vincent’s theorem to multivariate polynomials,
+are presented in Sec. 4. In Sec. 5, we recall the main properties of Continued Fraction expansion of real numbers and use
+them to analyze the complexity of a subdivision algorithm
+following this generic scheme. We conclude with examples
+produced by our C++ implementation in Sect. 6.
+
+n
 
 tensor Bernstein basis polynomials of multidegree degree d
+of a box I are denoted B(x; i, d; I) := Bdi11 (x1 ; u1 , u1 ) · · ·
+Bdinn (xn ; un , un ) where I = [u, v] := [u1 , v1 ] × · · · × [un , vn ].
 
-of a box I are denoted B(x; i, d; I) := Bdi11 (x1; u1, u1) � � � Bdinn (xn; un, un) where I = [u, v] := [u1, v1] � � � � � [un, vn].
+1.2
 
-1.2 The general scheme
+The general scheme
 
-In this section, we describe the family of algorithms that we consider. The main ingredients are
+In this section, we describe the family of algorithms that
+we consider. The main ingredients are
+• a suitable representation of the equations in a given
+(usually rectangular) domain, for instance a representation in the Bernstein basis or in the monomial basis;
 
-� a suitable representation of the equations in a given (usually rectangular) domain, for instance a representation in the Bernstein basis or in the monomial basis;
+2.
 
-� an algorithm to split the representation into smaller sub-domains;
+• an algorithm to split the representation into smaller
+sub-domains;
 
-� a reduction procedure to shrink the domain.
+REPRESENTATION: HOMOGRAPHIES
 
-Different choices for each of these ingredients lead to algorithms with different practical behaviors. The general process is summarized in Alg. 1.
-The instance of this general scheme that we obtain generalizes the continued fraction method for univariate polynomials; the realization of the main steps (b-e) can be summarized as follows:
-
-b) Perform a precondition process and compute a lower bound on the roots of the system, in order to reduce the domain.
-
-c) Apply interval analysis or sign inspection to identify if some fi has constant sign in the domain, i.e. if the domain contains no roots.
-
-d) Apply Miranda test to identify if the domain contains a single root. In this case output (I, f1, .., fs).
-
-Algorithm 1.1: Subdivision scheme Input: A set of equations f1, f2, .., fs  Z[x] represented over a domain I. Output: A list of disjoint domains, each containing one and only one real root of f1 = � � � = fs = 0. Initialize a stack Q and add (I, f1, .., fs) on top of it; While Q is not empty do
-a) Pop a system (I, f1, .., fs) and:
-b) Perform a precondition process and/or a reduction process to refine the domain.
-c) Apply an exclusion test to identify if the domain contains no roots.
-d) Apply an inclusion test to identify if the domain contains a single root. In this case output (I, f1, .., fs).
-e) If both tests fail split the representation into a number of sub-domains and push them to Q.
-
-e) If both tests fail, split the representation at (1, .., 1) and continue.
-In the following sections, we are going to describe more precisely the specific steps and analyze their complexity. In Sec. 2, we describe the representation of domains via homographies and the connection with the Bernstein basis representation. Subdivision, based on shifts of univariate polynomials, reduction and preconditionning are analyzed in Sec. 3. Exclusion and inclusion tests as well as a generalization of Vincent's theorem to multivariate polynomials, are presented in Sec. 4. In Sec. 5, we recall the main properties of Continued Fraction expansion of real numbers and use them to analyze the complexity of a subdivision algorithm following this generic scheme. We conclude with examples produced by our C++ implementation in Sect. 6.
-
-2. REPRESENTATION: HOMOGRAPHIES
-A widely used representation of a polynomial f in a box is the tensor-Bernstein representation. De Casteljau's algorithm provides an efficient way to split this representation to smaller domains. A disadvantage is that converting integer polynomials to Bernstein form results in rational Bernstein coefficients. We follow an alternative approach that does not require basis conversion since it applies to monomial basis: We introduce a tensor-monomial representation, i.e. a representation in the monomial basis over P1 � � � � � P1 and provide an algorithm to subdivide this representation analogously to the Bernstein case.
+A widely used representation of a polynomial f in a box
+is the tensor-Bernstein representation. De Casteljau’s algorithm provides an efficient way to split this representation to
+smaller domains. A disadvantage is that converting integer
+polynomials to Bernstein form results in rational Bernstein
+coefficients. We follow an alternative approach that does
+not require basis conversion since it applies to monomial
+basis: We introduce a tensor-monomial representation, i.e.
+a representation in the monomial basis over P1 × · · · × P1
+and provide an algorithm to subdivide this representation
+analogously to the Bernstein case.
 In a tensor-monomial representation a polynomial is represented as a tensor (higher dimensional matrix) of coefficients in the natural monomial basis, that is,
 
-d1X,..,dn
+• a reduction procedure to shrink the domain.
+Different choices for each of these ingredients lead to algorithms with different practical behaviors. The general process is summarized in Alg. 1.
+The instance of this general scheme that we obtain generalizes the continued fraction method for univariate polynomials; the realization of the main steps (b-e) can be summarized as follows:
+b) Perform a precondition process and compute a lower
+bound on the roots of the system, in order to reduce
+the domain.
 
-Xd
+d1 ,..,dn
+
+c) Apply interval analysis or sign inspection to identify
+if some fi has constant sign in the domain, i.e. if the
+domain contains no roots.
 
 f (x) =
 
-ci1..in x(i1,..,in) =
-
-cixi,
+X
 
 i1 ,..,in
 
+ci1 ..in x(i1 ,..,in ) =
+
+d
+X
+
+ci xi ,
+
 i=0
 
-for every equation f of the system. Splitting this representation is done using homographies. The main operation in this computation is the Taylor shift.
+for every equation f of the system. Splitting this representation is done using homographies. The main operation in
+this computation is the Taylor shift.
+
+d) Apply Miranda test to identify if the domain contains
+a single root. In this case output (I, f1 , .., fs ).
 
 86
 
-Definition 2.1. A homography (or Mobius transformation) is a bijective projective transformation H = (H1, .., Hn), defined over P1 � � � � � P1 as
+h
+i
+Proof. Let [uk , vk ] = αγkk , βδkk . For a tensor-Bernstein
+!
+1
+d
+(x − u)i (v − x)d−i we compute
+polynomial
+i (v − u)d
+!
+d
+1
+γ
+δ 1
+v−u u
+C RC T RC
+T (
+(x − u)i (v − x)d−i )
+i (v − u)d
+!
+d
+1
+γ
+δ
+1
+v−u
+xi (v − u − x)d−i )
+= C RC RT RC
+(
+i (v − u)d
+!
+d
+γ
+δ
+1
+= C RC RT (
+(x − 1)d−i )
+i
+!
+!
+d i
+d i d−i i
+γ
+δ
+= C RC (
+x)=
+γ δ x
+i
+i
 
-xk
+Definition 2.1. A homography (or Mobius transformation) is a bijective projective transformation H = (H1 , .., Hn ),
+defined over P1 × · · · × P1 as
+xk → Hk (xk ) =
 
+αk xk + βk
+γk xk + δk
 
-
-Hk (xk )
-
-=
-
-k xk k xk
-
-+ +
-
-k k
-
-with k, k, k, k  Z, kk = 0, k = 1, .., n.
-
+with αk , βk , γk , δk ∈ Z, γk δk = 0, k = 1, .., n.
 Using simple calculations, we can see that the inverse
+Hk−1 (xk ) =
 
-Hk-1 (xk )
-
-=
-
-k xk k xk
-
-- k - k
+δk xk − βk
+γk xk − αk
 
 is also a homography. Also, notice that if det H > 0 then,
-
 taking proper limits when needed, we can write
-
-��
-
-R+  Hk(R+) =
-
-k k
-
+»
+–
+βk αk
+R+ → Hk (R+ ) =
 ,
-
-k k
-
 (1)
+δk γk
 
-hence H(f ) : Rn+  R,
+as needed.
+Corollary 2.4. The Bernstein expansion of f in IH is
 
-Yn H(f ) := (kxk + k)dk � (f  H)(x)
+hence H(f ) : Rn
++ → R,
+H(f ) :=
+
+n
+Y
+
+dk
+
+(γk xk + δk )
+
 k=1
 
-is a polynomial defined over R+n that corresponds to the (possibly unbounded) box
+d
+X
 
-��
+· (f ◦ H)(x)
 
-��
-
-IH = H(Rn+) =
-
-1 1
-
-,
-
-1 1
-
-׷���
-
-n n
-
-,
-
-n n
-
-,
-
-(2)
-
-of the initial system, in the sense that the zeros of the initial system in IH are in one-to-one correspondence with the positive zeros of H(f ).
-We focus on the computation of H(f ). We use the base homographies Tkc(f ) = f |xk=xk+c (translation by c) or simply Tk(f ) if c = 1, Ckc(f ) = f |xk=cxk (contraction by c) and Rk(f ) = xdkk f |xk=1/xk (reciprocal polynomial). These notations are naturally extended to variable vectors; for instance T c = (T1c1 , .., Tncn ), c = (c1, .., cn)  Zn. Complexity results for these computations appear in the following sections. We can see that they suffice to compute any homography:
-
-Lemma 2.2. The group of homographies H with coefficients in Z is generated by Rk, Ckc, Tkc, k = 1, .., n, c  Z.
-Proof. It can be verified that Hk(f ) is computed as
-Hk(f ) = Ckk RkCkk TkRkCkk/k-k/k Tkk/k (f )
-where the product denotes composition. We abbreviate Ck1/c = RkCkcRk and Tk1/c = CkuTk1RkTkcRk.
-
-Representation via homography is not far from Bernstein representation:
-
-Lemma
-
-2.3.
-
-Let f
-
-=
-
-Pd
 i=0
 
-bi
+That is, the coefficients of H(f ) coincide with the Bernstein
+coefficients up to contraction and binomial factors.
 
-Bin(x,
-
-IH
-
+is a polynomial defined over Rn
++ that corresponds to the
+(possibly unbounded) box
+–
+»
+–
+»
+βn αn
+β1 α1
+,
+×
+·
+·
+·
+×
+,
+,
+(2)
+IH = H(Rn
 )
+=
++
+δ1 γ1
+δn γn
 
-the
+Thus tensor-Bernstein coefficients and tensor-monomial
+coefficients in a sub-domain of Rn
++ differ only by multiplication by positive constant. In particular they are of the
+same sign. Hence this corollary allows us to take advantage
+of sign properties (eg. the variation diminishing property)
+of the Bernstein basis without computing it.
+The resulting representation of the system consists of the
+transformed polynomials H(f1 ), .., H(fn ), represented as tensors of coefficients as well as 4n integers, αk , βk , γk , δk for
+k = 1, .., n from which we can recover the endpoints of the
+domain, using (2).
 
-Bernstein
+of the initial system, in the sense that the zeros of the initial system in IH are in one-to-one correspondence with the
+positive zeros of H(f ).
+We focus on the computation of H(f ). We use the base
+homographies Tkc (f ) = f |xk =xk +c (translation by c) or simply Tk (f ) if c = 1, Ckc (f ) = f |xk =cxk (contraction by c) and
+d
+Rk (f ) = xkk f |xk =1/xk (reciprocal polynomial). These notations are naturally extended to variable vectors; for instance
+T c = (T1c1 , .., Tncn ), c = (c1 , .., cn ) ∈ Zn . Complexity results
+for these computations appear in the following sections. We
+can see that they suffice to compute any homography:
 
-ex-
+3.
+3.1
 
-pansion of f in the box IH yielded by a homography H. If
+Proof. It can be verified that Hk (f ) is computed as
+β /δk −αk /γk
 
-Xd H(f ) = C RCT 1RC/-/ T /(f ) = cixi
+β /δk
+
+Tk k
+
+(f )
+
+where the product denotes composition. We abbreviate
+1/c
+1/c
+Ck = Rk Ckc Rk and Tk = Cku Tk1 Rk Tkc Rk .
+Representation via homography is not far from Bernstein
+representation:
+Pd
+Lemma 2.3. Let f = i=0
+bi Bin (x, IH ) the Bernstein expansion of f in the box IH yielded by a homography H. If
+H(f ) = C γ RC δ T 1 RC β/δ−α/γ T β/δ (f ) =
+
+d
+X
+
+ci xi
 
 i=0
 
 then ci =
 
 !
+d i d−i
+γ δ bi .
+i
 
-d i
+SUBDIVISION AND REDUCTION
+The subdivision step
 
- i  d-i bi .
-
-hi
-
-Proof. Let ![uk, vk] =
-
-,k k
-k k
-
-.
-
-For a tensor-Bernstein
-
-polynomial
-
-d i
-
-(v
-
-1 -
-
-u)d
-
-(x
-
--
-
-u)i(v
-
--
-
-x)d-i
-
-we
-
-compute
-
-!
-
-C RCT 1RCv-uT u(
-
-d i
-
-(v
-
-1 -
-
-u)d
-
-(x
-
--
-
-u)i(v
-
--
-
-x)d-i)
-
-!
-
-= C RCRT 1RCv-u(
-
-d i
-
-(v
-
-1 -
-
-u)d
-
-xi
-
-(v
-
--
-
+We describe the subdivision step using the homography
+representation. This is done at a point u = (u1 , .., un ) ∈
+n
+Zn
+new sub-domains
+≥0 . It consists in computing up to 2
+(depending on the number of nonzero uk ’s), each one having
+u as a vertex.
+Given H(f1 ), .., H(fs ) that represent the initial system at
+some domain, we consider the partition of Rn
++ defined by
+the hyperplanes xk = uk , k = 1, .., n. These intersect at
+u hence we call this partition at u. Subdividing at u is
+equivalent to subdividing the initial domain into boxes that
+share the common vertex H(u) and have faces either parallel
+or perpendicular to those of the initial domain.
+We need to compute a homography representation for every domain in this partition. The computation is done coordinate wise; observe that for any domain in this partition
+we have, for all k, either xk ∈ [0, uk ] or xk ∈ [uk , ∞]. It
+suffices to apply a transformation that takes these domains
 u
+to R+ . In the former case, we apply Tk1 Rk Ck k to the current
+polynomials and in the latter case we shift them by uk , i.e.
+u
+we apply Tk k . The integers αk , βk , γk , δk that keep track of
+the current domain can be easily updated to correspond to
+the new subdomain.
 
--
+Lemma 2.2. The group of homographies H with coefficients in Z is generated by Rk , Ckc , Tkc , k = 1, .., n, c ∈ Z.
+Hk (f ) = Ckγk Rk Ckδk Tk Rk Ck k
 
-x)d-i
-
-)
-
-!
-
-= C RCRT 1(
-
-d i
-
-(x - 1)d-i)
-
-!!
-
-= C RC(
-
-d i
-
-xi) =
-
-d i
-
- i  d-i xi
-
-as needed.
-
-Corollary 2.4. The Bernstein expansion of f in IH is
-
-Xd
-i=0
-
-`di �cii d-i
-
-Bid(x;
-
-IH ).
-
-That is, the coefficients of H(f ) coincide with the Bernstein coefficients up to contraction and binomial factors.
-
-Thus tensor-Bernstein coefficients and tensor-monomial coefficients in a sub-domain of R+n differ only by multiplication by positive constant. In particular they are of the same sign. Hence this corollary allows us to take advantage of sign properties (eg. the variation diminishing property) of the Bernstein basis without computing it.
-The resulting representation of the system consists of the transformed polynomials H(f1), .., H(fn), represented as tensors of coefficients as well as 4n integers, k, k, k, k for k = 1, .., n from which we can recover the endpoints of the domain, using (2).
-
-3. SUBDIVISION AND REDUCTION
-3.1 The subdivision step
-We describe the subdivision step using the homography representation. This is done at a point u = (u1, .., un)  Zn 0. It consists in computing up to 2n new sub-domains (depending on the number of nonzero uk's), each one having u as a vertex.
-Given H(f1), .., H(fs) that represent the initial system at some domain, we consider the partition of Rn+ defined by the hyperplanes xk = uk, k = 1, .., n. These intersect at u hence we call this partition at u. Subdividing at u is equivalent to subdividing the initial domain into boxes that share the common vertex H(u) and have faces either parallel or perpendicular to those of the initial domain.
-We need to compute a homography representation for every domain in this partition. The computation is done coordinate wise; observe that for any domain in this partition we have, for all k, either xk  [0, uk] or xk  [uk, ]. It suffices to apply a transformation that takes these domains to R+. In the former case, we apply Tk1RkCkuk to the current polynomials and in the latter case we shift them by uk, i.e. we apply Tkuk . The integers k, k, k, k that keep track of the current domain can be easily updated to correspond to the new subdomain.
+ci
+Bid (x; IH ).
+`d´
+γ i δ d−i
+i
 
 87
 
-We can make this process explicit in general dimension:
-
-every computed subdomain corresponds to a binary number
-
-of length n, where the or 0 if Tkuk is applied.
-
-k-th
-
-bit
-
-is
-
-1
-
-if
-
-Tk1 Rk C uk
-
-is
-
-applied
-
-In our continued fraction algorithm the subdivision is per-
-
-formed at u = 1.
-
-Illustration. Let us illustrate this process in dimension
-
-two. The system f1, f2 is defined over R>2 0. We subdivide this domain into [0, 1]2, [0, 1] � R>1, R>1 � [0, 1] and
-
-R>1�R>1. Equivalently, we compute four new pairs of polynomials, as illustrated in Fig. 1 (we abbreviate Sk = Tk1Rk).
-
-S1T2(f )
-
-T1T2(f ) (1, 1)
-
-S1S2(f )
-
-T1S2(f )
-
-(0, 0)
-Figure 1: Subdividing the domain of f .
-
-Complexity of subdivision step. The transformation of a polynomial into two sub-domains, i.e. splitting w.r.t. one direction, consists of performing dn-1 univariate shifts, one for every coefficient  Z[xk] of f  Z[xk][x1, .., xck, .., xn].
-If the subdivision is performed in every direction, each transformation consists of dn-1 univariate shifts for every variable, i.e. ndn-1 shifts. There are 2n sub-domains to compute, hence a total of n22ndn-1 shifts have to be performed in a single subdivision step. We must also take into account that every time a univariate shift is performed, the coefficient bitsize increases.
-The operations
-
-Tk(f ) = f |xk=xk+1
-
-and
-
-TkRk(f )
-
-=
-
-(xk
-
-+
-
-1)dk
-
-f
-
-|xk
-
-=
-
-1 xk +1
-
-are essentially of the same complexity, except that the sec-
-
-ond requires one to exchange the coefficient of ci1,..,ik,..,in
-
-with O(dn
-
-ci1 ,..,dk ) cost.
-
--ik ,..,in
-Hence
-
-before translation, i.e. an additional we only need to consider the case of
-
-shifts for the complexity.
-
-The continued fraction algorithm subdivides a domain us-
-
-ing unit shifts and inversion. Successive operations of this
-
-kind increase the bitsize equivalently to a big shift by the
-
-sum of these units. Thus it suffices to consider the general
-
-computation of f (x + u) to estimate the complexity of the
-
-subdivision step.
-
-Lemma 3.1 (Shift complexity). The computation of
-
-f (x + u) with L(f ) =  and L(uk)  , k = 1, .., n can be performed in OeB(n2dn + dn+1n3).
-
-Proof. We use known facts for the computation of Tkuk (f )
-
-for univariate polynomials. If degkf = dk and f is univari-
-
-ate, this operation is performed in OeB(d2k+dk ); the result-
-
-ing coefficients are of bitsize  +dk [20]. Hence f (x1, .., xk +
-
-uk, .., xn) is computed in OeB(dn-1(dk2  + dk )).
-
-Suppose we have computed f (x1 for some k. The coefficients are of
-
-+buit1s,izxek- 1++Pukki-=-111,
-
-xk , i.
-
-.., xn The
-
-)
-
-computation of shift w.r.t. k-th variable f (x1 + u1, .., xk +
-
-uk, xk+1, .., xn)
-and consists of is, we perform
-
-drdenns--u1l1OtesuBinn(diva2apPrioaiklty=en1opmio+liyanldoomf))biaiotlpsieszrheaifttis+o,nPso.nikT=e 1hfoarti
-
-every coefficient of f in Z[xk][x1, .., xck, .., xn]. This gives a total cost for computing f (x + u) of
-
+P
+uk , xk+1 , .., xn ) results in a polynomial of bitsize τ + ki=1 σi
+P
+k
+eB (d2
+and consists of dn−1 O
+i=1 σi + dτ )) operations. That
+is, we perform dn−1 univariate polynomial shifts, one for
+every coefficient of f in Z[xk ][x1 , .., x
+ck , .., xn ].
+This gives a total cost for computing f (x + u) of
 !
+k
+n
+n
+X
+X
+X
+n−1
+2
+d
+d
+σi + dτ = ndn τ + dn+1
+(n + 1 − k)σk .
 
-Xn Xk
-
-Xn
-
-dn-1
-
-d2 i + d = ndn + dn+1 (n + 1 - k)k.
+We can make this process explicit in general dimension:
+every computed subdomain corresponds to a binary number
+of length n, where the k−th bit is 1 if Tk1 Rk C uk is applied
+or 0 if Tkuk is applied.
+In our continued fraction algorithm the subdivision is performed at u = 1.
+Illustration. Let us illustrate this process in dimension
+two. The system f1 , f2 is defined over R2>0 . We subdivide this domain into [0, 1]2 , [0, 1] × R>1 , R>1 × [0, 1] and
+R>1 ×R>1 . Equivalently, we compute four new pairs of polynomials, as illustrated in Fig. 1 (we abbreviate Sk = Tk1 Rk ).
 
 k=1
+
+Let us present an alternative way to compute a sub-domain
+using contraction, preferable when the bitsize of u is big.
+The idea behind this is the fact that Tkc and Tk1 C c compute
+the same sub-domain, in two different ways.
+Pd
+Lemma 3.2. If f = i=0
+ci xi , L(f ) = τ , then the coeffiu
+cients of C (f ), L(uk ) ≤ σ, k = 1, .., n, can be computed in
+eB (dn τ + ndn+1 σ) .
+O
+
+(1, 1)
+
+S1 S2 (f )
+
+k=1
+
+The latter sum implies that it is faster to apply the shifts
+with increasing order, starting with the smallest number uk .
+Since σk = O(σ) for all k, and we must shift a system of
+O(n) polynomials we obtain the stated result.
+
+T1 T2 (f )
+
+S1 T2 (f )
 
 i=1
 
-k=1
+T1 S2 (f )
 
-The latter sum implies that it is faster to apply the shifts with increasing order, starting with the smallest number uk. Since k = O() for all k, and we must shift a system of O(n) polynomials we obtain the stated result.
+(0, 0)
 
-Let us present an alternative way to compute a sub-domain
-using contraction, preferable when the bitsize of u is big. The idea behind this is the fact that Tkc and Tk1Cc compute the same sub-domain, in two different ways.
-
-Lemma
-
-3.2.
-
-If f
-
-=
-
-Pd
-i=0
-
-cixi,
-
-L(f )
-
-=
-
-,
-
-then
-
-the
-
-coeffi-
-
-cients of Cu(f ), L(uk)  , k = 1, .., n, can be computed in
-
-OeB(dn + ndn+1) .
-
-Proof. The operation, i.e. computing the new coefficients ciui can be done with Oe(dn) multiplications: Since u(i1,..,ik,..,in) = uku(i1,..,ik-1,..,in), if these powers are computed successively then every coefficient is computed using
-two multiplications. Moreover, it suffices to keep in memory the n powers u ,(i1,..,ik-1,ik-1,ik+1,..,in) k = 1, .., n in order to compute any uici. Geometrically this can be understood as a stencil of n points that sweeps the coefficient tensor
+Proof. The operation, i.e. computing the new coeffie n ) multiplications: Since
+cients ci ui can be done with O(d
+(i1 ,..,ik ,..,in )
+(i1 ,..,ik −1,..,in )
+= uk u
+, if these powers are comu
+puted successively then every coefficient is computed using
+two multiplications. Moreover, it suffices to keep in memory
+the n powers u(i1 ,..,ik−1 ,ik −1,ik+1 ,..,in ) , k = 1, .., n in order
+to compute any ui ci . Geometrically this can be understood
+as a stencil of n points that sweeps the coefficient tensor
 and updates every element using one neighbor at each time.
-The bitsize of the multiplied numbers is O( + d) hence
+The bitsize of the multiplied numbers is O(τ + dσ) hence
 the result follows.
 
-Now if we consider a contraction followed by a shift by 1 w.r.t. xk for O(n) polynomials we obtain OeB(n2dn + n3dn+1 + ndn+1) operations for the computation of the domain. The disadvantage is that the resulting coefficients are of bitsize O( + d) instead of O( + n) with the use of shifts. Also note that this operation would compute a expansion of the real root which differs from continued fraction expansion.
+Figure 1: Subdividing the domain of f .
+Complexity of subdivision step. The transformation of
+a polynomial into two sub-domains, i.e. splitting w.r.t. one
+direction, consists of performing dn−1 univariate shifts, one
+for every coefficient ∈ Z[xk ] of f ∈ Z[xk ][x1 , .., x
+ck , .., xn ].
+If the subdivision is performed in every direction, each
+transformation consists of dn−1 univariate shifts for every
+variable, i.e. ndn−1 shifts. There are 2n sub-domains to
+compute, hence a total of n2 2n dn−1 shifts have to be performed in a single subdivision step. We must also take into
+account that every time a univariate shift is performed, the
+coefficient bitsize increases.
+The operations
+Tk (f ) = f |xk =xk +1 and Tk Rk (f ) = (xk + 1)dk f |xk =
 
-3.2 Reduction: Bounds on the range of f
+Now if we consider a contraction followed by a shift by
+eB (n2 dn τ +
+1 w.r.t. xk for O(n) polynomials we obtain O
+3 n+1
+n+1
+n d
++ nd
+σ) operations for the computation of the
+domain. The disadvantage is that the resulting coefficients
+are of bitsize O(τ + dσ) instead of O(τ + nσ) with the use
+of shifts. Also note that this operation would compute a expansion of the real root which differs from continued fraction
+expansion.
 
-In this section we define univariate polynomials whose graph in Rn+1 bounds the graph of f . For every direction k, we provide two polynomials bounding the values of f in Rn from below and above respectively.
+1
+xk +1
+
+are essentially of the same complexity, except that the second requires one to exchange the coefficient of ci1 ,..,ik ,..,in
+with ci1 ,..,dk −ik ,..,in before translation, i.e. an additional
+O(dn ) cost. Hence we only need to consider the case of
+shifts for the complexity.
+The continued fraction algorithm subdivides a domain using unit shifts and inversion. Successive operations of this
+kind increase the bitsize equivalently to a big shift by the
+sum of these units. Thus it suffices to consider the general
+computation of f (x + u) to estimate the complexity of the
+subdivision step.
+
+3.2
+
+Reduction: Bounds on the range of f
+In this section we define univariate polynomials whose
+graph in Rn+1 bounds the graph of f . For every direction
+k, we provide two polynomials bounding the values of f in
+Rn from below and above respectively.
 Define
+mk (f ; xk )
 
-Xdk
-
-mk(f ; xk)
+Lemma 3.1 (Shift complexity). The computation of
+f (x + u) with L(f ) = τ and L(uk ) ≤ σ, k = 1, .., n can be
+eB (n2 dn τ + dn+1 n3 σ).
+performed in O
 
 =
 
+dk
+X
+
 ik =0
+
+Mk (f ; xk )
+
+u
+Tk k (f )
+
+Proof. We use known facts for the computation of
+for univariate polynomials. If degk f = dk and f is univarieB (d2k σ+dk τ ); the resultate, this operation is performed in O
+ing coefficients are of bitsize τ +dk σ [20]. Hence f (x1 , .., xk +
+eB (dn−1 (d2k σ + dk τ )).
+uk , .., xn ) is computed in O
+Suppose we have computed f (x1 +u1 , xk−1 +uk−1 , xk , .., xn )
+P
+for some k. The coefficients are of bitsize τ + k−1
+i=1 σi . The
+computation of shift w.r.t. k−th variable f (x1 + u1 , .., xk +
+
+=
+
+dk
+X
+
+i
 
 min
-i1,..,ick ,..,in
 
-ci1 ..in
+ci1 ..in xkk
 
-xikk
-
-Xdk
-
-Mk(f ; xk)
-
-=
-
-ik =0
+(3)
 
 max
-i1,..,ick ,..,in
 
-ci1 ..in
+ci1 ..in xikk
 
-xkik
+(4)
 
-(3) (4)
+i1 ,..,ic
+k ,..,in
 
-Lemma 3.3. For any x  Rn+, n > 1 and any k = 1, .., n, we have
+i ,..,ic
+k ,..,in
+ik =0 1
 
-mk(f ; xk) 
+Lemma 3.3. For any x ∈ Rn
++ , n > 1 and any k = 1, .., n,
+we have
+mk (f ; xk ) ≤
 
-f (x) Y Xds
+f (x)
+ds
+YX
 
- Mk(f ; xk).
-
-xsis
-
-s=k is=0
-
-(5)
+s=k is =0
 
 88
 
-Proof. For x  Rn+, we can directly write 01
+xiss
 
-Xdk Y Xds
+≤ Mk (f ; xk ).
 
-f (x)
+(5)
 
+Proof. For x ∈ Rn
++ , we can directly write
+0
+1
+dk
+ds
+X
+YX
+i
+k
+f (x) ≤ @
+max ci1 ..in xk A
+xiss
+i ,..,ic
+k ,..,in
+ik =0 1
 
+Illustration. Consider a bi-quadratic f0 ∈ R[x, y], namely,
+degx1 f0 = degx2 f0 = 2 with coefficients cij . Suppose that
+f0 = H(f ) for I0 = IH . We compute
 
-@
-ik =0
+s=k is =0
 
-max
-i1,..,ick ,..,in
+m1 (f, x1 ) =
 
-ci1 ..in
+The product of power sums is greater than 1; divide both
+sides by it. Analogously for Mk (f ; xk ).
+Corollary 3.4. Given k ∈ {1, .., n},
+uk ∈]0, µk ], where
+8
+< min. pos. root of Mk (f, xk ) if
+min. pos. root of mk (f, xk ) if
+µk =
+:
+0
 
-xikk A
+2
+X
+i=0
 
-s=k
+min cij xi and M1 (x) =
 
-is =0
+j=0,..2
 
-xsis
+2
+X
+i=0
 
-The product of power sums is greater than 1; divide both sides by it. Analogously for Mk(f ; xk).
+max cij xi .
 
-Corollary 3.4. Given k  {1, .., n}, if u  R+n with
+j=0,..2
 
-uk ]0, �k], where 8
+f (x1 ,x2 )
+1+x2 +x2
+2
 
-< min. pos. root of Mk(f, xk) if Mk(f ; 0) < 0
+≤ M (x). Fig. 2 shows how these
+thus m(x) ≤
+univariate quadratics bound the graph of f in I0 .
 
-�k = :
-
-min.
-
-pos.
-
-root 0
-
-of
-
-mk(f, xk)
-
-if mk(f ; 0) > 0 , otherwise
+if u ∈ Rn
++ with
+Mk (f ; 0) < 0
+mk (f ; 0) > 0 ,
+otherwise
 
 then f (u) = 0. Consequently, all positive roots of f lie in
+R>µ1 × · · · × R>µn . Also, for u ∈ Rn
++ with uk ∈ [Mk , ∞],
+8
+< max. pos. root of Mk (f, xk ) if Mk (f ; ∞) < 0
+max. pos. root of mk (f, xk ) if mk (f ; ∞) > 0 ,
+Mk =
+:
+∞
+otherwise
 
-R>�1
+it is f (u) = 0, i.e. all pos. roots are in R<M1 × · · · × R<Mn .
+Combining both bounds we deduce that [µ1 , M1 ] × · · · ×
+[µn , Mn ] is a bounding box for f −1 ({0}) ∩ Rn
++.
+Proof. The denominator in (5) is always positive in Rn
++.
+Let u ∈ Rn with uk ∈ [0, µk ]. If Mk (f, 0) < 0 then also
+Mk (f, u) < 0 and it follows f (u) < 0. Similarly mk (f, 0) >
+0 ⇒ mk (f, u) > 0 ⇒ f (u) < 0. The same arguments hold
+for [Mk , ∞], Mk (f ; ∞) = R(Mk (f ; xk ))(0), mk (f ; ∞) =
+R(mk (f ; xk ))(0), and R(f ), since lower bounds on the zeros
+of R(f ) yield upper bounds on the zeros of f .
 
-׷� 8
+Figure 2: The enveloping polynomials M1 (x), m1 (x)
+in domain I0 for a bi-quadratic polynomial f (x, y).
 
-�
+3.3
 
-�
+Thus lower and upper bounds on the k−th coordinates of
+the roots of (f1 , .., fs ) are given by
+max {µk (fi )}
 
-R>�n
+i=1,..,s
 
+and
+
+min {Mk (fi )}
+
+i=1,..,s
+
+Preconditioning
+
+To improve the reduction step, we use preconditioning.
+The aim of a preconditioner is to tune the system so that
+it can be tackled more efficiently; in our case we aim at
+improving the bounds of Cor. 3.4.
+A preconditioning matrix P is an invertible s × s matrix
+that transforms a system (f1 , .., fs )t into the equivalent one
+P · (f1 , .., fs )t . This transformation does not alter the roots
+of the system, since the computed equations generate the
+same ideal. The bounds obtained on the resulting system
+can be used directly to reduce the domain of the equations
+before preconditioning. Preconditioning can be performed
+to a subset of the equations.
+Since we use a reduction process using Cor. 3.4 we want
+to have among our equations n of them whose zero locus
+f −1 ({0}) is orthogonal to the k−th direction, for all k.
+Assuming a square system, we precondition H(f1 ), .., H(fn )
+to obtain a locally orthogonal to the axis system; an ideal
+preconditioner would be the Jacobian of the system evaluated at a common root; instead, we evaluate JH(f ) at the imk +βk γk
 .
-
-Also,
-
-for
-
-u  R+n
-
-with
-
-uk
-
- [Mk, ],
-
-< max. pos. root of Mk(f, xk) if Mk(f ; ) < 0
-
-Mk
-
-=:
-
-max.
-
-pos.
-
-root of 
-
-mk(f, xk)
-
-if mk(f ; ) > 0 , otherwise
-
-it is f (u) = 0, i.e. all pos. roots are in R<M1 � � � � � R<Mn . Combining both bounds we deduce that [�1, M1] � � � � �
-[�n, Mn] is a bounding box for f -1({0})  R+n . Proof. The denominator in (5) is always positive in Rn+.
-Let u  Rn with uk  [0, �k]. If Mk(f, 0) < 0 then also Mk(f, u) < 0 and it follows f (u) < 0. Similarly mk(f, 0) > 0  mk(f, u) > 0  f (u) < 0. The same arguments hold for [Mk, ], Mk(f ; ) = R(Mk(f ; xk))(0), mk(f ; ) = R(mk(f ; xk))(0), and R(f ), since lower bounds on the zeros of R(f ) yield upper bounds on the zeros of f .
-
-Thus lower and upper bounds on the k-th coordinates of the roots of (f1, .., fs) are given by
-
-max {�k(fi)} and
-i=1,..,s
-
-min {Mk(fi)}
-i=1,..,s
+age of the center u of the initial domain IH , uk = αk δ2γ
+k δk
+Thus we must compute the inverse of the Jacobian matrix
+JH(f ) (x) = [∂xi H(fj )(x)]1≤i,j,≤n evaluated at u′ := H(u) =
+(δ1 /γ1 , .., δn /γn ).
+Precondition step complexity. Computing JH(f ) (u) ·
+eB (n2 dn ) and evaluat(H(f1 ), .., H(fn ))t is done with cost O
+′
+2
+n−1
+eB (n d
+eB (n2 ) for
+ing at u has cost O
+). We also need O
+2 n
+inversion and O(n d ) for multiplying polynomials times
+scalar as well as summing polynomials. This gives a precondition cost of order O(n2 dn ).
 
 (6)
 
-respectively, i.e. the intersection of these bounding boxes. We would like to remain in the ring of integers all along
-the process, thus integer lower or upper bounds will be used.These can be the floor or ceil of the above roots of univariate polynomials, or even known bounds for them, e.g. Cauchy's bound. cinjg`Idfi�otfhiecodme-ffiiinctiimheenuntmsdidaffenefidrnemendtamxaismk(cufim, xka)cr,ejMtakk(efn, xwkc)iit`hpdjo�tlhyjenodom-rdjiae<rlsare obtained. By Cor. 2.4 their control polygon is the lower and upper hull respectively of the projections of the tensorBernstein coefficients to the k-th direction and are known to converge quadratically to simple roots when preconditioning (described in the following paragraph) is utilized [12, Cor. 5.3].
-
+respectively, i.e. the intersection of these bounding boxes.
+We would like to remain in the ring of integers all along
+the process, thus integer lower or upper bounds will be
+used.These can be the floor or ceil of the above roots of univariate polynomials, or even known bounds for them, e.g.
+Cauchy’s bound.
+If the minimum and maximum are taken with
+` ´the ordering of coefficients defined as ci ≺ cj ⇐⇒ ci dj γ j δ d−j <
+` ´
+cj di γ i δ d−i then different mk (f, xk ), Mk (f, xk ) polynomials
+are obtained. By Cor. 2.4 their control polygon is the lower
+and upper hull respectively of the projections of the tensorBernstein coefficients to the k−th direction and are known
+to converge quadratically to simple roots when preconditioning (described in the following paragraph) is utilized [12,
+Cor. 5.3].
 Complexity analysis. The analysis of the subdivision step
-in Sect. 3.2 applies as well to the reduction step, since re-
-ducing the domain means computing a new subdomain and
-ignoring the remaining part. If a lower bound l is known, with L (lk) = Oe(), then the
-reduction step is performed in OeB(n2dn + dn+1n3). This is an instance of Lem. 3.1.
-The projections of Lem. 3.3 are computed using O(dn) comparisons. The computation of l costs OeB(d3 ) in average, for solving these projections using univariate CF algo-
-rithm. Another option would to compute well known lower
-bounds on their roots, for instance Cauchy's bound in O(d).
+in Sect. 3.2 applies as well to the reduction step, since reducing the domain means computing a new subdomain and
+ignoring the remaining part.
+e
+If a lower bound l is known, with L (lk ) = O(σ),
+then the
+2 n
+n+1 3
+e
+reduction step is performed in OB (n d τ + d
+n σ). This
+is an instance of Lem. 3.1.
+The projections of Lem. 3.3 are computed using O(dn )
+eB (d3 τ ) in avercomparisons. The computation of l costs O
+age, for solving these projections using univariate CF algorithm. Another option would to compute well known lower
+bounds on their roots, for instance Cauchy’s bound in O(d).
 
-Illustration. Consider a bi-quadratic f0  R[x, y], namely, degx1 f0 = degx2 f0 = 2 with coefficients cij . Suppose that f0 = H(f ) for I0 = IH . We compute
+4.
 
-X2 X2
+EXCLUSION – INCLUSION CRITERIA
 
-m1(f, x1) =
-
-min cij xi and M1(x) =
-
-max cij xi.
-
-j=0,..2
-
-j=0,..2
-
-i=0
-
-i=0
-
-thus m(x)
-
-
-
-f (x1,x2) 1+x2 +x22
-
- M (x).
-
-Fig. 2 shows how these
-
-univariate quadratics bound the graph of f in I0.
-
-Figure 2: The enveloping polynomials M1(x), m1(x) in domain I0 for a bi-quadratic polynomial f (x, y).
-
-3.3 Preconditioning
-
-To improve the reduction step, we use preconditioning.
-
-The aim of a preconditioner is to tune the system so that
-
-it can be tackled more efficiently; in our case we aim at
-
-improving the bounds of Cor. 3.4.
-
-A preconditioning matrix P is an invertible s � s matrix
-
-that transforms a system (f1, .., fs)t into the equivalent one P � (f1, .., fs)t. This transformation does not alter the roots
-
-of the system, since the computed equations generate the
-
-same ideal. The bounds obtained on the resulting system
-
-can be used directly to reduce the domain of the equations
-
-before preconditioning. Preconditioning can be performed
-
-to a subset of the equations.
-
-Since we use a reduction process using Cor. 3.4 we want
-
-to have among our equations n of them whose zero locus
-
-f -1({0}) is orthogonal to the k-th direction, for all k.
-
-Assuming a square system, we precondition H(f1), .., H(fn)
-
-to obtain a locally orthogonal to the axis system; an ideal
-
-preconditioner would be the Jacobian of the system evalu-
-
-ated at a common root; instead, we evaluate JH(f) at the im-
-
-age
-
-of
-
-the
-
-center
-
-u
-
-of
-
-the
-
-initial
-
-domain
-
-IH ,
-
-uk
-
-=
-
-.k k+kk
-2k k
-
-Thus we must compute the inverse of the Jacobian matrix
-
-JH(f)(x) = [xi H(fj )(x)]1i,j,n evaluated at u := H(u) =
-
-(1/1, .., n/n).
-
-Precondition step complexity. Computing JH(f)(u) �
-(H(f1), .., H(fn))t is done with cost OeB(n2dn) and evaluating at u has cost OeB(n2dn-1). We also need OeB(n2) for inversion and O(n2dn) for multiplying polynomials times
-
-scalar as well as summing polynomials. This gives a precon-
-
-dition cost of order O(n2dn).
-
-4. EXCLUSION � INCLUSION CRITERIA
-A subdivision scheme is able to work when two tests are available: one that identifies empty domains (exclusion test) and one that identifies domains with exactly one zero (inclusion test). If these two tests are negative, a domain cannot
+A subdivision scheme is able to work when two tests are
+available: one that identifies empty domains (exclusion test)
+and one that identifies domains with exactly one zero (inclusion test). If these two tests are negative, a domain cannot
 
 89
 
-be neither included nor excluded so we need to apply further reduction/subdivision steps to it. The certification is the following: if the result of the test is affirmative, then this is undoubtedly true. Exclusion test. The bounding functions defined in the previous section provide a fast filter to exclude empty domains. Define min{} =  and max{} = 0.
-
-Corollary 4.1. If for some k  {1, .., n} and for some i  {1, .., s} it is �k(fi) =  or Mk(fi) = 0 then the system has no solutions. Also, if maxi=1,..,s{�k(fi)} > mini=1,..,s {Mk(fi)} then there can be no solution to the system.
-Proof. For the former statement observe that fi has no real positive roots, thus the system has no roots. The latter statement means that the reduced domains of each fi, i = 1, .., s do not intersect, thus there are no solutions.
-
-We can use interval arithmetic to identify additional empty domains; if the sign of some initial fi is constant in IH = H(Rn>0) then this domain is discarded. We can also simply inspect the coefficients of each H(fi); if there are no sign changes then there corresponding box contains no solution.
-The accuracy of these criteria greatly affects the performance of the algorithm. In particular, the sooner an empty domain is rejected the less subdivisions will take place and the process will terminate faster. We justify that the exclusion criteria will eventually succeed on an empty domain by proving a generalization of Vincent's theorem to the tensor multivariate case.
-
-Theorem
-
-4.2.
-
-Let
-
-f (x)
-
-=
-
-Pd
-i=0
-
-ci xi
-
-be
-
-a
-
-polynomial
-
-with real coefficients, such that it has no (complex) solu-
-
-tion with (zk)  0 for k = 1, .., n. Then all its coefficients
-
-ci1,..,in are of the same sign.
-
-Proof. We prove the result by induction on n, the num-
-
-ber of variables. For n = 1, this is the classical Vincent's
-
-theorem [1].
-
-Consider now a polynomial
-
-X
-
-f (x1, x2) =
-
-ci1,i2 xi11 xi22
-
-0i1 d1 ,0i2 d2
-
-in two variables with no (complex) solution such that (xi)  0 for i = 1, 2. We prove the result for n = 2, by induction
-on the degree d = d1 + d2. The property is obvious for polynomials of degree d = 0. Let us assume it for polynomials
-of degree less than d.
-By hypothesis, for any z1  C with (z1)  0, the univariate polynomial f (z1, x2) has no root with (x2)  0. According to Lucas theorem [11], the complex roots of x2 f (z1, x2) are in the convex hull of the complex roots of f (z1, x2). Thus, there is no root of x2 f (x1, x2) with (x1)  0 and (x2)  0. By induction hypothesis, the coefficients of x2 f (x1, x2) are of the same sign. We decompose P as
-
-f (x1, x2) = f (x1, 0) + f1(x1, x2)
-
-where
-
-f1(x1, x2)
-
-=
-
-P
-0i1 d1 ,1i2 d2
-
-ci1 ,i2
-
-xi11
-
-xi22
-
-with
-
-ci1 ,i2
-
-of the same sign, say positive. By Vincent theorem in one
-
-variable, as f (x1, 0) has no root with (x1)  0, the coeffi-
-
-cients ci1,0 of f (x1, 0) are also of the same sign. If this sign is different from the sign of ci1,i2 for i2 1 (ie. negative here), then f (0, x2) has one sign variation in its coefficients
-
-list. By Descartes rule, it has one real positive root, which
+be neither included nor excluded so we need to apply further reduction/subdivision steps to it. The certification is
+the following: if the result of the test is affirmative, then
+this is undoubtedly true.
+Exclusion test. The bounding functions defined in the previous section provide a fast filter to exclude empty domains.
+Define min{} = ∞ and max{} = 0.
 
 contradicts the hypothesis on f . Thus, all the coefficients
-
 have the same sign.
-
-Assume that the property has been proved for polyno-
-
-fm(ixa)ls=inPnid=-0
-
-1 ci
-
-variables and let us consider a polynomial xi in n variables with no (complex) solution
-
-such that (xk)  0 for k = 1, .., n. For any z1, .., zn-1 
-
-C with (zk)  0, for k = 1, .., n - 1, the polynomial
-
-f (z1, .., zn-1, xn) and xn f (z1, .., zn-1, xn) has no root with (xn)  0. By Lucas theorem and induction hypothesis on
-
-the degree, xn f (x) has coefficients of the same sign. We also have f (x1, .., xn-1, 0) with coefficients of the same sign,
-
+Assume that the property has been proved for polynomials inPn − 1 variables and let us consider a polynomial
+f (x) = di=0 ci xi in n variables with no (complex) solution
+such that ℜ(xk ) ≥ 0 for k = 1, .., n. For any z1 , .., zn−1 ∈
+C with ℜ(zk ) ≥ 0, for k = 1, .., n − 1, the polynomial
+f (z1 , .., zn−1 , xn ) and ∂xn f (z1 , .., zn−1 , xn ) has no root with
+ℜ(xn ) ≥ 0. By Lucas theorem and induction hypothesis on
+the degree, ∂xn f (x) has coefficients of the same sign. We
+also have f (x1 , .., xn−1 , 0) with coefficients of the same sign,
 by induction hypothesis on the number of variables. If the
-
-two signs are different, then f (0, .., 0, xn) has one sign vari-
-
-ation in its coefficients and thus one real positive root, say
-
-n, which cannot be the case, since (0, .., 0, n) would yield
-
+two signs are different, then f (0, .., 0, xn ) has one sign variation in its coefficients and thus one real positive root, say
+ζn , which cannot be the case, since (0, .., 0, ζn ) would yield
 a real root of f . We deduce that all the coefficients of f are
-
 of the same sign.
-
 This completes the induction proof of the theorem.
 
-This implies that empty regions will be eventually ex-
-
-cluded by sign inspection.
-
-Corollary
-
-4.3.
-
-Let
-
-H(f )
-
-=
-
+Corollary 4.1. If for some k ∈ {1, .., n} and for some
+i ∈ {1, .., s} it is µk (fi ) = ∞ or Mk (fi ) = 0 then the system
+has no solutions. Also, if maxi=1,..,s {µk (fi )} > mini=1,..,s
+{Mk (fi )} then there can be no solution to the system.
+Proof. For the former statement observe that fi has no
+real positive roots, thus the system has no roots. The latter
+statement means that the reduced domains of each fi , i =
+1, .., s do not intersect, thus there are no solutions.
+We can use interval arithmetic to identify additional empty
+domains; if the sign of some initial fi is constant in IH =
+H(Rn
+>0 ) then this domain is discarded. We can also simply
+inspect the coefficients of each H(fi ); if there are no sign
+changes then there corresponding box contains no solution.
+The accuracy of these criteria greatly affects the performance of the algorithm. In particular, the sooner an empty
+domain is rejected the less subdivisions will take place and
+the process will terminate faster. We justify that the exclusion criteria will eventually succeed on an empty domain by
+proving a generalization of Vincent’s theorem to the tensor
+multivariate case.
 Pd
-i=0
+i
+Theorem 4.2. Let f (x) =
+i=0 ci x be a polynomial
+with real coefficients, such that it has no (complex) solution with ℜ(zk ) ≥ 0 for k = 1, .., n. Then all its coefficients
+ci1 ,..,in are of the same sign.
 
-ci xi
-
-be the represen-
-
-tation of f through H in a box IH = [u, v]. If there is no
-
-toot z  Cn of f such that
-
-zk -
-
-uk
-
-+ 2
-
-vk
-
-
-
-
-
-vk
-
-- 2
-
-uk
-
-,
-
-for
-
-k = 1, .., n,
-
-then all the coefficients ci1,..,in are of the same sign. That is, if dist(ZCn (f ), m) > , where m is the center
-
+This implies that empty regions will be eventually excluded by sign inspection.
+P
+Corollary 4.3. Let H(f ) = di=0 ci xi be the representation of f through H in a box IH = [u, v]. If there is no
+toot z ∈ Cn of f such that
+˛
+˛
+uk + vk ˛
+vk − uk
+˛
+, for k = 1, .., n,
+˛zk −
+˛≤
+2
+2
+then all the coefficients ci1 ,..,in are of the same sign.
+That is, if dist∞ (ZCn (f ), m) > ε, where m is the center
 of IH , then IH is excluded by sign conditions.
-
-[0,P+roo] fa.ndTthheeindtiesrkvazlk[u-k
-
-, vk] is
-uk +vk 2
-
-tranvskfo-2rumk eids
-
-by H-1 into transformed
-
-into the half complex plane (zk)  0. We deduce that
-
-H(f ) has no root with (zk)  0, k = 1, .., n. By Thm. 4.2,
-
+Proof. The interval
+] is ˛transformed by H−1 into
+˛ [uk ,uvk+v
+k
+k
+˛
+[0, +∞] and the disk zk − 2 k ˛ ≤ vk −u
+is transformed
+2
+into the half complex plane ℜ(zk ) ≥ 0. We deduce that
+H(f ) has no root with ℜ(zk ) ≥ 0, k = 1, .., n. By Thm. 4.2,
 the coefficients of H(f ) are of the same sign.
 
-We deduce that if a domain is far enough from the zero locus of some fi then it will be excluded, hence redundant empty domains concentrate only in a neighborhood of f = 0.
+Proof. We prove the result by induction on n, the number of variables. For n = 1, this is the classical Vincent’s
+theorem [1].
+Consider now a polynomial
+X
+f (x1 , x2 ) =
+ci1 ,i2 xi11 xi22
 
-Definition 4.4. The tubular neighborhood of size  of fi is the set
-(fi) = {x  Rn : z  Cn, fi(z) = 0, s.t. z - x  < }.
+We deduce that if a domain is far enough from the zero
+locus of some fi then it will be excluded, hence redundant
+empty domains concentrate only in a neighborhood of f = 0.
+Definition 4.4. The tubular neighborhood of size ε of fi
+is the set
 
-We bound the number of boxes that are not excluded at each level of the subdivision tree.
+0≤i1 ≤d1 ,0≤i2 ≤d2
 
-Lemma 4.5. Assume that for 0 > 0, i0 (fi)  I0 is
+in two variables with no (complex) solution such that ℜ(xi ) ≥
+0 for i = 1, 2. We prove the result for n = 2, by induction
+on the degree d = d1 + d2 . The property is obvious for polynomials of degree d = 0. Let us assume it for polynomials
+of degree less than d.
+By hypothesis, for any z1 ∈ C with ℜ(z1 ) ≥ 0, the univariate polynomial f (z1 , x2 ) has no root with ℜ(x2 ) ≥ 0. According to Lucas theorem [11], the complex roots of ∂x2 f (z1 , x2 )
+are in the convex hull of the complex roots of f (z1 , x2 ).
+Thus, there is no root of ∂x2 f (x1 , x2 ) with ℜ(x1 ) ≥ 0 and
+ℜ(x2 ) ≥ 0. By induction hypothesis, the coefficients of
+∂x2 f (x1 , x2 ) are of the same sign. We decompose P as
+f (x1 , x2 ) = f (x1 , 0) + f1 (x1 , x2 )
+P
+where f1 (x1 , x2 ) = 0≤i1 ≤d1 ,1≤i2 ≤d2 ci1 ,i2 xi11 xi22 with ci1 ,i2
+of the same sign, say positive. By Vincent theorem in one
+variable, as f (x1 , 0) has no root with ℜ(x1 ) ≥ 0, the coefficients ci1 ,0 of f (x1 , 0) are also of the same sign. If this sign
+is different from the sign of ci1 ,i2 for i2
+1 (ie. negative
+here), then f (0, x2 ) has one sign variation in its coefficients
+list. By Descartes rule, it has one real positive root, which
 
-bounded. Then the algorithm is
+τε (fi ) = {x ∈ Rn : ∃z ∈ Cn , fi (z) = 0, s.t. z − x
 
-the number of less than (1 +
+∞
 
-bo2nxe)sn
+< ε}.
 
-of c,
+We bound the number of boxes that are not excluded at
+each level of the subdivision tree.
+Lemma 4.5. Assume that for ε0 > 0, ∩i τε0 (fi ) ∩ I0 is
+bounded. Then the number of boxes
+of size ε < ε0 kept by
+√
+the algorithm is less than (1 + 2n )n c, where c > 0 is such
+that ∀ε st. ε0 > ε > 0,
 
-size  where
-
-< 0 c>0
-
-kept by is such
-
-that  st. 0 >  > 0,
-
-V (f, ) := volume (si=1(fi)  I0))  c n.
-
+V (f, ε) := volume (∩si=1 τε (fi ) ∩ I0 )) ≤ c ǫn .
 Proof. Consider a subdivision of a domain I0 into boxes
-
-of size  < 0. We will bound the number N of boxes in
-
+of size ε < ε0 . We will bound the number N of boxes in
 this subdivision that are not rejected by the algorithm. By
-
 Cor. 4.3 if a box is not rejected, then we have for all i =
+1, .., s dist∞ (ZCn (fi ), m) < ε, where m is the center of the
+box.
+Thus all the points of this box are at distance < ε(1 +
+√
+n
+) to ZCn (fi ) that is in ∩si=1 τε(1+ √n ) (fi ) ∩ I0 .
+2
+2
 
-1, .., s dist(ZCn (fi), m) < , where m is the center of the
-
-box. Thus all the points of this box are at distance < (1 +
-
-
-
-n 2
-
-)
-
-to
-
-ZCn (fi)
-
-that
-
-is
-
-in
-
-is=1
-
-(1+
-
-n 2
-
-)
-
-(fi
-
-)
-
-
-
-I0.
-
-To bound N , it suffices to estimate the n-dimensional
-
-volume V (f, ), since we have:
-
-N n
-
-
-
-volume
-
-"
-
-is=1
-
-
-(1+
-
-n 2
-
-)
-
-(fi
-
-)
-
-
-
-" I0
-
-=
-
-V
-
-(f,
-
-
-
-(1 +
-
-
-
-n 2
-
+To bound N , it suffices to estimate the n−dimensional
+volume V (f, ε), since we have:
+√
+“
+”
+n
 )).
+N εn ≤ volume ∩si=1 τε(1+ √n ) (fi ) ∩ I0 = V (f, ε (1 +
+2
+2
 
 90
 
-When  tends to 0, this volume becomes equivalent to a constant times n. For a square system with single roots
-
-in I0, it becomes equivalent to the sum for all real roots
-
- in I0 of the volumes of parallelotopes in n dimensions
-
-of height 2 and unitary edges proportional to the gradi-
-
-etVthhn(uetfsrs,eobfe)oxtuihsnetdcspeadonlcyb<onynosmtna.i2annltFsPocervaolvIu2e0anrtdQePeidt||Je|afrtm(fIi0t)i(h|nQ)ee|id|c||.J|osfmyW(fsim)t(e|eo)md|n|esdrs,ouutocchhtee;
-
-It is that
-that vol-
-
-ume is bounded by a similar expression. Since V (f, )-n
-
-has a limit when  tends to 0, we deduce the existence of the
-
+When ε tends to 0, this volume becomes equivalent to a
+constant times εn . For a square system with single roots
+in I0 , it becomes equivalent to the sum for all real roots
+ζ in I0 of the volumes of parallelotopes in n dimensions
+of height 2ε and unitary edges proportional to the gradients of the polynomials evaluated at the common root; It is
+P
+|Jf (ζ)|
+thus bounded by εn 2n ζ∈I0 Q ||∇f
+. We deduce that
+i (ζ)||
+i
+|Jf (ζ)|
+n P
+Q
+there exists a constant c ≥ 2
+such that
+ζ∈I0
+i ||∇fi (ζ)||
+V (f, ε) ≤ c εn < ∞. For overdetermined systems, the volume is bounded by a similar expression. Since V (f, ε)ε−n
+has a limit when ε tends to 0, we deduce the existence of the
 finite constant c and the bound of the lemma on the number
+of kept boxes of size ε.
 
-of kept boxes of size .
+of the boxes kept at each step tends to zero. By Cor. 4.3,
+these boxes are in the intersection of the tubular neighborhoods (∩si=1 tubε (fi )) ∩ Rn for ε > 0 the maximal size of
+the kept boxes. If ε is small enough, these boxes are in a
+neighborhood of a root in which the Jacobian has a constant
+size, hence the inclusion test will succeed. By the exclusion
+criteria, a box domain is not subdivided indefinitely, but is
+eventually rejected when the coefficients become positive.
+Thus the algorithm either outputs isolating boxes that contains a real root of the system or rejects empty boxes. This
+shows, by contradiction, the termination of the subdivision
+algorithm.
 
-Inclusion test. We present a test that discovers common solutions, in a box, or equivalently in Rn+, through homography. To simplify the statements we assume that the system
+Inclusion test. We present a test that discovers common
+solutions, in a box, or equivalently in Rn
++ , through homography. To simplify the statements we assume that the system
 is square, i.e. s = n.
 
-Definition 4.6. The lower face polynomial of f w.r.t. direction k is low(f, k) = f |xk=0. The upper face polynomial of f w.r.t. k is upp(f, k) = f |xk= := Rk(f )|xk=0.
-Lemma 4.7 (Miranda Theorem [21]). If for some permutation  : {1, .., n}  {1, .., n}, sign(low(H(fk), (k))) and sign(upp(H(fk), (k))) are constant and opposite for all k = 1, .., n, then the equations (f1, .., fn) have at least one root in IH .
+In this section we compute a bound on the complexity of
+the algorithm that exploits the continued fraction expansion
+of the real roots of the system. Hereafter, we call this algorithm MCF (Multivariate Continued Fractions). Since the
+analysis of the reduction steps of Sec. 3 and the ExclusionInclusion test of Sec. 4 would require much more developments, we simplify the situation and analyze a variant of
+this algorithm. We assume that two oracles are available.
+One that computes, exactly, the partial quotients of the positive real roots of the system, and one that counts exactly
+the number of real roots of the system inside a hypercube
+in the open positive orthant, namely Rn
++ . In what follows,
+we will assume the cost of the first oracle is bounded by C1 ,
+while the cost of the second is bounded by C2 , and we derive
+the total complexity of the algorithm with respect to these
+parameters. In any case the number of reduction or subdivision steps that we derive is a lower bound on the number
+of steps that every variant of the algorithm will perform.
+The next section presents some preliminaries on continued
+fractions, and then we detail the complexity analysis.
 
-The implementation of the Miranda test can be done efficiently if we compute a 0 - 1 matrix with (i, j)-th entry 1 iff sign(low(H(fi), j)) and sign(upp(H(fi), j)) are opposite. Then, Miranda test is satisfied iff there is no zero row and no zero column. To see this observe that the matrix is the sum of a permutation matrix and a 0 - 1 matrix iff this permutation satisfies Miranda's test.
-Combined with the following simple fact, we have a test that identifies boxes with a single root.
+5.
 
-Lemma 4.8. If det Jf (x) has constant sign in a box I, then there is at most one root of f = (f1, .., fn) in I.
-Proof. Suppose u, v  I are two distinct roots; by the mean value theorem there is a point w on the line segment uv, and thus in I, s.t. Jf (w) � (u - v) = f (u) - f (v) = 0 hence det Jf (w) = 0.
+Definition 4.6. The lower face polynomial of f w.r.t.
+direction k is low(f, k) = f |xk =0 . The upper face polynomial
+of f w.r.t. k is upp(f, k) = f |xk =∞ := Rk (f )|xk =0 .
+Lemma 4.7 (Miranda Theorem [21]). If for some permutation π : {1, .., n} → {1, .., n}, sign(low(H(fk ), π(k)))
+and sign(upp(H(fk ), π(k))) are constant and opposite for all
+k = 1, .., n, then the equations (f1 , .., fn ) have at least one
+root in IH .
+The implementation of the Miranda test can be done efficiently if we compute a 0 − 1 matrix with (i, j)−th entry 1
+iff sign(low(H(fi ), j)) and sign(upp(H(fi ), j)) are opposite.
+Then, Miranda test is satisfied iff there is no zero row and
+no zero column. To see this observe that the matrix is the
+sum of a permutation matrix and a 0 − 1 matrix iff this
+permutation satisfies Miranda’s test.
+Combined with the following simple fact, we have a test
+that identifies boxes with a single root.
 
-Complexity of the inclusion criteria. Miranda test can be decided with O(n2) evaluations on interval (cf. [9]) as well as one evaluation of Jf , overall O(n2dn) operations. The cost of the inclusion test is dominated by the cost of evaluating O(n) polynomials of size O(dn) on an interval, i.e. O(ndn) operations suffice.
+5.1
 
-Proposition 4.9. If the real roots of the square system in the initial domain I0 are simple, then Alg. 1 stops with boxes isolating the real roots in I0.
-Proof. If the real roots of f = (f1, .., fn) in I0 are simple, in a small neighborhood of them the Jacobian of f has a constant sign. By the inclusion test, any box included in this neighborhood will be output if and only if it contains a single root and has no real roots of the jacobian. Otherwise, it will be further subdivided or rejected. Suppose that the subdivision algorithm does not terminate. Then the size
+THE COMPLEXITY OF MCF
 
-of the boxes kept at each step tends to zero. By Cor. 4.3, these boxes are in the intersection of the tubular neighborhoods (is=1tub(fi))  Rn for  > 0 the maximal size of the kept boxes. If  is small enough, these boxes are in a neighborhood of a root in which the Jacobian has a constant size, hence the inclusion test will succeed. By the exclusion criteria, a box domain is not subdivided indefinitely, but is eventually rejected when the coefficients become positive. Thus the algorithm either outputs isolating boxes that contains a real root of the system or rejects empty boxes. This shows, by contradiction, the termination of the subdivision algorithm.
+About continued fractions
 
-5. THE COMPLEXITY OF MCF
-In this section we compute a bound on the complexity of the algorithm that exploits the continued fraction expansion of the real roots of the system. Hereafter, we call this algorithm MCF (Multivariate Continued Fractions). Since the analysis of the reduction steps of Sec. 3 and the ExclusionInclusion test of Sec. 4 would require much more developments, we simplify the situation and analyze a variant of this algorithm. We assume that two oracles are available. One that computes, exactly, the partial quotients of the positive real roots of the system, and one that counts exactly the number of real roots of the system inside a hypercube in the open positive orthant, namely Rn+ . In what follows, we will assume the cost of the first oracle is bounded by C1, while the cost of the second is bounded by C2, and we derive the total complexity of the algorithm with respect to these parameters. In any case the number of reduction or subdivision steps that we derive is a lower bound on the number of steps that every variant of the algorithm will perform. The next section presents some preliminaries on continued fractions, and then we detail the complexity analysis.
+Our presentation follows closely [7]. For additional details
+we refer the reader to, e.g., [22, 3, 19]. In general a simple
+(regular) continued fraction is a (possibly infinite) expression
+of the form
 
-5.1 About continued fractions
-Our presentation follows closely [7]. For additional details we refer the reader to, e.g., [22, 3, 19]. In general a simple (regular) continued fraction is a (possibly infinite) expression of the form
+Lemma 4.8. If det Jf (x) has constant sign in a box I,
+then there is at most one root of f = (f1 , .., fn ) in I.
+Proof. Suppose u, v ∈ I are two distinct roots; by the
+mean value theorem there is a point w on the line segment
+uv, and thus in I, s.t. Jf (w) · (u − v) = f (u) − f (v) = 0
+hence det Jf (w) = 0.
 
 1
 
 c0 +
+c1 +
 
-1 = [c0, c1, c2, ..],
+1
+c2 + ..
 
-c1 + c2 + ..
+= [c0 , c1 , c2 , ..],
 
-where the numbers ci are called partial quotients, ci  Z and ci  1 for i > 0. Notice that c0 may have any sign, however, in our real root isolation algorithm c0  0, without loss of generality. By considering the recurrent relations
+where the numbers ci are called partial quotients, ci ∈ Z and
+ci ≥ 1 for i > 0. Notice that c0 may have any sign, however,
+in our real root isolation algorithm c0 ≥ 0, without loss of
+generality. By considering the recurrent relations
 
-P-1 = 1, P0 = c0, Pn+1 = cn+1 Pn + Pn-1, Q-1 = 0, Q0 = 1, Qn+1 = cn+1 Qn + Qn-1,
+Complexity of the inclusion criteria. Miranda test can
+be decided with O(n2 ) evaluations on interval (cf. [9]) as
+well as one evaluation of Jf , overall O(n2 dn ) operations.
+The cost of the inclusion test is dominated by the cost of
+evaluating O(n) polynomials of size O(dn ) on an interval,
+i.e. O(ndn ) operations suffice.
 
-it can be shown by for n = 0, 1, 2, ...
+P−1 = 1,
+Q−1 = 0,
 
-induction
+P0 = c0 ,
+Q0 = 1,
 
-that
+Pn+1 = cn+1 Pn + Pn−1 ,
+Qn+1 = cn+1 Qn + Qn−1 ,
 
-Rn
+Pn
+it can be shown by induction that Rn = Q
+= [c0 , c1 , .., cn ],
+n
+for n = 0, 1, 2, ...
+If γ = [c0 , c1 , ..] then γ = c0 + Q01Q1 − Q11Q2 + .. =
+P
+(−1)n−1
+c0 + ∞
+n=1 Qn−1 Qn and since this is a series of decreasing alternating terms it converges to some real number γ. A finite
+Pn
+section Rn = Q
+= [c0 , c1 , .., cn ] is called the n−th convern
+gent (or approximant) of γ and the tails γn+1 = [cn+1 , cn+2 , ..]
+are known as its complete quotients. That is γ = [c0 , c1 , .., cn ,
+γn+1 ] for n = 0, 1, 2, ... There is an one to one correspondence between the real numbers and the continued fractions,
 
-=
-
-Pn Qn
-
-= [c0, c1, .., cn],
-
-c0
-
-If +
-
-= P
-n=1
-
-[c0, c1, ..] then 
-
-(-1)n-1 Qn-1 Qn
-
-and since
-
-= c0 + this is a
-
-1 Q0 Q1
-series
-
-- of
-
-1 Q1 Q2
-
-+ ..
-
-decreasing
-
-= al-
-
-ternating terms it converges to some real number . A finite
-
-section
-
-Rn
-
-=
-
-Pn Qn
-
-= [c0, c1, .., cn]
-
-is
-
-called
-
-the
-
-n-th
-
-conver-
-
-gent (or approximant) of  and the tails n+1 = [cn+1, cn+2, ..]
-
-are known as its complete quotients. That is  = [c0, c1, .., cn,
-
-n+1] for n = 0, 1, 2, ... There is an one to one correspon-
-
-dence between the real numbers and the continued fractions,
+Proposition 4.9. If the real roots of the square system
+in the initial domain I0 are simple, then Alg. 1 stops with
+boxes isolating the real roots in I0 .
+Proof. If the real roots of f = (f1 , .., fn ) in I0 are simple, in a small neighborhood of them the Jacobian of f has
+a constant sign. By the inclusion test, any box included in
+this neighborhood will be output if and only if it contains
+a single root and has no real roots of the jacobian. Otherwise, it will be further subdivided or rejected. Suppose that
+the subdivision algorithm does not terminate. Then the size
 
 91
 
 where evidently the finite continued fractions correspond to
-
-rational numbers. It is known that Qn  Fn+1 and that Fn+1 < n <
-
-Fn+2, where Fn is the n-th Fibonacci number and  =
-
-1+ 2
-
-5
-
-is the golden ratio.
-
-Continued fractions are the best
-
+rational numbers.
+It is known that Qn ≥ Fn+1 and that Fn+1 < φn <
+Fn+2
+, where Fn is the n−th Fibonacci number and φ =
+√
+1+ 5
+is the golden ratio. Continued fractions are the best
+2
 rational approximation(for a given denominator size). This
-
 is as follows:
+˛
+˛
+˛
+1
+Pn ˛˛
+1
+≤ ˛˛γ −
+≤
+< φ−2n+1 . (7)
+Qn (Qn+1 + Qn )
+Qn ˛
+Qn Qn+1
 
-1 Qn(Qn+1 + Qn)
+lower bound li , yield the ki (ζ)-th approximant,
 
-  -
-
-Pn Qn
-
-
-
-
-
-1 Qn Qn+1
-
-< -2n+1.
-
-(7)
-
-Let  = [c0, c1, ..] be the continued fraction expansion of a real number. The Gauss-Kuzmin distribution [3] states that for almost all real numbers  (meaning that the set of exceptions has Lebesgue measure zero) the probability for a positive integer  to appear as an element ci in the continued fraction expansion of  is
-
-P rob[ci
-
-=
-
-]
-
-
-
-lg
-
-( + 1)2 ( + 2)
-
+(δ + 1)2
 ,
+δ(δ + 2)
 
 for any fixed i > 0.
 
+In order to isolate ζi , it suffices to have
+˛
+˛
+˛ Pki (ζ)
+˛
+˛
+˛
+−
+ζ
+i ˛ ≤ ∆i (ζ),
+˛ Qk (ζ)
+i
+
+where ∆i (ζ) is the local separation bound of ζi , that is the
+smallest distance between ζi and all the other i-coordinates
+of the positive real solutions of the system.
+Combining the last two equations, we deduce that to achieve
+the desired approximation, we should have φ−2ki (ζ)+1 ≤
+∆i (ζ), or ki (ζ) ≥ 21 − 12 lg ∆i (ζ). That is to isolate the i
+coordinate it suffices to perform O(− 12 lg ∆i (ζ)) steps. To
+compute the total number of steps, we need to sum over all
+positive real roots and multiply by n, which is the number
+of coordinates, that is
+X
+1
+1X
+1
+1 Y
+n
+ki (ζ) ≤ n R−n
+lg ∆i (ζ) = n R−n lg
+∆i (ζ),
+2
+2
+2
+2
+
 (8)
 
-The Gauss-Kuzmin law induces that we can not bound the mean value of the partial quotients or in other words that the expected value (arithmetic mean) of the partial quotients is diverging, i.e.
+The Gauss-Kuzmin law induces that we can not bound the
+mean value of the partial quotients or in other words that the
+expected value (arithmetic mean) of the partial quotients is
+diverging, i.e.
+E[ci ] =
 
-X E[ci] =  P rob[ci = ] = , for i > 0.
-=1
+∞
+X
+δ=1
 
-Surprisingly enough the geometric (and the harmonic) mean is not only asymptotically bounded, but is bounded by a constant, for almost all   R. For the geometric mean this is the famous Khintchine's constant [10], i.e.
-lim uutvn Yn ci = K = 2.685452001...
-n i=1
+ζ∈V
 
-It is not known if K is a transcendental number. The expected value of the bit size of the partial quotients is a constant for almost all real numbers, when n   or n sufficiently big [10]. Notice that in (8), i > 0, thus   R is
-uniformly distributed in (0, 1). Let L (ci) bi, then
+Proposition 5.2. The total complexity of the algorithm
+eB (2n n7 d5n−1 τ 2 σ + (C1 + C2 )nτ dn−1 ).
+is O
 
-E[bi] = O(lg K) = O(1).
+It is not known if K is a transcendental number. The expected value of the bit size of the partial quotients is a constant for almost all real numbers, when n → ∞ or n sufficiently big [10]. Notice that in (8), i > 0, thus γ ∈ R is
+uniformly distributed in (0, 1). Let L (ci ) bi , then
+
+5.2
+
+ζ∈V
+
+Taking into account that R ≤ dn we conclude that the nume 2 τ d2n−1 ).
+ber of steps is O(n
+
+i=1
+
+E[bi ] = O(lg K) = O(1).
+
+ζ∈V
+
+where |V | = R is the number of positive real roots.
+To bound the logarithm of the product, we use DMMn [8],
+i.e. aggregate separation bounds for multivariate, zero-dimensional polynomial systems. It holds
+Q
+2n−1
+2n
+−d2n /2
+∆i (ζ)
+≥ 2−2nτ d
+(ndn )−nd
+ζ∈V Q
+− log ζ∈V ∆i (ζ) ≤ 2nτ d2n−1 + 2ndn lg(nd2n ).
+
+δ P rob[ci = δ] = ∞, for i > 0.
+
+Surprisingly enough the geometric (and the harmonic)
+mean is not only asymptotically bounded, but is bounded
+by a constant, for almost all γ ∈ R. For the geometric mean
+this is the famous Khintchine’s constant [10], i.e.
+v
+u n
+uY
+n
+ci = K = 2.685452001...
+lim t
+n→∞
+
+of ζi ,
+
+which using (7) satisfies
+˛
+˛
+˛
+˛ Pki (ζ)
+1
+−2ki (ζ)+1
+˛
+˛
+.
+˛ Qk (ζ) − ζi ˛ ≤ Qk (ζ) Qk (ζ)+1 < φ
+i
+i
+i
+
+Let γ = [c0 , c1 , ..] be the continued fraction expansion of
+a real number. The Gauss-Kuzmin distribution [3] states
+that for almost all real numbers γ (meaning that the set of
+exceptions has Lebesgue measure zero) the probability for a
+positive integer δ to appear as an element ci in the continued
+fraction expansion of γ is
+P rob[ci = δ] ⋍ lg
+
+Pk (ζ)
+i
+Qk (ζ)
+i
+
+Proof. At each h-th step of algorithm, if there are more
+than one roots of the corresponding system in the positive
+orthant (the cost of estimating this is C2 , we compute the
+corresponding partial quotients lh = (lh,1 , .., lh,n ), where
+L (hh,i ) ≤ σh (the cost of estimating this is C1 Then, for each
+polynomial of the system, f , we perform the shift operation
+f (x1 + l1 , . . . , xn + ln ), and then we split to 2n subdomains.
+Let us estimate the cost of the last two operations.
+A shift operation on a polynomial of degree ≤ d, by a
+number of bitsize σ, increases the bitsize of the polynomial
+by an additive factor ndσ. At the h step of the algorithm,
+the polynomials
+of the corresponding system are of bitsize
+P
+O(τ + nd hi=1 σh ), and we need to perform a shift operation to all the variables, with number of bitsize σh+1 . The
+eB (ndn τ + n2 dn+1 Ph+1 σk ), and
+cost of this operation is O
+k=1
+eB (n2 dn τ +
+since we have n polynomials the costs becomes O
+3 n+1 Ph+1
+n d
+k=1 σk ), The resulting polynomial has bitsize O(τ +
+P
+nd h+1
+k=1 σk ).
+To compute the cost of splitting the domain, we proceed
+as follows. The cost is bounded by the cost of performing n2n operations f (x1 + 1, . . . , xn + 1), which in turn is
+eB (ndn τ + n2 dn+1 Ph+1 σk + n2 dn+1 ). So the total cost
+O
+k=1
+eB (2n n2 dn τ + 2n n3 dn+1 Ph+1 σk ).
+becomes O
+k=1
+Ph+1
+It remains to bound
+k=1 σk . If σ is a bound on the
+bitsize of all the partial quotients
+Pthat appear during and
+execution of the algorithm, then h+1
+k=1 σk = O(hσ).
 
 (9)
 
-5.2 Complexity results
-Let  be an upper bound on the bitsize of the partial quotient that appear during the execution of the algorithm.
-
-Lemma 5.1. The number of reduction and subdivision steps that the algorithm performs is Oe(n2 d2n-1).
-Proof. Let  = (1, .., n) be a real root of the system. It suffices to consider the number of steps needed to isolate the i coordinate of .
-Recall, that we assume, working in the positive orthant, we can compute exactly the next partial quotient in each coordinate; in other words a vector l = (l1, .., ln), where each li, 1  i  n, is the partial quotient of a coordinate of a positive real1 solution of the system.
-Let ki() be the number of steps needed to isolate the i coordinate of the real root . The analysis is similar to the univariate case. The successive approximations of i by the
-1Actually the analysis holds even in the case where each li is the partial quotient of the positive imaginary part of a coordinate of a solution of the system.
-
-lower bound li,
-
-yield the ki()-th approximant,
-
-Pki ( ) Qki ( )
-
-of i,
-
-which using (7) satisfies
-
-
-
-Pki ( ) Qki ( )
-
-- i 
-
-1 Qki ( ) Qki ( )+1
-
-< -2ki()+1.
-
-In order to isolate i, it suffices to have
-
-
-
-Pki ( ) Qki ( )
-
-- i
-
-
-
-i ( ),
-
-where i() is the local separation bound of i, that is the smallest distance between i and all the other i-coordinates of the positive real solutions of the system.
-
-Combining the last two equations, we deduce that to achieve
-
-the desired approximation, we should have -2ki()+1 
-
-i(), or ki() 
-
-1 2
-
--
-
-1 2
-
-lg i().
-
-That is to isolate the i
-
-coordinate
-
-it
-
-suffices
-
-to
-
-perform
-
-O(-
-
-1 2
-
-lg i())
-
-steps.
-
-To
-
-compute the total number of steps, we need to sum over all
-
-positive real roots and multiply by n, which is the number
-
-of coordinates, that is
-
-n
-
-X
-
-ki ( )
-
-
-
-n
-
-1 2
-
-R-n
-
-1 2
-
-X
-
-lg i()
-
-=
-
-n
-
-1 2
-
-R-n
-
-1 2
-
-lg
-
-Y
-
-i ( ),
-
-V
-
-V
-
-V
-
-where |V | = R is the number of positive real roots. To bound the logarithm of the product, we use DMMn [8],
-i.e. aggregate separation bounds for multivariate, zero-dimensional polynomial systems. It holds
-
-Q  VQi ( )
-- log V i()
-
- 
-
-2-2n d2n-1-d2n/2 (ndn)-nd2n 2n d2n-1 + 2ndn lg(nd2n).
-
-Taking into account that R  dn we conclude that the number of steps is Oe(n2 d2n-1).
-
-Proposition 5.2. The total complexity of the algorithm is OeB (2nn7d5n-1 2 + (C1 + C2)n dn-1).
-
-Proof. At each h-th step of algorithm, if there are more
-
-than one roots of the corresponding system in the positive
-
-orthant (the cost of estimating this is C2, we compute the
-
-corresponding partial quotients lh = (lh,1, .., lh,n), where
-
-L (hh,i)  h (the cost of estimating this is C1 Then, for each
-
-polynomial of the system, f , we perform the shift operation
-
-f (x1 + l1, . . . , xn + ln), and then we split to 2n subdomains.
-
-Let us estimate the cost of the last two operations.
-
-A shift operation on a polynomial of degree  d, by a
-
-number of bitsize , increases the bitsize of the polynomial
-
-by an additive factor nd. At the h step of the algorithm,
-
-the O(
-
-p+olnydnoPmihi=a1lsohf),thaendcowrreesnpeoedndtiongpesryfsotremm
-
-are of a shift
-
-bitsize opera-
-
-tion cost
-
-to of
-
-all the variables, this operation is
-
-OweBit(hndnnum+benr 2odfnb+i1tsPizekh=+11h+k1).,
-
-The and
-
-snnid3ndcPne+khw1=+eP11hkhak=+v)e11.
-
-n polynomials the k), The resulting
-
-costs becomes OeB(n2dn + polynomial has bitsize O( +
-
-To compute the cost of splitting the domain, we proceed
-
-as follows. The cost is bounded by the cost of perform-
-
-bOieneBgIcto(nnmr2deennmsoaOepi+nBesrn(a2t2tnodionnnb2+sdo1nuPfn(dxhk+=+1P211+nhkn1k=+3,11+d.n. .n+k,.21xdPnnIf++hk1=+)111.)is,Skwa)o.hbtihcoheuntindottaoulnrcntohsiest
-
-bitsize of execution
-
-all of
-
-the the
-
-aplgaorrtiitahl mqu, othtieenntPs thkh=+a11takp=peOar(hdu)r.ing
-
-and
+Complexity results
+
+Let σ be an upper bound on the bitsize of the partial
+quotient that appear during the execution of the algorithm.
+Lemma 5.1. The number of reduction and subdivision steps
+e 2 τ d2n−1 ).
+that the algorithm performs is O(n
+
+Proof. Let ζ = (ζ1 , .., ζn ) be a real root of the system.
+It suffices to consider the number of steps needed to isolate
+the i coordinate of ζ.
+Recall, that we assume, working in the positive orthant,
+we can compute exactly the next partial quotient in each
+coordinate; in other words a vector l = (l1 , .., ln ), where
+each li , 1 ≤ i ≤ n, is the partial quotient of a coordinate of
+a positive real1 solution of the system.
+Let ki (ζ) be the number of steps needed to isolate the i
+coordinate of the real root ζ. The analysis is similar to the
+univariate case. The successive approximations of ζi by the
+1
+
+Actually the analysis holds even in the case where each li
+is the partial quotient of the positive imaginary part of a
+coordinate of a solution of the system.
 
 92
 
-Moreover, h  #(T ) = O(n2 d2n-1) (lem. 5.1), and so the cost of each step is OeB(2nn5d3n ).
-Finally, multiplying by the number of steps (lem. 5.1) we get a bound of OeB(2nn7d5n-1 2).
-To derive the total complexity we have to take into ac-
-count that at each step we compute some partial quotients
+Moreover, h ≤ #(T ) = O(n2 τ d2n−1 ) (lem. 5.1), and so
+eB (2n n5 d3n τ σ).
+the cost of each step is O
+Finally, multiplying by the number of steps (lem. 5.1) we
+eB (2n n7 d5n−1 τ 2 σ).
+get a bound of O
+To derive the total complexity we have to take into account that at each step we compute some partial quotients
 and and we count the number of real root of the system
-in the positive orthant. Hence the total complexity of the algorithm is OeB(2nn7d5n-1 2 + (C1 + C2)n dn-1).
-
+in the positive orthant. Hence the total complexity of the
+eB (2n n7 d5n−1 τ 2 σ + (C1 + C2 )nτ dn−1 ).
+algorithm is O
 In the univariate case (n = 1), if we assume that (9) holds
 for real algebraic numbers, then the cost of C1 and C2 is
-dominated by that of the other steps, that is the splitting operations, and the (average) complexity becomes OeB(d3 )
+dominated by that of the other steps, that is the splitting
+eB (d3 τ )
+operations, and the (average) complexity becomes O
 and matches the one derived in [18] (without scaling).
 
-5.3 Further improvements
+5.3
 
-We can reduce the number of steps that the algorithm performs, and thus improve the total complexity bound of the algorithm, using the same trick as in [18]. The main idea is that the continued fraction expansion of a real root of a polynomial does not depend on the initial computed interval that contains all the roots. Thus, we spread away the roots by scaling the variables of the polynomials of the system by a carefully chosen value.
-If we apply the map (x1, . . . , xn)  (x1/2, . . . , xn/2), to the initial polynomials of the system, then the real roots are multiply by 2, and thus their distance increase. The key observation is that the continued fraction expansion of the real roots does not depend on their integer part. Let  be the roots of the system, and , be the roots after the scaling. It holds  = 2 . From [8] it holds that
-Y - log i()  2n d2n-1 lg(nd2n) + 2ndn lg(nd2n),
-V
+Figure 3: Isolating boxes of the real roots of (Σ1 ).
 
-and thus YY
-- log i() = - log 2R i()
+Further improvements
 
-V
-
-V
-
- (2n d2n-1 + 2ndn) lg(nd2n) - R .
-
-If R
-
-we choose  = 2ndn-1 = dn which is the worst
-
-(d + case,
-
- ) lg(ndn) then - log
-
-aQnd assume V i()
-
-that = 0.
-
-Thus, following the proof of Lem. 5.1, the number of steps
-
-that the algorithm is O(ndn).
-
-The bitsize of the scaled polynomials becomes Oe(n2dn+1+
-
-n2dn ). The total complexity of algorithm is now
-
-OeB (2nn5d3n+1 + 2nn5d3n + ndn(C1 + C2)),
-where  the maximum bitsize of the partial quotient appear during the execution of the algorithm. If we assume that (9) holds for real algebraic numbers, then  = O(1). Notice that in this case, when n = 1, the bound becomes OeB(d3 ), which agrees with the one proved in [18].
-The discussion above combined with Prop. 5.2 lead us to:
-
-Theorem 5.3. The total complexity of the algorithm is OeB(2nn5d3n+1 + 2nn5d3n + ndn(C1 + C2)).
-
-6. IMPLEMENTATION AND EXAMPLES
-We have implemented the algorithm in the C++ library realroot of Mathemagix2, which is an open source effort 2http://www.mathemagix.org/
-
-Figure 3: Isolating boxes of the real roots of (1).
-
-that provides fundamental algebraic operations such as al-
-
-gebraic number manipulation tools, different types of uni-
-
-variate and multivariate polynomial root solvers, resultant
-
+that provides fundamental algebraic operations such as algebraic number manipulation tools, different types of univariate and multivariate polynomial root solvers, resultant
 and GCD computations, etc.
-
 The polynomials are internally represented as a vector of
-
-coefficients along with some additional data, such as a vari-
-
-able dictionary and the degree of the polynomial in every
-
+coefficients along with some additional data, such as a variable dictionary and the degree of the polynomial in every
 variable. This allows us to map the tensor of coefficients
-
 to the one-dimensional memory. The univariate solver that
-
 is used is the continued fraction solver; this is essentially
-
 the same algorithm with a different inclusion criterion, the
-
 Descartes rule. The same data structures is used to store the
-
-univariate polynomials, and the same shift/contraction rou-
-
-tines. The univariate solver outputs the roots in increasing
-
-order, as a result of a breadth-first traverse of the subdivi-
-
-sion tree. In fact, we only compute an isolation box for the
-
+univariate polynomials, and the same shift/contraction routines. The univariate solver outputs the roots in increasing
+order, as a result of a breadth-first traverse of the subdivision tree. In fact, we only compute an isolation box for the
 smallest positive root of univariate polynomials and stop the
-
-solver as soon as the first root is found. Our code is tem-
-
-plated and is efficiently used with GMP arithmetic, since
-
+solver as soon as the first root is found. Our code is templated and is efficiently used with GMP arithmetic, since
 long integers appear as the box size decreases.
-
-The following four examples demonstrate the output of our implementation, which we visualize using Axel3.
-
-First, we consider the system f1 = f2 = 0 (1), where f1 = x2 + y2 - xy - 1, and f2 = 10xy - 4. We are looking
-
-for the real solutions in the domain I = [-2, 3] � [-2, 2], which is mapped to R2+, by an initial transformation. The isolating boxes of the real roots can be seen in Fig. 3.
-
-In systems (2), (3), We multiply f1 and f2 by quadratic
-
+The following four examples demonstrate the output of
+our implementation, which we visualize using Axel3 .
+First, we consider the system f1 = f2 = 0 (Σ1 ), where
+f1 = x2 + y 2 − xy − 1, and f2 = 10xy − 4. We are looking
+for the real solutions in the domain I = [−2, 3] × [−2, 2],
+which is mapped to R2+ , by an initial transformation. The
+isolating boxes of the real roots can be seen in Fig. 3.
+In systems (Σ2 ), (Σ3 ), We multiply f1 and f2 by quadratic
 components, hence we obtain
+
+f1 = x4 + 2x2 y 2 − 2x2 + y 4 − 2y 2 − x3 y − xy 3 + xy + 1
+(Σ2 )
+f2 = 20x3 y − 10x2 y 2 − 10xy 3 − 8x2 + 4xy + 4y 2
 
- (2)
+We can reduce the number of steps that the algorithm
+performs, and thus improve the total complexity bound of
+the algorithm, using the same trick as in [18]. The main
+idea is that the continued fraction expansion of a real root
+of a polynomial does not depend on the initial computed
+interval that contains all the roots. Thus, we spread away
+the roots by scaling the variables of the polynomials of the
+system by a carefully chosen value.
+If we apply the map (x1 , . . . , xn ) → (x1 /2ℓ , . . . , xn /2ℓ ), to
+the initial polynomials of the system, then the real roots are
+multiply by 2ℓ , and thus their distance increase. The key
+observation is that the continued fraction expansion of the
+real roots does not depend on their integer part. Let ζ be
+the roots of the system, and γ, be the roots after the scaling.
+It holds γ = 2ℓ ζ. From [8] it holds that
+Y
+− log
+∆i (ζ) ≤ 2nτ d2n−1 lg(nd2n ) + 2ndn lg(nd2n ),
+ζ∈V
 
-f1 f2
+and thus
+− log
 
-= x4 + 2x2y2 - 2x2 + y4 - 2y2 - x3y - xy3 + xy + 1 = 20x3y - 10x2y2 - 10xy3 - 8x2 + 4xy + 4y2
+Y
+
+ζ∈V
+
+∆i (γ) = − log 2Rℓ
+
+Y
+
+∆i (ζ)
+
+ζ∈V
+
+≤ (2nτ d2n−1 + 2ndn ) lg(nd2n ) − R ℓ.
+
+If we choose ℓ = 2ndn−1 (d + τ ) lg(ndn ) and
+Q assume that
+R = dn which is the worst case, then − log ζ∈V ∆i (γ) = 0.
+Thus, following the proof of Lem. 5.1, the number of steps
+that the algorithm is O(ndn ).
+e 2 dn+1 +
+The bitsize of the scaled polynomials becomes O(n
+n2 dn τ ). The total complexity of algorithm is now
+eB (2n n5 d3n+1 σ + 2n n5 d3n τ + ndn (C1 + C2 )),
+O
+
+where σ the maximum bitsize of the partial quotient appear
+during the execution of the algorithm. If we assume that
+(9) holds for real algebraic numbers, then σ = O(1). Notice
+eB (d3 τ ),
+that in this case, when n = 1, the bound becomes O
+which agrees with the one proved in [18].
+The discussion above combined with Prop. 5.2 lead us to:
 
 and
 
-8 <
+8
+< f1 = 10x2 y − 10xy 3 − 4x + 4y 2
+(Σ3 )
+f2 = x4 − 2x2 y − 2x2 + y 2 x2 − 2y 3 − y 2 − x3 y+
+:
++2xy 2 + xy + 2y + 1
 
-f1
+The isolating boxes of this system could be seen in Fig. 4.
+Notice, that size of the isolation boxes that are returned in
+this case is considerably smaller.
+Consider the system (Σ4 ), which consists of f1 = x4 −
+2x2 − y 4 + 1 and f2 , which is a polynomial of bidegree (8, 8).
+The output of the algorithm, that is the isolating boxes of
+the real roots can be seen in Fig. 4.
 
-= 10x2y - 10xy3 - 4x + 4y2
+Theorem 5.3. The total complexity of the algorithm is
+eB (2n n5 d3n+1 σ + 2n n5 d3n τ + ndn (C1 + C2 )).
+O
 
-(3) :
+6.
 
-f2
+IMPLEMENTATION AND EXAMPLES
 
-= x4 - 2x2y - 2x2 + y2x2 - 2y3 - y2 - x3y+ +2xy2 + xy + 2y + 1
+We have implemented the algorithm in the C++ library
+realroot of Mathemagix2 , which is an open source effort
+2
 
-The isolating boxes of this system could be seen in Fig. 4. Notice, that size of the isolation boxes that are returned in this case is considerably smaller.
-Consider the system (4), which consists of f1 = x4 - 2x2 - y4 + 1 and f2, which is a polynomial of bidegree (8, 8). The output of the algorithm, that is the isolating boxes of the real roots can be seen in Fig. 4.
+3
 
-3http://axel.inria.fr
+http://www.mathemagix.org/
 
 93
 
-Figure 4: Isolating boxes of the real roots of the system Left: (2), Middle: (3), Right: (4).
+http://axel.inria.fr
 
+Figure 4: Isolating boxes of the real roots of the system Left: (Σ2 ), Middle: (Σ3 ), Right: (Σ4 ).
 System
-1 2 3 4
+Σ1
+Σ2
+Σ3
+Σ4
 
 Domain
-[0, 10]2 [-2, 3]2 [-2, 3]2 [-3, 3]2
+[0, 10]2
+[−2, 3]2
+[−2, 3]2
+[−3, 3]2
 
 Iters.
-53 263 335 1097
+53
+263
+335
+1097
 
 Subdivs.
-26 131 167 548
+26
+131
+167
+548
 
 Sols.
-4 12 8 16
+4
+12
+8
+16
 
 Excluded
-25 126 160 533
+25
+126
+160
+533
 
-Table 1: Execution data for 1, 2, 3, 4.
+[8]
 
-One important observation is the fact the isolating boxes are not squares, which verifies the adaptive nature of the proposed algorithm.
-We provide execution details on these experiments in Table 1. Several optimizations can be applied to our code, but the results already indicate that our approach competes well with the Bernstein case.
-Acknowledgements The first and second author were supported by Marie-Curie Initial Training Network SAGA, [FP7/2007-2013], grant [PITNGA-2008-214584]. The third author was supported by contract [ANR-06-BLAN-0074] "Decotes".
-7. REFERENCES
-[1] A. Alesina and M. Galuzzi. New proof of Vincent's thm. Enseignement Math�ematique, 44:219�256, 1998.
-[2] M. Barton and B. Ju�ttler. Computing roots of polynomials by quadratic clipping. Comp. Aided Geom. Design, 24:125�141, 2007.
-[3] E. Bombieri and A. van der Poorten. Continued fractions of algebraic numbers. In Computational algebra and number theory (Sydney, 1992), pp. 137�152. Kluwer Acad. Publ., Dordrecht, 1995.
-[4] A. Eigenwillig, V. Sharma, and C. K. Yap. Almost tight recursion tree bounds for the Descartes method. In ISSAC 2006, pp. 71�78. ACM, New York, 2006.
-[5] G. Elber and M.-S. Kim. Geometric constraint solver using multivariate rational spline functions. In Proc. of 6th ACM Symposium on Solid Modelling and Applications, pp. 1�10. ACM Press, 2001.
-[6] I. Emiris, M. Hemmer, M. Karavelas, S. Limbach, B. Mourrain, E. P. Tsigaridas, and Z. Zafeirakopoulos. Cross-benchmarks of univariate algebraic kernels. ACS-TR-363602-02, INRIA, MPI and NUA, 2008.
-[7] I. Z. Emiris, B. Mourrain, and E. P. Tsigaridas. Real Algebraic Numbers: Complexity Analysis and Experimentation. In P. Hertling, C. Hoffmann,
+Table 1: Execution data for Σ1 , Σ2 , Σ3 , Σ4 .
 
-W. Luther, and N. Revol, ed., Reliable Implementations of Real Number Algorithms: Theory and Practice, LNCS vol. 5045, pp. 57�82. Springer Verlag, 2008.
-[8] I. Z. Emiris, B. Mourrain, and E. P. Tsigaridas. The dmm bound: multivariate (aggregate) separation bounds. Technical report, INRIA, March 2009.
-[9] J. Garloff and A. P. Smith. Investigation of a subdivision based algorithm for solving systems of polynomial equations. Journal of Nonlinear Analysis, 47(1):167�178, 2001.
-[10] A. Khintchine. Continued Fractions. University of Chicago Press, Chicago, 1964.
-[11] M. Marden. Geometry of Polynomials. American Mathematical Society, Providence, RI, 1966.
-[12] B. Mourrain and J. Pavone. Subdivision methods for solving polynomial equations. Special issue in honor of Daniel Lazard. JSC 44(3):292 � 306, 2009.
-[13] B. Mourrain, F. Rouillier, and M.-F. Roy. Bernstein's basis and real root isolation, pp. 459�478. MSRI Publications. Cambridge University Press, 2005.
-[14] V. Pan. Solving a polynomial equation: Some history and recent progress. SIAM Rev., 39(2):187�220, 1997.
-[15] V. Pan. Univariate polynomials: Nearly optimal algorithms for numerical factorization and rootfinding. JSC, 33(5):701�733, 2002.
-[16] V. Sharma. Complexity of real root isolation using continued fractions. Theor. Comput. Sci., 409(2):292�310, 2008.
-[17] E. C. Sherbrooke and N. M. Patrikalakis. Computation of the solutions of nonlinear polynomial systems. Comput. Aided Geom. Design, 10(5):379�405, 1993.
-[18] E. P. Tsigaridas and I. Z. Emiris. On the complexity of real root isolation using Continued Fractions. Theoretical Computer Science, 392:158�173, 2008.
-[19] A. van der Poorten. An introduction to continued fractions. In Diophantine analysis, pp. 99�138. Cambridge University Press, 1986.
-[20] J. von zur Gathen and J. Gerhard. Fast Algorithms for Taylor Shifts and Certain Difference Equations. In Proc. Annual ACM ISSAC, pp. 40�47, 1997.
-[21] M. N. Vrahatis. A short proof and a generalization of Miranda's existence theorem. Proceedings of the American Mathematical Society, 107(3):701�703, 1989.
-[22] C. Yap. Fundamental Problems of Algorithmic Algebra. Oxford University Press, New York, 2000.
+[9]
+
+One important observation is the fact the isolating boxes
+are not squares, which verifies the adaptive nature of the
+proposed algorithm.
+We provide execution details on these experiments in Table 1. Several optimizations can be applied to our code, but
+the results already indicate that our approach competes well
+with the Bernstein case.
+Acknowledgements
+The first and second author were supported by Marie-Curie
+Initial Training Network SAGA, [FP7/2007-2013], grant [PITNGA-2008-214584]. The third author was supported by contract [ANR-06-BLAN-0074] “Decotes”.
+
+[10]
+[11]
+[12]
+
+[13]
+
+[14]
+
+7.
+
+REFERENCES
+
+[15]
+
+[1] A. Alesina and M. Galuzzi. New proof of Vincent’s
+thm. Enseignement Math´ematique, 44:219–256, 1998.
+[2] M. Bartoˇ
+n and B. J¨
+uttler. Computing roots of
+polynomials by quadratic clipping. Comp. Aided
+Geom. Design, 24:125–141, 2007.
+[3] E. Bombieri and A. van der Poorten. Continued
+fractions of algebraic numbers. In Computational
+algebra and number theory (Sydney, 1992), pp.
+137–152. Kluwer Acad. Publ., Dordrecht, 1995.
+[4] A. Eigenwillig, V. Sharma, and C. K. Yap. Almost
+tight recursion tree bounds for the Descartes method.
+In ISSAC 2006, pp. 71–78. ACM, New York, 2006.
+[5] G. Elber and M.-S. Kim. Geometric constraint solver
+using multivariate rational spline functions. In Proc.
+of 6th ACM Symposium on Solid Modelling and
+Applications, pp. 1–10. ACM Press, 2001.
+[6] I. Emiris, M. Hemmer, M. Karavelas, S. Limbach,
+B. Mourrain, E. P. Tsigaridas, and Z. Zafeirakopoulos.
+Cross-benchmarks of univariate algebraic kernels.
+ACS-TR-363602-02, INRIA, MPI and NUA, 2008.
+[7] I. Z. Emiris, B. Mourrain, and E. P. Tsigaridas. Real
+Algebraic Numbers: Complexity Analysis and
+Experimentation. In P. Hertling, C. Hoffmann,
+
+[16]
+
+[17]
+
+[18]
+
+[19]
+
+[20]
+
+[21]
+
+[22]
 
 94
+
+W. Luther, and N. Revol, ed., Reliable Implementations of Real Number Algorithms: Theory and Practice, LNCS vol. 5045, pp. 57–82. Springer Verlag, 2008.
+I. Z. Emiris, B. Mourrain, and E. P. Tsigaridas. The
+dmm bound: multivariate (aggregate) separation
+bounds. Technical report, INRIA, March 2009.
+J. Garloff and A. P. Smith. Investigation of a
+subdivision based algorithm for solving systems of
+polynomial equations. Journal of Nonlinear Analysis,
+47(1):167–178, 2001.
+A. Khintchine. Continued Fractions. University of
+Chicago Press, Chicago, 1964.
+M. Marden. Geometry of Polynomials. American
+Mathematical Society, Providence, RI, 1966.
+B. Mourrain and J. Pavone. Subdivision methods for
+solving polynomial equations. Special issue in honor of
+Daniel Lazard. JSC 44(3):292 – 306, 2009.
+B. Mourrain, F. Rouillier, and M.-F. Roy. Bernstein’s
+basis and real root isolation, pp. 459–478. MSRI
+Publications. Cambridge University Press, 2005.
+V. Pan. Solving a polynomial equation: Some history
+and recent progress. SIAM Rev., 39(2):187–220, 1997.
+V. Pan. Univariate polynomials: Nearly optimal
+algorithms for numerical factorization and rootfinding.
+JSC, 33(5):701–733, 2002.
+V. Sharma. Complexity of real root isolation using
+continued fractions. Theor. Comput. Sci.,
+409(2):292–310, 2008.
+E. C. Sherbrooke and N. M. Patrikalakis. Computation of the solutions of nonlinear polynomial systems.
+Comput. Aided Geom. Design, 10(5):379–405, 1993.
+E. P. Tsigaridas and I. Z. Emiris. On the complexity
+of real root isolation using Continued Fractions.
+Theoretical Computer Science, 392:158–173, 2008.
+A. van der Poorten. An introduction to continued
+fractions. In Diophantine analysis, pp. 99–138.
+Cambridge University Press, 1986.
+J. von zur Gathen and J. Gerhard. Fast Algorithms
+for Taylor Shifts and Certain Difference Equations. In
+Proc. Annual ACM ISSAC, pp. 40–47, 1997.
+M. N. Vrahatis. A short proof and a generalization of
+Miranda’s existence theorem. Proceedings of the
+American Mathematical Society, 107(3):701–703, 1989.
+C. Yap. Fundamental Problems of Algorithmic
+Algebra. Oxford University Press, New York, 2000.
 
 

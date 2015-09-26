@@ -8,7 +8,7 @@ import os
 
 # Create your views here.
 PATH_TO_DATASET = '../TrainingData/'
-MAX_NUM_OF_WORDS_READ = 3
+MAX_NUM_OF_WORDS_READ = 300
 
 def onlyascii(char):
     if ord(char) < 48 or ord(char) > 127: return ''
@@ -34,9 +34,10 @@ def parseTextToDb(fileList):
         fp = open(file,encoding="latin-1")
         wordList = fp.read().split()
         cnt = 0
+        print('Inserting words for file '+file)
         for word in wordList:
             word = get_my_string(word)
-            print(word)
+            #print(word)
             if len(WordTable.objects.filter(word=word,docName = fileToken[2]))== 0 :
                 WordTable.objects.create(word = word,docName = fileToken[2],freq = 1)
                 if len(DocFreqTable.objects.filter(word=word))==0:
@@ -50,8 +51,9 @@ def parseTextToDb(fileList):
                 wordIns.freq += 1
                 wordIns.save()
             cnt += 1
-            if cnt==NUM_OF_WORDS:
+            if cnt == MAX_NUM_OF_WORDS_READ:
                 break
+        print('Operation Completed for file '+file+' Moving ahead.... \n\n\n')
                 
 def __main__():
     dirList = [x for x in os.listdir(PATH_TO_DATASET)]

@@ -1,0 +1,1465 @@
+592
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+On Cooperative Patrolling: Optimal Trajectories,
+Complexity Analysis, and Approximation Algorithms
+Fabio Pasqualetti, Student Member, IEEE, Antonio Franchi, Member, IEEE, and Francesco Bullo, Fellow, IEEE
+
+Abstract—The subject of this paper is the patrolling of an environment with the aid of a team of autonomous agents. We consider
+both the design of open-loop trajectories with optimal properties
+and of distributed control laws converging to optimal trajectories.
+As performance criteria, the refresh time and the latency are considered, i.e., respectively, time gap between any two visits of the
+same region and the time necessary to inform every agent about
+an event occurred in the environment. We associate a graph with
+the environment, and we study separately the case of a chain, tree,
+and cyclic graph. For the case of chain graph, we first describe a
+minimum refresh time and latency team trajectory and propose a
+polynomial time algorithm for its computation. Then, we describe
+a distributed procedure that steers the robots toward an optimal
+trajectory. For the case of tree graph, a polynomial time algorithm
+is developed for the minimum refresh time problem, under the
+technical assumption of a constant number of robots involved in
+the patrolling task. Finally, we show that the design of a minimum refresh time trajectory for a cyclic graph is NP-hard, and we
+develop a constant factor approximation algorithm.
+Index Terms—Algorithm design and analysis, combinatorial
+mathematics, distributed algorithms, graph partition, mobile
+agents, multirobot systems, network theory (graphs), patrol.
+
+I. INTRODUCTION
+HE recent development in the autonomy and the capabilities of mobile robots greatly increases the number of
+applications that are suitable for a team of autonomous agents.
+Particular interest has been received by those tasks requiring
+continual execution, such as the monitoring of oil spills [1], the
+detection of forest fires [2], the track of border changes [3],
+and the patrol (surveillance) of an environment [4]. The surveillance of an area of interest requires the robots to continuously
+and repeatedly travel the environment, and the challenging problem consists in scheduling the robots trajectories to optimize a
+certain performance criteria. The reader familiar with network
+location, multiple traveling salesman, or graph exploration problems may observe a close connection with the patrolling problem
+
+T
+
+Manuscript received June 6, 2011; revised September 22, 2011; accepted
+November 28, 2011. Date of publication January 4, 2012; date of current version June 1, 2012. This paper was recommended for publication by Associate
+Editor N. Y. Chong and Editor J.-P. Laumond upon evaluation of the reviewers’
+comments. This work was supported in part by the National Science Foundation
+under Grant IIS-0904501 and Grant CPS-1035917.
+F. Pasqualetti and F. Bullo are with the Center for Control, Dynamical
+Systems and Computation, University of California at Santa Barbara, CA 93106
+USA (e-mail: fabiopas@engineering.ucsb.edu; bullo@engineering.ucsb.edu).
+A. Franchi is with the Department of Human Perception, Cognition and
+Action, Max Plank Institute for Biological Cybernetics, 72076 Tubingen,
+Germany (e-mail: antonio.franchi@tuebingen.mpg.de).
+Color versions of one or more of the figures in this paper are available online
+at http://ieeexplore.ieee.org.
+Digital Object Identifier 10.1109/TRO.2011.2179580
+
+we address (see, e.g., [5]–[7]). It is worth noting, however, that
+these classical optimization problems do not capture the repetitive, and hence dynamic, aspect of the patrolling problem, nor
+the synchronization issues that arise when a timing among the
+visits of certain zones is required.
+A precise formulation of the patrolling problem requires the
+characterization of the robots capabilities, of the environment
+to be patrolled, and of the performance criteria. In this paper,
+we assume the robots to be identical and capable of sensing and
+communicating within a certain spatial range, and of moving according to a first-order integrator dynamics with bounded speed.
+We represent the environment as a graph, in which the vertices
+correspond to physical and strategically important locations, and
+the edges denote the possibility of moving and communicating
+between locations. We assume that, when a robot is placed at
+each of the graph vertices, the union of the sensor footprints provides complete sensor coverage of the environment. Regarding
+the performance criteria of a patrolling trajectory, we consider
+1) the time gap between any two visits of the same region, which
+is called refresh time, and 2) the time needed to inform the team
+of robots about an event occurred in the environment, which
+is called latency. Loosely speaking, refresh time and latency
+reflect the effectiveness of a patrolling team in detecting events
+in the environment and in organizing remedial actions. For both
+the refresh time and latency optimization problem, we focus on
+the worst case analysis, even though the average refresh time
+and the average latency cases are also of interest. Notice that
+for the latency to be finite, the motion of the robots needs to be
+synchronized. For instance, if two robots are allowed to communicate only when they simultaneously occupy two adjacent
+vertices of the graph, then they need to visit those vertices at the
+same time in a finite latency trajectory.
+The patrolling problem is receiving increasing attention because of its fundamental importance in many security applications (see, e.g., [8]–[12]). Although many solutions have been
+proposed, the problem of designing minimum refresh time and
+latency team trajectories for a general environment is, to date, an
+open problem. Almost all traditional approaches rely on space
+decomposition and traveling salesperson tour computation [13].
+In [14], an empirical evaluation of existing patrolling heuristics
+is performed. In [15], two classes of strategies are presented,
+namely, the cyclic-based strategy and the partition-based strategy. In the cyclic-based strategy, the robots compute a closed
+route through the viewpoints and travel repeatedly such route
+at maximum speed. Clearly, in the case of a single robot, if
+the tour is the shortest possible, then the cyclic-based strategy
+performs optimally with respect to the refresh time and latency
+criteria. In the partition-based strategy, the viewpoints are partitioned into m subsets, m being cardinality of the team, and
+
+1552-3098/$31.00 © 2012 IEEE
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+each robot is responsible for a different set of viewpoints. To
+be more precise, each robot computes a closed tour visiting the
+viewpoints for which it is responsible and it repeatedly moves
+along such tour at maximum speed. Still in [15], the two classes
+of strategies are compared, and it is qualitatively shown that
+cyclic-based strategies are to be preferred whenever the ratio
+of the longest to the shortest edge of the graph describing the
+environment is small, while, otherwise, partition-based policies
+exhibit better performance. In [2] and [4], an efficient and distributed solution to the perimeter patrolling problem for robots
+with zero communication range is proposed. By means of some
+graph-partitioning and graph-routing techniques, we extend the
+results along these directions, e.g., by considering the case of a
+nonzero communication range for the perimeter patrolling, and
+by characterizing optimal strategies for different environment
+topologies. An important variant of the patrolling problem is
+known as persistent surveillance (see, e.g., [16]). Differently to
+our setup, a dynamically changing environment is considered
+for the persistent surveillance problem, and performance guarantees are offered only under a certain assumption on the rate
+of change of the regions that are to be visited.
+It is worth mentioning that a different approach to the design
+of patrolling trajectories relies on the use of pebbles or chemical
+traces to mark visited regions (see, e.g., [17]–[20]). These techniques, although effective even without a global representation
+of the environment, and with severe communication constraints,
+do not explicitly deal with the optimality of the patrolling trajectories, and they represent, therefore, a complementary area
+of research with respect to this study.
+The main contributions of this paper are as follows. We introduce and mathematically formalize the concept of refresh time
+and latency of a team trajectory, and we formally state the patrolling optimization problem. We propose a procedure to build
+a graph (roadmap) to represent the topological structure of the
+area to be patrolled, and we study separately the case of a chain,
+tree, and cyclic (not acyclic) graph. We exhaustively discuss the
+case of a chain roadmap. First, we characterize a family of minimum refresh time and latency team trajectories, which can be
+computed by optimally partitioning the chain graph among the
+robots. Second, we derive a centralized polynomial time algorithm to compute an optimal partition, and, ultimately, to design
+an optimal team trajectory. Our partitioning procedure is based
+upon a bisection method, and it is also amenable to distributed
+implementation. Third, we develop a distributed procedure for
+the robots to converge and synchronize along an optimal trajectory to minimize the refresh time and latency criteria. Fourth
+and finally, we test the robustness of our methods through a
+simulation study. When the roadmap has a tree or cyclic structure, we focus on the refresh time optimization problem, and
+we neither consider the latency optimization nor the design of
+distributed algorithms. For the case of a tree roadmap, we reduce the minimum refresh time patrolling problem to a known
+graph optimization problem. We show that the computational
+complexity of the minimum refresh time patrolling problem is
+polynomial in the number of vertices of the roadmap, and, under the assumption of a fixed and finite number of robots, we
+identify a polynomial time centralized algorithm to compute a
+
+593
+
+minimum refresh time team trajectory. For the case of a cyclic
+roadmap, we show that the patrolling problem is an NP-hard optimization problem. We propose two approximation algorithms
+and characterize their performance. The first approximate solution is extremely easy to compute, but its performance depends
+upon the ratio between the longest and the shortest edge in
+the graph representing the environment. The second approximation algorithm is based on a polynomial time path-covering
+procedure, and it returns a team trajectory whose refresh time
+is within a factor of 8 from the minimum refresh time for the
+given environment (cf., Fig. 13 for an example). To the best
+of our knowledge, this algorithm is the first constant factor approximation algorithm for the NP-hard minimum refresh time
+patrolling problem.
+A preliminary version of this study appeared in [21]. With
+respect to the latter manuscripts, in this paper, we introduce and
+solve the latency optimization problem, perform a numerical
+study to analyze the robustness of our algorithmic procedures,
+and improve the presentation of the results on the refresh time
+optimization problem.
+The rest of this paper is organized as follows. The notation
+and the problem under consideration are given in Section II,
+where we also show that the patrolling problem is, generally,
+computationally hard. Sections III–V present our results for
+the patrolling of a chain environment. We characterize a minimum refresh time and latency team trajectory and derive a
+centralized and a decentralized algorithm for its computation.
+In Section VI, we perform a simulation study to show some
+robustness and reconfigurability properties of our distributed
+procedure. Section VII-A presents our results for the patrolling
+of a tree environment. We describe a minimum refresh time team
+trajectory on a tree roadmap and characterize the complexity of
+computing an optimal solution. Section VII-B deals with the
+general case of cyclic environment, and it contains our approximation procedures. Our conclusion and final remarks are given
+in Section VIII.
+II. ROBOTIC MODEL AND PRELIMINARY CONCEPTS
+A. Robots on Roadmaps With Sensor Coverage and
+Communication Connectivity
+We will be using the standard motion planning notation;
+see [22] for a comprehensive treatment of the subject. We are
+given a team of m > 0 identical robots, which are capable of
+sensing, communicating, and moving in a connected environment. We make the following combined assumptions on the
+robot capabilities and on the environment to be patrolled.
+Regarding sensing, we assume that the environment can be
+completely covered by simultaneously placing a robot at each of
+a set of n > m viewpoints in the configuration space. In other
+words, if m = n robots were available and placed at the n
+viewpoints, then the union of the sensors footprint of the robots
+would provide complete sensor coverage of the environment.
+We assume that each viewpoint is required for complete sensor
+coverage. Finally, we assume n > m so that at least one robot
+needs to visit more viewpoints for the entire environment to be
+monitored over time.
+
+594
+
+Regarding communication, we associate an undirected graph
+G with the environment, whose vertices are the n viewpoints,
+and in which there is an edge between two vertices if two robots
+placed at those viewpoints are able to communicate to each
+other. We assume that G is connected. In what follows we design cooperative patrolling algorithms with sporadic communication, in the sense that two robots are required to communicate
+only when they occupy adjacent vertices. The occurrence of
+additional communication links can be easily incorporated into
+the algorithms and cannot decrease their performance.
+Regarding motion, we assume that the robots are holonomic,
+i.e., they are modeled as first-order integrators and move at most
+at unit speed. Additionally, we turn the graph G into a robotic
+roadmap [22] and a metric weighted graph as follows: To each
+pair of viewpoints that are neighbors in G, we associate a
+unique path connecting them. We select these paths so that the
+set of path lengths, adopted as edge weights, verify the triangle
+inequality. (For example, the shortest paths between viewpoints
+constitute a suitable choice.) We assume that each robot remains
+always on the roadmap.
+In summary, the combined assumptions on the robot capabilities and the environment are that: the vertices of G provide
+complete sensor coverage of the environment and each edge of
+G corresponds to both a communication edge and a motion path.
+Hence, we refer to G as a roadmap with sensor coverage and
+communication connectivity.
+B. On Suitable Roadmaps and Robots Capabilities
+The problem of constructing a roadmap from an environment
+is discussed here.
+Example 1 (Roadmap Computation With Omnidirectional
+Sensing and Communication in Known Environments): Assume
+that the robots are holonomic vehicles moving at bounded speed
+and equipped with an omnidirectional sensing device, and a lineof-sight communication device. If a map of the environment is
+available, then a valid roadmap is obtained by solving an art
+gallery problem with connectivity [23]. A solution to the art
+gallery problem with connectivity is a set of locations, which
+are called guards, with the following two properties: Each point
+in the environment is visible by at least one guard, and the visibility graph of the guards is connected. An example roadmap
+is given in Fig. 1. (A distributed sensor-based algorithm for the
+art gallery problem with connectivity is given in [24].)
+Example 2 (Roadmap Computation for General Robots in an
+Unknown Environment): If the environment is unknown, then an
+exploration algorithm should be used to obtain a representation
+of the environment (see, e.g., [18], [25], and [26]. While or after exploring the environment, a robot should select viewpoints
+to provide full sensor coverage. By construction, the existence
+of a path between two viewpoints is automatically guaranteed
+by the exploration algorithm. Moreover, if communication between two path-connected viewpoints (i.e., vi and vj ) is not
+guaranteed, then the graph may be augmented with additional
+viewpoints along the path connecting vi and vj . The roadmap
+resulting from these steps features sensor coverage and communication connectivity.
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+Fig. 1. Polygonal environment and its associated roadmap. The viewpoints are
+chosen in a way that the environment is completely covered by placing a robot
+at each of the 12 viewpoints. The edges of the roadmap denote the possibility for
+the three robots of both moving and communicating between pair of connected
+viewpoints. The weight of each edge corresponds to its length.
+
+The following remarks are in order. First, the roadmap representing the environment is, in general, not unique, and the patrolling performance depends upon the particular choice. In this
+paper, we do not address the problem of choosing the roadmap
+that yields optimal performance. Instead, we present efficient
+algorithms for the patrolling problem, which can also be used to
+compare different roadmaps on the basis of the corresponding
+patrolling performance. Second, for the implementation of our
+algorithms, a robot does not need to travel exactly along the
+roadmap. Indeed, a robot only needs to arrive sufficiently close
+to a viewpoint, or to be able to circle around it to provide sensor
+coverage. A related example is given in Section VI, where the
+arrival delay of a robot can be interpreted as the uncertainty in
+the motion of the robots. Third, the global knowledge of the
+roadmap may not be required for the execution of a patrolling
+trajectory. Indeed, in general, each robot only visits a subpart
+of the roadmap. Fourth and finally, collisions are prevented by
+letting two robots exchange their roles every time they are about
+to collide. Indeed, since no robot is assigned to a specific viewpoint, if robot i is about to collide with robot j at time T ,
+then, without affecting the performance of the team trajectory,
+collision is avoided by redefining the ith and jth trajectory
+¯j (t) = xi (t) for t ≥ T ; see the notion
+as x
+¯i (t) = xj (t) and x
+of order invariant trajectory below. Communication or sensing
+devices can be used to detect and prevent possible collisions.
+C. Refresh Time of Team Trajectories: Definitions and a
+Preliminary Complexity Result
+For a team of m robots with specific capabilities, let
+G = (V, E) be a robotic roadmap with sensor coverage and
+communication connectivity. A team trajectory X is an array of m continuous and piecewise-differentiable trajectories
+x1 (t), . . . , xm (t) defined by the motion of the robots on the
+roadmap G, i.e., xi : [0, Tf ] → G, for i ∈ {1, . . . , m}, where
+Tf ∈ R is a time horizon of interest, much larger than the time
+required by a single robot to visit all viewpoints. We say that a
+viewpoint v ∈ V is visited at time t by robot i if xi (t) = v. We
+define the refresh time of a team trajectory X, in short RT(X),
+as the longest time interval between any two consecutive visits
+of any viewpoint, i.e.,
+RT(X) = max
+v ∈V
+
+max
+
+(t 1 ,t 2 )∈Ω(v ,X )
+
+t2 − t1
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+where Ω(v, X) = {(t1 , t2 ) ∈ [0, Tf ]2 , t1 ≤ t2 , | xi (t) = v∀i
+∈ {1, . . . , m}, t1 < t < t2 }.
+Remark 1 (Existence of a Minimum): We claim that there
+exists a team trajectory with minimum refresh time and prove it
+as follows. Without loss of generality, we restrict our attention to
+team trajectories in which each robot moves at maximum speed
+along the edges and stops for certain durations, possibly equal to
+zero, at the viewpoints. Thus, a team trajectory can be described
+as a tuple of the form (S, Δ) = {(S1 , Δ1 ), . . . , (Sm , Δm )},
+where Si contains the sequence of viewpoints visited by robot
+i, and Δi contains the waiting times at the visited vertices.
+Notice that the time horizon Tf is finite, the length of each edge
+is positive, the number of vertices is finite, and the speed of the
+robots is bounded. It follows that the length of each sequence
+Si is finite, and therefore, each Si takes value in a finite set.
+Now, for each possible sequence of visited vertices, the refresh
+time is a continuous function of only the waiting times, and
+each waiting time lies in the compact interval [0, Tf ]. Because
+any continuous function that is defined over a compact region
+admits a point of minimum value, we conclude that there exists
+a team trajectory with minimum refresh time.
+Problem 1 (Team Refresh Time): Given a roadmap and a team
+of robots, find a minimum refresh time team trajectory.
+In Section IV, we present a different optimization problem,
+which deals with the possibility for a robot to communicate,
+possibly with multiple hops, with every other robot in the team.
+We, now, conclude this section with our first result on the computational complexity of the team refresh time problem. For a
+detailed discussion of the main aspects of the computational
+complexity theory, see [27]. Recall that an optimization problem is said to be NP-hard if it is, informally, as hard as the
+hardest problem in the class NP, for which no polynomial time
+algorithm is known to compute an optimal solution.
+Theorem 2.1 (Computational Complexity): The team refresh
+time problem is NP-hard.
+Proof: This statement can be shown by reduction from the
+traveling salesman problem [27]. In fact, if m = 1, since the
+speed of the robots is bounded, then a minimum refresh time
+trajectory consists of moving the robot at maximum speed along
+a shortest closed tour visiting the viewpoints. The problem of
+finding a shortest tour through a set of points in the plane,
+which is also known as traveling salesman problem, is an NPhard problem [27]. Hence, by restriction, the team refresh time
+problem is also NP-hard.
+Following Theorem 2.1, the minimum refresh time optimization problem is generally computationally hard. In this paper, we
+first identify two roadmap structures for which there exists an
+efficient solution to the team refresh time problem, and then, we
+describe two approximation algorithms to deal with the general
+case.
+
+III. MINIMUM REFRESH TIME TEAM TRAJECTORY
+ON A CHAIN ROADMAP
+We characterize, in this section, a minimum refresh time team
+trajectory for the case of chain roadmaps.
+
+595
+
+A. Open-Loop Team Trajectory Characterization
+Let Ni denote the neighbor set of the vertex i, and let |Ni |
+denote the degree of i, i.e., the cardinality of the set Ni . A chain
+roadmap is an undirected, connected, and acyclic roadmap, in
+which every vertex has degree 2, except for two vertices which
+have degree 1. Without losing generality, we assume that the
+n vertices are ordered in a way that N1 = {2}, Nn = {n −
+1}, and Ni = {i − 1, i + 1}, for each i ∈ {2, . . . , n − 1}. We
+define a relative order of the robots according to their position
+on the roadmap. A team trajectory is order invariant if the order
+of the robots does not change with time, i.e., if xi (t) ≤ xi+1 (t)
+for each i ∈ {1, . . . , m − 1} and for every instant t ∈ [0, Tf ],
+where xi (t) denotes the distance at time t on the roadmap from
+the first vertex of the chain to the position of the ith robot.
+Proposition 3.1 (Order Invariant Team Trajectory): Let X be
+a team trajectory. There exists an order invariant team trajectory
+¯ such that RT(X) = RT(X).
+¯
+X
+Proof: Let X be a team trajectory, and consider the permutation matrix P (t), that keeps track of the order of the robots
+at time t, i.e., such that the (i, j)th entry of P (t) is 1 if, at
+time t, the ith robot occupies the jth position in the chain of
+robots, and it is 0 otherwise. Since X is continuous, anytime the
+function P (t) is discontinuous, the positions of the robots directly involved in the permutation overlap. Therefore, the order
+¯ = P −1 (t)X(t) is a feasible team
+invariant team trajectory X
+¯ = RT(X).
+trajectory, and it holds RT(X)
+Let Vi ⊆ V be the set of viewpoints visited over time by the
+agent i with the trajectory xi , and let the image of the team
+trajectory X be the set {V1 , . . . , Vm }. Notice that different team
+trajectories may have the same image. Throughout the paper, let
+li = minv ∈V i v, ri = maxv ∈V i v, and di = ri − li . Finally, let
+RT∗ = minX RT(X). A team trajectory is nonoverlapping if
+Vi ∩ Vj = ∅ for all i = j.
+Proposition 3.2 (Nonoverlapping Team Trajectory): Given a
+chain roadmap, there exists an order invariant and nonoverlapping team trajectory with refresh time RT∗ .
+Proof: Let X ∗ be a minimum refresh time team trajectory, and
+let X be the order invariant team trajectory obtained from X ∗ as
+in Proposition 3.1. Clearly, RT(X) = RT∗ . Let {V1 , . . . , Vm }
+be the image of X, and note that V = ∪m
+i=1 Vi . Consider the
+partition of V defined as
+V¯1 = V1
+V¯i = Vi \ ∪i−1
+j =1 Vj ,
+
+i ∈ {2, . . . , m}.
+
+For every nonempty V¯i , let ¯li = minv ∈V¯i v, r¯i = maxv ∈V¯i v,
+and d¯i = r¯i − ¯li . Note that, by construction, the viewpoint ¯li
+is visited by the robot i and, possibly, by the robots j > i. In
+addition, because X is order invariant, we have xi (t) ≤ xj (t).
+It follows that RT(X) ≥ 2maxi d¯i . Consider, now, the team
+¯ with image {V¯1 , . . . , V¯m }, and assume that the
+trajectory X
+robots sweep periodically at maximum speed their segment.
+¯ is an order invariant and
+¯ = 2maxi d¯i so that X
+Then, RT(X)
+nonoverlapping team trajectory with minimum refresh time.
+Given a chain graph on the viewpoints V , let Πm =
+{π1 , . . . , πm } be an m-partition of V , i.e., π1 , . . . , πm
+is a collection of subsets of V such that πi ∩ πj = ∅
+
+596
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+Fig. 2. (a) Four-partition with minimum (maximum) dimension. The dimension of this partition is v 7 − v 6 . (b) Four-partition with minimum (average)
+dimension is obtained by removing three longest edges. The dimension of this
+partition is v 1 0 − v 7 > v 7 − v 6 .
+
+whenever i = j, and V = m
+i=1 πi . Additionally, let the dimension of the partition Πm equals the longest distance between any two viewpoints in the same cluster, i.e., dim(Πm ) =
+maxi∈{1,...,m } (maxv ∈π i v − minv ∈π i v), where maxv ∈π i v −
+minv ∈π i v = 0 if πi = ∅. Following Proposition 3.2, there exists
+a minimum refresh time team trajectory whose image coincide
+with an m-partition of V . We now show that the minimum refresh time equals twice the dimension of an optimal m-partition.
+Theorem 3.3 (Minimum Refresh Time): Let G be a chain
+roadmap, and let m be the number of robots. Then, RT∗ =
+2minΠ m dim(Πm ).
+Proof: As a consequence of Propositions 3.1 and 3.2, there
+exists a minimum refresh time team trajectory whose image
+coincides with an m-partition Πm . Since each robot is assigned a different cluster, and the speed of the robots is bounded
+by 1, we have RT∗ ≥ 2dim(Πm ). Consider a team trajectory X in which each robot continuously sweeps at maximum
+speed the cluster it is assigned to. Clearly, RT(X) = RT∗ =
+2dim(Πm ).
+We have shown that a minimum refresh time trajectory consists of letting the robot sweep at maximum speed a part of the
+chain graph. Such a trajectory is more formally described for
+the ith robot in Trajectory 1, where we only characterize the
+instants of time at which robot i changes its velocity vector, and
+we assume that it moves at maximum speed otherwise.
+Remark 2 (Average Partition): By removing the longest edges
+in the chain the average length of the clusters is minimized.
+In general, such partition does not minimize the dimension of
+the m-partition, and hence, it is not optimal in our sense. An
+example is shown in Fig. 2.
+B. Optimal m-Partition Centralized Computation
+In the remaining part of the section, we describe an algorithm
+to compute an optimal m-partition. For a set of viewpoints V ,
+we call left-induced partition of length ρ ∈ R≥0 the partition
+Πρ = {πi }, which is defined recursively as [cf., Fig. 3(a)]
+πi = {v ∈ V | ai ≤ v ≤ ai + ρ},
+
+i = 1, . . .
+
+(1)
+
+Fig. 3. (a) Left-induced partition of length ρ4 and ρ5 , with ρ5 < ρ4 , for the
+chain roadmap with vertices {v 1 , . . . , v 1 0 }. The cardinalities are |Π ρ 4 | = 4
+and |Π ρ 5 | = 5, respectively. (b) Cardinality |Π ρ |, plotted as a function of the
+length ρ. Notice that, because v 2 − v 1 = v 1 0 − v 9 , the function |Π ρ | does
+not assume the value 9.
+
+where
+a1 = v1
+aj = min{v ∈ V | v > aj −1 + ρ}, j = 2, . . .
+The cardinality |Πρ | corresponds to the integer j such that {v ∈
+V | v > aj + ρ} = ∅. Observe that the function ρ → |Πρ | is
+monotone, nonincreasing, and right-continuous [cf., Fig. 3(b)].
+Let {ρ1 , . . . , ρn −1 } ∈ Rn≥0−1 be the discontinuity points of the
+function ρ → |Πρ |, then, for k ∈ {1, . . . , n − 1}, we have
+|Πρ | ≤ k,
+
+if ρ ≥ ρk
+
+|Π | > k,
+
+if ρ < ρk .
+
+ρ
+
+(2)
+
+Note that two or more discontinuity points of |Πρ | may coincide
+so that the function |Πρ | may not assume all the values in the
+set {1, . . . , n}, e.g., in Fig. 3(b), the value |Πρ | is never equal
+to 9.
+Theorem 3.4 (Optimal m-Partition): Let G be a chain
+roadmap. Let Πm be an m-partition of G, and let Πρ be
+the left-induced partition of length ρ of G. Then
+min dim(Πm ) = min{ρ ∈ R≥0 | |Πρ | ≤ m}.
+Πm
+
+Proof: Let Πm be an m-partition, and let Πρ = {π1ρ , . . . , πkρ }
+be the left-induced partition of length ρ of a chain roadmap G.
+Let ρ∗ = minΠ m dim(Πm ). We want to show that ρ∗ is one
+of the discontinuity points of the function |Πρ |, i.e., that ρ∗
+verifies the conditions (2).
+By contradiction, if ρ < ρ∗ and |Πρ | ≤ m, then an mpartition with dimension smaller than the optimal would exists.
+Therefore, we have |Πρ | > m if ρ < ρ∗ .
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+∗
+Suppose that ρ ≥ ρ∗ , and let Π∗m = {π1∗ , . . . , πm
+} be an mρ
+partition with minimum dimension. Notice that |π1 | ≥ |π1∗ |, because the cluster π1ρ contains all the viewpoints within distance
+ρ from v1 within distance ρ∗ . It follows that maxπ1ρ ≥ maxπ1∗ ,
+and also that minπ2ρ ≥ minπ2∗ . By repeating the same procedure
+ρ
+∗
+≥ maxπm
+,
+to the remaining clusters, we obtain that maxπm
+∗
+∗
+ρ
+so that, if |Π | = m and ρ ≥ ρ , then |Π | ≤ m.
+Following Theorem 3.4, an optimal left-induced partition of
+cardinality (at most) m is also an optimal m-partition. Notice
+that for the computation of an optimal left-induced partition,
+only the lengths ρ corresponding to the discontinuity points of
+Πρ need to be considered. Since each discontinuity point coincides with the distance between a pair of vertices, only n (n2−1)
+values need to be tested. Therefore, an optimal left-induced
+partition can be computed with complexity O(n2 ). In what
+follows we describe an ε-approximation algorithm with linear
+complexity for any ε ∈ R> 0 . Notice that ε-approximation algorithms with linear complexity are often more convenient for
+a practical implementation than exact algorithms with higher
+complexity [7].
+We now present our algorithm for the computation of an optimal m-partition. Since the function ρ → |Πρ | is monotone and
+continuous, a bisection method is effective for finding its discontinuity points and, therefore, for determining the shortest length
+of a left-induced partition of cardinality m. A bisection-based
+procedure to compute an optimal left-induced partition is given
+in Algorithm 2, where the function left-induced ({v1 , . . . , vn },
+ρ) returns the left-induced partition defined in (1). We, next,
+characterize the convergence properties of Algorithm 2.
+Lemma 3.5 (Convergence of Algorithm 2): Let G be a chain
+roadmap, and let Πm denote an m-partition of G. Let ρ∗ =
+minΠ m dim(Πm ). Algorithm 2 with tolerance ε returns a leftinduced partition of dimension at most ρ∗ + ε and cardinality
+at most m. Moreover, the time complexity of Algorithm 2 is
+O(n log(ε−1 )).
+Proof: Algorithm 2 searches for the minimum length ρ∗ that
+generates a left-induced partition of cardinality at most m.
+Because of Theorem 3.4, the length ρ∗ coincides with one of
+the discontinuity points of the function |Πρ |, and it holds ρ∗ ∈
+(0, 2vn /m). Indeed, ρ∗ > 0 because m < n, and ρ∗ < 2vn /m,
+because (2vn /m)m > vn . Recall from (2) that |Πρ | > m for
+every ρ < ρ∗ , and that the function ρ → |Πρ | is monotone.
+Note that the interval [a, b], as updated in Algorithm 2, contains
+the value ρ∗ at every iteration. The length of the interval [a, b] is
+
+597
+
+n
+divided by 2 at each iteration so that, after log2 ( 2v
+εm ), the value
+∗
+ρ is computed with precision ε. Since the computation of |Πρ |
+can be performed in O(n) operations, the time complexity of
+Algorithm 2 is O(n log(ε−1 )).
+As a consequence of Proposition 3.2 and Theorem 3.3, in
+what follows we only consider team trajectories whose image
+coincide with an m-partition. Therefore, for ease of notation,
+we use the set {V1 , . . . , Vm } to denote both the image set of
+a team trajectory and an m-partition of the chain graph. We
+conclude this section with a summary of the presented results.
+Theorem 3.6 (Patrolling a Chain Graph at Minimum Refresh Time): Let G be a chain graph with n viewpoints, and let m ≤ n be the number of robots. Let V
+be an optimal m-partition of G computed by means of
+Algorithm 2 with tolerance ε. Let dm ax be the dimension
+of V. A team trajectory with image V and minimum refresh
+time 2dm ax is computed as in Trajectory 1. Moreover, the time
+complexity of designing such trajectory is O(n log(ε−1 )).
+
+IV. MINIMUM REFRESH TIME AND LATENCY TEAM
+TRAJECTORY ON A CHAIN ROADMAP
+The previous section considers the problem of designing team
+trajectories with minimum refresh time on a chain graph. In a
+patrolling mission, it may be important for the robots to communicate with each other in order to gather information about the
+status of the entire environment. For instance, messages could
+be sent by a unit to ask for reinforcement, or to spread an alarm.
+Informally, we call latency of a team trajectory X, in short
+LT(X), the shortest time interval necessary for a message generated by any robot to reach all the other robots. In other words,
+given our communication model, the latency of a team trajectory
+is a measure of how fast a message spreads to all robots. In this
+section, we describe team trajectories with minimum refresh
+time and latency.
+We now give a more formal definition of LT(X). Recall
+that, by assumption, two robots are allowed to communicate
+when they lie on two adjacent viewpoints. In a chain roadmap,
+for a message to reach every robot in the chain, every pair of
+adjacent robots needs to communicate. For i ∈ {2, . . . , m}, let
+Φi denote the union of the set of times at which the robots
+i − 1 and i communicate and {0}. The up-latency of X,
+in short LTup (X), is the longest time interval between any
+two consecutive communications between the robots 1, 2 and
+m − 1, m. Precisely
+LTup (X) = max
+
+min
+
+¯ m (t 2 )
+t 2 ∈Φ 2 t m ∈Φ
+
+tm − t2
+
+¯ m (t2 ) = {tm ∈ Φm | ∃ t3 ∈ Φ3 , . . . , tm −1 ∈ Φm −1 ,
+where Φ
+t2 ≤ t3 ≤ . . . ≤ tm } ∪ {Tf }. Analogously, we call downlatency the quantity
+LTdown (X) = max
+
+min
+
+¯ 2 (t m )
+t m ∈Φ m t 2 ∈Φ
+
+t2 − tm
+
+¯ 2 (tm ) = {t2 ∈ Φ2 | ∃ t3 ∈ Φ3 , . . . , tm −1 ∈ Φm −1 ,
+where
+Φ
+t2 ≥ t3 ≥ · · · ≥ tm } ∪ {Tf }. Finally, we define the latency of
+
+598
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+a team trajectory as
+LT(X) = max{LTup (X), LTdown (X)}.
+Notice that our definitions of latency hold for m ≥ 2, and that, if
+m = 2, then we have LTup (X) = LTdown (X) = LT(X) = 0
+for every team trajectory X. We envision that the up- and
+down-latency performance criteria should be adopted when it is
+of interest to report the status of the monitored area to a base
+station located at one end of the chain environment. The latency
+minimization problem is more appropriate for fully distributed
+scenarios. In this section, we design synchronized team trajectories with the following two features. First, since a minimum
+refresh time trajectory is determined by an optimal partition of
+the chain graph, we aim at finding team trajectories associated
+with the same optimal partition.1 Second, we design synchronized team trajectories with minimum up-latency (respectively,
+down-latency) or latency.
+A. Lower Bound and Minimum Up-Latency Team Trajectory
+We start by showing a lower bound for LTup (X) and
+LTdown (X). Recall that, for a partition {V1 , . . . , Vm }, we have
+li = minv ∈V i v, ri = maxv ∈V i v, di = ri − li , and dm ax =
+maxi∈{1,...,m } di .
+Lemma 4.1 (Up-Latency Lower Bound): Let G be a chain
+roadmap, and let {V1 , . . . , Vm } be an m-partition of G. The
+latency of a team trajectory with image {V1 , . . . , Vm } is lower
+m −1
+bounded by
+i=2 di .
+Proof: The proposition follows from the fact that the robots
+speed is bounded by 1, and that the robots need to travel their
+segment to communicate with the neighboring robots.
+For the up-latency of a team trajectory to equal the lower
+bound in Lemma 4.1, each robot i needs to transfer a message
+from robot i − 1 to robot i + 1 in time di . In order to do so,
+each robot i needs to communicate with its neighbor i + 1 as
+soon as xi (t) = ri .
+Theorem 4.2 (Patrolling a Chain Graph at Minimum Refresh
+Time and Minimum Up-Latency): Let G be a chain graph with
+n viewpoints, and let m ≤ n be the number of robots. Let
+V be an optimal m-partition of G computed by means of
+Algorithm 2 with tolerance ε. Let dm ax be the dimension of
+V, and let di be the length of the ith cluster. A team trajectory
+with image V, minimum refresh time 2dm ax , and minimum up−1
+latency m
+j =2 dj is computed as in Trajectory 3. Moreover, the
+time complexity of designing such trajectory is O(n log(ε−1 )).
+Proof: The theorem follows by observing that the trajectory is
+2dm ax -periodic and that no robot i waits at ri to communicate
+with the neighboring robot i + 1. The up-latency equals the
+lower bound in Lemma 4.1, and it is, therefore, minimum.
+Regarding the computational complexity, notice that it is
+determined by the computation of the optimal m-partition V,
+and hence, by Lemma 3.5, it equals O(n log(ε−1 )).
+An example of a team trajectory with minimum refresh time
+and minimum up-latency is shown in Fig. 4. Finally, observe
+1 We focus on this family of trajectories, and we leave the more general
+optimization problem as the subject of future research. However, this family of
+trajectories is believed to contain an (unconstrained) optimal solution.
+
+Fig. 4. Team trajectory with minimum up-latency generated with the procedure in Trajectory 3. Notice that each robot i communicates with the neighboring robot i + 1 as soon as xi (t) = ri . A team trajectory with minimum
+down-latency is obtained by shifting in time the trajectory of robot 1, in a way
+that robot 2 communicates with robot 1 as soon as x2 (t) = l2 .
+
+that the minimization of the down-latency can be achieved in an
+analogous way.
+Remark 3 (Simplifications for Clusters of Equal Length):
+Let {V1 , . . . , Vm } be an optimal m-partition, and suppose
+that dm ax = ri − li for all i ∈ {1, . . . , m}. Then, the uplatency and the down-latency can be made minimum and equal
+to (m − 2)dm ax by arranging the robots trajectories to be in
+opposite phase. Specifically, for k = 0, 2, . . ., we set
+xi (2kdm ax ) = li , xi ((2k + 1)dm ax ) = ri
+if i is odd, and
+xi (2kdm ax ) = ri , xi ((2k + 1)dm ax ) = li
+if i is even. Because of Lemma 4.1, the above trajectory has
+minimum latency. This particular case was studied in [2].
+B. Lower Bound for Latency
+We now consider the minimization of the latency criterion
+and restrict our attention to periodic team trajectories. To be
+more precise, let {V1 , . . . , Vm } be an optimal m-partition of
+the environment, and let dm ax denote the longest length of the
+clusters. We aim at finding a 2dm ax -periodic team trajectory
+with image {V1 , . . . , Vm } and minimum latency. Notice that,
+by imposing a periodicity of 2dm ax , the refresh time of the
+trajectory, if finite, is also minimized.
+We start by considering the pedagogical situation in which
+di + di+1 > dm ax for all i ∈ {1, . . . , m − 1}. In the next
+Lemma, we show that the frequency of message exchange
+among the robots is limited by the periodicity of the trajectory.
+Lemma 4.3 (Frequency of Message Exchange): Consider a
+2dm ax -periodic team trajectory, and let di + di+1 > dm ax for
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+Fig. 5. As stated in Lemma 4.3, at most one communication sequence is
+possible within each period of length 2dm a x . Here, di + di + 1 > dm a x .
+
+all i ∈ {1, . . . , m − 1}. For any t ∈ [0, Tf − 2dm ax ] and for
+any i ∈ {2, . . . , m − 2}, there exist no two distinct sequences
+ti , ti+1 , ti+2 and t¯i , t¯i+1 , t¯i+2 , with tj , t¯j ∈ Φj , j = i, i +
+1, i + 2, such that
+t ≤ ti ≤ ti+1 ≤ ti+2 ≤ t + 2dm ax
+t ≤ t¯i ≤ t¯i+1 ≤ t¯i+2 ≤ t + 2dm ax
+ti+1 ≤ t¯i
+ti+2 ≤ t¯i+1 .
+Moreover, for any i ∈ {m, . . . , 4}, there exist no two sequences ti , ti−1 , ti−2 and t¯i , t¯i−1 , t¯i−2 with tj , t¯j ∈ Φj ,
+j = i, i − 1, i − 2, such that
+t ≤ ti ≤ ti−1 ≤ ti−2 ≤ t + 2dm ax
+t ≤ t¯i ≤ t¯i−1 ≤ t¯i−2 ≤ t + 2dm ax
+
+599
+
+Proof: Because of Lemma 4.3, a message can be transferred
+from robot i to robot i + 3 in at most 2dm ax instants of
+time, by traveling the clusters Vi+1 and Vi+2 . Without losing
+generality, we let dm ax be the time to pass a message from i + 1
+to i + 2 and from i + 2 to i + 3. Notice that the same reasoning
+holds also for the time to transfer a message from i + 3 to i.
+Therefore, the latency is lower bounded by (m − 2)dm ax .
+We now consider the situation in which an optimal mpartition does not verify the constraint di + di+1 > dm ax for all
+i ∈ {1, . . . , m − 1}. Intuitively, for what concerns the latency,
+two consecutive clusters with length di and di+1 may be regarded as one single cluster of length di + di+1 . Therefore, in
+order to use Lemma 4.3 and Lemma 4.4, we partition the clusters {V1 , . . . , Vm } into groups such that the sum of the length of
+the clusters of two consecutive groups is greater than dm ax . In
+r1 , . . . , r¯m¯ } be the set of right-extreme
+other words, let V¯r = {¯
+viewpoints of the partition {V1 , . . . , Vm } defined recursively
+as
+r¯0 := l1
+
+⎧
+⎨
+r¯i := max
+rj |
+j ∈{1,...,m } ⎩
+
+X
+
+⎭
+
+,
+
+i = 1, . . . , m
+¯
+
+¯l1 := l1
+¯li :=
+
+ti−2 ≤ t¯i−1 .
+
+min LT(X) ≥ (m − 2)dm ax .
+
+dk ≤ dm ax
+k =p i
+
+⎫
+⎬
+
+where pi = min{1, . . . , m} such that lp i ≥ r¯i−1 . Let V¯l =
+{¯l1 , . . . , ¯lm¯ } be the set of left-extreme viewpoints defined recursively as
+
+ti−1 ≤ t¯i
+
+Proof: Since di+1 + di+2 > dm ax , it follows max{di+1 ,
+di+2 } > dm ax /2. Let di+1 > dm ax /2. By contradiction, if
+two distinct sequences ti , ti+1 , ti+2 and t¯i , t¯i+1 , t¯i+2 exist, with t ≤ ti ≤ ti+1 ≤ ti+2 ≤ t + 2dm ax , t ≤ t¯i ≤ t¯i+1 ≤
+t¯i+2 ≤ t + 2dm ax , ti+1 ≤ t¯i and ti+2 ≤ t¯i+1 , then the (i +
+1)th robot travels its cluster four times. Since the speed of the
+robots is bounded by one, robot i + 1 cannot travel its cluster
+four times in a period of 2dm ax (cf., Fig. 5). The second part of
+the theorem follows from an analogous reasoning.
+Notice that in the aforementioned Lemma, the index i belongs to the set {2, . . . , m − 2} (respectively, {m, . . . , 4})
+because we consider three consecutive communication instants,
+and because Φi denotes the sequence of times at which robots
+i − 1 and i communicate. Because of Lemma 4.3, in a 2dm ax periodic team trajectory with di + di+1 > dm ax , only one message can be passed from robot i to robot i + 3 in a period of
+time of 2dm ax . This limitation determines a lower bound on
+the latency of a periodic trajectory. Notice that eventual communication instants tj ∈ Φi , with t ≤ tj ≤ ti ≤ ti+1 , do not
+influence the latency, since all information can be transmitted at
+time ti without affecting the latency performance.
+Lemma 4.4 (Latency Lower Bound, Simple Case): Let X be
+a 2dm ax -periodic team trajectory with di + di+1 > dm ax for
+all i ∈ {1, . . . , m − 1}. Then
+
+j
+
+min
+
+{lj | lj ≥ r¯i−1 },
+
+j ∈{1,...,m }
+
+i = 2, . . . , m.
+¯
+
+Additionally, define the set of aggregated clusters V¯ =
+{V¯1 , . . . , V¯m¯ }, where V¯i contains all the clusters within ¯li
+and r¯i , and let d¯i be the sum of the length of the clusters in V¯i .
+Lemma 4.5 (Latency Lower Bound, General Case): Let X
+be a 2dm ax -periodic team trajectory with image {V1 , . . . , Vm },
+and let m
+¯ be the number of aggregated clusters. Then
+min LT(X) ≥ (m
+¯ − 2)dm ax + (d¯1 − d1 ) + (d¯m¯ − dm ).
+X
+
+Proof: Consider the clusters defined by the right extreme
+viewpoints, and notice that they verify di + di+1 > dm ax . Then,
+the theorem follows from Lemma 4.4, and from the fact that
+the minimum latency on the image {V¯1 , . . . , V¯m¯ } equals the
+minimum latency on the image {V1 , . . . , Vm }. The terms d¯1 −
+d1 and d¯m¯ − dm are due to the fact that we are interested in
+delivering a message from robot 1 to robot m in the original
+configuration, and not on the aggregated chain.
+C. Minimum Latency Team Trajectory
+A team trajectory with minimum refresh time and minimum
+latency is formally presented in Trajectory 4, where we specify
+the instants of time at which a robot changes its velocity, and we
+assume that it moves at maximum speed otherwise. An example
+is reported in Fig. 6, and here we give an informal description.
+Let {V1 , . . . , Vm } be an optimal m-partition of a chain graph,
+and let {V¯1 , . . . , V¯m¯ } be the set of aggregated clusters. Recall
+
+600
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+Fig. 6. Team trajectory with minimum refresh time (2dm a x ) and minimum
+latency ((m
+¯ − 2)dm a x + d1 + d2 − d1 + d3 − d3 = d2 ) is here reported. A
+message with delivery time equal to d2 is reported in red. The right-extreme
+viewpoints are {¯
+r1 , r¯2 }, the left-extreme viewpoints are {¯l1 , ¯l2 }, and m
+¯ = 2.
+The represented team trajectory has minimum refresh time (2dm a x ) and minimum latency ((m
+¯ − 2)dm a x + (d1 + d2 ) − d1 + d3 − d3 = d2 ). A message with delivery time equal to d2 is reported in red.
+
+that V¯i is a subset of {V1 , . . . , Vm }, and that the sum of the
+length of two consecutive elements is larger than dm ax . The
+procedure in Trajectory 4 (see lines 6–11 and 18–23) is such that
+the robots in the same group behave as a single robot assigned
+to the whole set of viewpoints. In other words, the motion of
+the robots in the same group is determined by a token passing
+mechanism, in which robot i + 1 moves toward ri+1 only
+when xi (t) = ri and xi (t− ) = ri , and, analogously, robot i
+moves toward li only when xi (t) = li and xi (t− ) = li . Instead,
+lines 1–5 and 12–17 in Trajectory 4 guarantee the transfer of one
+message in a period of 2dm ax between three consecutive groups
+and, consequently, the minimization of the latency. Indeed, since
+the sum of the length of two consecutive groups is larger than
+dm ax , because of Lemma 4.3, no more than one message can
+be transferred between three consecutive groups in a period of
+2dm ax .
+Theorem 4.6 (Patrolling a Chain Graph at Minimum Refresh
+Time and Minimum Latency): Let G be a chain graph with n
+viewpoints, and let m ≤ n be the number of robots. Let V be an
+optimal m-partition of G computed by means of Algorithm 2
+with tolerance ε. Let dm ax be the dimension of V, and let
+d1 (respectively, dm ) be the length of the first (respectively,
+last) cluster in V. Let m
+¯ be the number of aggregated clusters, and let d¯1 (respectively, d¯m¯ ) be the length of the first
+(respectively, last) aggregated cluster. A team trajectory with
+image V, minimum refresh time 2dm ax , and minimum latency (m
+¯ − 2)dm ax + d¯1 − d1 + d¯m¯ − dm is computed as in
+Trajectory 4. Moreover, the time complexity of designing such
+trajectory is O(n log(ε−1 )).
+Proof: By inspection, the team trajectory described in
+Trajectory 4 is 2dm ax -periodic, and therefore, it has minimum
+refresh time. Moreover, by construction, the communications at
+the extreme viewpoints happen every 2dm ax instants of time
+so that the latency is equal to (m
+¯ − 2)dm ax + d¯1 − d1 + d¯m¯ −
+dm , and hence, by Lemma 4.5, minimum. Regarding the computational complexity, notice that it is determined by the computation of the optimal m-partition V, and hence, by Lemma 3.5,
+it equals O(n log(ε−1 )).
+
+V. DISTRIBUTED SYNCHRONIZATION ALGORITHM
+ON A CHAIN ROADMAP
+In the previous sections, we have shown that, for the computation of a minimum refresh time and latency team trajectory,
+first an optimal m-partition of the roadmap needs to be found,
+and, then, a synchronization of the motion of the robots needs
+to be achieved to ensure communication between neighboring
+robots. The distributed computation of an optimal m-partition
+follows directly from Algorithm 2, by letting the robots compute the left-induced partition of length l in a distributed way.
+A simple solution consists of the following three operation:
+1) the robots gather at the leftmost viewpoint, and
+2) determine the cardinality of the team and elect a leader;
+3) the leader computes an optimal left-induced partition and
+assigns a different cluster to each robot.
+Notice that, by only assuming the capability of detecting the
+viewpoints in the roadmap (in particular, the leftmost and rightmost viewpoint), the robots can distributively compute an optimal partition. Indeed, the leader can simply travel the roadmap
+and evaluate if, for a given length ρ, the cardinality of the corresponding left-induced partition is greater, equal, or smaller
+than the cardinality of the team. We believe that, by simple
+programming operations, the aforementioned procedure can be
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+improved to handle reconfigurations due to addition or removal
+of robots in the team. In this section, we focus instead on the
+design of a distributed feedback law to synchronize the motion
+of the robots so as to guarantee the minimization of the latency
+of the trajectory.
+Recall that xi (t) denotes the position on the chain of the
+robot i at time t. Moreover, let the ith cluster of an optimal
+m-partition be delimited by li and ri . Let diri ∈ {−1, 0, 1}
+denotes the direction of motion of robot i. Let c-time denotes
+the current time of simulation, and let a-time be the time at
+which a robot arrives at his right extreme. Let n-meet(i,j) be a
+function that returns the number of times that the robots i and
+j have communicated. Let Timer(δ) be a function that returns 1
+after a time interval of length δ. An algorithm for the robots to
+distributively converge to a minimum refresh time and latency
+team trajectory is in Algorithm 5. It should be noticed that the
+algorithm assumes the knowledge of an optimal partitioning of
+the chain graph, and of the left- and right-extreme sets.
+Algorithm 5 is informally described as follows. First, the
+velocity of a robot changes only when its position coincides
+with the leftmost or the rightmost of the assigned viewpoints.
+When a robot reaches an extreme viewpoint, it waits until a
+communication with the neighboring robot happens (see lines
+7 and 8). This mechanism determines the feedback behavior of our procedure. The behavior of a robot after a communication is determined by the lines 9–21, which reproduce
+the optimal behavior described in Trajectory 4. To be more
+precise, the function Token( i, j) coordinates the motion of
+the robots in the same group (see Section IV-C) so that they
+move as if there was a single robot sweeping the viewpoints
+in the same group. The function Timer( δi ), instead, ensures
+the maximum frequency of messages exchange between consecutive groups, so as to minimize the latency of the resulting
+trajectory.
+Theorem 5.1 (Optimal Team Trajectory): Let X be the team
+trajectory generated by Algorithm 5. There exists a finite time
+after which X has minimum refresh time and latency.
+Proof: Let {V1 , . . . , Vm } be an optimal m-partition, let
+V¯r = {¯
+r1 , . . . , r¯C ∗ } be the set of right-extreme viewpoints, and
+let V¯l = {¯l1 , . . . , ¯lC ∗ } be the set of left-extreme viewpoints.
+Let R denote the set of robots patrolling a viewpoint between
+¯li and r¯i , where ¯li and r¯i are as previously defined. First,
+notice that robot 1 (respectively, m) sets x˙ 1 (t) = 1 (respectively, x˙ m (t) = −1) as soon as x1 (t) = l1 (respectively,
+xm (t) = rm ). Second, the function Token(i, j) guarantees that,
+when i, j ∈ R communicate, exactly one robot among i, j
+maintains a zero velocity and in an alternate way. Therefore,
+after a finite time Ti , independent of the initial robots motion direction, the velocities of the robots in R are such that, upon communication, x˙ i (t) = x˙ i−1 (t− ) and x˙ i−1 (t) = 0. In other words,
+after Ti , the robots in R behave as a single robot sweeping the
+segments between ¯li and r¯i . Finally, the function Timer(τ )
+and the parameter τ guarantee that the communications at the
+extreme viewpoints happen every 2dm ax instants of time. We
+conclude that the trajectory generated by Algorithm 5 converges
+in finite time to a team trajectory with minimum refresh time and
+latency.
+
+601
+
+It should be observed that, differently from the team trajectories presented in the previous sections, Algorithm 5 contains
+a feedback procedure to synchronize the motion of the robots.
+Our algorithm is independent of the initial configuration, and,
+as it is shown in the next section, it is robust to a certain class
+of robot failures.
+VI. CASE STUDY
+Given the theoretical nature of this study, in this section, we
+propose a simulation study to show the effectiveness of our procedures. For our simulations, we use the MATLAB simulation
+environment and model the robots as holonomic vehicles of zero
+dimension. The communication edges and the motion paths are
+described by a given roadmap.
+Consider the chain roadmap with 30 viewpoints in Fig. 7.
+Suppose that ten robots are assigned to the patrolling task. In
+order to obtain a team trajectory with minimum refresh time, an
+optimal ten-partition of the roadmap is computed (cf., Fig. 7).
+Additionally, to obtain a minimum latency team trajectory, each
+robot is assigned to a different cluster, its initial position is
+chosen randomly inside its cluster, and its velocity is initialized
+randomly. The motion of each robot is, then, determined by
+Algorithm 5. The resulting team trajectory is shown in Fig. 8,
+
+602
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+Fig. 9. For the roadmap in Fig. 7, 100 team trajectories have been generated
+with Algorithm 5 for each value of σ 2 . The average refresh time and the average
+latency are plotted as continuous lines in Fig. 9(a) and (b), respectively. The
+bars indicate the minimum and the maximum value of the refresh time and
+the latency, respectively. Notice that the average team trajectory performance
+degrade gracefully with the noise variance.
+
+Fig. 7. Robotic roadmap with sensor coverage and communication connectivity of a two-floor building. Crossing edges corresponds to corridors at different
+floors. A ten-partition of the roadmap is here reported. The dashed edges are
+not traveled by any robot.
+
+Fig. 8. For the roadmap of Fig. 7, the team trajectory obtained with
+Algorithm 5 is reported here. The dashed lines denote a communication among
+two neighboring robots. At time t = 200, the robots have synchronized their
+motion, and from that moment up to time t = 300, the team trajectory has
+minimum refresh time and latency. From time t = 300 up to time t = 400,
+robot 7 undergoes a temporary failure, causing all the other robots to lose synchronization. The team of robots synchronizes again when robot 7 resume its
+motion. At time t = 620, the failure of robot 7 is detected by the remaining
+robots, which compute and synchronize on a new partition.
+
+where the team of robots synchronize on a minimum refresh
+time and latency team trajectory after a finite transient.
+We now test the robustness of our synchronization procedure.
+As a first case study, we consider a temporary stopping failure,
+in which a robot stops for a certain time interval. For instance,
+suppose that robot 7 stops from time 300 up to time 400 (cf.,
+Fig. 8). Notice that, after the failure, each robot j, with j < 7,
+gathers at rj , and each robot k, with k > 7, gathers at lk waiting
+for a communication with the corresponding neighboring robot.
+As soon as robot 7 resumes its functionalities, the team of robots
+recover the desired synchronization. Notice that the transient
+failure of robot 7 can be easily detected by its neighbors by
+means of a timer mechanism with a predefined threshold.
+As a second case study, we let the robots actuation be affected
+by noise so that the speed of the robots becomes a random
+
+variable with a certain distribution.2 Precisely, let x˙ i = diri +
+wi be the equation describing the dynamics of robot i, where wi
+is a zero mean Gaussian variable with variance σ 2 [(m/s)2 ]. We
+let σ 2 ∈ {0, 0.02, . . . , 0.5}, and we run 100 simulations for each
+possible value of σ 2 on the roadmap in Fig. 7. The refresh time
+and the latency of the team trajectories obtained with Algorithm
+5 are plotted in Fig. 9(a) and (b), respectively, as a function of
+σ 2 . Note that the performance degrade gracefully with the noise
+magnitude.
+As third and final case study, we consider the situation in
+which a robot definitively stops.3 The remaining robots need to
+compute a new optimal partition and to synchronize in order
+to guarantee an optimal patrolling of the environment. Notice
+that for the computation of such a partition by Algorithm 2, the
+chain graph and the number of the robots are required. Suppose
+that the failure of the robot 7 is detected at time 620 by the
+well-behaving robots, and assume that each robot knows the
+chain roadmap and the number of operative robots. Algorithm
+2 and Algorithm 5 allow the team to synchronize on a new team
+trajectory with minimum refresh time and latency. Notice that
+the initial and the final partitions do not coincide.
+VII. APPROXIMATION ALGORITHMS AND HEURISTICS FOR
+GENERAL ROADMAPS
+The problem of designing minimum refresh time and latency
+team trajectories on a chain roadmap has been discussed. In
+this section, we consider the more general cases of tree and
+cyclic roadmap, characterize the computational complexity of
+determining optimal trajectories, and describe two approximation methods with performance guarantees. The results we are
+going to present are intended for a team of more than one robot.
+Indeed, if only one robot is assigned to the patrolling task, then a
+minimum refresh time trajectory follows from the computation
+of the shortest tour through the viewpoints, for which efficient
+approximation algorithms already exist [28].
+A. Minimum Refresh Time Team Trajectory on a Tree Roadmap
+Let T = (V, E) denote an undirected, connected, and acyclic
+roadmap (tree). Recall that a vertex path is a sequence of
+2 The case in which a robot fails at seeing a neighboring robot for a certain
+interval of time can be modeled analogously.
+3 The case of additional robots joining the team is handled in a similar way.
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+Fig. 10. Two examples of tree roadmap. For the roadmap in (a), the family of
+cyclic-based trajectories does not contain a minimum refresh time team trajectory. Instead, for the roadmap in (b), the family of partitioned-based trajectories
+does not contain a minimum refresh time team trajectory.
+TABLE I
+VISITING ORDER FOR THE ROADMAP OF FIG. 10(b)
+
+vertices such that any pair of consecutive vertices in the sequence are adjacent. A tour is a vertex path in which the start
+and end vertices coincide, and in which every vertex of T appears at least once in the sequence. A depth-first tour of T is
+a tour that visits the vertices V in a depth-first order [29]. Let
+DFT (T ) denote the length of a depth-first tour of T . Notice
+that the length of a depth-first tour of a connected tree equals
+twice the sum of the length of the edges of the tree, and that any
+depth-first tour is a shortest tour visiting all the vertices. We now
+show that, for the case of tree roadmap, the set of cyclic-based
+and partition-based trajectories described in [15] does not contain, in general, a minimum refresh time trajectory. Recall that
+in a cyclic-based strategy, the robots travel at maximum speed
+and equally spaced along a minimum length tour visiting all the
+viewpoints. Consider the tree roadmap of Fig. 10(a), and suppose that two robots are assigned to the patrolling task. Clearly,
+the minimum refresh time is 2ε, while the refresh time of a
+cyclic strategy equals 1 + ε. Consider now the tree roadmap in
+Fig. 10(a), where the edges have unit length, and assume that
+two robots are in charge of the patrolling task. Observe that any
+partition of cardinality 2 contains a chain of length 2 so that,
+since only one robot is assigned to each cluster, the minimum
+refresh time that can be obtained is 4. Suppose, instead, that the
+robots visit the vertices of the roadmap as specified in Table I,
+where x(t) denotes the position of a robot at time t. Since the
+refresh time of the proposed trajectory is 3, we conclude that
+neither the cyclic-based strategy nor the partition-based strategy
+may lead to a minimum refresh time team trajectory on a tree
+roadmap.
+We now introduce some definitions. Let X be a team
+trajectory on the tree roadmap T . We say that the edge
+(vj , vz ) ∈ E is used by X if there exists i ∈ {1, . . . , m} and
+(t1 , t2 ) ∈ [0, RT(X)]2 such that xi (t1 ) = vj and xi (t2 ) = vz ,
+and it is unused otherwise. Note that, because in a tree there exists only one path connecting two vertices, the aforementioned
+condition ensures that the edge (j, z) is traveled by the ith
+¯ denote the set of unused edges, and let FT be the
+robot. Let E
+¯ from E, i.e.,
+forest obtained from T by removing the edges E
+the collection of vertex-disjoint subtrees {T1 , . . . , Tk }, with
+Ti = (Vi , Ei ), such that V = ∪ki=1 Vi and Ei ⊆ E, for each
+
+603
+
+i ∈ {1, . . . , k}. Let mi be the number of robots that visit at least
+one vertex of Ti in the interval [0, RT(X)], and note that mi > 0
+in a finite refresh time trajectory. Let M = {m1 , . . . , mk }. Notice that the same subtree collection can be associated with different team trajectories. We say that a team trajectory is efficient
+if its refresh time is the smallest among all the team trajectories
+that are associated with the same subtree collection.
+Theorem 7.1 (Efficient Team Trajectory): Let (FT , M ) be
+the subtree collection associated with the team trajectory X
+on the tree roadmap T , where FT = {T1 , . . . , Tk }, and M =
+{m1 , . . . , mk }. Then, X is efficient if
+RT(X) =
+
+max
+
+j ∈{1,...,k }
+
+DFT(Tj )/mj .
+
+Proof: Let i ∈ {1, . . . , k}, and let mi be the number of
+robots assigned to Ti . Notice that the robots in Ti travel, in
+total, at least DFT(Ti ) to visit all the vertices. Since the speed
+of the robots is bounded by 1, the smallest refresh time for the
+vertices of Ti is DFT(Ti )/mi .
+An efficient team trajectory, can be computed with the following procedure. See Table I for an example.
+Lemma 7.2 (Efficient Team Trajectory Computation): Let
+(FT , M ) be a subtree collection of a tree roadmap, where
+FT = {T1 , . . . , Tk }, and M = {m1 , . . . , mk }. An efficient
+team trajectory is as follows: For each i ∈ {1, . . . , k},
+1) compute a depth-first tour τi of Ti ,
+2) equally space mi robots along τi , and
+3) move the robots clockwise at maximum speed on τi .
+Proof: Since every vertex of Ti ∈ FT appears at least once in
+a depth-first tour τi of Ti , and the robots move with maximum
+speed and equally spaced along τi , every vertex is visited at
+most every DFT(Ti )/mi . The statement follows.
+Let P (m) be the partition set of m, i.e., the set of all the
+sequences of integers whose sum is m. The following problem
+is useful to characterize the complexity of designing minimum
+refresh time trajectories on a tree roadmap.
+Problem 2 (Optimal Subtree Collection): Let T be a tree
+roadmap, and let m be the number of robots. Find a subtree collection (FT , M ) that minimizes maxj ∈{1,...,|F T |} DFT(Tj )/mj
+subject to M ∈ P (m) and |FT | = |M |.
+Lemma 7.3 (Equivalent Problem): For the case of a tree
+roadmap, the team refresh time problem and the optimal subtree
+collection problem are equivalent.
+Proof: As a consequence of Theorem 7.1, the minimum
+refresh time on a tree roadmap T can be written as
+min(F T ,M ) maxj ∈{1,...,k } DFT(Tj )/mj , where (F, M ) is a subtree collection of T , and |M | = |FT | = k ≤ m. It follows that
+a solution to Problem 1 can be derived in polynomial time from
+a solution to Problem 2 by using the procedure described in
+Lemma 7.2. Suppose, now, we have a solution to Problem 1.
+Then, an optimal subtree collection follows from the identification of the unused edges. We conclude that the two optimization
+problems are equivalent.
+We now state our main result on the design of minimum
+refresh time team trajectory on a tree roadmap.
+Theorem 7.4 (Computing a Minimum Refresh Time Team
+Trajectory on a Tree): Let T be a tree roadmap with n vertices,
+
+604
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+Fig. 12. Tree roadmap and two corresponding chain roadmaps. If the number
+of robots is 4, then the performance ratio RT∗Γ /RT∗ grows with ε−1 .
+
+Fig. 11. Chain roadmap associated with the cyclic roadmap of Fig. 1. Notice
+that the cycles in Fig. 1 have been broken. Moreover, three vertices (three edges)
+of Fig. 1 are repeated twice in the chain.
+
+and let m be the number of robots. A minimum refresh time
+team trajectory on T can be computed in O((m − 1)!n) time.
+Proof: Recall from [30] that an optimal subtree collection can
+be computed in O((m − 1)!n). Then, by using Lemma 7.3 and
+Lemma 7.2, the claimed statement follows.
+As a consequence of Theorem 7.4, the problem of designing
+minimum refresh time team trajectories on a tree roadmap is
+computationally easy for any finite number of robots. In our
+design procedure, we first compute an optimal subtree collection of the given tree and, then, schedule the robots trajectory
+according to Lemma 7.2.
+B. Minimum Refresh Time Team Trajectory
+on a Cyclic Roadmap
+In this section, we propose two approximation methods for the
+team refresh time problem in the case of a cyclic, i.e., not acyclic,
+roadmap. These solutions are obtained from a transformation of
+the cyclic roadmap into an acyclic roadmap.
+Let G = (V, E), with |V | = n, be an undirected and connected roadmap. Note that there exists an open tour τ with at
+most 2n − 4 edges that visits all the vertices.4 We construct
+a chain roadmap Γ from τ by doubling its repeated vertices
+and edges so that Γ has at most 2n − 3 vertices and at most
+2n − 4 edges, and such that the length of the ith edge of Γ
+equals the length of the ith edge of τ (cf., Fig. 11). Our first
+approximation method consists of applying Algorithm 5 to an
+optimal m-partition of Γ.
+Theorem 7.5 (Performance Ratio): Let G be a connected
+roadmap, let n be the number of vertices of G, and let γ be
+ratio of the longest to the shortest length of the edges of G. Let
+RT∗ be the minimum refresh time on G. Let τ be an open tour
+with 2n − 4 edges that visits all the n vertices, and let Γ be
+the chain roadmap associated with τ . Let RT∗Γ be the minimum
+refresh time on Γ. Then
+n−2
+RT∗Γ ≤
+8γRT∗ .
+n
+Proof: Let w be the shortest length of the edges of G, and
+note that the length of Γ is upper bounded by 2(n − 2)γw. It
+4 An open tour with at most 2n − 4 edges that visits all the vertices can be
+constructed starting from a leaf of a spanning tree of G.
+
+4(n −2)γ w
+
+follows that RT∗Γ ≤
+. Since m < n by assumption,
+m
+some robots need to move along G for all the viewpoints to be
+visited. Because each robot can visit only a vertex at a time, at
+n
+− 1 steps are needed to visit all the vertices of G,
+least m
+n
+n
+− 1 w ≥ 12 m
+w. By taking the ratio
+and therefore, RT∗ ≥ m
+of the two quantities, the statement follows.
+It should be noted that when γ grows, the performance of
+our procedure might degrade. For instance, suppose that the
+roadmap is as in Fig. 12, and suppose that four robots are assigned to the patrolling task. As long as ε < 1, a minimum
+refresh time strategy requires one robot to patrol the viewpoints {v1 , v2 }, while the second, third, and fourth robot stay
+on the viewpoints v3 , v4 , and v5 , respectively. It follows that
+RT∗ = 2ε. On the other hand, an optimal m-partition of any
+chain graph associated with a tour that visits all the viewpoints
+has dimension at least 1. Consequently, the refresh time of the
+team trajectory obtained with Algorithm 5 equals 2, and the
+ratio RT∗Γ /RT∗ grows proportionally to ε−1 .
+We next describe a polynomial time constant factor approximation algorithm for the minimum refresh time problem. Given
+a roadmap G = (V, E) and a positive integer k < |V |, we
+define a path cover of cardinality k as the collection of paths
+{p1 , . . . , pk } such that V ⊆ ki=1 pi . Let the cost of a path
+equals the sum of the lengths of its edges. The min–max path
+cover problem asks for a minimum cost path cover for the input
+graph, where the cost of a cover equals the maximum cost of a
+path in the cover. The following result is known.
+Theorem 7.6 (Min–Max Path Cover [7]): There exists a fourapproximation polynomial algorithm for the NP-hard min–max
+path cover problem.
+Following Theorem 7.6, given a graph G, there exists a
+polynomial time algorithm that computes a path cover of G
+with cost at most four times greater than the cost of any path
+cover of G. We now state our approximation result for the
+NP-hard team refresh time problem.
+Lemma 7.7 (Eight-Approximation Refresh Time): There exists
+an eight-approximation polynomial algorithm for the NP-hard
+team refresh time problem.
+Proof: Let {p1 , . . . , pm } be a four-approximation path cover
+of the graph G. Note that the length of each path is within 4RT∗ .
+Indeed, in a minimum refresh time team trajectory starting at
+time 0 and with unitary velocity, every vertex is visited within
+time RT∗ . Let X be a team trajectory obtained by letting robot i
+sweep at maximum speed the path pi . Clearly, RT(X) ≤ 8RT∗ .
+Because of Theorem 7.6, the team trajectory X can be computed
+in polynomial time.
+
+PASQUALETTI et al.: ON COOPERATIVE PATROLLING
+
+605
+
+while traveling the edges of the roadmap. The study of average
+performance criteria and the extension to dynamically changing
+environments are also of interest.
+ACKNOWLEDGMENT
+The authors would like to thank the reviewers for their
+thoughtful and constructive remarks.
+REFERENCES
+
+Fig. 13. Trajectories of seven robots for the patrolling of a part of the UCSB
+campus. The viewpoints (red circles) are chosen so as to provide sensor coverage
+of the whole area. For the design of the patrolling trajectory, a roadmap is first
+constructed as described in Section II. Then, a path covering of cardinality 7 is
+computed with the procedure in [7], and each robot is assigned a different path.
+Finally, the trajectory of each robot consists in sweeping at maximum speed the
+tour obtained by shortcutting the assigned path. The refresh time of the proposed
+team trajectory is proven to be within a factor of 8 of the minimum refresh time
+for the given roadmap.
+
+Following Lemma 7.7, for any given roadmap and any number
+of robots, a team trajectory with refresh time within a factor of
+8 of the optimal refresh time can be constructed by computing a
+path covering of the roadmap, and by assigning a different path
+to each robot. An example is given in Fig. 13, a movie of which
+is included in the multimedia material.
+Remark 4 (Improving the Team Trajectory): Several existing heuristics can be used to improve upon the trajectories in
+Fig. 13. For instance, since the robots move in a metric space,
+shortcutting techniques may be applied [31]. Because these
+heuristics do not guarantee an improvement of the optimality
+gap of our trajectories, they are not considered in this paper, and
+they are left as the subject of future investigation.
+VIII. CONCLUSION AND FUTURE WORK
+The design of team trajectories to cooperatively patrol an environment has been discussed. After defining the problem and
+the performance criteria, we analyze the computational complexity of the design problem as a function of the shape of the
+environment to be patrolled. For the case of a chain environment, we describe a polynomial algorithm to compute minimum refresh time and latency team trajectories. For the case of
+a tree environment, under the technical assumption of a constant
+number of robots, we identify a polynomial time algorithm to
+compute minimum refresh time team trajectories. Finally, the
+general case of cyclic environment is shown to be NP-hard,
+and two approximation algorithms with performance guarantees have been proposed.
+Interesting aspects requiring further investigation include a
+throughout study of the latency optimization problem for cyclic
+roadmaps, the development of more efficient approximation algorithms, and the introduction of a more general communication framework, in which the robots are allowed to communicate
+
+[1] J. Clark and R. Fierro, “Mobile robotic sensors for perimeter detection
+and tracking,” ISA Trans., vol. 46, no. 1, pp. 3–13, 2007.
+[2] D. B. Kingston, R. W. Beard, and R. S. Holt, “Decentralized perimeter
+surveillance using a team of UAVs,” IEEE Trans. Robot., vol. 24, no. 6,
+pp. 1394–1404, Dec. 2008.
+[3] S. Susca, S. Mart´ınez, and F. Bullo, “Monitoring environmental boundaries
+with a robotic sensor network,” IEEE Trans. Control Syst. Technol.,
+vol. 16, no. 2, pp. 288–296, Mar. 2008.
+[4] Y. Elmaliach, A. Shiloni, and G. A. Kaminka, “A realistic model of
+frequency-based multi-robot polyline patrolling,” in Proc. Int. Conf. Auton. Agents, Estoril, Portugal, May 2008, pp. 63–70.
+[5] B. C. Tansel, R. L. Francis, and T. J. Lowe, “Location on networks:
+A survey. Part I: The p-center and p-median problems,” Manage. Sci.,
+vol. 29, no. 4, pp. 482–497, 1983.
+[6] T. Bektas, “The multiple traveling salesman problem: An overview of
+formulations and solution procedures,” Omega, vol. 34, no. 3, pp.
+209–219, 2006.
+[7] E. M. Arkin, R. Hassin, and A. Levin, “Approximations for minimum
+and min-max vehicle routing problems,” J. Algorithms, vol. 59, no. 1,
+pp. 1–18, 2006.
+[8] M. Batalin and G. S. Sukhatme, “The design and analysis of an efficient
+local algorithm for coverage and exploration based on sensor network
+deployment,” IEEE Trans. Robot., vol. 23, no. 4, pp. 661–675, Aug.
+2007.
+[9] N. Agmon, S. Kraus, and G. A. Kaminka, “Multi-robot perimeter patrol
+in adversarial settings,” in Proc. IEEE Int. Conf. Robot. Autom., Pasadena,
+CA, May. 2008, pp. 2339–2345.
+[10] F. Amigoni, N. Basilico, and N. Gatti, “Finding the optimal strategies for
+robotic patrolling with adversaries in topologically-represented environments,” in Proc. IEEE Int. Conf. Robot. Autom., Kobe, Japan, May 2009,
+pp. 2005–2010.
+[11] A. Marino, L. Parker, G. Antonelli, and F. Caccavale, “Behavioral control for multi-robot perimeter patrol: A finite state automata approach,”
+in Proc. IEEE Int. Conf. Robot. Autom., Kobe, Japan, May 2009, pp.
+3350–3355.
+¨
+[12] D. A. Anisi, P. Ogren,
+and X. Hu, “Cooperative minimum time surveillance
+with multiple ground vehicles,” IEEE Trans. Automat. Control, vol. 55,
+no. 12, pp. 2679–2691, Dec. 2010.
+[13] A. Almeida, G. Ramalho, H. Santana, P. Tedesco, T. Menezes, V.
+Corruble, and Y. Chevaleyre, “Recent advances on multi-agent patrolling,” in Advances in Artificial Intelligence—SBIA. vol. 3171, New
+York: Springer, 2004, pp. 474–483.
+[14] A. Machado, G. Ramalho, J. D. Zucker, and A. Drogoul, “Multi-agent
+patrolling: An empirical analysis of alternative architectures,” in MultiAgent-Based Simulation II (ser. Lecture Notes in Computer Science). New
+York: Springer, 2003, pp. 155–170.
+[15] Y. Chevaleyre, “Theoretical analysis of the multi-agent patrolling problem,” in Proc. IEEE/WIC/ACM Int. Conf. Intell. Agent Technol., Beijing,
+China, Sep. 2004, pp. 302–308.
+[16] S. L. Smith and D. Rus, “Multi-robot monitoring in dynamic environments
+with guaranteed currency of observations,” in Proc. IEEE Conf. Decis.
+Control, Atlanta, GA, Dec. 2010, pp. 514–521.
+[17] R. E. Korf, “Real-time heuristic search: New results,” in Proc. Nat. Conf.
+Artif. Intell., San Paul, MN, Aug. 1988, pp. 139–144.
+[18] G. Dudek, M. Jenkin, E. Milios, and D. Wilkes, “Robotic exploration
+as graph construction,” IEEE Trans. Robot. Autom., vol. 7, no. 6, pp.
+859–865, Dec. 1991.
+[19] M. A. Bender, A. Fern´andez, D. Ron, A. Sahai, and S. Vadhan, “The
+power of a pebble: Exploring and mapping directed graphs,” Inf. Comput.,
+vol. 176, no. 1, pp. 1–21, 2002.
+
+606
+
+[20] I. A. Wagner, M. Lindenbaum, and A. M. Bruckstein, “Efficiently searching a graph by a smell-oriented vertex process,” Ann. Math. Artif. Intell.,
+vol. 24, no. 1, pp. 211–223, 1998.
+[21] F. Pasqualetti, A. Franchi, and F. Bullo, “On optimal cooperative patrolling,” in Proc. IEEE Conf. Decis. Control, Atlanta, GA, Dec. 2010,
+pp. 7153–7158.
+[22] S. M. LaValle, Planning Algorithms. Cambridge, U.K.: Cambridge
+Univ. Press, 2006.
+[23] J. O’Rourke, Art Gallery Theorems and Algorithms. London, U.K.:
+Oxford Univ. Press, 1987.
+[24] K. J. Obermeyer, A. Ganguli, and F. Bullo, “Multi-agent deployment for
+visibility coverage in polygonal environments with holes,” Int. J. Robust
+Nonlinear Control, vol. 21, no. 12, pp. 1467–1492, 2011.
+[25] I. A. Wagner, M. Lindenbaum, and A. M. Bruckstein, “MAC vs. PC:
+Determinism and randomness as complementary approaches to robotic
+exploration of continuous unknown domains,” Int. J. Robot. Res., vol. 19,
+no. 1, pp. 12–31, 2000.
+[26] A. Franchi, L. Freda, G. Oriolo, and M. Vendittelli, “The sensor-based
+random graph method for cooperative robot exploration,” IEEE/ASME
+Trans. Mechatronics, vol. 14, no. 2, pp. 163–175, Apr. 2009.
+[27] M. R. Garey and D. S. Johnson, Computers and Intractability. New
+York: Springer, 1979.
+[28] S. Arora, “Polynomial-time approximation schemes for the Euclidean TSP
+and other geometric problems,” J. ACM, vol. 45, no. 5, pp. 753–782, 1998.
+[29] D. Peleg, Distributed Computing. A Locality-Sensitive Approac, (ser.
+Monographs on Discrete Mathematics and Applications). Philadelphia,
+PA: SIAM, 2000.
+[30] H. Nagamochi and K. Okada, “A faster 2-approximation algorithm for the
+minmax p-traveling salesmen problem on a tree,” Discrete Appl. Math.,
+vol. 140, no. 1–3, pp. 103–114, 2004.
+[31] V. V. Vazirani, Approximation Algorithms. New York: Springer, 2001.
+
+Fabio Pasqualetti (S’07) received the Laurea degree
+(summa cum laude) in computer engineering and the
+Laurea Magistrale degree (summa cum laude) in automation engineering from the University of Pisa,
+Pisa, Italy, in 2004 and 2007, respectively. He is currently working toward the Ph.D. degree in mechanical
+engineering with the University of California, Santa
+Barbara.
+His main research interests include secure control
+systems, with applications to multiagent networks,
+distributed computing, and power networks. His research interests also include vehicle routing and combinatorial optimization,
+with applications to distributed area patrolling and persistent surveillance.
+
+IEEE TRANSACTIONS ON ROBOTICS, VOL. 28, NO. 3, JUNE 2012
+
+Antonio Franchi (M’10) received the Laurea degree
+“summa cum laude” in electronic engineering in 2005
+and the Ph.D. degree in control and system theory in
+2009, both from “La Sapienza” University of Rome,
+Italy.
+He is a Research Scientist with the Max Planck Institute for Biological Cybernetics. His main research
+interests are in autonomous systems and robotics, including cooperative control and estimation, humanrobot bilateral shared control, and distributed planning for multi-robot systems.
+
+Francesco Bullo (F’10) received the Laurea degree
+(summa cum laude) in electrical engineering from the
+University of Padova, Padua, Italy, in 1994, and the
+Ph.D. degree in control and dynamical systems from
+the California Institute of Technology, Pasadena, in
+1999.
+From 1998 to 2004, he was an Assistant Professor
+with the Coordinated Science Laboratory, University
+of Illinois at Urbana-Champaign. He is currently a
+Professor with the Mechanical Engineering Department and the Center for Control, Dynamical Systems
+and Computation, University of California, Santa Barbara.
+Dr. Bullo is a recipient of the 2003 ONR Young Investigator Award and the
+2008 Outstanding Paper Award for the IEEE Control Systems Magazine.
+
+
