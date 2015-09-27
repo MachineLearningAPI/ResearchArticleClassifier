@@ -9,6 +9,7 @@ from django.http.response import HttpResponse
 from DatabaseParser.views import parseTextToDb
 from myapp.models import Document
 from DatabaseParser.wKNN import wKNN
+from DatabaseParser.NaiveBayes import NaiveBayes
 
 
 # Create your views here.
@@ -63,3 +64,17 @@ def populateWordDb(request):
                 files.append(pathName)
     parseTextToDb(files)
     return HttpResponse("All words Added!!!")
+
+def callBayesian(request):
+    docList = Document.objects.all()
+    l = len(docList)
+    revDocList = []
+    i = 0
+    while i<l:
+        revDocList.append(docList[l-i-1])
+        i += 1
+    document = revDocList[0]
+    classList =  NaiveBayes(str(document.docfile))
+    filename = str(document.docfile)
+    return HttpResponse('<br>for the file '+filename+' .The class list is: <br>'+str(classList))
+ 
