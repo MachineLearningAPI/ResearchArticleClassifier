@@ -35,5 +35,6 @@ urlpatterns += patterns('GUI.views',
     url(r'^generateText/$','trainingDataList'),
     url(r'^addWordToDb/$','populateWordDb'),
     url(r'^KNN/$','applyKNN'),
+    url(r'^Bayesian/$','callBayesian')
 )
 
