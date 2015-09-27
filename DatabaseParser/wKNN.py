@@ -7,9 +7,7 @@ import numpy as numpy
 import math as math
 from DatabaseParser.models import DocFreqTable, DocClass, WordTable
 from DatabaseParser.views import MAX_NUM_OF_WORDS_READ
-
-FREQ_THRESHOLD_PERCENT = 0.7
-
+from DatabaseParser.views import FREQ_THRESHOLD_PERCENT
 
 class Tuple:
     def __init__(self):
