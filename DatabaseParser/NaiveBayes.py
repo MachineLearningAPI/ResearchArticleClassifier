@@ -3,72 +3,100 @@ Created on Sep 22, 2015
 
 @author: Ashish Tilokani, Jaiwant Rawat
 '''
+import sys
+
 from DatabaseParser.models import DocFreqTable, DocClass, WordTable
+from DatabaseParser.views import FREQ_THRESHOLD_PERCENT
+from DatabaseParser.views import MAX_NUM_OF_WORDS_READ
+from math import log10
 
 def NaiveBayes(file):
+    
+    #Logging to a file
+    orig_stdout = sys.stdout
+    f = open('out.txt', 'w')
+    sys.stdout = f
+    
+    #Extract tokens from doc
+    #1. Select the first 300 words which
+    #2. Contains only letters (helps in removing meaningless tokens)
+    #3. Must not be a stop word
     fp = open(file,'r')
-    wordList = fp.read().split()
-    termFreq={} #dictionary for holding the words which occur in the test document
+    docCount = DocClass.objects.count()
+    print("Number of documents: ",docCount)
+    FREQ_THRESHOLD = docCount*FREQ_THRESHOLD_PERCENT   
     
-    for word in wordList:
-        termFreq[word]=1
+    W = fp.read().split()
+    cnt=0
+    processedW={}
+    for w_ in W:
+        w=w_.lower()
+        if not w.isalpha():
+            continue
+        if w in processedW.keys(): 
+            continue
+        #term occurs in a lot of documents
+        if DocFreqTable.objects.filter(docFreq__gte = FREQ_THRESHOLD,word=w).count()==1:
+            continue
         
-    #(term, docFrequency) pairs    
-    keyWords=DocFreqTable.objects.all() 	
+        processedW[w]=1
+        cnt += 1
+        if cnt == MAX_NUM_OF_WORDS_READ:
+            break
     
-    #List of all classes
-    classes = DocClass.objects.order_by.values('className').distinct()
-    
+    #List of all (className: "className") key value pairs
+    C = DocClass.objects.all().values('className').distinct()
     #number of classes
-    numClass=len(classes)
+    countC=len(C)
     
-    #(document, class) pairs
-    docTemp = DocClass.objects.all()
-    
-    #number of documents
-    docCount = len(docTemp)
-    
+    print("Number of classes: ",countC)
+
     #(probability,class) pairs
-    scores=[]    
+    scores=[]
+    
+    #number of terms
+    B=DocFreqTable.objects.all().count()   
+    
+    print("Number of terms: ",B) 
     
     #Outer Loop: for every class
-    for clas in classes: 
+    for c in C: 
         
-        #probClass is P(clas) - probability of clas
-        probClassCount = DocClass.objects.filter(className = clas)
-        probClass = len(probClassCount)/docCount
+        cName=c['className']
         
-        prob = probClass #prob is the probability of the test document of belonging to clas
-       
+        print("Calculating probabilities for class=",cName)
+        
+        #get all docs corresponding to current class
+        docsC = DocClass.objects.filter(className = cName).values("docName")
+        priorC = len(docsC)/docCount
+        prob = log10(priorC) #prob is the probability of the test document of belonging to clas
+        
+        #number of docs of current class in which a term of vocabulary cumulative for all terms
+        denC = WordTable.objects.filter(docName__in=docsC).count()
+        
         #Inner Loop: for every term
-        for tup in keyWords: #keywords-(word,document frequency)
+        for t in processedW.keys():
             
-            keys = tup.word
-            t = 0 
+            #number of docs of current class in which the current term appears
+            numC = WordTable.objects.filter(docName__in=docsC,word=t).select_related().count()
             
-            #t=1, whether in test document
-            if termFreq[keys]:
-                t = 1 
+            print("Using term=",t)
+            
+            #how much evidence does term provide that clas is the correct class        
           
-            listkey = WordTable.objects.filter(word=keys)
-          
-            #zero probability removal
-            countKeys = 1  
-          
-            for listkeytup in listkey: 
-                countKeys += len(DocClass.objects.filter(docName= listkeytup.docName))  
-          
-            if t==1:  
-                prob= prob * countKeys/(probClassCount+numClass)
-            else:
-                prob= prob * (1-(countKeys/(probClassCount+numClass)) )
+            prob= prob + log10( (1+numC)/(denC+B) )                
                                      
-        scores.append( (-prob,clas) )        
+        scores.append( (-prob,cName) )        
        
     scores.sort()
     
+    answer_list = []
+    
     #make the probabilities non negative again    
     for i in scores:
-        i[0]*=-1;
+        answer_list.append( ( -i[0], i[1] ) );
+    
+    sys.stdout = orig_stdout
+    f.close()
            
-    return scores
+    return answer_list
