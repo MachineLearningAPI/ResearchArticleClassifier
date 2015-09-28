@@ -5,6 +5,8 @@ Created On: 20th Sept 2015
 
 import subprocess
 import os
+import platform
+
 PDF_TO_TEXT = '../xpdfbin-win-3.04/bin64/pdftotext.exe'
 PDF_TO_TEXT_ubuntu = 'pdftotext'
 PATH_TO_DATASET = '../TrainingData/'
@@ -12,7 +14,10 @@ PDF_TO_TEXT_win = '..\\xpdfbin-win-3.04\\bin64\\pdftotext.exe'
 PATH_TO_DATASET_win = '..\\TrainingData\\'
 
 def pdfToText(path):
-    subprocess.call([PDF_TO_TEXT_ubuntu,path])
+    if platform.system()=='Linux':
+        subprocess.call([PDF_TO_TEXT_ubuntu,path])
+    else:
+        subprocess.call([PDF_TO_TEXT,path])
 
 
 def convertTextToPDF():
