@@ -1,0 +1,3750 @@
+Journal of Machine Learning Research 15 (2014) 217-252
+
+Submitted 10/11; Revised 5/13; Published 1/13
+
+Convex vs Non-Convex Estimators for Regression and
+Sparse Estimation: the Mean Squared Error Properties of
+ARD and GLasso
+Aleksandr Aravkin
+
+saravkin@us.ibm.com
+
+IBM T.J. Watson Research Center
+1101 Kitchawan Rd, 10598
+Yorktown Heights, NY, USA
+
+James V. Burke
+
+burke@math.washington.edu
+
+Department of Mathematics, Box 354350
+University of Washington
+Seattle, WA, 98195-4350 USA
+
+Alessandro Chiuso
+Gianluigi Pillonetto
+
+chiuso@dei.unipd.it
+giapi@dei.unipd.it
+
+Department of Information Engineering
+Via Gradenigo 6/A
+University of Padova
+Padova, Italy
+
+Editor: Francis Bach
+
+Abstract
+We study a simple linear regression problem for grouped variables; we are interested in
+methods which jointly perform estimation and variable selection, that is, that automatically
+set to zero groups of variables in the regression vector. The Group Lasso (GLasso), a well
+known approach used to tackle this problem which is also a special case of Multiple Kernel
+Learning (MKL), boils down to solving convex optimization problems. On the other hand,
+a Bayesian approach commonly known as Sparse Bayesian Learning (SBL), a version of
+which is the well known Automatic Relevance Determination (ARD), lead to non-convex
+problems. In this paper we discuss the relation between ARD (and a penalized version
+which we call PARD) and Glasso, and study their asymptotic properties in terms of the
+Mean Squared Error in estimating the unknown parameter. The theoretical arguments
+developed here are independent of the correctness of the prior models and clarify the
+advantages of PARD over GLasso.
+Keywords:
+Lasso, Group Lasso, Multiple Kernel Learning, Bayesian regularization,
+marginal likelihood
+
+1. Introduction
+We consider sparse estimation in a linear regression model where the explanatory factors
+θ ∈ Rm are naturally grouped so that θ is partitioned as θ = [θ(1)
+θ(2)
+. . . θ(p) ] .
+In this setting we assume that θ is group (or block) sparse in the sense that many of the
+constituent vectors θ(i) are zero or have a negligible influence on the output y ∈ Rn . In
+c 2014 Aleksander Aravkin, James V. Burke, Alessandro Chiuso and Gianluigi Pillonetto.
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+addition, we assume that the number of unknowns m is large, possibly larger than the
+size of the available data n. Interest in general sparsity estimation and optimization has
+attracted the interest of many researchers in statistics, machine learning, and signal processing with numerous applications in feature selection, compressed sensing, and selective
+shrinkage (Hastie and Tibshirani, 1990; Tibshirani, 1996; Donoho, 2006; Candes and Tao,
+2007). The motivation for our study of the group sparsity problem comes from the “dynamic
+Bayesian network” scenario identification problem (Chiuso and Pillonetto, 2012, 2010b,a).
+In a dynamic network scenario, the explanatory variables are the past histories of different
+input signals, with the groups θ(i) representing the impulse responses1 describing the relationship between the i-th input and the output y. This application informs our view of
+the group sparsity problem as well as our measures of success for a particular estimation
+procedure.
+Several approaches have been put forward in the literature for joint estimation and
+variable selection problems. We cite the well known Lasso (Tibshirani, 1996), Least Angle
+Regression (LAR) (Efron et al., 2004), their group versions Group Lasso (GLasso) and
+Group Least Angle Regression (GLAR) (Yuan and Lin, 2006), Multiple Kernel Learning
+(MKL) (Bach et al., 2004; Evgeniou et al., 2005; Pillonetto et al.). Methods based on
+hierarchical Bayesian models have also been considered, including Automatic Relevance
+Determination (ARD) (Mackay, 1994), the Relevance Vector Machine (RVM) (Tipping,
+2001), and the exponential hyperprior (Chiuso and Pillonetto, 2010b, 2012). The Bayesian
+approach considered by Chiuso and Pillonetto (2010b, 2012) is intimately related to that of
+Mackay (1994) and Tipping (2001); in fact the exponential hyperprior algorithm proposed
+by Chiuso and Pillonetto (2010b, 2012) is a penalized version of ARD (PARD) in which
+the prior on the groups θ(i) is adapted to the structural properties of dynamical systems.
+A variational approach based on the golden standard spike and slab prior, also called twogroups prior (Efron, 2008), has been also recently proposed by Titsias and Lzaro-Gredilla
+(2011).
+An interesting series of papers (Wipf and Rao, 2007; Wipf and Nagarajan, 2007; Wipf
+et al., 2011) provide a nice link between penalized regression problems like Lasso, also called
+type-I methods, and Bayesian methods (like RVM, Tipping, 2001 and ARD, Mackay, 1994)
+with hierarchical hyperpriors where the hyperparameters are estimated via maximizing the
+marginal likelihood and then inserted in the Bayesian model following the Empirical Bayes
+paradigm (Maritz and Lwin, 1989); these latter methods are also known as type-II methods
+(Berger, 1985). Note that this Empirical Bayes paradigm has also been recently used in the
+context of System Identification (Pillonetto and De Nicolao, 2010; Pillonetto et al., 2011;
+Chen et al., 2011).
+Wipf and Nagarajan (2007) and Wipf et al. (2011) argue that type-II methods have
+advantages over type-I methods; some of these advantages are related to the fact that, under
+suitable assumptions, the former can be written in the form of type-I with the addition of a
+non-separable penalty term (a function g(x1 , .., xn ) is non-separable if it cannot be written
+as g(x1 , .., xn ) = ni=1 h(xi )). The analysis of Wipf et al. (2011) also suggests that in the low
+noise regime the type-II approach results in a “tighter” approximation to the 0 norm. This
+is supported by experimental evidence showing that these Bayesian approaches perform
+1. Impulse responses may, in principle, be infinite dimensional.
+
+218
+
+Hyperparameter Group Lasso
+
+well in practice. Our experience is that the approach based on the marginal likelihood is
+particularly robust w.r.t. noise regardless of the “correctness” of the Bayesian prior.
+Motivated by the strong performance of the exponential hyperprior approach introduced
+in the dynamic network identification scenario (Chiuso and Pillonetto, 2010b, 2012), we
+provide some new insights clarifying the above issues. The main contributions are as follows:
+(i) We first provide some motivating examples which illustrate the superiority of PARD
+(and also of ARD) over GLasso both in terms of selection (i.e., detecting block of
+zeros in θ) as well as in estimation (i.e., reconstructing the non zero blocks).
+(ii) Theoretical findings explaining the reasons underlying the superiority of PARD over
+GLasso are then provided. In particular, all the methods are compared in terms
+of optimality (KKT) conditions, and tradeoffs between sparsity and shrinkage are
+studied.
+(iii) We then consider a non-Bayesian point of view, in which the estimation error is
+measured in terms of the Mean Squared Error, in the vein of Stein-estimators (James
+and Stein, 1961; Efron and Morris, 1973; Stein, 1981). The properties of Empirical
+Bayes estimators, which form the basis of the computational schemes, are studied in
+terms of their Mean Square Error properties; this is first established in the simplest
+case of orthogonal regressors and then extended to more general cases allowing for the
+regressors to be realizations from (possibly correlated) stochastic processes. This, of
+course, is of paramount importance for the system identification scenario studied by
+Chiuso and Pillonetto (2010b, 2012).
+Our analysis avoids assumptions on the correctness of the priors which define the
+stochastic model and clarifies why PARD is likely to provide sparser and more accurate
+estimates in comparison with GLasso (MKL). As a consequence of this analysis, our
+study clarifies the asymptotic properties of ARD.
+Before we proceed with these results, we need to establish a common framework for
+these estimators (GLasso/MKL and PARD); this mostly uses results from the literature,
+which are recalled without proof in order to make the paper as self contained as possible.
+The paper is organized as follows. In Section 2 we provide the problem statement while
+in Section 3 PARD and GLasso (MKL) are introduced in a Bayesian framework. Section
+4 illustrates the advantages of PARD over GLasso using a simple example and two Monte
+Carlo studies. In Section 5 the Mean Squared Error properties of the Empirical Bayes
+estimators are studied, including their asymptotic behavior. Some conclusions end the
+paper while the Appendix gathers the proofs of the main results.
+
+2. Problem Statement
+We consider a linear model y = Gθ +v where the explanatory factors G used to predict y are
+grouped (and non-overlapping). As such we partition θ into p sub-vectors θ(i) , i = 1, . . . , p,
+so that
+θ = [θ(1)
+
+θ(2)
+
+...
+219
+
+θ(p) ] .
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+a)
+
+b)
+
+"
+
+!
+
+!
+
+"1
+
+…
+
+"m
+
+!
+
+…
+
+"1
+
+"p
+…
+
+…
+
+"1
+
+!
+
+"2
+
+"
+
+"
+!2
+
+…
+
+"m
+!
+
+"1
+
+…
+
+"k1
+
+…
+
+"
+
+…
+
+!
+
+v
+
+m + 1" k p
+
+!
+
+"m
+
+!
+
+!
+
+!
+
+!
+
+y
+
+!
+
+!v
+
+!
+
+!
+
+y
+
+Figure 1: Bayesian networks describing the stochastic model for group sparse estimation
+
+!
+
+!
+
+!
+
+For i = 1, . . . , p, assume that the sub-vector θ(i) has dimension ki so that m = pi=1 ki .
+Next, conformally partition the matrix G = [G(1) , . . . , G(p) ] to obtain the measurement
+model
+p
+
+G(i) θ(i) + v.
+
+y = Gθ + v =
+
+(1)
+
+i=1
+
+In what follows, we assume that θ is block sparse in the sense that many of the blocks θ(i)
+are zero, that is, with all of their components equal to zero, or have a negligible effect on y.
+Our problem is to estimate θ from y while also detecting the null blocks of θ(i) .
+
+3. Estimators Considered
+The purpose of this Section is to place the estimators we consider (GLasso/MKL and PARD)
+in a common framework that unifies the analysis. The content of the section is a collection
+of results taken from the literature which are stated without proof; the readers are referred
+to previous works for details which are not relevant to our paper’s goal.
+3.1 Bayesian Model for Sparse Estimation
+Figure 1 provides a hierarchical representation of a probability density function useful for
+establishing a connection between the various estimators considered in this paper. In particular, in the Bayesian network of Figure 1, nodes and arrows are either dotted or solid
+depending on whether the quantities/relationships are deterministic or stochastic, respectively. Here, λ denotes a vector whose components {λi }pi=1 are independent and identically
+distributed exponential random variables with probability density
+pγ (λi ) = γe−γλi χ(λi )
+220
+
+Hyperparameter Group Lasso
+
+where γ is a positive scalar and
+t≥0
+elsewhere.
+
+1,
+0,
+
+χ(t) =
+
+In addition, let N (µ, Σ) be the Gaussian density of mean µ and covariance Σ while, given a
+generic k, we use Ik to denote the k × k identity matrix. Then, conditional on λ, the blocks
+θ(i) of the vector θ are all mutually independent and each block is zero-mean Gaussian with
+covariance λi Iki , i = 1, .., p, that is,
+θ(i) |λi ∼ N (0, λi Iki ).
+The measurement noise is also Gaussian, that is,
+v ∼ N (0, σ 2 In ).
+3.2 Penalized ARD (PARD)
+We introduce a sparse estimator, denoted by PARD in the sequel, cast in the framework
+of the Type II Bayesian estimators and consisting of a penalized version of ARD (Mackay,
+1994; Tipping, 2001; Wipf and Nagarajan, 2007). It is derived from the Bayesian network
+depicted in Figure 1 as follows. First, the marginal density of λ is optimized, that is, we
+compute
+ˆ = arg max
+λ
+p(θ, λ|y)dθ.
+λ∈Rp+
+
+Rm
+
+ˆ that is, the minimum
+Then, using an empirical Bayes approach, we obtain E[θ|y, λ = λ],
+variance estimate of θ with λ taken as known and set to its estimate. The structure of
+the estimator is detailed in the following proposition (whose proof is straightforward and
+therefore omitted).
+Proposition 1 (PARD) Define
+
+Σy (λ) := GΛG + σ 2 I,
+
+(2)
+
+Λ := blockdiag({λi Iki }).
+
+(3)
+
+Then, the estimator θˆP A of θ obtained from PARD is given by
+ˆ = arg min 1 log det(Σy (λ)) + 1 y Σ−1 (λ)y + γ
+λ
+y
+2
+λ∈Rp+ 2
+
+p
+
+λi ,
+
+(4)
+
+i=1
+
+ˆ −1 y.
+ˆ
+θˆP A = ΛG
+(Σy (λ))
+
+(5)
+
+ˆ in (4).
+ˆ is defined as in (3) with each λi replaced by the i-th component of λ
+where Λ
+
+221
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+One can see from (4) and (5) that the proposed estimator reduces to ARD if γ = 0.2 In
+this case, the special notation θˆA is used to denote the resulting estimator, that is,
+ˆ = arg min 1 log det(Σy (λ)) + 1 y Σ−1 (λ)y,
+λ
+y
+2
+λ∈Rp+ 2
+ˆ −1 y
+ˆ
+θˆA = ΛG
+(Σy (λ))
+
+(6)
+(7)
+
+ˆ is defined as in (3) with each λi replaced by the i-th
+where Σy is defined in (2), and Λ
+ˆ in (6).
+component of the λ
+Observe that the objective in (4) is not convex in λ. Letting the vector µ denote the
+dual vector for the constraint λ ≥ 0, the Lagrangian is given by
+L(λ, µ) :=
+
+1
+2
+
+log det(Σy (λ)) + 21 y Σy (λ)−1 y + γ1 λ − µ λ.
+
+Using the fact that
+∂λi L(λ, µ) =
+−
+
+1
+tr G(i) Σy (λ)−1 G(i)
+2
+1
+y Σy (λ)−1 G(i) G(i) Σy (λ)−1 y + γ − µi ,
+2
+
+we obtain the following KKT conditions for (4).
+Proposition 2 (KKT for PARD) The necessary conditions for λ to be a solution of (4)
+are
+Σy = σ 2 I + pi=1 λi G(i) G(i) ,
+W Σy = I,
+(8)
+tr G(i) W G(i) − G(i) W y 22 + 2γ − 2µi = 0, i = 1, . . . , p,
+µi λi = 0, i = 1, . . . , p,
+0 ≤ µ, λ.
+3.3 Group Lasso (GLasso) and Multiple Kernel Learning (MKL)
+A leading approach for the block sparsity problem is the Group Lasso (GLasso) (Yuan
+and Lin, 2006) which determines the estimate of θ as the solution of the following convex
+problem
+p
+(y − Gθ) (y − Gθ)
+θˆGL = arg minm
++
+γ
+θ(i) ,
+(9)
+GL
+θ∈R
+2σ 2
+i=1
+
+where · denotes the classical Euclidean norm. Now, let φ be the Gaussian vector with
+independent components of unit variance such that
+θi =
+
+λ i φi .
+
+(10)
+
+We partition φ conformally with θ, that is,
+φ = φ(1)
+
+φ(2)
+
+...
+
+φ(p)
+
+.
+
+(11)
+
+2. Strictly speaking, what is called ARD in this paper corresponds to a group version of the original
+estimator discussed in Mackay (1994). A perfect correspondence is obtained when the dimension of each
+block is equal to one, that is, ki = 1 ∀i.
+
+222
+
+Hyperparameter Group Lasso
+
+Then, interestingly, GLasso can be derived from the same Bayesian model in Figure 1
+underlying PARD considering φ and λ as unknown variables and computing their maximum
+a posteriori (MAP) estimates. This is illustrated in the following proposition which is just
+a particular instance of the known relationship between regularization on kernel weights
+and block-norm based regularization. In particular, it establishes the known equivalence
+between GLasso and Multiple Kernel Learning (MKL) when linear models of the form (1)
+are considered, see the more general Theorem 1 of Tomioka and Suzuki (2011) for other
+details.
+Proposition 3 (GLasso and its equivalence with MKL) Consider the joint density
+ˆ and φˆ denote,
+of φ and λ conditional on y induced by the Bayesian network in Figure 1. Let λ
+respectively, the maximum a posteriori estimates of λ and φ (obtained by optimizing their
+joint density). Then, for every γGL in (9) there exists γ such that the following equalities
+hold
+
+−1
+ˆ = arg min y (Σy (λ)) y + γ
+λ
+p
+2
+λ∈R+
+
+φˆ(i) =
+
+ˆ i G(i) (Σy (λ))
+ˆ −1 y,
+λ
+
+(i)
+θˆGL =
+
+ˆ i φˆ(i) .
+λ
+
+p
+
+λi ,
+
+(12)
+
+i=1
+
+(13)
+
+We warn the reader that MKL is more general than GLasso since it also embodies estimation
+in infinite dimensional models; yet in this paper we use interchangeably the nomenclature
+GLasso and MKL since they are equivalent for the considered model class.
+Comparing Propositions 1 and 3, one can see that the sole difference between PARD
+and GLasso relies on the estimator for λ. In particular, notice that the objectives (12) and
+(4) differ only in the term 21 log det(Σy ) appearing in the PARD objective (4). This is the
+component that makes problem (4) non-convex but also the term that forces PARD to favor
+sparser solutions than GLasso (MKL), making the marginal density of λ more concentrated
+around zero. On the other hand, (12) is a convex optimization problem whose associated
+KKT conditions are reported in the following proposition.
+Proposition 4 (KKT for GLasso and MKL) The necessary and sufficient conditions
+for λ to be a solution of (12) are
+K(λ) = pi=1 λi G(i) G(i) ,
+Σy = K(λ) + σ 2 I,
+W Σy = I,
+− G(i) W y 22 + 2γ − 2µi = 0,
+µi λi = 0, i = 1, . . . , p,
+0 ≤ µ, λ.
+
+223
+
+i = 1, . . . , p,
+
+(14)
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+Remark 5 (The LASSO case) When all the blocks are one-dimensional, the estimator
+(9) reduces to Lasso and we denote the regularization parameter and the estimate by γL and
+θˆL , respectively. In this case, it is possible to obtain a derivation through marginalization.
+In fact, given the Bayesian network in Figure 1 with all the ki = 1 and letting
+θˆ = arg max
+m
+θ∈R
+
+p(θ, λ|y)dλ,
+Rm
++
+
+√
+it follows from Section 2 in Park and Casella (2008) that θˆ = θˆL provided that γL = 2γ.
+
+4. Comparing PARD And GLasso (MKL): Motivating Examples
+In this section, we present a sparsity vs. shrinkage example, and a Monte Carlo simulation
+to demonstrate advantages of the PARD estimator over GLasso.
+4.1 Sparsity vs. Shrinkage: A Simple Experiment
+It is well known that the 1 penalty in Lasso tends to induce an excessive shrinkage of
+“large” coefficients in order to obtain sparsity. Several variations have been proposed in
+the literature in order to overcome this problem, including the so called Smoothly-ClippedAbsolute-Deviation (SCAD) estimator (Fan and Li, 2001) and re-weighted versions of 1 like
+the adaptive Lasso (Zou, 2006). We now study the tradeoffs between sparsity and shrinking
+for PARD. By way of introduction to the more general analysis in the next section, we first
+compare the sparsity conditions for PARD and GLasso (or, equivalently, MKL) in a simple,
+yet instructive, two group example. In this example, it is straightforward to show that
+PARD guarantees a more favorable tradeoff between sparsity and shrinkage, in the sense
+that it induces greater sparsity with the same shrinkage (or, equivalently, for a given level
+of sparsity it guarantees less shrinkage).
+Consider two groups of dimension 1, that is,
+y = G(1) θ(1) + G(2) θ(2) + v
+
+y ∈ R2 , θ(1) , θ(2) ∈ R,
+
+where G(1) = [1 δ] , G(2) = [0 1] , v ∼ N (0, σ 2 ). Assume that the true parameter θ¯
+satisfies: θ¯(1) = 0, θ¯(2) = 1. Our goal is to understand how the hyperparameter γ influences
+sparsity and the estimates of θ(1) and θ(2) using PARD and GLasso. In particular, we
+would like to determine which values of γ guarantee that θˆ(1) = 0 and how the estimator
+θˆ(2) varies with γ. These questions can be answered by using the KKT conditions obtained
+in Propositions 2 and 4.
+ˆ P A = 0 and λ
+ˆ P A ≥ 0 to be the
+Let y := [y1 y2 ] . By (8), the necessary conditions for λ
+1
+2
+hyperparameter estimators for the PARD estimator (for fixed γ = γP A ) are
+2γP A ≥
+
+y1
+σ2
+
++
+
+δy2
+ˆP A
+σ 2 +λ
+2
+
+2
+
+−
+
+1
+σ2
+
++
+
+δ
+ˆP A
+σ 2 +λ
+2
+
+(15)
+
+√
+
+ˆ P A = max
+λ
+2
+
+−1+
+
+and
+
+1+8γP A y22
+4γP A
+
+224
+
+− σ2, 0 .
+
+Hyperparameter Group Lasso
+
+ˆ GL = 0 and λ
+ˆ GL ≥ 0 to be the estimators
+Similarly, by (14), the same conditions for λ
+1
+2
+obtained using GLasso read as (for fixed γ = γGL ):
+2γGL ≥
+
+y1
+σ2
+
+ˆ GL = max
+λ
+2
+
++
+
+δy2
+ˆ GL
+σ 2 +λ
+2
+
+|y |
+√ 2
+2γGL
+
+2
+
+and
+(16)
+
+− σ2, 0 .
+
+Note that it is always the case that the lower bound for γGL is strictly greater than the
+ˆP A ≤ λ
+ˆ GL when γP A = γGL , where the inequality is strict
+lower bound for γP A and that λ
+2
+2
+GL
+ˆ
+whenever λ2 > 0. The corresponding estimators for θˆ(1) and θˆ(2) are
+(1)
+(1)
+θˆP A = θˆGL = 0,
+(2)
+θˆP A =
+
+ˆ P A y2
+λ
+2
+ˆP A
+σ 2 +λ
+2
+
+and
+
+(2)
+θˆGL =
+
+ˆ GL y2
+λ
+2
+ˆ GL
+σ 2 +λ
+2
+
+.
+
+(2)
+(2)
+ˆ GL > 0. However, it is clear that the lower
+Hence, |θˆP A | < |θˆGL | whenever y2 = 0 and λ
+2
+bounds on γ in (15) and (16) indicate that γGL needs to be larger than γP A in order to set
+ˆ 2 and
+ˆ GL = 0 (and hence θˆ(1) = 0). Of course, having a larger γ tends to yield smaller λ
+λ
+1
+GL
+hence more shrinking on θˆ(2) . This is illustrated in Figure 2 where we report the estimators
+(2)
+(2)
+θˆP A (solid) and θˆGL (dotted) for σ 2 = 0.005, δ = 0.5. The estimators are arbitrarily set to
+zero for the values of γ which do not yield θˆ(1) = 0. In particular from (15) and (16) we find
+(1)
+(1)
+that PARD sets θˆP A = 0 for γP A > 5 while GLasso sets θˆGL = 0 for γGL > 20. In addition,
+(2)
+it is clear that MKL tends to yield greater shrinkage on θˆGL (recall that θ¯(2) = 1).
+
+4.2 Monte Carlo Studies
+We consider two Monte Carlo studies of 1000 runs. For each run a data set of size n = 100
+is generated using the linear model (1) with p = 10 groups, each composed of ki = 4
+parameters. For each run, 5 of the groups θ(i) are set to zero, one is always taken different
+from zero while each of the remaining 4 groups θ(i) are set to zero with probability 0.5. The
+components of every block θ(i) not set to zero are independent realizations from a uniform
+distribution on [−ai , ai ] where ai is an independent realization (one for each block) from
+a uniform distribution on [0, 100]. The value of σ 2 is the variance of the noiseless output
+divided by 25. The noise variance is estimated at each run as the sum of the residuals from
+the least squares estimate divided by n − m. The two experiments differ in the way the
+columns of G are generated at each run.
+1. In the first experiment, the entries of G are independent realizations of zero mean
+unit variance Gaussian noise.
+2. In the second experiment the columns of G are correlated, being defined at every run
+by
+Gi,j = Gi,j−1 + 0.2vi,j−1 ,
+vi,j ∼ N (0, 1)
+225
+
+i = 1, .., n,
+
+j = 2, .., m,
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+0.9
+
+PARD
+GLASSO
+
+0.8
+
+0.7
+
+0.6
+
+θˆ2
+
+0.5
+
+0.4
+
+0.3
+
+0.2
+
+0.1
+
+0
+0
+
+5
+
+10
+
+15
+
+20
+
+γ
+
+25
+
+30
+
+Figure 2: Estimators θˆ(2) as a function of γ. The curves are plotted only for the values of γ
+which yield also θˆ(1) = 0 (different for PARD (γP A > 5) and MKL (γGL > 20)).
+
+Relative errors − experiment #1
+
+Relative errors − experiment #2
+
+0.4
+
+0.8
+
+0.35
+
+0.7
+
+0.3
+
+0.6
+
+0.25
+
+0.5
+
+0.2
+
+0.4
+
+0.15
+
+0.3
+
+0.1
+
+0.2
+
+0.05
+
+0.1
+
+0
+
+0
+ARD
+
+PARD
+
+GLasso
+
+ARD
+
+PARD
+
+GLasso
+
+Figure 3: Boxplot of the relative errors in the reconstruction of θ obtained by the 2 nonconvex estimators ARD and PARD and by the convex estimator GLasso (MKL)
+after the 1000 Monte Carlo runs in Experiment #1 (left panel) and #2 (right
+panel).
+
+226
+
+Hyperparameter Group Lasso
+
+where vi,j are i.i.d. (as i and j vary) zero mean unit variance Gaussian and Gi,1 are
+i.i.d. zero mean unit variance Gaussian random variables. Note that correlated inputs
+renders the estimation problem more challenging.
+Define κ
+ˆ ∈ R as the optimizer of the ARD objective (6) under the constraint κ = λ1 =
+. . . = λp . Then, we define the following 3 estimators.
+• ARD. The estimate θA is obtained by (6,7) using λ1 = . . . = λp = κ
+ˆ as starting point
+to solve (7) .
+• PARD. The estimate θP A is obtained by (4,5) using cross validation to determine the
+regularization parameter γ. In particular, data are split into a training and validation
+set of equal size and the grid used by the cross validation procedure to select γ contains
+30 elements logarithmically distributed between 10−2 × κ
+ˆ −1 and 104 × κ
+ˆ −1 . For each
+value of γ, (6) is solved using λ1 = λ2 = . . . = λp = κ
+ˆ as starting point. Finally, θP A
+is obtained using the full data set fixing the regularization parameter to its estimate.
+• GLasso (MKL). The estimate θGL is obtained by (12-13) using the same cross
+validation strategy adopted by PARD to determine γ.
+The three estimators described above are compared using the two performance indexes
+listed below:
+1. Relative error: this is computed at each run as
+θˆ − θ
+θ
+where θˆ is the estimator of θ.
+2. Percentage of the blocks equal to zero correctly set to zero by the estimator after the
+1000 runs.
+The left and right panel of Figure 3 displays the boxplots of the 1000 relative errors obtained
+by the three estimators in the first and second experiment, respectively. The average relative
+error is also reported in Table 1. It is apparent that the performance of PARD and ARD
+is similar and that both of these non convex estimators outperform GLasso. Interestingy,
+in both of the experiments ARD and PARD return a reconstruction error smaller that that
+achieved by GLasso in more than 900 out of the 1000 runs.
+In Table 2 we report the sparsity index. One can see that PARD exhibits the best
+performance, setting almost 75% of the blocks correctly to zero in the first and second
+experiment, respectively, while the performance of ARD is close to 67%. In contrast, GLasso
+(MKL) correctly set to zero no more than 40% of the blocks in each experiment.
+Remark 6 (Projected Quasi-Newton Method) We now comment on the optimization of (4). The same arguments reported below also apply to the objectives (6) and (12)
+which are just simplified versions of (4).
+227
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+Experiment #1
+Experiment #2
+
+ARD
+0.097
+0.151
+
+PARD
+0.090
+0.144
+
+GLasso
+0.138
+0.197
+
+Table 1: Comparison with MKL/GLasso (section 4.2). Average relative errors obtained by
+the three estimators.
+
+Experiment #1
+Experiment #2
+
+ARD
+66.7%
+66.6%
+
+PARD
+74.5%
+74.6%
+
+GLasso
+35.5%
+39.7%
+
+Table 2: Comparison with MKL/GLasso (section 4.2). Percentage of the θ(i) equal to zero
+correctly set to zero by the four estimators.
+
+We notice that (4) is a differentiable function of λ. The computation of its derivative
+requires a one time evaluation of the matrices G(i) G(i) , i = 1, . . . , p. However, for each new
+value of λ, the inverse of the matrix Σy (λ) also needs to be computed. Hence, the evaluation
+of the objective and its derivative may be costly since it requires computing the inverse of
+a possibly large matrix as well as large matrix products. On the other hand, the dimension
+of the parameter vector λ can be small, and projection onto the feasible set is trivial. We
+experimented with several methods available in the Matlab package minConf to optimize (4).
+In these experiments, the fastest method was the limited memory projected quasi-Newton
+algorithm detailed in Schmidt et al. (2009). It uses L-BFGS updates to build a diagonal
+plus low-rank quadratic approximation to the function, and then uses the Projected QuasiNewton Method to minimize a quadratic approximation subject to the original constraints to
+obtain a search direction. A backtracking line search is applied to this direction terminating
+at a step-size satisfying a Armijo-like sufficient decrease condition. The efficiency of the
+method derives in part from the simplicity of the projections onto the feasible region. We
+have also implemented the re-weighted method described by Wipf and Nagarajan (2007).
+In all the numerical experiments described above, we have assessed that it returns results
+virtually identical to those achieved by our method, with a similar computational effort. It
+is worth recalling that both the projected quasi-Newton method and the re-weighted approach
+guarantee convergence only to a stationary point of the objective.
+4.3 Concluding Remarks
+The results in this section suggest that, when using GLasso, a suitable regularization parameter γ which does not induce oversmoothing (large bias) in θˆ is not sufficiently large
+to induce “enough” sparsity. This drawback does not affect the nonconvex estimators. In
+addition, PARD and ARD seem to have the additional advantage of selecting the regularization parameters leading to more favorable Mean Squared Error (MSE) properties for the
+228
+
+Hyperparameter Group Lasso
+
+reconstruction of the non zero blocks. The rest of the paper will be devoted to derivation
+of theoretical arguments supporting the intuition gained from these examples.
+
+5. Mean Squared Error Properties of PARD and GLasso (MKL)
+In this Section we evaluate the performance of an estimator θˆ using its MSE, that is, the
+expected quadratic loss
+tr E
+
+θˆ − θ
+
+θˆ − θ
+
+λ, θ = θ¯
+
+,
+
+where θ¯ is the true but unknown value of θ. When we speak about “Bayes estimators” we
+ˆ
+think of estimators of the form θ(λ)
+:= E [θ | y, λ] computed using the probabilistic model
+Figure 1 with γ fixed.
+5.1 Properties Using “Orthogonal” Regressors
+We first derive the MSE formulas under the simplifying assumption of orthogonal regressors
+(G G = nI) and show that the Empirical Bayes estimator converges to an optimal estimator
+in terms of its MSE. This fact has close connections to the so called Stein estimators (James
+and Stein, 1961; Stein, 1981; Efron and Morris, 1973). The same optimality properties are
+attained, asymptotically, when the columns of G are realizations of uncorrelated processes
+having the same variance. This is of interest in the system identification scenario considered
+by Chiuso and Pillonetto (2010a,b, 2012) since it arises when one performs identification
+with i.i.d. white noises as inputs. We then consider the more general case of correlated
+regressors (see Section 5.2) and show that essentially the same result holds for a weighted
+version of the MSE.
+In this section, it is convenient to introduce the following notation:
+¯
+Ev [ · ] := E[ · | λ, θ = θ]
+
+and
+
+¯
+Varv [ · ] := E[ · | λ, θ = θ].
+
+ˆ
+We now report an expression for the MSE of the Bayes estimators θ(λ)
+:= E [θ | y, λ] (the
+proof follows from standard calculations and is therefore omitted).
+Proposition 7 Consider the model (1) under the probabilistic model described in Figˆ
+ure 1(b). The Mean Squared Error of the Bayes estimator θ(λ)
+:= E [θ|y, λ] given λ and
+θ = θ¯ is
+ˆ − θ)(θ(λ)
+ˆ − θ)
+M SE(λ) = tr Ev (θ(λ)
+= tr σ 2 G G + σ 2 Λ−1
+= tr σ 2 ΛG G + σ 2
+
+−1
+
+−1
+
+G G + σ 2 Λ−1 θ¯θ¯ Λ−1
+
+ΛG GΛ + σ 2 θ¯θ¯
+
+G G + σ 2 Λ−1
+
+G GΛ + σ 2
+
+−1
+
+(17)
+
+−1
+
+.
+
+We can now minimize the expression for M SE(λ) given in (17) with respect to λ to
+obtain the optimal minimum mean squared error estimator. In the case where G G = nI
+this computation is straightforward and is recorded in the following proposition.
+229
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+Corollary 8 Assume that G G = nI in Proposition 7. Then MSE(λ) is globally minimized
+by choosing
+θ¯(i) 2
+, i = 1, . . . , p.
+λi = λopt
+:=
+i
+ki
+Next consider the Maximum a Posteriori estimator of λ again under the simplifying
+assumption G G = nI. Note that, under the noninformative prior (γ = 0), this Maximum
+a Posteriori estimator reduces to the standard Maximum (marginal) Likelihood approach
+to estimating the prior distribution of θ. Consequently, we continue to call the resulting
+procedure Empirical Bayes (a.k.a. Type-II Maximum Likelihood (Berger, 1985)).
+Proposition 9 Consider model (1) under the probabilistic model described in Figure 1(b),
+and assume that G G = nI. Then the estimator of λi obtained by maximizing the marginal
+posterior p(λ|y),
+ˆ 1 (γ), ..., λ
+ˆ p (γ)} := arg max p(λ|y) = arg max
+{λ
+p
+p
+λ∈R+
+
+λ∈R+
+
+p(y, θ|λ)pγ (λ) dθ,
+
+is given by
+ˆ i (γ) = max 0, 1
+λ
+4γ
+where
+
+(i)
+ki2 + 8γ θˆLS
+
+2
+
+1
+(i)
+θˆLS =
+G(i)
+n
+
+− ki +
+
+4σ 2 γ
+n
+
+,
+
+(18)
+
+y
+
+is the Least Squares estimator of the i−th block θ(i) . As γ → 0 (γ = 0 corresponds to an
+improper flat prior) the expression (18) yields:
+ˆ i (γ) = max 0,
+lim λ
+
+γ→0
+
+(i)
+θˆLS
+ki
+
+2
+
+−
+
+σ2
+n
+
+.
+
+ˆ i (γ) = 0 | θ = θ]
+¯ of setting λ
+ˆ i = 0 is given by
+In addition, the probability P[λ
+ˆ i (γ) = 0 | θ = θ]
+¯ = P χ2 ki , θ¯(i)
+P[λ
+
+2
+
+n
+σ2
+
+≤
+
+ki + 2γ
+
+σ2
+n
+
+,
+
+(19)
+
+where χ2 (d, µ) denotes a noncentral χ2 random variable with d degrees of freedom and
+noncentrality parameter µ.
+ˆ i (γ) in Proposition 9 has the form of a “saturation”. In
+Note that the expression of λ
+particular, for γ = 0, we have
+ˆ i (0) = max(0, λ
+ˆ ∗ ),
+λ
+i
+
+where
+
+(i)
+θˆLS
+∗
+ˆ
+λi :=
+ki
+
+2
+
+−
+
+σ2
+.
+n
+
+(20)
+
+ˆ ∗ is an unbiased and
+The following proposition shows that the “unsaturated” estimator λ
+i
+ˆ i (0) is only
+consistent estimator of λopt
+which
+minimizes
+the
+Mean
+Squared
+Error
+while λ
+i
+asymptotically unbiased and consistent.
+230
+
+Hyperparameter Group Lasso
+
+ˆ ∗ := {λ∗ , .., λ∗ } in (20)
+Corollary 10 Under the assumption G G = nI, the estimator of λ
+p
+1
+opt
+is an unbiased and mean square consistent estimator of λ
+which minimizes the Mean
+ˆ
+Squared Error, while λ(0)
+:= {λ1 (0), .., λp (0)} is asymptotically unbiased and consistent,
+that is:
+ˆ ∗ | θ = θ]
+¯ = λopt
+ˆ i (0) | θ = θ]
+¯ = λopt
+E[λ
+lim E[λ
+i
+i
+i
+n→∞
+
+and
+opt
+ˆ ∗ m.s.
+lim λ
+i = λi
+
+n→∞
+
+ˆ i (0) m.s.
+lim λ
+= λopt
+i
+
+n→∞
+
+(21)
+
+m.s.
+
+where = denotes convergence in mean square.
+Remark 11 Note that if θ¯(i) = 0, the optimal value λopt
+is zero. Hence (21) shows that
+i
+ˆ i (0) converges to zero. However, in this case, it is easy to see from (19)
+asymptotically λ
+that
+ˆ i (0) = 0 | θ = θ]
+¯ < 1.
+lim P[λ
+n→∞
+
+There is in fact no contradiction between these two statements because one can easily show
+that for all > 0,
+ˆ i (0) ∈ [0, ) | θ = θ]
+¯ n→∞
+P[λ
+−→ 1.
+ˆ i (γ) = 0 | θ = θ]
+¯ = 1 one must chose γ = γn so that
+In order to guarantee that limn→∞ P[λ
+2
+2 σn γn → ∞, with γn growing faster than n. This is in line with the well known requirements
+for Lasso to be model selection consistent. In fact, recalling remark 5, the link between γ and
+√
+the regularization parameter γL for Lasso is given by γL = 2γ. The condition n−1 γn → ∞
+translates into n−1/2 γLn → ∞, a well known condition for Lasso to be model selection
+consistent (Zhao and Yu, 2006; Bach, 2008).
+The results obtained so far suggest that the Empirical Bayes resulting from PARD has
+desirable properties with respect to the MSE of the estimators. One wonders whether
+the same favorable properties are inherited by MKL or, equivalently, by GLasso. The
+next proposition shows that this is not the case. In fact, for θ¯(i) = 0, MKL does not yield
+(i) = 0, the probability of setting λ
+ˆ i (γ) to zero
+consistent estimators for λopt
+i ; in addition, for θ
+(see Equation (24)) is much smaller than that obtained using PARD (see Equation (19));
+this is illustrated in Figure 4 (top). Also note that, as illustrated in Figure 4 (bottom),
+ˆ than those
+when the true θ¯ is equal to zero, MKL tends to give much larger values of λ
+ˆ
+given by PARD. This results in larger values of θ (see Figure 4).
+Proposition 12 Consider model (1) under the probabilistic model described in Figure 1(b),
+and assume G G = nI. Then the estimator of λi obtained by maximizing the joint posterior
+p(λ, φ|y) (see Equations (10) and (11)),
+ˆ
+ˆ p (γ)} := arg
+{λ(γ),
+..., λ
+
+max
+
+λ∈Rp+ ,φ∈Rm
++
+
+p(λ, φ|y),
+
+is given by
+(i)
+θˆLS
+σ2
+ˆ i (γ) = max 0, √
+λ
+−
+n
+2γ
+
+231
+
+,
+
+(22)
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+where
+
+1
+(i)
+G(i)
+θˆLS =
+n
+
+y
+
+is the Least Squares estimator of the i−th block θ(i) for i = 1, . . . , p. For n → ∞ the
+ˆ i (γ) satisfies
+estimator λ
+θ¯(i)
+ˆ i (γ) m.s.
+lim λ
+.
+(23)
+= √
+n→∞
+2γ
+ˆ i (γ) = 0 | θ = θ]
+¯ of setting λ
+ˆ i (γ) = 0 is given by
+In addition, the probability P[λ
+ˆ i (γ) = 0 | θ = θ]
+¯ = P χ2 ki , θ¯(i)
+Pθ [λ
+
+2
+
+n
+σ2
+
+≤ 2γ
+
+σ2
+n
+
+.
+
+(24)
+
+ˆ i (γ) as n → ∞ depends on γ. Therefore,
+Note that the limit of the MKL estimators λ
+using MKL (GLasso), one cannot hope to get consistent estimators of λopt
+i . Indeed, for
+ki2
+(i)
+2
+¯
+ˆ
+θ
+= 0, consistency of λi (γ) requires γ →
+(i) 2 , which is a circular requirement.
+2 θ¯
+
+5.2 Asymptotic Properties Using General Regressors
+In this subsection, we replace the deterministic matrix G with Gn (ω), where Gn (ω) represents an n × m matrix defined on the complete probability space (Ω, B, P) with ω a generic
+element of Ω and B the sigma field of Borel regular measures. In particular, the rows of
+Gn are independent3 realizations from a zero-mean random vector with positive definite
+covariance Ψ.
+As in the previous part of this section, λ and θ are seen as parameters, and the true
+¯ Hence, all the randomness present in the next formulas comes only from Gn
+value of θ is θ.
+and the measurement noise.
+We make the following (mild) assumptions on Gn . Recalling model (1), assume that
+G G/n is bounded and bounded away from zero in probability, so that there exist constants
+∞ > cmax ≥ cmin > 0 with
+lim P [cmin I ≤ G G/n ≤ cmax I] = 1 ,
+
+n→∞
+
+(25)
+
+so, as n increases, the probability that a particular realization G satisfies
+cmin I ≤ G G/n ≤ cmax I
+
+(26)
+
+increases to 1.
+In the following lemma, whose proof is in the Appendix, we introduce a change of
+variables that is key for our understanding of the asymptotic properties of PARD under
+these more general regressors.
+Lemma 13 Fix i ∈ {1, . . . , p} and consider the decomposition
+y = G(i) θ(i) +
+= G(i) θ(i) + v¯
+
+p
+(j) (j)
+j=1,j=i G θ
+
++v
+
+3. The independence assumption can be removed and replaced by mixing conditions.
+
+232
+
+(27)
+
+Hyperparameter Group Lasso
+
+Sparsity vs. Bias (Shrinking)
+1
+
+PARD
+GLASSO
+
+γ→∞
+
+0.9
+
+IPγ [ θˆ(1) = 0| θ¯(1) = 0]
+
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+
+γ→0
+
+0.1
+0
+
+0.4
+
+0.45
+
+0.5
+
+0.55
+
+0.6
+
+0.65
+
+0.7
+
+0.75
+
+0.8
+
+0.85
+
+0.9
+
+M S E θˆ(2)(γ )
+Tradeoff between Mean Squared Errors
+0.25
+
+PARD
+GLASSO
+
+γ→0
+
+M S E θˆ(1)(γ )
+
+0.2
+
+0.15
+
+0.1
+
+0.05
+
+γ→∞
+0
+
+0.4
+
+0.45
+
+0.5
+
+0.55
+
+0.6
+
+0.65
+
+M S E θˆ(2)(γ )
+Total M S E vs. γ
+
+0
+
+M S E θˆ
+
+10
+
+PARD
+GLASSO
+
+−2
+
+10
+
+−1
+
+10
+
+0
+
+10
+
+γ
+
+1
+
+10
+
+2
+
+10
+
+Figure 4: In this example we have two blocks (p = 2) of dimension k1 = k2 = 10 with
+θ¯(1) = 0 and all the components of the true θ¯(2) ∈ R10 set to one. The matrix
+G is the identity, so that the output dimension (y ∈ Rn ) is n = 20; the noise
+variance equals 0.5. Top: probability of setting θˆ(1) to zero vs Mean Squared
+Error in θˆ(2) . Center: Mean Squared Error in θˆ(1) vs. Mean Squared Error in
+θˆ(2) ; both curves are parametrized in γ ∈ [0, +∞). Bottom: Total Mean Squared
+ˆ as a function of γ.
+Error (on θ)
+233
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+of the linear measurement model (1) and assume (26) holds. Define
+p
+(i)
+
+λj + σ 2 I.
+
+G(j) G(j)
+
+Σv¯ :=
+j=1,j=i
+
+Consider now the singular value decomposition
+(i) −1/2
+
+Σv¯
+(i)
+
+√
+
+G(i)
+
+n
+
+= Un(i) Dn(i) Vn(i)
+
+,
+
+(28)
+
+(i)
+
+where each Dn = diag(dk,n ) is ki × ki diagonal matrix. Then (27) can be transformed into
+the equivalent linear model
+(i)
+(i) (i)
+(i)
+(29)
+zn = Dn βn + n ,
+where
+(i)
+
+(i) −1/2
+
+(i)
+
+Σv¯
+
+zn := Un
+
+√
+
+y
+
+n
+
+(i)
+n
+
+(i)
+
+(i)
+
+= (zk,n ),
+(i)
+
+:= Un
+
+(i)
+
+βn := Vn
+(i) −1/2
+
+Σv¯
+
+√
+
+v¯
+
+n
+
+=(
+
+(i)
+
+θ(i) = (βk,n ),
+
+(30)
+
+(i)
+k,n ),
+
+(i)
+
+and Dn is uniformly (in n) bounded and bounded away from zero.
+Below, the dependence of Σy (λ) on Gn , and hence on n, is omitted to simplify the
+notation. Furthermore, −→p denotes convergence in probability.
+¯ define
+Theorem 14 For known γ and conditional on θ = θ,
+ˆ n = arg
+λ
+
+min
+λ∈C
+
+Rp+
+
+1
+1
+log det(Σy (λ)) + y Σ−1
+y (λ)y + γ
+2
+2
+
+p
+
+λi ,
+
+(31)
+
+i=1
+¯(i)
+
+2
+
+where C is any p-dimensional ball with radius strictly larger than maxi θ ki . Suppose that
+the hypotheses of Lemma 13 hold. Consider the estimator (31) along its i − th component
+λi that, in view of (29), is given by:
+ˆ n = arg min 1
+λ
+i
+λ∈R+ 2
+(i)
+
+ki
+k=1
+
+2 +v
+ηk,n
+k,n
+
+λ + wk,n
+
++ log(λ + wk,n ) + γλ ,
+
+(i)
+
+where ηk,n := βk,n , wk,n := 1/(n(dk,n )2 ) and vk,n = 2
+
+¯ γ :=
+λ
+i
+
+−ki +
+
+ki2 + 8γ θ¯(i)
+4γ
+
+We have the following results:
+¯γ ≤ λ
+¯ i for all γ > 0, and limγ→0+ λ
+¯γ = λ
+¯i .
+1. λ
+i
+i
+234
+
+2
+
+,
+
+(i)
+k,n
+(i)
+dk,n
+
+(i)
+
+βk,n +
+
+¯(i)
+¯i = θ
+λ
+ki
+
+(i)
+k,n
+(i)
+dk,n
+
+2
+
+.
+
+2
+
+. Let
+
+(32)
+
+Hyperparameter Group Lasso
+
+ˆ n −→p λ
+¯γ .
+2. If θ¯(i) > 0 and γ > 0, we have λ
+i
+i
+ˆ n −→p λ
+¯i .
+3. If θ¯(i) > 0 and γ = 0, we have λ
+i
+ˆ γ −→p 0 for any value γ ≥ 0.
+4. if θ¯(i) = 0, we have λ
+i
+We now show that, when γ = 0, the above result relates to the problem of minimizing
+the MSE of the i-th block with respect to λi , with all the other components of λ coming
+ˆ n . For any index i, we define
+from λ
+(i)
+I1 := j : j = i and θ¯(j) = 0 ,
+
+(i)
+I0 := j : j = i and θ¯(j) = 0 .
+
+(33)
+
+(i)
+If θˆn (λ) denotes the i-th component of the PARD estimate of θ defined in (5), our aim
+is to optimize the objective
+
+M SEn (λi ) := tr Ev (θˆn(i) (λ) − θ¯(i) )(θˆn(i) (λ) − θ¯(i) )
+
+¯n
+with λj = λ
+j
+
+for j = i
+
+¯ n is any sequence satisfying condition
+where is λ
+j
+lim fn = +∞ where
+
+n→∞
+
+fn := min nλnj ,
+
+(34)
+
+(i)
+
+j∈I1
+
+¯n = λ
+ˆn
+(condition (34) appears again in the Appendix as (47)). Note that, in particular, λ
+j
+j
+in (31) satisfy (34) in probability.
+Lemma 13 shows that we can consider the transformed linear model associated with the
+i-th block, that is,
+(i)
+(i) (i)
+(i)
+(35)
+zk,n = dk,n βk,n + k,n , k = 1, . . . , ki ,
+¯ n for j = i. In particular, the vector
+where all the three variables on the RHS depend on λ
+j
+(i)
+
+(i)
+
+βn consists of an orthonormal transformation of θ(i) while the dk,n are all bounded below
+in probability. In addition, by letting
+Ev
+
+(i)
+k,n
+
+= mk,n ,
+
+Ev (
+
+(i)
+k,n
+
+2
+− mk,n )2 = σk,n
+,
+
+¯ n (j = i)
+we also know from Lemma 20 (see Equations (48) and (49)) that, provided λ
+j
+2
+satisfy condition (34), both mk,n and σk,n tend to zero (in probability) as n goes to ∞.
+(i)
+
+Then, after simple computations, one finds that the MSE relative to βn is the following
+random variable whose statistics depend on n:
+ki
+
+M SEn (λi ) =
+
+2 + nλ2 d2 (m2 + σ 2 ) − 2λ d
+βk,n
+i k,n mk,n βk,n
+i k,n
+k,n
+k,n
+
+(1 + nλi d2k,n )2
+
+k=1
+
+¯ n for j = i.
+with λj = λ
+j
+
+Above, except for λi , the dependence on the block number i was omitted to improve readability.
+˘ n denote the minimizer of the following weighted version of the M SEn (λi ):
+Now, let λ
+i
+ki
+
+˘ n = arg min
+λ
+i
+
+λ∈R+
+
+d4k,n
+
+2 + nλ2 d2 (m2 + σ 2 ) − 2λ d
+βk,n
+i k,n mk,n βk,n
+i k,n
+k,n
+k,n
+
+(1 + nλi d2k,n )2
+
+k=1
+
+Then, the following result holds.
+235
+
+.
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+¯ the following convergences in probaProposition 15 For γ = 0 and conditional on θ = θ,
+bility hold
+¯(i) 2
+ˆ n , i = 1, 2, . . . , p.
+˘n = θ
+= lim λ
+(36)
+lim λ
+i
+n→∞ i
+n→∞
+ki
+The proof follows arguments similar to those used in last part of the proof of Theorem
+14, see also proof of Theorem 6 in Aravkin et al. (2012), and is therefore omitted.
+We can summarize the two main findings reported in this subsection as follows. As the
+number of measurements go to infinity:
+1. regardless of the value of γ (provided γ does not depend on n; in such a case suitable
+conditions on the rate are necessary, see also Remark 11), the proposed estimator will
+correctly set to zero only those λi associated with null blocks;
+2. when γ = 0, results 2 and 3 of Theorem 14 provide the asymptotic properties of ARD,
+showing that the estimate of λi will converge to the energy of the i-th block (divided
+by its dimension).
+This same value also represents the asymptotic minimizer of a weighted version of
+the MSE relative to the i-th block. In particular, the weights change with n, as they
+(i)
+are defined by the singular values dk,n (raised at fourth power) that depend on the
+trajectories of the other components of λ (see (28)). This roughly corresponds to
+giving more emphasis to components of θ which excite directions in the output space
+where the signal to noise ratio is high; this indicates some connection with reduced
+rank regression where one only seeks to approximate the most important (relative to
+noise level) directions in output space.
+Remark 16 (Consistency of θˆP A ) It is a simple check to show that, under the assumpˆ n ) in (5) is a consistent estimator
+tions of Theorem 14, the empirical Bayes estimator θˆP A (λ
+¯ Indeed, Theorem 14 shows much more than this, implying that for γ = 0, θˆP A (λ
+ˆn)
+of θ.
+possesses some desirable asymptotic properties in terms on Mean Squared Error, see also
+Remark 17.
+5.3 Marginal Likelihood and Weighted MSE: Perturbation Analysis
+We now provide some additional insights on point 2 above, investigating why the weights
+d4k,n may lead to an effective strategy for hyperparameter estimation.
+For our purposes, just to simplify the notation, let us consider the case of a single mdimensional block. In this way, λ becomes a scalar and the noise k,n in (35) is zero-mean
+of variance 1/n.
+Under the stated assumptions, the MSE weighted by dαk,n , with α an integer, becomes
+m
+
+dαk,n
+
+2 + λ2 d2
+n−1 βk,n
+k,n
+
+k=1
+
+(n−1 + λd2k,n )2
+
+,
+
+whose partial derivative with respect to λ, apart from the scale factor 2/n, is
+m
+
+dα+2
+k,n
+
+Fα (λ) =
+k=1
+
+2
+λ − βk,n
+
+(n−1 + λd2k,n )3
+
+236
+
+.
+
+Hyperparameter Group Lasso
+
+Let βk = limn→∞ βk,n and dk = limn→∞ dk,n .4 When n tends to infinity, arguments similar
+to those introduced in the last part of the proof of Theorem 14 show that, in probability,
+the zero of Fα becomes
+m
+dα−4
+βk2
+k
+˘
+λ(α)
+= k=1
+m
+α−4 .
+k=1 dk
+Notice that the formula above is a generalization of the first equality in (36) that was
+obtained by setting α = 4. However, for practical purposes, the above expressions are not
+¯ One can then consider
+useful since the true values of βk,n and βk depend on the unknown θ.
+a noisy version of Fα obtained by replacing βk,n with its least squares estimate, that is,
+m
+
+F˜α (λ) =
+
+dα+2
+k,n
+
+v
+√ k,n
+ndk,n
+2
+λdk,n )3
+
+λ − βk,n +
+(n−1 +
+
+k=1
+
+2
+
+,
+
+where the random variable vk,n is of unit variance. For large n, considering small additive
+perturbations around the model zk = dk βk , it is easy to show that the minimizer tends to
+˘
+the following perturbed version of λ:
+m
+dα−5
+βk vk,n
+k
+˘
+.
+λ(α)
++ 2 √k=1 m
+n k=1 dα−4
+k
+
+(37)
+
+We must now choose the value of α that should enter the above formula. This is far
+from trivial since the optimal value (minimizing MSE) depends on the unknown βk . On one
+˘ to the
+hand, it would seem advantageous to have α close to zero. In fact, α = 0 relates λ
+minimization of the MSE on θ while α = 2 minimizes the MSE on the output prediction,
+see the discussion in Section 4 of Aravkin et al. (2012). On the other hand, a larger value
+for α could help in controlling the additive perturbation term in (37) possibly reducing its
+sensitivity to small values of dk . For instance, the choice α = 0 introduces in the numerator
+˘ leading to poor
+of (37) the term βk /d5k . This can destabilize the convergence towards λ,
+estimates of the regularization parameters, as, for example, described via simulation studies
+in Section 5 of Aravkin et al. (2012). In this regard, the choice α = 4 appears interesting: it
+˘ to the energy of the block divided by m, removing the dependence of the denominator
+sets λ
+in (37) on dk . In particular, it reduces (37) to
+β 2
+2
++
+m
+m
+
+m
+k=1
+
+βk vk,n
+√
+=
+ndk
+
+m
+k=1
+
+βk2
+m
+
+1+2
+
+vk,n
+√
+βk ndk
+β2
+
+.
+
+(38)
+v
+
+It is thus apparent that α = 4 makes the perturbation on mk dependent on β √k,n
+, that
+k ndk
+is, on the relative reconstruction error on βk . This appears a reasonable choice to account
+for the ill-conditioning possibly affecting least-squares.
+Interestingly, for large n, this same philosophy is followed by the marginal likelihood
+procedure for hyperparameter estimation up to first-order approximations. In fact, under
+4. We are assuming that both of the limits exist. This holds under conditions ensuring that the SVD
+decomposition leading to (35) is unique, for example, see the discussion in Section 4 of Bauer (2005),
+and combining the convergence of sample covariances with a perturbation result for the Singular Value
+Decomposition of symmetric matrices (such as Theorem 1 in Bauer, 2005, see also Chatelin, 1983).
+
+237
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+the stated assumptions, apart from constants, the expression for twice the negative log of
+the marginal likelihood is
+m
+
+log(n
+
+−1
+
++
+
+λd2k,n )
+
+k=1
+
++
+
+2
+zk,n
+
+n−1 + λd2k,n
+
+,
+
+whose partial derivative w.r.t. λ is
+m
+
+2 d2
+λd4k,n + n−1 d2k,n − zk,n
+k,n
+
+k=1
+
+(n−1 + λd2k,n )2
+
+.
+
+As before, we consider small perturbations around zk = dk βk to find that a critical point
+occurs at
+m
+vk,n
+βk2
+1+2 √
+,
+m
+βk ndk
+k=1
+
+which is exactly the same minimizer reported in (38).
+5.4 Concluding Remarks and Connections to Subsection 4.2
+We can now give an interpretation of the results depicted in Figure 3 in view of the theoretical analyses developed in this section.
+When the regressors are orthogonal, which corresponds, asymptotically, to the case of
+white noise defining the entries of G, the results in subsection 5.1 (e.g., Corollary 10) show
+that ARD has a clear advantage over GLasso (MKL) in terms of MSE. This explains the
+outcomes from the first numerical experiment of Section 4.2 which are depicted in the left
+panel of Figure 3.
+For the case of general regressors, subsection 5.2 provides insights regarding the properties of ARD, including its consistency. Ideally, a regularized estimator should adopt those
+hyperparameters contained in λ that minimize the MSE objective, but this objective de¯ which is what we aim to estimate. One could then consider a noisy version
+pends on θ,
+of the MSE function, for example, obtained replacing θ¯ with its least squares estimate.
+The problem is that this new objective can be very sensitive to the noise, leading to poor
+regularizers as, for example, described by simulation studies in Section 5 of Aravkin et al.
+(2012). On an asymptotic basis, ARD circumvents this problem using particular weights
+which introduce a bias in the MSE objective but make it more stable, that is, less sensitive to noise. This results in a form of regularization introduced through hyperparameter
+estimation. We believe that this peculiarity is key to understanding not only the results in
+Figure 3 but also the success of ARD in several applications documented in the literature.
+Remark 17 [PARD: penalized version of ARD] Note that, when one considers sparsity inducing performance, the use of a penalized version of ARD, for example, given by
+PARD, clearly may help in setting more blocks to zero, see Figure 4 (top). In comparison with GLasso, the important point here is that the non convex nature of PARD permits
+sparsity promotion without adopting too large a value of γ. This makes PARD a slightly
+perturbed version of ARD. Hence, PARD is able to induce more sparsity than ARD while
+238
+
+Hyperparameter Group Lasso
+
+maintaining similar performance in the reconstruction of the non null blocks. This is illustrated by the Monte Carlo results in Section 4.2. To better understand the role of γ, consider
+the orthogonal case discussed in Section 5.1, for sake of clarity. Recall the observation in
+Remark 11 that model selection consistency requires γ = γn . It is easy to show that the oracle property (Zou, 2006) holds provided γnn → ∞ and γnn2 → 0. However, large γ’s tend to
+introduce excessive shrinkage, for example, see Figure 4 (center). It is well known (Leeb and
+P¨
+otscher, 2005) that shrinkage estimators that possess the oracle property have unbounded
+normalized risk (normalized Mean Squared Error for quadratic loss), meaning that they are
+certainly not optimal in terms of Mean Squared Error. To summarize, the asymptotic properties suggest that to obtain the oracle properties γn should go to infinity at a suitable rate
+with n while γ should be set equal to zero to optimize the mean squared error. However, for
+finite data length n, the optimal mean squared error properties as a function of γ are found
+for a finite but nonzero γ. This fact, also illustrated in Figure 4 (bottom), is not in contrast
+w.r.t. Corollary 10: γ may induce a useful bias in the marginal likelihood estimator of the
+λi which can reduce the variance. This also explains the experimental results showing that
+PARD performs slightly better than ARD.
+
+6. Conclusions
+We have presented a comparative study of some methods for sparse estimation: GLasso
+(equivalently, MKL), ARD and its penalized version PARD, which is cast in the framework
+of the Type II Bayesian estimators. They derive from the same Bayesian model, yet in a
+different way. The peculiarities of PARD can be summarized as follows:
+• in comparison with GLasso, PARD derives from a marginalized joint density with the
+resulting estimator involving optimization of a non-convex objective;
+• the non-convex nature allows PARD to achieve higher levels of sparsity than GLasso
+without introducing too much regularization in the estimation process, thus providing
+a better tradeoff between sparsity and shrinking.
+• the MSE analysis reported in this paper reveals the superior performance of PARD
+in the reconstruction of the parameter groups different from zero. Remarkably, our
+analysis elucidates this issue showing the robustness of the empirical Bayes procedure,
+based on marginal likelihood optimization, independently of the correctness of the
+priors which define the stochastic model underlying PARD. As a consequence of our
+analysis, the asymptotic properties of ARD have also been illuminated.
+Many variations of PARD are possible, adopting different prior models for λ. In this paper,
+the exponential prior is used to compare different estimators that can be derived from the
+same Bayesian model underlying GLasso. In this way, it is shown that the same stochastic
+framework can give rise to an estimator derived from a posterior marginalization that has
+significant advantages over another estimator derived from posterior optimization.
+
+Acknowledgements
+The research leading to these results has received funding from the European Union Seventh Framework Programme FP7/2007-2013 under grant agreement no 257462 HYCON2
+239
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+Network of excellence, by the MIUR FIRB project RBFR12M3AC - Learning meets time:
+a new computational approach to learning in dynamic systems.
+
+Appendix A. Proofs
+In this Appendix, we present proofs of the main results in the paper.
+A.1 Proof of Proposition 9
+Under the simplifying assumption G G = nI, one can use
+Σy (λ)−1 = σ −2 I − G(σ 2 Λ−1 + GT G)−1 G
+which derives from the matrix inversion lemma to obtain
+G(i) Σy (λ)−1 =
+
+1
+G(i) ,
+nλi + σ 2
+
+and so
+(i)
+=
+tr G(i) Σ−1
+y G
+
+nki
+nλi + σ 2
+
+G(i) Σ−1
+y y
+
+and
+
+2
+2
+
+=
+
+n
+nλi + σ 2
+
+2
+
+(i)
+θˆLS
+
+2
+
+.
+
+Inserting these expressions into (8) with µi = 0 yields a quadratic equation in λi which
+always has two real solutions. One is always negative while the other, given by
+1
+4γ
+
+(i)
+ki2 + 8γ θˆLS
+
+2
+
+− ki +
+
+4σ 2 γ
+n
+
+is non-negative provided
+(i)
+θˆLS
+ki
+
+2
+
+≥
+
+σ2
+2γσ 2
+1+
+n
+nki
+
+.
+
+(39)
+
+This concludes the proof of (18). The limiting behavior for γ → 0 can be easily verified,
+yielding
+2
+ˆ(i) 2
+ˆ i (0) = max 0, θLS − σ
+λ
+i = 1, .., p.
+ki
+n
+(i)
+Also note that θˆLS = n1 G(i) y and G(i) G(i) = nIki while G(i)
+2
+(i)
+This implies that θˆLS ∼ N (θ¯(i) , σn Iki ). Therefore
+(i)
+θˆLS
+
+2
+
+n
+∼ χ2 (d, µ) d = ki ,
+σ2
+
+This, together with (39), proves also (19).
+240
+
+µ = θ¯(i)
+
+2
+
+n
+.
+σ2
+
+G(j) = 0, ∀j = i.
+
+Hyperparameter Group Lasso
+
+A.2 Proof of Proposition 10
+(i)
+In the proof of Proposition 9 it was shown that θˆLS 2 σn2 follows a noncentral χ2 distribution
+with ki degrees of freedom and noncentrality parameter θ¯(i) 2 σn2 . Hence, it is a simple
+calculation to show that
+
+ˆ ∗ | θ = θ]
+¯ =
+E[λ
+i
+
+θ¯(i)
+ki
+
+2
+
+2σ 4
+4 θ¯(i) 2 σ 2
++
+.
+2
+ki n
+ki2 n
+
+ˆ ∗ | θ = θ]
+¯ =
+Var[λ
+i
+
+ˆ ∗ | θ = θ]
+¯ = λopt . In addition, since
+By Corollary 8, the first of these equations shows that E[λ
+i
+i
+ˆ ∗ } goes to zero as n → ∞, λ
+ˆ ∗ converges in mean square (and hence in probability) to
+Var{λ
+i
+i
+λopt
+i .
+ˆ i (0), observe that
+As for the analysis of λ
+2
+
+ki σn
+
+ˆ i (0) | θ = θ]
+¯ = E[λ
+ˆ ∗ | θ = θ]
+¯ −
+E[λ
+i
+0
+
+(i)
+θˆLS
+ki
+
+2
+
+−
+
+σ2
+n
+
+(i)
+¯ is the measure induced by θˆ(i)
+where dP ( θˆLS 2 | θ = θ)
+LS
+expression can be bounded by
+2
+
+ki σn
+
+−
+0
+
+(i)
+θˆLS
+ki
+
+2
+
+σ2
+−
+n
+
+dP (
+
+(i)
+θˆLS 2 | θ
+
+2
+¯ ≤σ
+= θ)
+n
+
+(i)
+dP ( θˆLS
+
+2.
+
+2
+
+¯
+| θ = θ)
+
+The second term in this
+
+2
+
+ki σn
+
+(i)
+dP ( θˆLS
+
+0
+
+2
+
+¯
+| θ = θ),
+
+ˆ i (0)
+where the last term on the right hand side goes to zero as n → ∞. This proves that λ
+ˆ
+is asymptotically unbiased. As for consistency, it is sufficient to observe that Var[λi (0) | θ =
+¯ ≤ Var[λ
+ˆ ∗ | θ = θ]
+¯ since “saturation” reduces variance. Consequently, λ
+ˆ i (0) converges in
+θ]
+i
+opt
+mean square to its mean, which asymptotically is λi as shown above. This concludes the
+proof.
+A.3 Proof of Proposition 12
+Following the same arguments as in the proof of Proposition 9, under the assumption
+G G = nI we have that
+G(i) Σ−1
+y y
+
+2
+2
+
+n
+nλi + σ 2
+
+=
+
+2
+
+(i)
+θˆLS
+
+2
+
+.
+
+Inserting this expression into (14) with µi = 0, one obtains a quadratic equation in λi which
+has always two real solutions. One is always negative while the other, given by
+(i)
+θˆ
+σ2
+√LS − .
+n
+2γ
+
+is non-negative provided
+(i)
+θˆLS
+
+2
+
+≥
+
+This concludes the proof of (22).
+241
+
+2γσ 4
+.
+n2
+
+(40)
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+The limiting behavior for n → ∞ in Equation (23) is easily verified with arguments
+(i)
+similar to those in the proof of Proposition 10. As in the proof of Proposition 9, θˆLS 2 σn2
+follows a noncentral χ2 (d, µ) distribution with d = ki and µ = θ¯(i) 2 σn2 , so that from (40)
+ˆ i (γ) to zero is as given in (24).
+the probability of setting λ
+A.4 Proof of Lemma 13:
+Let us consider the Singular Value Decomposition (SVD)
+p
+(j)
+j=1,j=i G
+
+G(j)
+
+λj
+
+n
+
+= P SP ,
+
+(41)
+
+p
+(j) G(j)
+p
+( )
+G(j) (G(j) ) λj
+j=1,j=i,λj =0 G
+≥
+min{λj , j :
+where, by the assumption (26), using j=1,j=i n
+n
+λj = 0} and Lemma 19 the minimum singular value σmin (S) of S in (41) satisfies
+
+σmin (S) ≥ cmin min{λj , j : λj = 0}.
+(i)
+
+Then the SVD of Σv¯ =
+(i) −1
+
+Σv¯
+(i) −1
+
+p
+(j)
+j=1,j=i G
+
+P
+
+=
+
+G(j)
+
+λj + σ 2 I satisfies
+
+(nS + σ 2 )−1
+0
+−2
+0
+σ I
+
+P⊥
+
+(42)
+
+P
+P⊥
+
+= σ −2 .
+
+so that Σv¯
+
+Note now that
+
+(i) −1/2
+
+Dn(i)
+
+=
+
+Σv¯
+
+Un(i)
+
+√
+
+n
+
+G(i)
+
+Vn(i)
+
+and therefore, using Lemma 19,
+√
+
+(i) −1/2
+
+Dn(i) ≤ Σv¯
+
+√
+cmax = σ −1 cmax
+
+(i)
+
+proving that Dn is bounded. In addition, again using Lemma 19, condition (26) implies that
+∀a, b (of suitable dimensions) s.t. a = b = 1, a
+cmin
+cmax > 0. This, using (28), guarantees that
+(i)
+
+Dn
+
+(i)
+
+=
+
+Un
+
+≥
+
+Un
+
+(i)
+
+(i) −1/2
+
+Σv¯
+
+√
+
+n
+
+G(i)
+
+(i)
+
+(i)
+
+V n = Un
+
+P⊥ σ −1 P⊥
+
+P⊥ G(i)
+√
+b
+n
+
+≥ k, k =
+
+P (nS + σ 2 )−1/2 P
+
+1 − cos2 (θmin ) ≥
+
++ P⊥ σ −1 P⊥
+
+(i)
+G
+√
+n
+
+(i)
+G
+√
+n
+
+≥ kσ −1 I
+(i)
+
+and therefore Dn is bounded away from zero. It is then a matter of simple calculations to
+show that with the definitions (30) then (27) can be rewritten in the equivalent form (29).
+
+242
+
+Hyperparameter Group Lasso
+
+A.5 Preliminary Lemmas
+This part of the Appendix contains some preliminary lemmas which will be used in the proof
+of Theorem 14. This first focuses on the estimator (31). We show that when the hypotheses
+of Lemma 13 hold, the estimate (31) satisfies the key assumptions of the forthcoming
+Lemma 20. We begin with a detailed study of the objective (4).
+Let
+I1 := j : θ¯(j) = 0 , I0 := j : θ¯(j) = 0 .
+(i)
+
+(i)
+
+Note that these are analogous to I1 and I0 defined in (33), but do not depend on any
+specific index i. We now state the following lemma.
+Lemma 18 Writing the objective in (4) in expanded form gives
+gn (λ) = log σ 2 +
+
+1
+1
+log det(σ −2 Σy (λ)) +
+2n
+2n
+
+θˆ(j) (λ)
+kj λj
+
+j∈I1
+
+2
+
++
+
+1
+2n
+
+j∈I0
+
+θˆ(j) (λ)
+kj λj
+
+2
+
+S1
+S2
+
+1
++ γ λ
+n
+
+1
+y−
+1+
+2nσ 2
+
+S3
+
+Gj θˆ(j) (λ)
+
+2
+
+,
+
+j
+
+S4
+S5
+
+ˆ
+where θ(λ)
+= ΛGT Σ−1
+y y (see (5)), kj is the size of the jth block, and dependence on n has
+been suppressed. For any minimizing sequence λn , we have the following results:
+¯
+1. θˆn →p θ.
+2. S1 , S2 , S3 , S4 →p 0.
+3. S5 →p 12 .
+4. nλnj →p ∞ for all j ∈ I1 .
+Proof First, note that 0 ≤ Si for i ∈ {1, 2, 3, 4}. Next,
+S5 =
+
+1
+y−
+2nσ 2
+
+1
+=
+ν+
+2nσ 2
+=
+
+1
+ν
+2nσ 2
+
+2
+
+Gj θ¯(j) (λ) − θˆ(j) (λ)
+
+Gj θ¯(j) (λ) +
+j
+
+2
+
+j
+
+Gj θ¯(j) (λ) − θˆ(j) (λ)
+
+2
+
+j
+
++
+
+1 T
+ν
+2nσ 2
+
+Gj θ¯(j) (λ) − θˆ(j) (λ) +
+j
+
+1
+2nσ 2
+
+Gj θ¯(j) (λ) − θˆ(j) (λ)
+
+2
+
+.
+
+j
+
+(43)
+The first term converges in probability to 12 . Since ν is independent of all Gj , the middle
+¯ These
+term converges in probability to 0. The third term is the bias incurred unless θˆ = θ.
+facts imply that, ∀ > 0,
+1
+lim P S5 (λ(n)) > − = 1 .
+(44)
+n→∞
+2
+243
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+θ¯j
+kj
+
+¯n =
+Next, consider the particular sequence λ
+j
+
+2
+
+. For this sequence, it is immediately clear
+
+that Si →p 0 for i ∈ {2, 3, 4}. To show S1 →p 0, note that
+λi Gi GTi ≤ max{λi } Gi GTi ,
+and that the nonzero eigenvalues of GGT are the same as those of GT G. Therefore, we have
+S1 ≤
+Finally S5 →p
+
+1
+2
+
+1
+2n
+
+m
+
+log(1 + nσ −2 max{λ}cmax ) = OP
+i=1
+
+log(n)
+n
+
+→p 0 .
+
+by (43), so in fact, ∀ > 0,
+lim P
+
+n→∞
+
+1
+¯
+gn (λ(n))
+− − log(σ 2 ) <
+2
+
+=1.
+
+(45)
+
+¯ n , any minimizing sequence λ
+ˆ n must satisfy,
+Since (45) holds for the deterministic sequence λ
+∀ > 0,
+1
+ˆ
+lim P gn (λ(n))
+< + log(σ 2 ) + = 1
+n→∞
+2
+which, together with (44), implies (45)
+Claims 1, 2, 3 follow immediately. To prove claim 4, suppose that for a particular miniˇ
+ˇ n →p ∞ for j ∈ I1 . We can therefore find a subsequence
+mizing sequence λ(n),
+we have nλ
+j
+ˇ n ≤ K, and since S2 (λ(n))
+ˇ
+ˇ →p 0. But then there
+where nλ
+→p 0, we must have θˆ(j) (λ)
+j
+is a nonzero bias term in (43), since in particular θ¯(j) (λ) − θˆ(j) (λ) = θ¯(j) (λ) = 0, which
+ˇ
+contradicts the fact that λ(n)
+was a minimizing sequence.
+We now state and prove a technical Lemma which will be needed in the proof of Lemma
+20.
+Lemma 19 Assume (26) holds; then the following conditions hold
+(i) Consider I = [I(1), . . . , I(pI )] of size pI to be any subset of the indices [1, . . . , p], so
+p ≥ pI and define
+G(I) = G(I(1)) . . . G(I(pI )) ,
+obtained by taking the subset of blocks of columns of G indexed by I. Then
+cmin I ≤
+
+(G(I) )T G(I)
+≤ cmax I .
+n
+
+(46)
+
+(ii) Let I c be the complementary set of I in [1, . . . , p], so that I c ∩ I = ∅ and I ∪ I c =
+[1, . . . , p]. Then the minimal angle θmin between the spaces
+√
+G I := col span{G(i) / n, i ∈ I}
+
+and
+
+√
+c
+G I := col span{G(j) / n : j ∈ I c }
+
+satisfies:
+θmin ≥ acos
+
+244
+
+1−
+
+cmin
+cmax
+
+> 0.
+
+Hyperparameter Group Lasso
+
+Proof Result (46) is a direct consequence of Horn and Johnson (1994), see Corollary
+3.1.3. As far as condition (ii) is concerned we can proceed as follows: let UI and UI c be
+c
+orthonormal matrices whose columns span G I and G I , so that there exist matrices TI and
+TI c so that
+√
+G(I) / n = UI TI ,
+√
+c
+G(I ) / n = UI c TI c
+where G(I
+
+c)
+
+c
+
+is defined analogously to G(I) . The minimal angle between G I and G I satisfies
+cos(θmin ) = UI UI c .
+
+√
+Now observe that, up to a permutation of the columns which is irrelevant, G/ n =
+[UI TI UI c TI c ], so that
+√
+UI G/ n = [TI UI UI c TI c ] = [I UI UI c ]
+
+TI
+0
+
+0
+TI c
+
+.
+
+Denoting with σmin (A) and σmax (A) the minimum and maximum singular values of a matrix
+A, it is a straightforward calculation to verify that the following chain of inequalities holds:
+√
+2
+cmin = σmin (G G/n) ≤ σmin
+UI G/ n
+
+0
+TI c
+TI
+0
+2
+[I UI UI c ] σmax
+0 TI c
+2
+2
+(TI c )
+(TI ), σmax
+[I UI UI c ] max σmax
+c
+[I UI UI ] cmax .
+
+2
+= σmin
+[I UI UI c ]
+2
+≤ σmin
+2
+= σmin
+2
+≤ σmin
+
+TI
+0
+
+2
+Observe now that σmin
+[I UI UI c ] = 1 − cos2 (θmin ) so that
+
+cmin ≤ (1 − cos2 (θmin ))cmax
+and, therefore,
+cos2 (θmin ) ≤ 1 −
+
+cmin
+cmax
+
+from which the thesis follows.
+
+(i)
+
+(i)
+
+Lemma 20 Assume that the spectrum of G satisfies (25). For any index i, let I1 and I0
+be as in (33). Finally, assume aλnj , which may depend on n, are bounded and satisfy:
+lim fn = +∞
+
+n→∞
+
+Then, conditioned on θ,
+
+(i)
+n
+
+where
+
+fn := min nλnj .
+
+(47)
+
+(i)
+
+j∈I1
+
+in (30) and (29) can be decomposed as
+(i)
+n
+
+= m n (θ) + v n .
+
+The following conditions hold:
+Ev
+
+(i)
+n
+
+= m n (θ) = OP
+
+1
+√
+fn
+245
+
+v
+
+n
+
+= OP
+
+1
+√
+n
+
+(48)
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+so that
+
+(i)
+n |θ
+
+converges to zero in probability (as n → ∞). In addition
+V arv {
+
+(i)
+n }
+
+= Ev v n v
+
+1
+n
+
+= OP
+
+n
+
+.
+
+(49)
+
+If in addition5
+n1/2
+
+G(i)
+
+G(j)
+n
+
+(i)
+
+= OP (1) ; j ∈ I1
+
+(50)
+
+then
+√
+
+m n (θ) = OP
+
+1
+nfn
+
+.
+
+(51)
+
+Proof Consider the Singular Value Decomposition
+1
+P¯1 S¯1 P¯1 :=
+n
+
+λnj .
+
+G(j) G(j)
+
+(52)
+
+j∈I1
+(i)
+
+Using (47), there exist n
+¯ so that, ∀ n > n
+¯ we have 0 < λnj ≤ M < ∞, j ∈ I1 . Otherwise, we could find a subsequence nk so that λnj k = 0 and hence nk λnj k = 0, contradicting (47). Therefore, the matrix P¯1 in (52) is an orthonormal basis for the space
+√
+√
+(i)
+(i)
+G1 := col span{G(j) / n : j ∈ I1 }. Let also T (j) be such that G(j) / n = P¯1 T (j) , j ∈ I1 .
+Note that by assumption (25) and lemma 19
+(i)
+
+T (j) = OP (1)
+
+∀ j ∈ I1 .
+
+(53)
+
+Consider now the Singular Value Decomposition
+P1 P0
+
+S1 0
+0 S0
+
+P1
+P0
+
+:=
+
+1
+n
+
+G(j) G(j)
+j∈I1
+
+P¯1 S¯1 P¯1
+
+=
+For future reference note that ∃TP¯1 : P¯1 =
+√
+
++
+
+G(i) (i)
+Vn Dn(i)
+n
+
+−1
+
+1
+n
+
+G(j) G(j)
+
+λnj
+
+j∈I0
+
+∆.
+
+(54)
+TP¯1 . Now, from (28) we have that
+
+P1 P0
+
+(i) −1
+
+Σv¯
+
+λnj +
+
+(i) −1/2
+
+= Σv¯
+
+Un(i) .
+
+(55)
+
+Using (55) and defining
+P :=
+
+P1 P0
+
+S :=
+
+S1 0
+0 S0
+
+,
+
+5. This is equivalent to say that the columns of G(j) , j = 1, .., k, j = i are asymptotically orthogonal to the
+columns of G(i) .
+
+246
+
+Hyperparameter Group Lasso
+
+Equation (30) can be rewritten as:
+(i)
+n
+
+(i) −1/2
+
+(i)
+
+Σv¯
+
+v¯
+
+=
+
+Un
+
+=
+
+Dn
+
+Vn
+
+(i)
+
+(G√(i) )
+
+=
+
+(i) −1
+Dn
+
+(i)
+Vn
+
+(G√(i) )
+
+P
+
+P⊥
+
+=
+
+Dn
+
+(i)
+
+(G√(i) )
+
+P
+
+P⊥
+
+×
+=
+
+(i) −1
+
+(i) −1
+
+(i)
+
+j∈I1
+
+Dn(i)
+
+√
+
+n
+
+n
+
+Vn
+
+(j)
+G
+√ θ (j)
+n
+
+−1
+
+n
+
+(i) −1 v¯
+√
+n
+
+Σv¯
+
+n
+
++
+
+Vn(i)
+
+√v
+n
+G(i)
+
+√
+
++ Dn(i)
+
+Vn(i)
+
+P1 P1
+P0 P1
+
+P (nS + σ 2 I)−1
+
+n
+
+m
+−1
+
+(nS + σ 2 I)−1
+0
+0
+σ −2 I
+(nS + σ 2 I)−1
+0
+−2
+0
+σ I
+
+G(i)
+√
+n
+
+P
+P⊥
+P
+P⊥
+
+√v¯
+n
+
+T (j) θ(j) +
+j∈I1
+
+n (θ)
+
+P
+
+(nS + σ 2 I)−1
+0
+0
+σ −2 I
+
+P⊥
+v
+
+vp¯
+√
+n
+
+n
+
+where the last equation defines m n (θ) and v n , the noise
+P
+P⊥
+
+vP¯ :=
+
+v
+
+(j)
+is still a zero mean Gaussian noise with variance σ 2 I and G√n = P¯1 T (j) provided j = i.
+Note that m n does not depend on v and that Ev v n = 0. Therefore m n (θ) is the mean
+(when only noise v is averaged out) of n . As far as the asymptotic behavior of m n (θ) is
+concerned, it is convenient to first observe that
+
+(nS + σ 2 I)−1
+
+P1 P¯1
+P0 P¯1
+
+=
+
+(nS1 + σ 2 I)−1 P1 P¯1
+(nS0 + σ 2 I)−1 P0 P¯1
+
+and that the second term on the right hand side can be rewritten as
+
+(n[S0 ]1,1 + σ 2 )−1 P0,1 P¯1
+
+(n[S0 ]22 + σ 2 )−1 P0,2 P¯1
+
+(nS0 + σ 2 I)−1 P0 P¯1 = 
+..
+
+.
+
+(n[S0 ]m−k,m−k + σ 2 )−1 P0,m−k P¯1
+
+
+
+
+
+
+
+(56)
+
+where [S0 ]ii is the i − th diagonal element of S0 and P0,i is the i − th column of P0 . Now,
+using Equation (54) one obtains that
+n[S0 ]ii = P0,i P nSP P0,i =
+≥
+≥
+=
+247
+
+P0,i P¯1 nS¯1 P¯1 + n∆ P0,i
+P0,i P¯1 nS¯1 P¯1 P0,i
+σmin (nS¯1 )P0,i P¯1 P¯1 P0,i
+σmin (nS¯1 ) P P¯1 2 .
+0,i
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+An argument similar to that used in (42) shows that
+(i)
+σmin (nS¯1 ) ≥ cmin min{nλnj , j ∈ I1 } = cmin fn
+
+(57)
+
+also holds true; denoting P0,i P¯1 = gn , the generic term on the right hand side of (56)
+satisfies
+P P¯1
+(n[S0 ]ii + σ 2 )−1 P0,i P¯1 ≤ nσ (S¯ )0,iP P¯ 2 +σ2
+1
+
+min
+
+0,i 1
+
+≤ k min(gn , (fn gn )−1 )
+√
+√
+= √kf min( fn gn , ( fn gn )−1 )
+n
+≤ √kf
+
+(58)
+
+n
+
+(i)
+
+for some positive constant k. Now, using Lemma 13, Dn is bounded and bounded away
+(i)
+
+from zero in probability, so that Dn
+(i)
+
+= OP (1) and
+
+(i) −1
+
+Dn
+
+= OP (1). In addition,
+
+G(i)
+
+Vn is an orthonormal matrix and √n = OP (1). Last, using (57) and (25), we have
+(nS1 + σ 2 I)−1 = OP (1/n). Combining these conditions with (53) and (58), we obtain
+the first expression in (48). As far as the asymptotics on v n are concerned, it suffices to
+observe that
+√
+√
+wn vP¯ / n = OP (1/ n) if : wn = OP (1).
+The variance (w.r.t. noise v) V arv { n } = Ev v n v
+V arv { n } =
+(i) −1
+
+so that, using the condition Σv¯
+
+σ2
+n
+
+Un(i)
+
+satisfies
+
+n
+
+(i) −1
+
+Σv¯
+
+Un(i)
+(i)
+
+= σ −2 derived in Lemma 13, and the fact that Un
+
+has orthonormal columns, the condition V arv { n } = OP n1 in (49) follows immediately.
+If, in addition, (50) holds then (53) becomes
+√
+T (j) = OP (1/ n) j = 1, ..., k; j = k
+√
+so that an extra n appears in the denominator in the expression of m (θ) yielding (51).
+This concludes the proof.
+Before we proceed, we review a useful characterization of convergence. While it can be
+stated for many types of convergence, we present it specifically for convergence in probability, since this is the version we will use.
+Lemma 21 The sequence an converges in probability to a (written an →p a) if and only if
+every subsequence an(j) of an has a further subsequence an(j(k)) with an(j(k)) →p a.
+Proof If an →p a, this means that for any > 0, δ > 0 there exists some n ,δ such that
+for all n ≥ n ,δ , we have P (|an − a| > ) ≤ δ. Clearly, if an →p a, then an(j) →p a for every
+subsequence an(j) of an . We prove the other direction by contrapositive.
+Assume that an →p a. That means precisely that there exist some > 0, δ > 0 and a
+subsequence an(j) so that P (|a − an(j) | > ) ≥ δ. Therefore the subsequence an(j) cannot
+have further subsequences that converge to a in probability, since every term of an(j) stays
+-far away from a with positive probability δ.
+Lemma 21 plays a major role in the proof of the main result.
+248
+
+Hyperparameter Group Lasso
+
+A.6 Proof of Theorem 14
+Since the hypotheses of Lemma 13 hold, we know wk,n → 0 in (32). Then Lemma 18
+guarantees that condition (47) holds true (in probability) so that Lemma 20 applies, and
+therefore vk,n →p 0 in (32). We now give the proofs of results 1-4 in Theorem 14.
+d ¯γ
+¯ γ is decreasing in γ. The limit
+1. The reader can quickly check that dγ
+λ1 < 0, so λ
+1
+¯1.
+calculation follows immediately from L’Hopital’s rule yielding limγ→0+ λγ = λ
+1
+
+2. We use the convergence characterization given in Lemma 21. Pick any subsequence
+ˆ n(j) of λ
+ˆ n . Since {Vn(j) } is bounded, by Bolzano-Weierstrass it must have a conλ
+1
+1
+vergent subsequence Vn(j(k)) → V , where V satisfies V T V = I by continuity of the
+ˆ n > 0 are given by
+2-norm. The first-order optimality conditions for λ
+1
+0 = f1 (λ, w, v, η) =
+
+1
+2
+
+k1
+k=1
+
+−ηk2 − vk
+1
++
++γ ,
+2
+(λ + wk )
+λ + wk
+
+(59)
+
+¯ γ . Taking the derivative we
+and we have f1 (λ, 0, 0, V T θ¯(1) ) = 0 if and only if λ = λ
+1
+find
+θ¯(1) 2
+d
+k1
+f1 (λ, 0, 0, V T θ¯(1) ) =
+− 2 ,
+3
+dλ
+λ
+2λ
+¯(1) 2
+γ
+¯ 1 ≥ 2λ
+¯γ .
+which is nonzero at λ for any γ, since the only zero is at 2 θ
+= 2λ
+1
+
+k1
+
+λγ1 , 0, 0, V
+
+Applying the Implicit Function Theorem to f at
+of neighborhoods U of (0, 0, V θ¯(1) ) and W of λγ1 such that
+f (φ(w, v, η), w, v, η) = 0
+
+1
+
+θ¯(1) yields the existence
+
+∀ (w, v, η) ∈ U .
+
+λγ1 .
+
+In particular, φ(0, 0, V θ¯(1) ) =
+Since (wn(j(k)) , vn(j(k)) , ηn(j(k)) ) →p (0, 0, V θ¯(1) ),
+we have that for any δ > 0 there exist some kδ so that for all n(j(k)) > n(j(kδ )) we
+have P ((wn(j(k) , vn(j(k)) , ηn(j(k)) ) ∈ U) ≤ δ. For anything in U, by continuity of φ we
+have
+ˆ n(j(k)) = φ(wn(j(k)) , vn(j(k)) , ηn(j(k)) ) →p φ(0, 0, V θ¯(1) ) = λγ .
+λ
+1
+1
+ˆ n(j(k)) →p λγ . We have shown that every subsequence
+These two facts imply that λ
+1
+1
+ˆ n →p λγ by Lemma 21.
+ˆ n(j) has a further subsequence λ
+ˆ n(j(k)) →p λγ , and therefore λ
+λ
+1
+1
+1
+1
+1
+¯ 1 , and the derivative of the
+3. In this case, the only zero of (59) with γ = 0 is found at λ
+optimality conditions is nonzero at this estimate, by the computations already given.
+The result follows by the implicit function theorem and subsequence argument, just
+as in the previous case.
+4. Rewriting the derivative (59)
+1
+2
+
+k1
+k=1
+
+λ − vk − ηk2 + wk
++γ ,
+(λ + wk )2
+
+we observe that for any positive λ, the probability that the derivative is positive tends
+to one. Therefore the minimizer λγ1 converges to 0 in probability, regardless of the
+value of γ.
+249
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+References
+A. Aravkin, J. Burke, A. Chiuso, and G. Pillonetto. On the estimation of hyperparameters
+for empirical bayes estimators: Maximum marginal likelihood vs minimum MSE. In Proc.
+IFAC Symposium on System Identification (SysId 2012), 2012.
+F. Bach, G. Lanckriet, and M. Jordan. Multiple kernel learning, conic duality, and the SMO
+algorithm. In Proceedings of the 21st International Conference on Machine Learning, page
+4148, 2004.
+F.R. Bach. Consistency of the group lasso and multiple kernel learning. Journal of Machine
+Learning Research, 9:1179–1225, 2008.
+D. Bauer. Asymptotic properties of subspace estimators. Automatica, 41:359–376, 2005.
+J.O. Berger. Statistical Decision Theory and Bayesian Analysis. Springer Series in Statistics.
+Springer, second edition, 1985.
+E. Candes and T. Tao. The Dantzig selector: statistical estimation when p is much larger
+than n. Annals of Statistics, 35:2313–2351, 2007.
+F. Chatelin. Spectral Approximation of Linear Operators. Academic Press, NewYork, 1983.
+T. Chen, H. Ohlsson, and L. Ljung. On the estimation of transfer functions, regularization
+and gaussian processes - revisited. In IFAC World Congress 2011, Milano, 2011.
+A. Chiuso and G. Pillonetto. Nonparametric sparse estimators for identification of large
+scale linear systems. In Proceedings of IEEE Conf. on Dec. and Control, Atlanta, 2010a.
+A. Chiuso and G. Pillonetto. Learning sparse dynamic linear systems using stable spline
+kernels and exponential hyperpriors. In Proceedings of Neural Information Processing
+Symposium, Vancouver, 2010b.
+A. Chiuso and G. Pillonetto. A Bayesian approach to sparse dynamic network identification.
+Automatica, 48:1553–1565, 2012.
+D. Donoho. Compressed sensing. IEEE Trans. on Information Theory, 52(4):1289–1306,
+2006.
+B. Efron. Microarrays, empirical Bayes and the two-groups model. Statistical Science, 23:
+122, 2008.
+B. Efron and C. Morris. Stein’s estimation rule and its competitors–an empirical bayes
+approach. Journal of the American Statistical Association, 68(341):117–130, 1973.
+B. Efron, T. Hastie, L. Johnstone, and R. Tibshirani. Least angle regression. Annals of
+Statistics, 32:407–499, 2004.
+T. Evgeniou, C. A. Micchelli, and M. Pontil. Learning multiple tasks with kernel methods.
+Journal of Machine Learning Research, 6:615–637, 2005.
+250
+
+Hyperparameter Group Lasso
+
+J. Fan and R. Li. Variable selection via nonconcave penalized likelihood and its oracle
+properties. Journal of the American Statistical Association, 96(456):1348–1360, december
+2001.
+T. J. Hastie and R. J. Tibshirani. Generalized additive models. In Monographs on Statistics
+and Applied Probability, volume 43. Chapman and Hall, London, UK, 1990.
+Roger A. Horn and Charles R. Johnson. Topics in Matrix Analysis. Cambridge University
+Press, 1994.
+W. James and C. Stein. Estimation with quadratic loss. In Proc. 4th Berkeley Sympos.
+Math. Statist. and Prob., Vol. I, pages 361–379. Univ. California Press, Berkeley, Calif.,
+1961.
+H. Leeb and B. P¨
+otscher. Model selection and inference: Facts and fiction. Econometric
+Theory, 21:2159, 2005.
+D.J.C. Mackay. Bayesian non-linear modelling for the prediction competition. ASHRAE
+Trans., 100(2):3704–3716, 1994.
+J. S. Maritz and T. Lwin. Empirical Bayes Method. Chapman and Hall, 1989.
+T. Park and G. Casella. The Bayesian Lasso. Journal of the American Statistical Association, 103(482):681–686, June 2008.
+G. Pillonetto and G. De Nicolao. A new kernel-based approach for linear system identification. Automatica, 46(1):81–93, 2010.
+G. Pillonetto, F. Dinuzzo, and G. De Nicolao. Bayesian online multitask learning of Gaussian
+processes. IEEE Transactions on Pattern Analysis and Machine Intelligence, 32(2).
+G. Pillonetto, A. Chiuso, and G. De Nicolao. Prediction error identification of linear systems:
+a nonparametric Gaussian regression approach. Automatica, 45(2):291–305, 2011.
+M. Schmidt, E. Van Den Berg, M. P. Friedlander, and Kevin Murphy. Optimizing costly
+functions with simple constraints: A limited-memory projected quasi-newton algorithm.
+In Proc. of Conf. on Artificial Intelligence and Statistics, pages 456–463, 2009.
+C.M. Stein. Estimation of the mean of a multivariate normal distribution. The Annals of
+Statistics, 9(6):1135–1151, 1981.
+R. Tibshirani. Regression shrinkage and selection via the LASSO. Journal of the Royal
+Statistical Society, Series B., 58, 1996.
+M. Tipping. Sparse bayesian learning and the relevance vector machine. Journal of Machine
+Learning Research, 1:211–244, 2001.
+M.K. Titsias and M. Lzaro-Gredilla. Spike and slab variational inference for multi-task and
+multiple kernel learning. Advances in Neural Information Processing Systems 25 (NIPS
+2011), 2011.
+251
+
+Aravkin, Burke, Chiuso and Pillonetto
+
+R. Tomioka and T. Suzuki. Regularization strategies and empirical bayesian learning for
+MKL. Journal of Machine Learning Research, 2011.
+D.P. Wipf and S. Nagarajan. A new view of automatic relevance determination. In Proc.
+of NIPS, 2007.
+D.P. Wipf and B.D. Rao. An empirical bayesian strategy for solving the simultaneous sparse
+approximation problem. IEEE Transactions on Signal Processing, 55(7):3704–3716, 2007.
+D.P. Wipf, B.D. Rao, and S. Nagarajan. Latent variable Bayesian models for promoting
+sparsity. IEEE Transactions on Information Theory, 57(9):6236–6255, 2011.
+M. Yuan and Y. Lin. Model selection and estimation in regression with grouped variables.
+Journal of the Royal Statistical Society, Series B, 68:49–67, 2006.
+P. Zhao and B. Yu. On model selection consistency of lasso. Journal of Machine Learning
+Research, 7:2541–2563, Nov. 2006.
+H. Zou. The adaptive Lasso and it oracle properties. Journal of the American Statistical
+Association, 101(476):1418–1429, 2006.
+
+252
+
+

@@ -6,7 +6,7 @@ Created On: 20th Sept 2015
 import os
 from django.shortcuts import render
 from django.http.response import HttpResponse
-from DatabaseParser.views import parseTextToDb
+from DatabaseParser.views import parseTextToDb, getStopWords
 from myapp.models import Document
 from DatabaseParser.wKNN import wKNN
 from DatabaseParser.NaiveBayes import NaiveBayes
@@ -35,10 +35,24 @@ def applyKNN(request):
         revDocList.append(docList[l-i-1])
         i += 1
     document = revDocList[0]
-    k = int(request.GET['K'])
+    if request.GET['K']!='' :
+        k = int(request.GET['K'])
+    else:
+        k = 7
     classList =  wKNN(str(document.docfile),k)
+    l = len(classList)
+    lis = []
+    for i in range(l):
+        lis.append((classList[i][1],classList[i][0]))
     filename = str(document.docfile)
-    return HttpResponse('<br>for the file '+filename+' .The class list is: <br>'+str(classList))
+    context = {
+               'title':'KNN Results',
+	       'msg':'<br>For the file '+filename+' .<a href="/home/">Click here to go back!!</a>',
+	       'colA':'Class Name',
+	       'colB':'Percentage Chance',
+               'dataSet' : lis,
+               }
+    return render(request,'results.html',context)
 
 def trainingDataList(request):
     dirList = [x for x in os.listdir(PATH_TO_DATASET)]
@@ -48,11 +62,18 @@ def trainingDataList(request):
             if str(x)[-3:]== 'txt':
                 pathName = '"'+PATH_TO_DATASET+dirName+'/'+str(x)+'"'
                 files.append(pathName)
-    context = {'msg':'The following are the files used for training!!<a href="/home/">Go back!!</a>',
-               'dirList':str(dirList),
-               'fileList':str(files)
+    l = len(files)
+    lis = []
+    for i in range(l):
+        lis.append((i+1,files[i]))
+    context = {
+               'title':'Training Data Used',
+	       'msg':'The following are the files used for training!!<a href="/home/">Go back!!</a>',
+	       'colA':'SL.No.',
+	       'colB':'Filename',
+               'dataSet' : lis,
                }
-    return HttpResponse(context['msg']+'<br>'+context['dirList']+'<br>'+context['fileList'])
+    return render(request,'results.html',context)
 
 def populateWordDb(request):
     dirList = [x for x in os.listdir(PATH_TO_DATASET)]
@@ -75,6 +96,27 @@ def callBayesian(request):
         i += 1
     document = revDocList[0]
     classList =  NaiveBayes(str(document.docfile))
+    l = len(classList)
+    lis = []
+    for i in range(l):
+        lis.append((classList[i][1],classList[i][0]))
     filename = str(document.docfile)
-    return HttpResponse('<br>for the file '+filename+' .The class list is: <br>'+str(classList))
+    context = {
+               'title':'Bayesian Results',
+	       'msg':'<br>For the file '+filename+' .<a href="/home/">Click here to go back!!</a>',
+	       'colA':'Class Name',
+	       'colB':'Percentage Chance',
+               'dataSet' : lis,
+               }
+    return render(request,'results.html',context)
+
+def loadTextFile(request):
+    filename = request.GET['file']
+    fp = open(filename,encoding="latin-1")
+    content = fp.read()
+    fp.close()
+    return HttpResponse(content, content_type='text/plain')
+
+def getStop(request):
+    return HttpResponse(getStopWords())
  

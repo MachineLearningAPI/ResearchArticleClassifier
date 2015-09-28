@@ -1,0 +1,4303 @@
+Journal of Machine Learning Research 15 (2014) 595-627
+
+Submitted 10/13; Revised 12/13; Published 2/14
+
+Adaptivity of Averaged Stochastic Gradient Descent
+to Local Strong Convexity for Logistic Regression
+Francis Bach
+
+francis.bach@ens.fr
+
+INRIA - Sierra Project-team
+D´epartement d’Informatique de l’Ecole Normale Sup´erieure
+Paris, France
+
+Editor: L´eon Bottou
+
+Abstract
+In this paper, we consider supervised learning problems such as logistic regression and
+study the stochastic gradient method with averaging, in the usual stochastic approximation
+setting where observations are used only
+√ once. We show that after N iterations, with a
+constant step-size proportional to 1/R2 N where N is the number of observations and√R is
+the maximum norm of the observations, the convergence rate is always of order O(1/ N ),
+and improves to O(R2 /µN ) where µ is the lowest eigenvalue
+of the Hessian at the global
+√
+optimum (when this eigenvalue is greater than R2 / N ). Since µ does not need to be
+known in advance, this shows that averaged stochastic gradient is adaptive to unknown
+local strong convexity of the objective function. Our proof relies on the generalized selfconcordance properties of the logistic loss and thus extends to all generalized linear models
+with uniformly bounded features.
+Keywords: stochastic approximation, logistic regression, self-concordance
+
+1. Introduction
+The minimization of an objective function which is only available through unbiased estimates of the function values or its gradients is a key methodological problem in many
+disciplines. Its analysis has been attacked mainly in three scientific communities: stochastic approximation (Fabian, 1968; Ruppert, 1988; Polyak and Juditsky, 1992; Kushner and
+Yin, 2003; Broadie et al., 2009), optimization (Nesterov and Vial, 2008; Nemirovski et al.,
+2009), and machine learning (Bottou and Le Cun, 2005; Shalev-Shwartz et al., 2007; Bottou
+and Bousquet, 2008; Shalev-Shwartz and Srebro, 2008; Shalev-Shwartz et al., 2009; Duchi
+and Singer, 2009; Xiao, 2010). The main algorithms which have emerged are stochastic
+gradient descent (a.k.a. Robbins-Monro algorithm), as well as a simple modification where
+iterates are averaged (a.k.a. Polyak-Ruppert averaging).
+For convex optimization problems, the convergence rates of these algorithms depends
+primarily on the potential strong convexity of the objective function (Nemirovski and Yudin,
+1983). For µ-strongly convex functions, after n iterations (i.e., n observations), the optimal
+rate of convergence of function values is O(1/µn) while for convex functions the optimal
+√
+rate is O(1/ n), both of them achieved by averaged stochastic gradient with step size
+√
+respectively proportional to 1/µn or 1/ n (Nemirovski and Yudin, 1983; Agarwal et al.,
+c 2014 Francis Bach.
+
+Bach
+
+2012). For smooth functions, averaged stochastic gradient with step sizes proportional to
+√
+1/ n achieves them up to logarithmic terms (Bach and Moulines, 2011).
+Convex optimization problems coming from supervised machine learning are typically of
+the form f (θ) = E (y, θ, x ) , where (y, θ, x ) is the loss between the response y ∈ R and
+the prediction θ, x ∈ R, where x is the input data in a Hilbert space H and linear predictions parameterized by θ ∈ H are considered. They may or may not have strongly convex
+objective functions. This most often depends on (a) the correlations between covariates x,
+and (b) the strong convexity of the loss function . The logistic loss : u → log(1 + e−u ) is
+not strongly convex unless restricted to a compact set (indeed, restricted to u ∈ [−U, U ], we
+1 −U
+have (u) = e−u (1 + e−u )−2
+). Moreover, in the sequential observation model, the
+4e
+correlations are not known at training time. Therefore, many theoretical results based on
+strong convexity do not apply (adding a squared norm µ2 θ 2 is a possibility, however, in or√
+der to avoid adding too much bias, µ has to be small and typically much smaller than 1/ n,
+which then makes all strongly-convex bounds vacuous). The goal of this paper is to show
+that with proper assumptions, namely self-concordance, one can readily obtain favorable
+theoretical guarantees for logistic regression, namely a rate of the form O(R2 /µn) where
+µ is the lowest eigenvalue of the Hessian at the global optimum, without any exponentially
+increasing constant factor (e.g., with the notations above, without terms of the form eU ).
+Another goal of this paper is to design an algorithm and provide an analysis that benefit from hidden local strong convexity without requiring to know the local strong convexity
+constant in advance. In smooth situations, the results of Bach and Moulines (2011) imply
+√
+that the averaged stochastic gradient method with step sizes of the form O(1/ n) is adaptive to the strong convexity of the problem. However the dependence in µ in the strongly
+convex case is of the form O(1/µ2 n), which is sub-optimal. Moreover, the final rate is
+rather complicated, notably because all possible step-sizes are considered. Finally, it does
+not apply here because even in low-correlation settings, the objective function of logistic
+regression cannot be globally strongly convex.
+In this paper, we provide an analysis for stochastic gradient with averaging for general√
+ized linear models such as logistic regression, with a step size proportional to 1/R2 n where
+R is the radius of the data and n the number of observations, showing such adaptivity. In
+particular, we show that the algorithm can adapt to the local strong-convexity constant,
+that is, the lowest eigenvalue of the Hessian at the optimum. The√analysis is done for a
+finite horizon N and a constant step size decreasing in N as 1/R2 N , since the analysis
+is then slightly easier, though (a) a decaying stepsize could be considered as well, and (b)
+it could be classically extended to varying step-sizes by a doubling trick (Hazan and Kale,
+2001).
+
+2. Stochastic Approximation for Generalized Linear Models
+In this section, we present the assumptions our work relies on, as well as related work.
+2.1 Assumptions
+Throughout this paper, we make the following assumptions. We consider a function f
+defined on a Hilbert space H, equipped with a norm · . Throughout the paper, we
+identify the Hilbert space and its dual; thus, the gradients of f also belongs to H and we
+596
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+use the same norm on these. Moreover, we consider an increasing family of σ-fields (Fn )n 1
+and we assume that we are given a deterministic θ0 ∈ H, and a sequence of functions
+fn : H → R, for n 1. We make the following assumptions, for a certain R > 0:
+(A1) Convexity and differentiability of f : f is convex and three-times differentiable.
+(A2) Generalized self-concordance of f (Bach, 2010): for all θ1 , θ2 ∈ H, the function
+ϕ : t → f θ1 + t(θ2 − θ1 ) satisfies: ∀t ∈ R, |ϕ (t)| R θ1 − θ2 ϕ (t).
+(A3) Attained global minimum: f has a global minimum attained at θ∗ ∈ H.
+(A4) Lipschitz-continuity of fn and f : all gradients of f and fn are bounded by R,
+that is, for all θ ∈ H,
+f (θ)
+
+R and ∀n
+
+(A5) Adapted measurability: ∀n
+(A6) Unbiased gradients: ∀n
+
+1,
+
+fn (θ)
+
+R almost surely.
+
+1, fn is Fn -measurable.
+
+1, E(fn (θn−1 )|Fn−1 ) = f (θn−1 ).
+
+(A7) Stochastic gradient recursion: ∀n
+a deterministic sequence.
+
+1, θn = θn−1 − γn fn (θn−1 ), where (γn )n
+
+1
+
+is
+
+In this paper, we will also consider the averaged iterate θ¯n = n1 n−1
+k=0 θk , which may be
+¯n−1 .
+trivially computed on-line through the recursion θ¯n = n1 θn−1 + n−1
+θ
+n
+Among the seven assumptions above, the non-standard one is (A2): the notion of selfconcordance is an important tool in convex optimization and in particular for the study
+of Newton’s method (Nesterov and Nemirovskii, 1994). It corresponds to having the third
+derivative bounded by the 32 -th power of the second derivative. For machine learning, Bach
+(2010) has generalized the notion of self-concordance by removing the 23 -th power, so that it
+is applicable to cost functions arising from probabilistic modeling, as shown below. The key
+consequence of our notion of self-concordance is a relationship shown in Lemma 9 (Section 5)
+between the norm of a gradient f (θ) and the excess cost function f (θ) − f (θ∗ ), which is
+the same than for strongly convex functions, but with the local strong convexity constant
+rather than the global one (which is equal to zero here).
+Our set of assumptions corresponds to the following examples (with i.i.d. data, and Fn
+equal to the σ-field generated by x1 , y1 , . . . , xn , yn ):
+– Logistic regression: fn (θ) = log(1 + exp(−yn xn , θ )), with data xn uniformly
+almost surely bounded by R and yn ∈ {−1, 1}. The norm considered here is also the
+norm of the Hilbert space. Note that this includes other binary classification losses,
+such as fn (θ) = −yn xn , θ + 1 + xn , θ 2 .
+– Generalized linear models with uniformly bounded features: fn (θ) =
+− θ, Φ(xn , yn ) + log h(y) exp θ, Φ(xn , y) dy, with Φ(xn , y) ∈ H almost surely
+bounded in norm by R, for all observations xn and all potential responses y in a measurable space. This includes multinomial regression and conditional random fields
+(Lafferty et al., 2001).
+– Robust regression: we may use fn (θ) = ϕ(yn − xn , θ ), with ϕ(t) = log cosh t =
+t
+−t
+log e +e
+, with a similar boundedness assumption on xn .
+2
+597
+
+Bach
+
+2.2 Running-time Complexity
+The stochastic gradient descent recursion θn = θn−1 − γn fn (θn−1 ) operates in full generality
+in the potentially infinite-dimensional Hilbert space H. There are two practical set-ups
+where this recursion can be implemented. When H is finite-dimensional with dimension d,
+then the complexity of a single iteration is O(d), and thus O(dn) after n iterations. When H
+is infinite-dimensional, the recursion can be readily implemented when (a) all functions fn
+depend on one-dimensional projections xn , θ , that is, are of the form fn (θ) = ϕn xn , θ
+for certain random functions ϕn (e.g., ϕn (u) = (yn , u) in machine learning), and (b) all
+scalar products Kij = xi , xj between xi and xj , for i, j 1, can be computed. This may
+be done through the classical application of the “kernel trick” (Sch¨olkopf and Smola, 2001;
+Shawe-Taylor and Cristianini, 2004): if θ0 = 0, we may represent θn as a linear combination
+of vectors x1 , . . . , xn , that is, θn = ni=1 αi xi , and the recursion may be written in terms of
+the weights αn , through
+n−1
+
+αn = −γn xn ϕn
+
+αi Kni .
+i=1
+
+A key element to notice here is that without regularization, the weights αi corresponding
+to previous observations remain constant. The overall complexity of the algorithm is O(n2 )
+times the cost of evaluating a single kernel function. See Bordes et al. (2005) and Wang et al.
+(2012) for approaches aiming at reducing the computational load in this setting. Finally,
+note that in the kernel setting, the function f (θ) cannot be strongly convex because the
+covariance operator of x is typically a compact operator, with a sequence of eigenvalues
+tending to zero (some regularization is then needed).
+
+3. Related Work
+In this section, we review related work, first for non-strongly convex problems then for
+strongly convex problems.
+3.1 Non-strongly-convex Functions
+When only convexity of the objective function is assumed, several authors (Nesterov and
+Vial, 2008; Nemirovski et al., 2009; Shalev-Shwartz et al., 2009; Xiao, 2010) have shown
+√
+that using a step-size proportional to 1/ n, together with some form of averaging, leads to
+√
+the minimax optimal rate of O(1/ n) (Nemirovski and Yudin, 1983; Agarwal et al., 2012).
+Without averaging, the known convergences rates are suboptimal, that is, averaging is key
+to obtaining the optimal rate (Bach and Moulines, 2011). Note that the smoothness of the
+loss does not change the rate, but may help to obtain better constants, with the potential
+use of acceleration (Lan, 2012). Recent work (Bach and Moulines, 2013) has considered
+√
+algorithms which improve on the rate O(1/ n) for smooth self-concordant losses, such as
+the square and logistic losses. Their analysis relies on some of the results proved in this
+paper (in particular the high-order bounds in Section 4).
+The compactness of the domain is often used within the algorithm (by using orthogonal
+projections) and within the analysis (in particular to optimize the step size and obtain
+high-probability bounds). In this paper, we do not make such compactness assumptions,
+598
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+since in a machine learning context, the available bound would be loose and hurt practical
+performance. Note that the analysis of the related dual averaging methods (Nesterov, 2009;
+Xiao, 2010) has also been carried without compactness assumptions, and previous analyses
+would also go through in the same set-up for stochastic mirror descent (Nemirovski and
+Yudin, 1983), at least for bounds in expectation. In the present paper, we derive higherorder bounds and bounds in high-probability where the lack of compactness is harder to
+deal with.
+Another difference between several analyses is the use of decaying
+√ step sizes of the form
+√
+γn ∝ 1/ n vs. the use of a constant step size of the form γ ∝ 1/ N for a finite known
+horizon N of iterations. The use of a “doubling trick” as done by Hazan and Kale (2001) for
+strongly convex optimization, where a constant step√size is used for iterations between 2p
+and 2p+1 , with a constant that is proportional to 1/ 2p , would allow to obtain an anytime
+algorithm from a finite horizon one. In order to simplify our analysis, we
+√ only consider a
+finite horizon N and a constant step-size that will be proportional to 1/ N .
+3.2 Strongly-convex Functions
+When the function is µ-strongly convex, that is, θ → f (θ) − µ2 θ 2 is convex, there are
+essentially two approaches to obtaining the minimax-optimal rate of O(1/µn) (Nemirovski
+and Yudin, 1983; Agarwal et al., 2012): (a) using a step size proportional to 1/µn with
+averaging for non-smooth problems (Nesterov and Vial, 2008; Nemirovski et al., 2009; Xiao,
+2010; Shalev-Shwartz et al., 2009; Duchi and Singer, 2009; Lacoste-Julien et al., 2012) or
+a step size proportional to 1/(R2 + nµ) also with averaging, for smooth problems, where
+R2 is the smoothness constant of the loss of a single observation (Le Roux et al., 2012);
+(b) for smooth problems, using longer step-sizes proportional to 1/nα for α ∈ (1/2, 1) with
+averaging (Polyak and Juditsky, 1992; Ruppert, 1988; Bach and Moulines, 2011).
+Note that the often advocated step size, that is, of the form C/n where C is larger than
+1/µ, leads, without averaging to a convergence rate of O(1/µ2 n) (Fabian, 1968; Bach and
+Moulines, 2011), hence with a worse dependence on µ.
+The solution (a) requires to have a good estimate of the strong-convexity constant
+µ, while the second solution (b) does not require to know such estimate and leads to
+a convergence rate achieving asymptotically the Cramer-Rao lower bound (Polyak and
+Juditsky, 1992). Thus, this last solution is adaptive to unknown (but positive) amount of
+strong convexity. However, unless we take the limiting setting α = 1/2, it is not adaptive to
+lack of strong convexity. While the non-asymptotic analysis of Bach and Moulines (2011)
+already gives a convergence rate in that situation, the bound is rather complicated and also
+has a suboptimal dependence on µ. Another goal of this paper is to consider a less general
+result, but more compact and, as already mentioned, a better dependence on the strong
+convexity constant µ (moreover, as reviewed below, we consider the local strong convexity
+constant, which is much larger).
+Finally, note that unless we restrict the support, the objective function for logistic
+regression cannot be globally strongly convex (since the Hessian tends to zero when θ
+tends to infinity). In this paper we show that stochastic gradient descent with averaging is
+adaptive to the local strong convexity constant, that is, the lowest eigenvalue of the Hessian
+599
+
+Bach
+
+of f at the global optimum, without any exponential terms in RD (which would be present
+if a compact domain of diameter D was imposed and traditional analyses were performed).
+3.3 Adaptivity to Unknown Constants
+The desirable property of adaptivity to the difficulty of an optimization problem has also
+been studied in several settings. Gradient descent with constant step size is for example
+naturally adaptive to the strong convexity of the problem (see, e.g., Nesterov, 2004). In the
+stochastic context, Juditsky and Nesterov (2010) provide another strategy than averaging
+with longer step sizes, but for uniform convexity constants.
+
+4. Non-Strongly Convex Analysis
+In this section, we study the averaged stochastic gradient method in the non-strongly convex
+case, that is, without any (global or local) strong convexity assumptions. We first recall
+existing results√in Section 4.1, that bound the expectation of the excess risk leading to a
+bound in O(1/ N ). We then show using martingale moment inequalities√how all higherorder moments may be bounded in Section 4.2, still with a rate of O(1/ N ). However,
+in Section 4.3, we consider the convergence of the squared gradient, with now a rate of
+O(1/N ). This last result is key to obtaining the adaptivity to local strong convexity in
+Section 5.
+4.1 Existing Results
+In this section, we review existing results for Lipschitz-continuous non-strongly convex problems (Nesterov and Vial, 2008; Nemirovski et al., 2009; Shalev-Shwartz et al., 2009; Duchi
+and Singer, 2009; Xiao, 2010). Note that smoothness is not needed here. We consider a
+constant step size γn = γ > 0, for all n 1, and we denote by θ¯n = n1 n−1
+k=0 θk the averaged
+iterate.
+We prove the following proposition, which provides a bound on the expectation of f (θ¯n )−
+√
+f (θ∗ ) that decays at rate O(γ + 1/γn), hence the usual choice γ ∝ 1/ n:
+Lemma 1 Assume (A1) and (A3-7). With constant step size equal to γ, for any n
+we have:
+Ef
+
+1
+n
+
+n
+
+θk−1
+
+1
+E θn − θ∗
+2γn
+
+− f (θ∗ ) +
+
+k=1
+
+2
+
+1
+θ0 − θ ∗
+2γn
+
+2
+
++
+
+0,
+
+γ 2
+R .
+2
+
+Proof We have the following recursion, obtained from the Lipschitz-continuity of fn :
+θ n − θ∗
+
+2
+
+=
+
+θn−1 − θ∗
+
+2
+
+− 2γ θn−1 − θ∗ , fn (θn−1 ) + γ 2 fn (θn−1 )
+
+θn−1 − θ∗
+
+2
+
+− 2γ θn−1 − θ∗ , f (θn−1 ) + γ 2 R2 + Mn ,
+
+2
+
+with
+Mn = −2γ θn−1 − θ∗ , fn (θn−1 ) − f (θn−1 ) .
+We thus get, using the classical result from convexity f (θn−1 ) − f (θ∗ )
+θ∗ , f (θn−1 ) :
+2γ f (θn−1 ) − f (θ∗ )
+
+θn−1 − θ∗
+600
+
+2
+
+− θn − θ∗
+
+2
+
++ γ 2 R 2 + Mn .
+
+θn−1 −
+(1)
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+Summing over integers less than n, this implies:
+1
+n
+
+n−1
+
+f (θk ) − f (θ∗ ) +
+k=0
+
+1
+θn − θ∗
+2γn
+
+1
+θ0 − θ∗
+2γn
+
+2
+
+2
+
++
+
+γ 2
+1
+R +
+2
+2γn
+
+n
+
+Mk .
+k=1
+
+We get the desired result by taking expectation in the last inequality, and using the expecn−1
+1
+tation EMk = E(E(Mk |Fk−1 )) = 0 and f n1 n−1
+k=0 θk
+k=0 f (θk ).
+n
+The following corollary considers a specific choice of the step size (note that the bound is
+only true for the last iterate):
+1√
+,
+2R2 N
+
+Corollary 2 Assume (A1) and (A3-7). With constant step size equal to γ =
+have:
+2
+
+∀n ∈ {1, . . . , N }, E θn − θ∗
+1
+Ef
+N
+Note that if θ0 − θ∗
+
+2
+
+θ0 − θ∗
+
+N
+
+θk−1
+
+2
+
++
+
+R2
+√
+θ 0 − θ∗
+N
+
+− f (θ∗ )
+
+k=1
+
+we
+
+1
+,
+4R2
+2
+
+1
++ √ .
+4 N
+
+was known, then a better step-size would be γ =
+
+θ0 −θ∗
+√
+R N
+
+, leading to
+
+R θ0 −θ∗
+√
+N
+
+. However, this requires an estimate (or simply
+a convergence rate proportional to
+2
+an upper-bound) of θ0 − θ∗ , which is typically not available.
+We are going to improve this result in several ways:
+– All moments of θn − θ∗ 2 and f (θ¯n ) − f (θ∗ ) will be bounded, leading to a subexponential behavior. Note that we do not assume that the iterates are restricted to a
+predefined bounded set, which is the usual assumption made to derive tail bounds for
+stochastic approximation (Nesterov and Vial, 2008; Nemirovski et al., 2009; Kakade
+and Tewari, 2009).
+– We are going to show that the squared norm of the gradient at θ¯n = 1 n θk−1
+n
+
+k=1
+
+converges at rate O(1/n), even in the non-strongly convex case. This will allow us to
+derive finer convergence rates in presence of local strong convexity in Section 5.
+– The bounds above do not explicitly depend on the dimension of the problem, however,
+in practice, the quantity R2 θ0 −θ∗ 2 typically implicitly scales linearly in the problem
+dimension.
+4.2 Higher-Order and Tail Bound
+In this section, we prove novel higher-order bounds (see the proof in Appendix C), both for
+any constant step-sizes and then for the specific choice γ = 2R21√N . This will immediately
+lead to tail bounds.
+Proposition 3 Assume (A1) and (A3-7). With constant step size equal to γ, for any
+n 0 and integer p 1, we have:
+p
+
+E 2γn f (θ¯n ) − f (θ∗ ) + θn − θ∗
+
+2
+
+601
+
+3 θ0 − θ ∗
+
+2
+
+p
+
++ 20npγ 2 R2 .
+
+Bach
+
+Corollary 4 Assume (A1) and (A3-7). With constant step size equal to γ =
+any integer p 1, we have:
+∀n ∈ {1, . . . , N }, E θn − θ∗
+E f (θ¯N ) − f (θ∗ )
+
+1√
+,
+2R2 N
+
+for
+
+p
+1
+3R2 θ0 − θ∗ 2 + 5p ,
+2
+R
+p
+1
+√ 3R2 θ0 − θ∗ 2 + 5p .
+N
+
+2p
+p
+
+In Appendix C, we first provide two alternative proofs of the same result: (a) our original
+somewhat tedious proof based on taking powers of the inequality in Equation (1) and using
+martingale moment inequalities, (b) a shorter proof later derived by Bach and Moulines
+(2013), that uses Burkholder-Rosenthal-Pinelis inequality (Pinelis, 1994, Theorem 4.1). We
+also provide in Appendix C a direct proof of the large deviation bound that we now present.
+Having a bound on all moments allows immediately to derive large deviation bounds in
+the same two cases (by applying Lemma 11 from Appendix A):
+Proposition 5 Assume (A1) and (A3-7). With constant step size equal to γ, for any
+n 0 and t 0, we have:
+P f (θ¯n ) − f (θ∗ )
+θn − θ∗
+
+P
+
+30γR2 t +
+
+2
+
+3 θ0 − θ∗
+γn
+
+60nγ 2 R2 t + 6 θ0 − θ∗
+
+2
+
+2 exp(−t),
+2
+
+2 exp(−t).
+
+Corollary 6 Assume (A1) and (A3-7). With constant step size equal to γ =
+any t 0 we have:
+P f (θ¯N ) − f (θ∗ )
+P
+
+θN − θ∗
+
+2
+
+15t
+6R2 θ0 − θ∗
+√ +
+√
+N
+N
+15R−2 t + 6 θ0 − θ∗
+
+1√
+,
+2R2 N
+
+for
+
+2
+
+2 exp(−t),
+2
+
+2 exp(−t).
+
+We can make the following observations:
+– The results above are obtained by direct application of Proposition 3. In Appendix C,
+we also provide an alternative direct proof of a slightly weaker result, which was
+suggested and outlined by Alekh Agarwal (personal communication), and that uses
+Freedman’s inequality for martingales (Freedman, 1975, Theorem 1.6).
+– The results above bounding the norm between the last iterate and a global optimum
+extend to the averaged iterate.
+– The iterates θn and θ¯n do not necessarily converge to θ∗ (note that θ∗ may not be
+unique in general anyway).
+– Given that (E[f (θ¯n ) − f (θ∗ )]p )1/p is affine in p, we obtain a subexponential behavior,
+that is, tail bounds similar to an exponential distribution. The same decay was
+obtained by Nesterov and Vial (2008) and Nemirovski et al. (2009), but with an extra
+orthogonal projection step that is equivalent in our setting to know a bound on θ∗ ,
+which is in practice not available.
+602
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+– The constants in the bounds of of Proposition 3 (and thus other results as well) could
+clearly be improved. In particular, we have, for p = 1, 2, 3 (see proof in Appendix E):
+E 2γn f (θ¯n ) − f (θ∗ ) + θn − θ∗
+
+2
+
+E 2γn f (θ¯n ) − f (θ∗ ) + θn − θ∗
+
+2
+
+E 2γn f (θ¯n ) − f (θ∗ ) + θn − θ∗
+
+2
+
+θ0 − θ∗
+2
+3
+
+2
+
++ nγ 2 R2 ,
+2
+
+θ0 − θ∗
+
+2
+
++ 9nγ 2 R2 ,
+
+θ0 − θ∗
+
+2
+
++ 20nγ 2 R2 .
+
+3
+
+4.3 Convergence of Gradients
+In this section, we prove higher-order bounds on the convergence of the gradient, with
+an improved rate O(1/n) for f (θ¯n ) 2 . In this section, we will need the self-concordance
+property in Assumption (A2).
+Proposition 7 Assume (A1-7). With constant step size equal to γ, for any n
+integer p, we have:
+E f
+
+1
+n
+
+n
+
+2p
+
+1/2p
+
+θk−1
+k=1
+
+√
+4p
+3
+R √
+√ 8 p + √ + 40R2 γp n + √ θ0 − θ∗
+n
+n
+γ n
+
+Corollary 8 Assume (A1-7). With constant step size equal to γ =
+p, we have:
+E f
+
+1
+N
+
+N
+
+2p
+
+θk−1
+k=1
+
+1/2p
+
+2
+
++
+
+3
+√ θ0 − θ∗
+γR n
+
+1√
+,
+2R2 N
+
+R
+4p
+√
+√
+8 p + √ + 20p + 6R2 θ0 − θ∗
+n
+N
+
+2
+
+0 and
+
+.
+
+for any integer
+
++ 6R θ0 − θ∗
+
+.
+
+We can make the following observations:
+– The squared norm of the gradient f (θ¯N ) 2 converges at rate O(1/N ).
+– Given that (E f (θ¯N ) 2p )1/2p is affine in p, we obtain a subexponential behavior for
+f (θ¯N ) , that is, tail bounds similar to an exponential distribution.
+– The proof of Proposition 7 makes use of the self-concordance assumption (that allows
+to upperbound deviations of gradients by deviations of function values) together with
+the proof technique of Polyak and Juditsky (1992).
+
+5. Self-Concordance Analysis for Strongly-Convex Problems
+In the previous section, we have shown that f (θ¯N ) 2 is of order O(1/N ). If the function
+f was strongly convex with constant µ > 0, this would immediately lead to the bound
+1
+2
+¯
+f (θ¯N ) − f (θ∗ )
+2µ f (θN ) , of order O(1/µN ). However, because of the Lipschitzcontinuity of f on the full Hilbert space H, it cannot be strongly convex. In this section, we
+show how the self-concordance assumption may be used to obtain the exact same behavior,
+but with µ replaced by the local strong convexity constant, which is more likely to be strictly
+positive.
+The required property is summarized in the following proposition about (generalized)
+self-concordant function (see proof in Appendix B.1):
+603
+
+Bach
+
+Lemma 9 Let f be a convex three-times differentiable function from H to R, such that
+for all θ1 , θ2 ∈ H, the function ϕ : t → f θ1 + t(θ2 − θ1 ) satisfies: ∀t ∈ R, |ϕ (t)|
+R θ1 − θ2 ϕ (t). Let θ∗ be a global minimizer of f and µ the lowest eigenvalue of f (θ∗ ),
+which is assumed strictly positive.
+If
+
+f (θ) R
+µ
+
+3
+, then θ − θ∗
+4
+
+2
+
+4
+
+f (θ)
+µ2
+
+2
+
+and f (θ) − f (θ∗ )
+
+2
+
+f (θ)
+µ
+
+2
+
+.
+
+We may now use this proposition for the averaged stochastic gradient. For simplicity,
+we only consider the step-size γ = 2R21√N , and the last iterate (see proof in Appendix F):
+Proposition 10 Assume (A1-7). Assume γ = 2R21√N . Let µ > 0 be the lowest eigenvalue
+of the Hessian of f at the unique global optimum θ∗ . Then:
+Ef (θ¯N ) − f (θ∗ )
+E θ¯N − θ∗
+
+2
+
+4
+R2
+5R θ0 − θ∗ + 15 ,
+Nµ
+4
+R2
+6R θ0 − θ∗ + 21 .
+2
+Nµ
+
+We can make the following observations:
+¯
+
+– The proof relies on Lemma 9 and requires a control of the probability that f (θµN ) R
+3
+4 , which is obtained from Proposition 7.
+√ 4 p
+R2
+– We conjecture a bound of the form N
+p)
+for the p-th order
+µ ( R θ0 − θ ∗ +
+moment of f (θ¯N ) − f (θ∗ ), for some scalar constants and .
+– The new bound now has the term R θ0 − θ∗ with a fourth power (compared to
+the bound in Lemma 1, which has a second power), which typically grows with the
+dimension of the underlying space (or the slowness of the decay of eigenvalues of the
+covariance operator when H is infinite-dimensional). It would be interesting to study
+whether this dependence can be reduced.
+– The key elements in the previous proposition are that (a) the constant µ is the local
+convexity constant, and (b) the step-size does not depend on that constant µ, hence
+the claimed adaptivity.
+– The bounds are only better than the non-strongly-convex bounds
+√ from Lemma 1,
+2
+when the Hessian lowest eigenvalue is large enough, that is, µR N larger than a
+fixed constant.
+– In the context of logistic regression, even when the covariance matrix of the inputs is
+invertible, then the only available lower bound on µ is equal to the lowest eigenvalue
+of the covariance matrix times exp(−R θ∗ ), which is exponentially small. However,
+the previous bound is overly pessimistic since it is based on an upper bound on the
+largest possible value of x, θ∗ . In practice, the actual value of µ is much larger and
+only a small constant smaller than the lowest eigenvalue of the covariance matrix. In
+order to assess if this result can be improved, it is interesting to look at the asymptotic
+result from Polyak and Juditsky (1992) for logistic regression, which leads to a limit
+rate of 1/n times tr f (θ∗ )−1 Efn (θ∗ )fn (θ∗ ) ; note that this rate holds both for the
+604
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+stochastic approximation algorithm and for the global optimum of the training cost,
+using standard asymptotic statistics results (Van der Vaart, 1998). When the model
+is well-specified, that is, the log-odds ratio of the conditional distribution of the label
+given the input is linear, then Efn (θ∗ )fn (θ∗ ) = Efn (θ∗ ) = f (θ∗ ), and the asymptotic
+rate is exactly d/n, where d is the dimension of H (which has to be finite-dimensional
+for the covariance matrix to be invertible). It would be interesting to see if making the
+extra assumption of well-specification, we can also get an improved non-asymptotic
+result. When the model is mis-specified however, the quantity Efn (θ∗ )fn (θ∗ ) may
+be large even when f (θ∗ ) is small, and the asymptotic regime does not readily lead
+to an improved bound.
+
+6. Conclusion
+In this paper, we have provided a novel analysis of averaged stochastic gradient for logistic
+regression and related problems. The key aspects of our result are (a) the adaptivity to
+local strong convexity provided by averaging and (b) the use of self-concordance to obtain
+a simple bound that does not involve a term which is explicitly exponential in R θ0 − θ∗ ,
+which could be obtained by constraining the domain of the iterates.
+Our results could be extended in several ways: (a) with
+√ a finite and known horizon
+2
+N , we considered a constant step-size proportional to 1/R N ; it thus seems natural to
+√
+study the decaying step size γn = O(1/R2 n), which should, up to logarithmic terms, lead
+to similar results—and thus likely provide a solution to a a recently posed open problem
+for online logistic regression (McMahan and Streeter, 2012); (b) an alternative would be
+to consider a doubling trick where the step-sizes are piecewise constant; also, (c) it may
+be possible to consider other assumptions, such as exp-concavity (Hazan and Kale, 2001)
+or uniform convexity (Juditsky and Nesterov, 2010), to derive similar or improved results.
+Finally, by departing from a plain averaged stochastic gradient recursion, Bach and Moulines
+(2013) have considered an online Newton algorithm with the same running-time complexity,
+which leads to a rate of O(1/n) without strong convexity assumptions for logistic regression
+(though with additional assumptions regarding the distributions of the inputs). It would
+be interesting to understand if simple assumptions such as the ones made in the present
+paper are possible while preserving the improved convergence rate.
+
+Acknowledgments
+The author was partially supported by the European Research Council (SIERRA Project),
+and thanks Simon Lacoste-Julien, Eric Moulines and Mark Schmidt for helpful discussions.
+Morever, Alekh Agarwal suggested and provided a detailed outline of the proof technique
+based on Freedman’s inequality; this was greatly appreciated.
+
+Appendix A. Probability Lemmas
+In this appendix, we prove simple lemmas relating bounds on moments to tail bounds, with
+the traditional use of Markov’s inequality. See more general results by Boucheron et al.
+(2013).
+605
+
+Bach
+
+Lemma 11 Let X be a non-negative random variable such that for some positive constants
+A and B, and all p ∈ {1, . . . , n},
+EX p
+
+(A + Bp)p .
+
+n
+2,
+
+Then, if t
+
+3Bt + 2A)
+
+P(X
+
+2 exp(−t).
+
+Proof We have, by Markov’s inequality, for any p ∈ {1, . . . , n}:
+(A + Bp)p
+= exp(− log(2)p).
+(2A + 2Bp)p
+
+EX p
+(2Bp + 2A)p
+
+2Bp + 2A)
+
+P(X
+
+For u ∈ [1, n], we consider p = u , so that
+P(X
+
+2Bu + 2A)
+
+P(X
+
+2Bp + 2A)
+
+We take t = log(2)u and use 2/ log 2
+
+exp(− log(2)p)
+
+2 exp(− log(2)u).
+n
+2.
+
+3. This is thus valid if t
+
+Lemma 12 Let X be a non-negative random variable such that for some positive constants
+A, B and C, and for all p ∈ {1, . . . , n},
+√
+(A p + Bp + C)2p .
+
+EX p
+Then, if t
+
+n,
+P(X
+
+√
+(2A t + 2Bt + 2C)2 )
+
+4 exp(−t).
+
+Proof We have, by Markov’s inequality, for any p ∈ {1, . . . , n}:
+P(X
+
+√
+(2A p + 2Bp + 2C)2 )
+
+EX p
+(2A p + 2Bp + 2C)2p
+√
+(A p + Bp + C)2p
+√
+(2A p + 2Bp + 2C)2p
+√
+
+exp(− log(4)p).
+
+For u ∈ [1, n], we consider p = u , so that
+P(X
+
+√
+(2A u + 2Bu + 2C)2 )
+
+P(X
+
+√
+(2A u + 2Bu + 2C)2 )
+
+exp(− log(2)p)
+We take t = log(4)u and use log 4
+
+1. This is thus valid if t
+
+606
+
+4 exp(− log(4)u).
+n.
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+Appendix B. Self-Concordance Properties
+In this appendix, we show two lemmas regarding our generalized notion of self-concordance,
+as well as Lemma 9. For more details, see Bach (2010) and references therein.
+The following lemma provide an upper-bound on a one-dimensional self-concordant function at a given point which is based on the gradient at this point and the value and the
+Hessian at the global minimum. This is key to going in Section 5 from a convergence of
+gradients to a convergence of function values.
+Lemma 13 Let ϕ : [0, 1] → R a strictly convex three-times differentiable function such that
+for some S > 0, ∀t ∈ [0, 1], |ϕ (t)| Sϕ (t). Assume ϕ (0) = 0, ϕ (0) > 0. Then:
+ϕ (1)
+S
+ϕ (0)
+Moreover, if α =
+then ϕ(1)
+
+ϕ (1)S
+ϕ (0)
+
+1 − e−S and ϕ(1)
+
+< 1, then ϕ(1)
+2
+
+ϕ(0) + 2 ϕϕ (1)
+(0) and ϕ (0)
+
+ϕ(0) +
+
+ϕ(0) +
+
+ϕ (1)2
+(1 + S).
+ϕ (0)
+
+ϕ (1)2 1
+1
+log
+. If in addition α
+ϕ (0) α
+1−α
+
+3
+4,
+
+2ϕ (1).
+
+Proof By self-concordance, we obtain that the derivative of u → log ϕ (u) is lower-bounded
+by −S. By integrating between 0 and t ∈ [0, 1], we get
+log ϕ (t) − log ϕ (0)
+
+−St , that is, ϕ (t)
+
+ϕ (0)e−St ,
+
+(2)
+
+and by integrating between 0 and 1, we obtain (note that we have assumed ϕ (0) = 0):
+ϕ (1)
+
+ϕ (0)
+
+1 − e−S
+.
+S
+
+(3)
+
+We then get (with a first inequality from convexity of ϕ, and the last inequality from
+eS 1 + S):
+ϕ(1) − ϕ(0)
+
+ϕ (1)
+
+ϕ (1)
+
+Equation (3) implies that α
+that
+ϕ(1) − ϕ(0)
+
+ϕ (1)
+S
+ϕ (1)2
+S
+=
+S+ S
+ϕ (0) 1 − e−S
+ϕ (0)
+e −1
+
+1 − e−S , which implies, if α < 1, S
+ϕ (1)
+
+ϕ (1)
+S
+ϕ (0) 1 − e−S
+
+ϕ (1)2
+(1 + S).
+ϕ (0)
+1
+log 1−α
+. This implies
+
+1
+ϕ (1)2 1
+log
+,
+ϕ (0) α
+1−α
+
+using the monotonicity of S → 1−eS−S . Finally the last bounds are a consequence of Sα
+1
+1
+2, which is valid for α 34 .
+α log 1−α
+Note that in Equation (2), we do consider a lower-bound on the Hessian with an exponential factor e−St . The key feature of using self-concordance properties is to get around
+this exponential factor in the final bound.
+The following lemma upper-bounds the remainder in the first-order Taylor expansion of
+the gradient by the remainder in the first-order Taylor expansion of the function. This is
+important when function values behave well (i.e., converge to the minimal value) while the
+iterates may not.
+607
+
+Bach
+
+Lemma 14 Let f be a convex three-times differentiable function from H to R, such that
+for all θ1 , θ2 ∈ H, the function ϕ : t → f θ1 + t(θ2 − θ1 ) satisfies: ∀t ∈ R, |ϕ (t)|
+R θ1 − θ2 ϕ (t). For any θ1 , θ2 ∈ H, we have:
+f (θ1 ) − f (θ2 ) − f (θ2 )(θ2 − θ1 )
+
+R f (θ1 ) − f (θ2 ) − f (θ2 ), θ2 − θ1 .
+
+Proof For a given z ∈ H of unit norm, let ϕ(t) = z, f θ2 + t(θ1 − θ2 ) − f (θ2 ) −
+tf (θ2 )(θ2 − θ1 ) and ψ(t) = R f (θ2 + t(θ1 − θ2 )) − f (θ2 ) − t f (θ2 ), θ2 − θ1 . We have
+ϕ(0) = ψ(0) = 0. Moreover, we have the following derivatives:
+ϕ (t) =
+
+z, f
+
+ϕ (t) = f
+
+θ2 + t(θ1 − θ2 ) − f (θ2 ), θ1 − θ2
+
+θ2 + t(θ1 − θ2 ) [z, θ1 − θ2 , θ1 − θ2 ]
+
+R z 2f
+
+θ2 + t(θ1 − θ2 ) [θ1 − θ2 , θ1 − θ2 ], using the Appendix A of Bach (2010),
+
+= R θ2 − θ1 , f
+
+θ2 + t(θ1 − θ2 ) (θ1 − θ2 )
+
+ψ (t) = R f θ2 + t(θ1 − θ2 ) − f (θ2 ), θ1 − θ2
+ψ (t) = R θ2 − θ1 , f
+
+θ2 + t(θ1 − θ2 ) (θ1 − θ2 ) ,
+
+where f (θ) is the third order tensor of third derivatives. This leads to ϕ (0) = ψ (0) = 0
+and ϕ (t)
+ψ (t). We thus have ϕ(1)
+ψ(1) by integrating twice, which leads to the
+desired result by maximizing with respect to z.
+
+B.1 Proof of Lemma 9
+We follow the standard proof techniques in self-concordant analysis and define an appropriate function of a single real variable and apply simple lemmas like the ones above.
+Define ϕ : t → f θ∗ + t(θ − θ∗ ) − f (θ∗ ). We have
+ϕ (t) =
+
+f θ∗ + t(θ − θ∗ ) , θ − θ∗
+
+ϕ (t) =
+
+θ − θ∗ , f θ∗ + t(θ − θ∗ ) (θ − θ∗ )
+
+ϕ (t) = f
+
+θ∗ + t(θ − θ∗ ) [θ − θ∗ , θ − θ∗ , θ − θ∗ ].
+
+We thus have: ϕ(0) = ϕ (0) = 0, 0
+ϕ (1) = f (θ), θ − θ∗
+f (θ) θ − θ∗ , ϕ (0) =
+2
+θ − θ∗ , f (θ∗ )(θ − θ∗ )
+µ θ − θ∗ , and ϕ(t)
+0 for all t ∈ [0, 1]. Moreover, ϕ (t)
+R θ − θ∗ ϕ (t) for all t ∈ [0, 1], that is, Lemma 13 applies with S = R θ − θ∗ . This leads
+f (θ) R
+to the desired result, with α = ϕϕ (1)S
+. Note that we also have (using the second
+µ
+(0)
+inequality in Lemma 13), for all θ ∈ H (and without any assumption on θ):
+f (θ) − f (θ∗ )
+
+1 + R θ − θ∗
+
+f (θ)
+µ
+
+2
+
+.
+
+Appendix C. Proof of Proposition 3
+We provide two alternative proofs of the same result: (a) our original somewhat tedious
+proof in Appendices C.3 and C.4, based on taking powers of the inequality in Equation (1)
+608
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+and using martingale moment inequalities, (b) a shorter proof in Appendix C.5, later derived
+by Bach and Moulines (2013), that uses Burkholder-Rosenthal-Pinelis inequality (Pinelis,
+1994, Theorem 4.1). Another proof technique was suggested and outlined by Alekh Agarwal (personal communication), that uses Freedman’s inequality for martingales (Freedman,
+1975, Theorem 1.6); it allows to directly get a tail bound like in Proposition 5. This proof
+will be presented in Appendix C.6.
+Note that the two shorter proofs currently lead to slightly worse constants (or to extra
+logarithmic factors), that may be improved with more refined derivations.
+All proofs start from a similar martingale set-up that we describe in Appendix C.1 and
+use an almost-sure bound when p gets large (Appendix C.2).
+C.1 Bounding Martingales
+From the proof of Lemma 1, we have the recursion:
+2γ f (θn−1 ) − f (θ∗ ) + θn − θ∗
+
+2
+
+θn−1 − θ∗
+
+2
+
++ γ 2 R 2 + Mn ,
+
+with
+Mn = −2γ θn−1 − θ∗ , fn (θn−1 ) − f (θn−1 ) .
+This leads to, by summing from 1 to n, and using the convexity of f :
+1
+2γnf
+n
+
+n
+
+θk−1
+
+− 2γnf (θ∗ ) + θn − θ∗
+
+2
+
+An ,
+
+k=1
+
+with
+
+n
+
+An = θ 0 − θ ∗
+
+2
+
+2
+
+2
+
++ nγ R +
+
+Mk
+
+0.
+
+k=1
+
+Note that An may also be defined recursively as A0 = θ0 − θ∗
+
+2
+
+and
+
+An = An−1 + γ 2 R2 + Mn .
+
+(4)
+
+The random variables (Mn ) and (An ) satisfy the following properties that will proved
+useful throughout the proof:
+(a) Martingale increment: for all k
+n
+k=1 Mk is a martingale.
+(b) Boundedness: |Mk |
+
+1, E(Mk |Fk−1 ) = 0. This implies that Sn =
+1/2
+
+4γR θk−1 − θ∗
+
+4γRAk−1 almost surely.
+
+C.2 Almost Sure Bound
+In this section, we derive an almost sure bound that will be valid for small n. From the
+stochastic gradient recursion θn = θn−1 − γfn (θn−1 ), we get, using Assumption (A4) and
+the triangle inequality:
+θn − θ ∗
+
+θn−1 − θ∗ + γ fn (θn−1 )
+609
+
+θn−1 − θ∗ + γR almost surely.
+
+Bach
+
+This leads to θn − θ∗
+
+θ0 − θ∗ + nγR for all n
+
+0. This in turn implies that
+
+n
+
+θ0 − θ∗
+
+An
+
+2
+
++ nγ 2 R2 + 4γR
+
+θk−1 − θ∗
+
+using |Mk |
+
+4γR θk−1 − θ∗ ,
+
+k=1
+n
+
+θ0 − θ∗
+
+2
+
++ nγ 2 R2 + 4γR
+
+θ0 − θ∗ + (k − 1)γR using the inequality above,
+k=1
+
+θ0 − θ ∗
+
+2
+
++ nγ 2 R2 + 4γnR θ0 − θ∗ + 2γ 2 R2 n2
+
+by summing over the first n − 1 integers,
+a2 b2
++ ,
+θ0 − θ∗ 2 + nγ 2 R2 + 2γ 2 n2 R2 + 2 θ0 − θ∗ 2 + 2γ 2 R2 n2 using ab
+2
+2
+3 θ0 − θ∗ 2 + 5n2 γ 2 R2 almost surely.
+(5)
+n
+4.
+
+This implies that the bound is shown for all p
+C.3 Derivation of p-th Order Recursion
+
+The first proof works as follows: (a) derive a recursion between the p-th moments and
+the lower-order moments (this section) and (c) prove the result by induction on p (Appendix C.4). Note that we have to treat separately small values on n in the recursion, for
+which we use the almost sure bound from Appendix C.2.
+Starting from Equation (4), using the binomial expansion formula, we get:
+Apn
+
+An−1 + γ 2 R2 + Mn
+
+p
+
+p
+
+p
+k
+
+=
+k=0
+
+An−1 + γ 2 R2
+p
+
+An−1 + γ 2 R2
+
+p
+
++ p An−1 + γ 2 R2
+
+p−1
+
+Mn +
+k=2
+
+p−k
+
+Mnk
+
+p
+k
+
+An−1 + γ 2 R2
+
+p−k
+
+1/2
+
+k
+
+4γRAn−1 .
+
+This leads to, using E(Mn |Fn−1 ) = 0, upper bounding γ 2 R2 by 4γ 2 R2 , and using the
+binomial expansion formula several times:
+p
+
+E
+
+Apn
+
+Fn−1
+
+2
+
+2 p
+
+2
+
+2
+
+An−1 + 4γ R
+
++
+k=2
+
+p
+k
+1/2
+
+=
+
+An−1 + 4γ R + 4γRAn−1
+
+=
+
+1/2
+An−1
+2p
+
+An−1 + 4γ 2 R2
+p
+
+p−k
+
+1/2
+
+4γRAn−1
+
+− 4γRp An−1 + 4γ 2 R2
+
+p−1
+
+k
+
+1/2
+
+An−1
+
+by isolating the term k = 1 in the binomial formula,
+
+=
+k=0
+2p
+
++ 2γR
+
+2p
+
+− 4γRp An−1 + 4γ 2 R2
+
+2p k/2
+1/2
+An−1 (2γR)2p−k − 4γRpAn−1
+k
+k/2
+
+An−1 (2γR)2p−k Ck ,
+
+=
+k=0
+
+610
+
+p−1
+
+p−1
+
+k=0
+
+1/2
+
+An−1
+p−1 k
+An−1 (2γR)2(p−1−k)
+k
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+with the constants Ck defined as:
+C2q =
+C2q+1 =
+
+2p
+for q ∈ {0, . . . , p},
+2q
+2p
+p−1
+− 2p
+for q ∈ {0, . . . , p − 1}.
+2q + 1
+q
+
+2p
+In particular, C0 = 1, C2p = 1, C1 = 0 and C2p−1 = 2p−1
+− 2p p−1
+p−1 = 0.
+Our goal is now to bounding the values of Ck to obtain Equation (8) below. This will
+be done by bounding the odd-indexed element by the even-indexed elements.
+We have, for q ∈ {1, . . . , p − 2},
+
+C2q+1
+
+2q + 1
+2p − 2q − 1
+=
+=
+
+2p
+2q + 1
+2q + 1 2p − 2q − 1
+(2p)!
+2q + 1
+(2q + 1)!(2p − 2q − 1)! 2p − 2q − 1
+2p − 2q
+2p
+2p − 2q
+(2p)!
+=
+.
+(2q)!(2p − 2q)! 2p − 2q − 1
+2q 2p − 2q − 1
+
+2q+1
+For the end of the interval above in q, that is, q = p − 2, we obtain C2q+1 2p−2q−1
+2q+1
+while for q p − 3, we obtain C2q+1 2p−2q−1
+Moreover, for q ∈ {1, . . . , p − 2},
+
+C2q+1
+
+2p − 2q − 1
+2q + 1
+=
+=
+
+C2q 43 ,
+
+C2q 56 .
+
+2p
+2p − 2q − 1
+2q + 1
+2q + 1
+2p − 2q − 1
+(2p)!
+(2q + 1)!(2p − 2q − 1)! 2q + 1
+(2p)!
+2q + 2
+2p
+2q + 2
+=
+.
+(2q + 2)!(2p − 2q − 2)! 2q + 1
+2q + 2 2q + 1
+
+For the end of the interval above in q, that is, q = 1, we obtain C2q+1 2p−2q−1
+2q+1
+while for q
+
+(6)
+
+2, we obtain C2q+1 2p−2q−1
+2q+1
+
+(7)
+C2q+2 43 ,
+
+C2q+2 56 .
+1/2
+
+We have moreover, by using the bound 2γRAn−1
+
+α
+1
+2
+2 (2γR) + 2α An−1
+
+for α =
+
+2q+1
+2p−2q−1 :
+
+q+1/2
+
+C2q+1 An−1 (2γR)2p−2q−1
+1/2
+
+= C2q+1 Aqn−1 (2γR)2p−2q−2 An−1 (2γR)
+1
+2q + 1
+2p − 2q − 1
+(2γR)2 +
+An−1
+2 2p − 2q − 1
+2q + 1
+1
+2p − 2q − 1 q+1
+2q + 1
+1
+C2q+1
+An−1 (2γR)2p−2q−2 + C2q+1
+Aq (2γR)2p−2q .
+2
+2q + 1
+2
+2p − 2q − 1 n−1
+
+C2q+1 Aqn−1 (2γR)2p−2q−2
+=
+
+By combining the previous inequality with Equation (6) and Equation (7), we get that the
+terms indexed by 2q + 1 are bounded by the terms indexed by 2q + 2 and 2q. All terms
+with q ∈ {2, . . . , p − 3} are expanded with constants 35 , while for q = 1 and q = p − 2, this is
+611
+
+Bach
+
+2
+3.
+
+Overall each even term receives a contribution which is less than max{ 65 , 35 + 23 , 23 } =
+This leads to
+p−2
+
+19
+15
+
+q+1/2
+C2q+1 An−1 (2γR)2p−2q−1
+q=1
+
+19
+15 .
+
+p−1
+
+C2q Aqn−1 (2γR)2p−2q ,
+q=0
+
+leading to the recursion that will allow us to derive our result:
+E
+
+Apn
+
+Apn−1
+
+Fn−1
+
+34
++
+15
+
+p−1
+
+2p q
+An−1 (2γR)2p−2q .
+2q
+
+q=0
+
+(8)
+
+C.4 Proof by Induction
+q
+
+We now proceed by induction on p. If we assume that EAqk
+3 θ0 − θ∗ 2 + kqγ 2 R2 B
+for all q < p, and a certain B (which we will choose to be equal to 20). We first note that
+if n 4p, then from Equation (5), we have
+EApn
+
+2
+
++ 5n2 γ 2 R2
+
+3 θ0 − θ∗
+
+2
+
++ 20npγ 2 R2
+
+Thus, we only need to consider n
+2p
+
+E θn − θ∗
+
+θ0 − θ∗
+
+θ0 − θ∗
+
+2p
+
+2p
+
++
+
++
+
+p
+
+3 θ0 − θ∗
+
+34
+15
+34
+15
+
+p
+
+.
+
+4p. We then get from Equation (8):
+n−1 p−1
+
+2p
+EAqk (2γR)2p−2q
+2q
+
+k=0 q=0
+n−1 p−1
+
+2p
+2q
+
+k=0 q=0
+
+3 θ0 − θ∗
+
+2
+
+q
+
++ kqγ 2 R2 B (2γR)2p−2q ,
+
+using the induction hypothesis. We may now sum with respect to k:
+E θn − θ∗
+θ0 − θ∗
+
+θ0 − θ∗
+
+2p
+
+2p
+
+2p
+
+34
++
+15
+34
++
+15
+
+n−1
+k=0
+
+=
+
+θ0 − θ∗
+
+2p
+
++
+
+q=0
+p−1
+
+q=0
+
+2p
+(2γR)2p−2q
+2q
+2p
+(2γR)2p−2q
+2q
+
+n−1
+
+3 θ0 − θ∗
+
+2
+
++ kqγ 2 R2 B
+
+q
+
+k=0
+q
+
+3 j θ0 − θ ∗
+
+q
+j
+
+2j
+
+j=0
+
+qγ 2 R2 B
+
+q−j
+
+nq−j+1
+q−j+1
+
+nα+1
+for any α > 0,
+α+1
+
+kα
+
+using
+
+p−1
+
+34
+15
+
+p−1
+
+p−1
+
+3 j θ0 − θ ∗
+
+2j
+
+(4γ 2 R2 n)p−j
+
+j=0
+
+q=j
+
+2p
+2q
+
+q
+j
+
+qB
+4
+
+q−j
+
+nq−p+1
+,
+q−j+1
+
+by changing the order of summations. We now aim to show that it is less than
+3 θ0 − θ∗
+
+2
+
+2
+
+2
+
++ kpγ R B
+
+p
+
+p−1
+p
+
+= 3 θ 0 − θ∗
+
+2p
+
+3 j θ0 − θ ∗
+
++
+j=0
+
+612
+
+2j
+
+(γ 2 R2 n)p−j (Bp)p−j
+
+p
+.
+j
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+By comparing all terms in θ0 − θ∗
+
+34
+15
+
+p−1−j
+
+q=j
+
+q
+j
+
+qB/4
+
+p−1−k
+j
+
+q−j
+
+1
+1
+q − j + 1 np−q−1
+
+(Bp/4)p−j
+
+p
+j
+
+p
+,
+j
+
+obtained by using the change of variable k = p − 1 − q. This is implied by, using n
+
+4p:
+
+k=0
+
+2p
+2k + 2
+
+2p
+2q
+
+this is true as soon as for all j ∈ {0, . . . , p − 1},
+
+(Bp/4)p−j
+
+⇔
+
+34
+15
+
+p−1
+
+2j ,
+
+p−1−j
+
+136
+15
+
+B
+
+−1−k −k−p+j
+
+p
+
+k=0
+
+(p − 1 − k)B/4
+
+2p
+2k + 2
+
+p−1−k
+j
+p
+j
+
+p−1−k−j
+
+1
+1
+p−k−j nk
+
+p−1−k
+
+p−1−k−j
+
+1
+p−k−j
+
+1.
+
+By expanding the binomial coefficients and simplifying by p − k − j, this is equivalent to
+
+136
+15
+
+p−1−j
+
+B −1−k p−k−p+j
+k=0
+
+2p
+(p − 1 − k) · · · (p − k − j + 1)
+p−1−k
+2k + 2
+p · · · (p − j + 1)
+
+p−1−k−j
+
+1.
+
+We may now write
+
+(p − 1 − k) · · · (p − k − j + 1)
+p · · · (p − j + 1)
+
+=
+=
+
+(p − 1 − k)! (p − j)!
+(p − 1 − k)! (p − j)!
+=
+(p − k − j)! p!
+p!
+(p − k − j)!
+(p − j) · · · (p − k − j + 1)
+,
+p · · · (p − k)
+
+so that we only need to show that
+
+136
+15
+
+p−1−j
+
+B −1−k p−k−p+j
+k=0
+
+2p
+(p − j) · · · (p − k − j + 1)
+p−1−k
+2k + 2
+p · · · (p − k)
+613
+
+p−1−k−j
+
+1.
+
+Bach
+
+We have, by bounding all terms then than p by p:
+136
+15
+136
+15
+=
+
+=
+
+=
+
+136
+15
+136
+15
+136
+15
+136
+15
+
+p−1−j
+
+A−1−k p−k−p+j
+
+2p
+(p − j) · · · (p − k − j + 1)
+p−1−k
+2k + 2
+p · · · (p − k)
+
+A−1−k p−k−p+j
+
+2p
+pk
+pp−1−k−j
+2k + 2 p · · · (p − k)
+
+k=0
+p−1−j
+
+k=0
+p−1−j
+
+A−1−k p−k−1
+k=0
+p−1−j
+
+2p
+1
+2k + 2 p · · · (p − k)
+
+A−1−k
+
+p−k−1 2p(2p − 1) · · · (2p − 2k − 1)
+(2k + 2)!
+p · · · (p − k)
+
+A−1−k
+
+p−2−1 22k+2 p(p − 1/2) · · · (p − k − 1/2)
+(2k + 2)!
+p · · · (p − k)
+
+A−1−k
+
+22k+2
+(2k + 2)!
+
+k=0
+p−1−j
+
+k=0
+p−1−j
+
+k=0
+
+p−1−k−j
+
+by associating all 2k + 2 terms in ratios which are all less than 1,
+√
++∞
+√
+136
+(2/ A)2k+2
+136
+=
+cosh(2/ A) − 1 < 1 if A 20.
+15
+(2k + 2)!
+15
+k=0
+
+We thus get the desired result EApn
+proved by induction.
+
+3 θ0 − θ∗
+
+2
+
+p
+
++ 20npγ 2 R2 , and the proposition is
+
+C.5 Alternative Proof Using Burkholder-Rosenthal-Pinelis Inequality
+In this section, we present (a slightly modified version of) the proof from Bach and Moulines
+(2013) which is based on Burkholder-Rosenthal-Pinelis inequality (Pinelis, 1994, Theorem
+4.1), which we now recall.
+C.5.1 BRP Inequality
+Throughout the proof, we use the notation for X ∈ H a random vector, and p any real
+1/p
+number greater than 1, X p = E X p
+. We first recall the Burkholder-RosenthalPinelis (BRP) inequality (Pinelis, 1994, Theorem 4.1). Let p ∈ R, p 2 and (Fn )n 0 be
+a sequence of increasing σ-fields, and (Xn )n 1 an adapted sequence of elements of H, such
+that E Xn |Fn−1 = 0, and Xn p is finite. Then,
+k
+
+sup
+k∈{1,...,n}
+
+√
+
+Xj
+j=1
+
+n
+
+p
+
+√
+
+1/2
+
+E Xk 2 |Fk−1
+
+p
+
++p
+
+Xk
+
+(9)
+p
+
+1/2
+2
+
+E Xk |Fk−1
+
+p
+
+sup
+k∈{1,...,n}
+
+p/2
+
+k=1
+n
+
++p
+p/2
+
+k=1
+
+614
+
+1/2
+
+sup
+k∈{1,...,n}
+
+Xk
+
+2
+
+.
+p/2
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+C.5.2 Proof of Proposition 3 (With Slightly Worse Constants)
+We use BRP’s inequality in Equation (9) to get, for p ∈ [2, n/4]:
+sup
+
+Ak
+
+k∈{0,...,n}
+
+θ0 − θ∗
+
+p
+
+2
+
++ nγ 2 R2 +
+
+√
+
+n
+
+1/2
+
+p 16γ 2 R2
+
+θk−1 − θ∗
+
+2
+p/2
+
+k=1
+
++p
+
+4γR θk−1 − θ∗
+
+sup
+k∈{1,...,n}
+
+θ0 − θ∗
+
+2
+
++ nγ 2 R2 +
+
+√
+
+√
+p 4γR n
+
+1/2
+
+sup
+
+Ak
+
+k∈{0,...,n−1}
+
++p 4γR
+2
+
+1/2
+
++ nγ 2 R2 + 4γR
+
+sup
+
+Ak
+
+k∈{0,...,n−1}
+
+Thus if B = supk∈{0,...,n} Ak
+B
+
+p
+
+, we have (using p
+
+θ0 − θ∗
+
+2
+
+p/2
+
+n/4, which implies
+
+√
+
+p/2
+1/2
+
+sup
+k∈{0,...,n−1}
+
+θ0 − θ∗
+
+p
+
+Ak
+
+p
+
+√
+pn + p .
+
+pn + p
+
+3√
+2 pn):
+
+√
++ nγ 2 R2 + 6γRB 1/2 pn.
+
+By solving this quadratic inequality, we get:
+√
+B 1/2 − 3γR pn
+
+2
+
+2
+
+θ0 − θ∗
+
++ nγ 2 R2 + 9γ 2 R2 pn,
+
+which implies
+B 1/2
+B
+
+√
+3γR pn +
+
+θ0 − θ∗
+
+2 × 9γ 2 R2 pn + 2 ×
+
+2
+
++ nγ 2 R2 + 9γ 2 R2 pn
+
+θ0 − θ∗
+
+2
+
++ nγ 2 R2 + 9γ 2 R2 pn
+
+40γ 2 R2 pn + 2 θ0 − θ∗ 2 .
+The previous statement is valid for p
+2 and trivial for p = 1. From Appendix C.2, we
+n
+only need to have the result for p
+.
+Thus the bound is slightly worse (but could be
+4
+clearly improved with more care, for example, by using induction on n).
+C.6 Alternative Proof Using Freedman’s Inequality
+In the previous section, we have used p-th order moment martingale inequalities that relate
+the norm of a martingale to the norm of its predictable quadratic variation process. Similar
+results may be obtained for tail bounds through Freedman’s inequality (Freedman, 1975,
+Theorem 1.6). This proof technique was suggested and outlined by Alekh Agarwal (personal
+communication).
+C.6.1 Freedman’s Inequality and Extensions
+Let (Xn ) be a real-valued martingale increment adapted to the increasing sequence of σfields (Fn ), that is, such that E(Xn |Fn ) = 0, that is almost surely bounded, that is, |Xn | R
+615
+
+Bach
+
+n
+2
+almost surely. Let Σn =
+k=1 E(Xk |Fk−1 ) the predictable quadratic variation process.
+2
+Then for any constants t and σ ,
+k
+
+max
+
+P
+
+k∈{1,...,n}
+
+Xi
+
+σ2
+
+t, Σn
+
+−t2
+.
+2(σ 2 + Rt/3)
+
+2 exp
+
+i=1
+
+When (Xn ) are independent random variables, this recovers Bernstein’s inequality. From
+this bound, one may derive the following bound (Kakade and Tewari, 2009); with probability
+1 − 4(log n)δ, we have:
+k
+
+max
+k∈{1,...,n}
+
+max 2 Σn , 3R
+
+Xi
+
+log 1δ
+
+log 1δ
+
+2
+
+Σn
+
+log 1δ + 3R log 1δ .
+
+(10)
+
+i=1
+n
+
+Note that the result of Kakade and Tewari (2009) considers only
+
+Xi rather than
+i=1
+
+k
+
+max
+k∈{1,...,n}
+
+Xi , but that the extension of their proof is straightforward.
+i=1
+
+C.6.2 Proof of Proposition 5 (With Slightly Worse Constants and
+Scalings)
+We can now apply the inequality in Equation (10) to (Mn ). We have |Mn | 4γR θn−1 −
+θ∗
+4γR θ0 −θ∗ +nγR almost surely. Moreover, E(Mn2 |Fn−1 ) 16γ 2 R2 θn−1 −θ∗ 2
+16γ 2 R2 An−1 .
+This leads to with probability greater than 1 − 4(log n)δ,
+n−1
+
+max
+k∈{1,...,n}
+
+θ0 − θ ∗
+
+Ak
+
+2
+
+2
+
+2
+
++ nγ R + 8γR
+
+log 1δ + 12γR θ0 − θ∗ + nγR log 1δ
+
+Ak
+k=1
+
+θ0 − θ ∗
+
+2
+
+√
+
++ nγ 2 R2 + 8γR n
+
+max
+k∈{1,...,n}
+
+Ak
+
+log 1δ
+
++12γR θ0 − θ∗ + nγR log 1δ .
+√
+We may now solve the quadratic inequality in maxk∈{1,...,n} Ak . This leads to
+max
+k∈{1,...,n}
+
+=
+
+√
+Ak − 4γR n
+
+log 1δ
+
+2
+
+θ 0 − θ∗
+
+2
+
++ nγ 2 R2 + 12γR θ0 − θ∗ + nγR log 1δ + 16γ 2 R2 nlog 1δ
+
+θ 0 − θ∗
+
+2
+
++ nγ 2 R2 + 12γR θ0 − θ∗ + 28nγ 2 R2 log 1δ .
+
+Then
+max
+k∈{1,...,n}
+
+√
+4γR n
+
+Ak
+log
+
+√
+1
++ θ0 − θ∗ + nγR +
+δ
+616
+
+12γR θ0 − θ∗ + 28nγ 2 R2
+
+log
+
+1
+δ
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+and
+max
+k∈{1,...,n}
+
+Ak
+
+64γ 2 R2 nlog
+
+1
++ 4 θ0 − θ∗
+δ
+
+2
+
++ 4nγ 2 R2 + 4 12γR θ0 − θ∗ + 28nγ 2 R2 log
+
+4 θ0 − θ∗
+
+2
+
++ 4nγ 2 R2 + 64γ 2 R2 n + 48γR θ0 − θ∗ + 112nγ 2 R2 log
+
+4 θ0 − θ∗
+
+2
+
++ 4nγ 2 R2 + 176γ 2 R2 n + 48γR θ0 − θ∗
+
+1
+δ
+
+1
+δ
+
+1
+log .
+δ
+
+We thus recover a tail bound which is very similar to the one obtained in Proposition 5,
+with the following differences: the additional term 48γR θ0 − θ∗ is unimportant because
+γ = O(N −1/2 ); however, because the extension of Freedman’s inequality is satisfied with
+probability 1 − 4(log n)δ, this proof technique loses a logarithmic factor.
+
+Appendix D. Proof of Proposition 7
+The proof is organized in two parts: we first show a bound on the averaged gradient
+n
+1
+k=1 f (θk−1 ), then relate it to the gradient at the averaged iterate, that is,
+n
+f
+
+1
+n
+
+n
+k=1 θk−1
+
+D.1 Bound on
+
+, using self-concordance.
+n
+k=1 f
+
+1
+n
+
+(θk−1 )
+
+We have, following Polyak and Juditsky (1992) and Bach and Moulines (2011):
+1
+(θn−1 − θn ),
+γ
+
+fn (θn−1 ) =
+
+which implies, by summing over all integers between 1 and n:
+1
+n
+
+n
+
+f (θk−1 ) =
+k=1
+
+We denote Xk =
+
+1
+n
+
+1
+n
+
+n
+
+f (θk−1 ) − fk (θk−1 ) +
+k=1
+
+1
+1
+(θ0 − θ∗ ) +
+(θ∗ − θn ).
+γn
+γn
+
+f (θk−1 ) − fk (θk−1 ) ∈ H. We have:
+n
+k=1 E(
+
+2 |F
+
+1/2
+
+2R
+n
+
+Xk
+
+almost surely
+
+2R
+√
+.
+n
+
+and E(Xk |Fk−1 ) = 0, with
+Xk
+We may thus apply the
+k−1 )
+Burkholder-Rosenthal-Pinelis inequality (Pinelis, 1994, Theorem 4.1), and get:
+
+E
+
+1
+n
+
+n
+
+2p 1/2p
+
+f (θk−1 ) − fk (θk−1 )
+k=1
+
+617
+
+2p
+
+2R
++
+n
+
+2p
+
+2R
+.
+n1/2
+
+Bach
+
+This leads to, using Proposition 3 and Minkowski’s inequality:
+1
+E
+n
+E
+
+1
+n
+
+n
+
+2p 1/2p
+
+f (θk−1 )
+k=1
+n
+
+2p 1/2p
+
+f (θk−1 ) − fk (θk−1 )
+
++
+
+k=1
+
+1
+1
+E θ ∗ − θn
+θ 0 − θ∗ +
+γn
+γn
+
+2p 1/2p
+
+1
+2R
+2R
+1
+3 θ0 − θ∗ 2 + 20npγ 2 R2
++ 2p 1/2 +
+θ0 − θ∗ +
+n
+γn
+γn
+n
+√
+1
+2R
+2R
+1
+3
+2p
++ 2p 1/2 +
+θ0 − θ∗ +
+θ0 − θ∗ +
+20npγR
+n
+γn
+γn
+γn
+n
+4pR
+2R
+2
+1
++ 2p 1/2 +
+θ0 − θ ∗ +
+20npγR
+n
+γn
+γn
+n
+√
+√
+4pR √ R √
+1+ 3
++ p √ 2 2 + 20 +
+θ0 − θ ∗
+n
+γn
+n
+4pR
+3
+√ R
++ 8 p√ +
+θ0 − θ ∗ .
+n
+n γn
+
+2p
+
+(11)
+
+D.2 Using Self-Concordance
+Using the self-concordance property of Lemma 14 several times, we obtain:
+1
+n
+=
+
+1
+n
+
+n
+
+f (θk−1 ) − f
+k=1
+n
+
+1
+n
+
+n
+
+θk−1
+k=1
+
+f (θk−1 ) − f (θ∗ ) − f (θ∗ )(θk−1 − θ∗ )
+k=1
+
+1
+n
+
+−f
+R
+n
+
+n
+
+θk−1
+
+1
+n
+
++ f (θ∗ ) + f (θ∗ )
+
+k=1
+
+n
+
+θk−1 − θ∗
+k=1
+
+n
+
+f (θk−1 ) − f (θ∗ ) − f (θ∗ ), θk−1 − θ∗
+k=1
+n
+
+1
++R f
+n
+1
+2R
+n
+
+θk−1
+k=1
+
+1
+− f (θ∗ ) + f (θ∗ ),
+n
+
+n
+
+θk−1 − θ∗
+k=1
+
+n
+
+f (θk−1 ) − f (θ∗ )
+
+using the convexity of f .
+
+k=1
+
+This leads to, using Proposition 3:
+1
+E
+n
+2R E
+
+n
+
+f (θk−1 ) − f
+k=1
+
+1
+n
+
+n
+
+1
+n
+
+n
+
+2p
+
+1/2p
+
+θk−1
+k=1
+2p
+
+1/2p
+
+f (θk−1 ) − f (θ∗ )
+k=1
+
+2R
+3 θ0 − θ∗
+2γn
+
+2
+
++ 40npγ 2 R2 . (12)
+
+Summing Equation (11) and Equation (12) leads to the desired result.
+618
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+Appendix E. Results for Small p
+In Proposition 3, we may replace the bound 3 θ0 − θ∗ 2 + 20npγ 2 R2 with a bound with
+smaller constants for p = 1, 2, 3 (to be used in proofs of results in Section 5). This is done
+using the same proof principle but finer derivations, as follows. We denote γ 2 R2 = b and
+θ − θ∗ 2 = a, and consider the following inequalities which we have considered in the proof
+of Proposition 3:
+Apn
+
+(An−1 + b + Mn )p
+
+Mn
+
+4b1/2 An−1 and E(Mn |Fn−1 ) = 0,
+
+1/2
+
+A0 = a.
+We simply take expansions of the p-th power above, and sum for all first integers. We have:
+EAn
+
+EAn−1 + b
+
+EA2n
+
+E(A2n−1
+
+a + nb,
+2
+
++ b + 2bAn−1 + Mn2 )
+
+EA2n−1 + 2EAn−1 b + b2 + 16bEAn−1
+
+n−1
+
+a2 + 18b
+
+a + kb + b2 n
+
+a2 + 18b[na +
+
+k=0
+
+n2
+b] + b2 n
+2
+
+using the result about EAn−1 ,
+= a2 + 18bna + b2 (n + 9n2 )
+(a + 9nb)2 .
+We may now pursue for the third order moments:
+EA3n
+
+3
+E(An−1 + b)3 + 3E(An−1 + b)2 Mn2 + 3E(An−1 + b)3 Mn + EMn−1
+3/2
+
+E(An−1 + b)3 + 3E(An−1 + b)2 16bAn−1 + 0 + 64b3/2 EAn−1
+3/2
+
+(EA3n−1 + 3EA2n−1 b + 3EAn−1 b2 + b3 ) + 3E(An−1 + b)16bAn−1 + 64b3/2 EAn−1
+= (EA3n−1 + 3EA2n−1 b + 3EAn−1 b2 + b3 ) + 3E(An−1 + b)16bAn−1
+1/2
+
++32bEAn−1 [2b1/2 An−1 ].
+By expanding, we get
+EA3n
+
+(EA3n−1 + 3EA2n−1 b + 3EAn−1 b2 + b3 ) + 3E(An−1 + b)16bAn−1
+An−1
++ 4b]
++32EbAn−1 [
+4
+= EA3n−1 + EA2n−1 b[3 + 48 + 8] + EAn−1 b2 [3 + 48 + 128] + b3
+= EA3n−1 + 59EA2n−1 b + 179EAn−1 b2 + b3
+n−1
+3
+
+a + 59b
+3
+
+n−1
+2
+
+2
+
+2
+
+2
+
+2
+
+3
+
+2
+
+a + kb + nb3
+
+a + 18bka + b (k + 9k ) + 179b
+k=1
+2
+
+k=1
+2
+
+2
+
+a + 59b[na + 9bn a + b (n /2 + 3n )] + 179b [na + bn2 /2] + nb3
+= a3 + 59nba2 + b2 a[59 · 9n2 + 179n] + b3 [59/2 · n2 + 3 · 59n3 + 179/2 · n2 + n]
+= a3 + 59nba2 + b2 a[531n2 + 179n] + b3 [119n2 + 177n3 + n]
+(a + 20nb)3 .
+619
+
+Bach
+
+We then obtain:
+2
+
+E 2γn f (θ¯n ) − f (θ∗ ) + θn − θ∗
+
+2
+
+E 2γn f (θ¯n ) − f (θ∗ ) + θn − θ∗
+
+2
+
+2
+
+θ 0 − θ∗
+
+2
+
++ 9nγ 2 R2
+
+θ0 − θ∗
+
+2
+
++ 20nγ 2 R2 .
+
+3
+
+3
+
+Appendix F. Proof of Proposition 10
+The proof follows from applying self-concordance properties (Lemma 9) to θ¯n . We thus
+3µ
+need to provide a control on the probability that f (θ¯n )
+4R .
+F.1 Tail Bound for f (θ¯n )
+We derive a large deviation bound, as a consequence of the bound on all moments of f (θ¯n )
+(Proposition 7) and Lemma 12, that allows to go from moments to tail bounds:
+P
+
+f (θ¯n )
+
+√
+√
+2R
+3
+√ 10 t + 40R2 γt n + √ θ0 − θ∗
+n
+γ n
+
+2
+
++
+
+3
+√ θ 0 − θ∗
+γR n
+
+4 exp(−t).
+
+In order to derive the bound above, we need to assume that p
+n/4 (so that 4p/n
+√ √
+2 p/ n), and thus, when applying Lemma 12, the bound above is valid as long as t n/4.
+It is however
+valid for all t, because the gradients are bounded by R, and for t > n, we have
+√
+2R
+√
+10
+t
+R,
+and the inequality is satisfied with zero probability.
+n
+F.2 Bounding the Function Values
+¯ 2
+3µ
+¯
+2 f (θµn ) . This will allow us to
+From Lemma 9, if f (θ¯n )
+4R , then f (θn ) − f (θ∗ )
+derive a tail bound for f (θ¯n ) − f (θ∗ ), for sufficiently small deviations. For larger deviations,
+we will use the tail bound which does not use strong convexity (Proposition 5).
+We consider the event
+√
+√
+2R
+3
+3
+√ θ0 − θ∗
+√ 10 t + 40R2 γt n + √ θ0 − θ∗ 2 +
+f (θ¯n )
+At =
+.
+n
+γ n
+γR n
+
+We make the following two assumptions regarding γ and t:
+√
+√
+10 t + 40R2 γt n
+and
+
+3
+√ θ0 − θ∗
+γ n
+
+2
+
++
+
+3
+√ θ 0 − θ∗
+γR n
+
+√
+√
+2 3µ n
+µ n
+=
+2
+3 4R √
+2R
+4R
+√
+1 3µ n
+µ n
+=
+,
+3 4R 2R
+8R2
+
+so that the upper-bound on f (θ¯n ) in the definition of At is less than
+apply Lemma 9). We thus have:
+At ⊂
+
+f (θ¯n ) − f (θ∗ )
+
+⊂
+
+f (θ¯n ) − f (θ∗ )
+
+√
+√
+8R2
+3
+10 t + 40R2 γt n + √ θ0 − θ∗
+µn
+γ n
+2
+2
+√
+8R
+10 t + 20 t +
+,
+µn
+620
+
+2
+
++
+
+3µ
+4R
+
+(13)
+
+(so that we can
+
+2
+√ θ0 − θ∗
+γR n
+
+2
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+√
+= 2γR2 n and
+
+3
+3
+√ θ0 − θ∗ .
+= √ θ 0 − θ∗ 2 +
+γ n
+γR n
+√
+√
+µ n
+This implies that for all t 0, such that 10 t + 20 t
+, that is, our assumption
+4R2
+in Equation (13), we may apply the tail bound from Appendix F.1 to get:
+with
+
+Moreover, we have for all v
+
+2
+
+√
+8R2
+10 t + 20 t +
+µn
+
+P f (θ¯n ) − f (θ∗ )
+
+4e−t .
+
+(14)
+
+0 (from Proposition 5):
+
+P f (θ¯n ) − f (θ∗ )
+
+30γR2 v +
+
+2
+
+3 θ0 − θ∗
+γn
+
+2 exp(−v).
+
+(15)
+
+We may now use the last two inequalities to bound the expectation E[f (θ¯n ) − f (θ∗ )].
+We first express the expectation as an integral of the tail bound and split it into three
+parts:
++∞
+
+E f (θ¯n ) − f (θ∗ )
+
+=
+
+P f (θ¯n ) − f (θ∗ )
+
+u du
+
+0
+2 8R2
+µn
+
+=
+
+P f (θ¯n ) − f (θ∗ )
+
+u du
+
+(16)
+
+0
+√
+µ n
++
+4R2
+
+8R2
+µn
+
++
+
+2
+
+P f (θ¯n ) − f (θ∗ )
+
+2 8R2
+µn
+
++∞
+
++
+
+8R2
+µn
+
+√
+µ n
++
+4R2
+
+2
+
+P f (θ¯n ) − f (θ∗ )
+
+u du
+u du.
+
+We may now bound the three terms separately. For the first integral, we bound the proba2 8R2
+µn
+
+P f (θ¯n ) − f (θ∗ )
+
+2 8R
+
+2
+
+.
+nµ
+For the third term in Equation (16), we use the tail bound in Equation (15) to get
+
+bility by one to get
+
+u du
+
+0
+
++∞
+8R2
+µn
+
+√
+µ n
++
+4R2
+
+2
+
+√
+µ n
++
+4R2
+
+2
+
+P f (θ¯n ) − f (θ∗ )
+
++∞
+
+=
+
+8R2
+µn
+
+3
+− γn
+θ0 −θ∗
+
+2
+
+u du
+
+P f (θ¯n ) − f (θ∗ )
+
++∞
+
+2
+
+8R2
+µn
+
+√
+µ n
++
+4R2
+
+2
+
+exp −
+3
+− γn
+
+θ0 −θ∗
+
+2
+
+u+
+
+3
+θ0 − θ∗
+γn
+
+2
+
+du
+
+u
+du.
+30γR2
+
+We may apply Equation (15) because
+√
+8R2 µ n
++
+µn 4R2
+
+2
+
+3
+−
+θ0 −θ∗
+γn
+
+2
+
+√
+8R2 µ n
++
+µn 4R2
+621
+
+2
+
+µ
+− 2
+8R
+
+√
+8R2 µ n
+µn 4R2
+
+2
+
+−
+
+µ
+3µ
+=
+2
+8R
+8R2
+
+0.
+
+Bach
+
+We can now compute the bound explicitly to get
++∞
+8R2
+µn
+
+√
+µ n
++
+4R2
+
+2
+
+u du
+
+√
+−1 8R2 µ n
+3
+2
++
+−
+θ0 − θ∗
+2
+2
+30γR µn 4R
+γn
+4
+µ
+2 80γR
+60γR
+−
+using e−α
+80γR4
+2µ
+
+2
+
+60γR exp
+60γR2 exp
+=
+
+P f (θ¯n ) − f (θ∗ )
+
+60γR2 exp
+
+2
+
+−1 3µ
+30γR2 8R2
+
+1
+for all α > 0
+2α
+
+2400γ 2 R6
+.
+µ
+
+We now consider the second term in Equation (16) for which we will use Equation (14).
+2
+√
+2
+We consider the change of variable u = 8R
+, for which u ∈
+µn 10 t + 20 t +
+√
+2 8R2 , 8R2 µ n
+µn µn 4R2
+8R2
+µn
+
+√
+µ n
++
+4R2
+
+2 8R2
+µn
+
+∞
+0
+
+=
+=
+
+=
+
+2
+
++
+
+implies t ∈ [0, +∞). This implies that
+2
+
+P f (θ¯n ) − f (θ∗ )
+
+√
+8R2
+10 t + 20 t +
+4e d
+µn
+
+u du
+2
+
+−t
+
+32R2 ∞ −t
+3
+1 −1/2
+e
+100 + 400 2 2t + 400 t1/2 + 20
+t
++ 40
+dt
+µn 0
+2
+2
+3
+1
+32R2
+100Γ(1) + 400 2 2Γ(2) + 400 Γ(3/2) + 20
+Γ(1/2) + 40
+Γ(1)
+µn
+2
+2
+with Γ denoting the Gamma function,
+32R2
+1√
+3 1√
+π + 20
+π + 40
+.
+100 + 400 2 2 + 400
+µn
+22
+2
+
+We may now combine the three bounds to get, from Equation (16),
+E f (θ¯n )−f (θ∗ )
+
+For γ =
+
+1√
+,
+2R2 N
+
+E f (θ¯N )−f (θ∗ )
+
+2 8R
+
+2
+
++
+
+2400γ 2 R6
+µ
+
+nµ
+3 1√
+32R2
+1√
++
+100 + 400 2 2 + 400
+π + 20
+π + 40
+µn
+22
+2
+2
+√
+√
+32R2
++75γ 2 R4 n+100+800 2 +300
+π+10
+π+40
+nµ
+4
+with α = R θ0 − θ∗ ,
+
+= 1 and
+
+.
+
+= 6α2 + 6α, we obtain
+
+32R2 1 2
++ 1451 + 58∆
+Nµ 4
+32R2
+9α4 + 18α3 + 9α2 + 1451 + 348α2 + 348α
+Nµ
+R2
+R2
+4
+625α4 + 7500α3 + 33750α2 + 67500α + 50625 =
+5α + 15 .
+Nµ
+Nµ
+622
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+Note that the previous bound is only valid if
+6R2
+
+3
+√
+
+γ n
+
+3√
+2 +
+θ − θ∗
+γR n 0
+√
+µ N
+. If the condition
+8R2
+
+θ0 − θ∗
+
+2
+
+√
+µ n
+,
+8R2
+
+that is, under the condition
+θ0 − θ∗ + 6R θ0 − θ∗
+is not
+satisfied, then the bound is still valid because of Lemma 1. We thus obtain the desired
+result.
+F.3 Bound on Iterates
+Following the same principle as for function values in Appendix F.2, we consider the same
+event At . With the same condition on γ and t, we have:
+θ¯n − θ∗
+
+At ⊂
+
+2
+
+√
+16R2
+10 t + 20 t +
+2
+µ n
+
+2
+
+,
+
+which leads to the tail bound:
+θ¯n − θ∗
+
+P
+
+2
+
+√
+16R2
+10 t + 20 t +
+2
+µ n
+
+2
+
+4e−t .
+
+We may now split the expectation in three integrals:
+
+E θ¯n − θ∗
+
+2
+
+16R2
+µ2 n
+
+=
+
+2
+
+P θ¯n − θ∗
+
+2
+
+u du
+
+(17)
+
+0
+
++
+
+16R2
+µ2 n
+16R2
+µ2 n
+
+√
+µ n
++
+4R2
+
+2
+
+P θ¯n − θ∗
+
+2
+
+∞
+
++
+
+√
+µ n
++
+4R2
+
+16R2
+µ2 n
+
+2
+
+P θ¯n − θ∗
+
+2
+
+2
+
+u du
+u du.
+
+The first term in Equation (17) is simply bounded by bounding the tail bound by one (like
+16R2
+µ2 n
+
+in the previous section):
+
+2
+
+P θ¯n − θ∗
+
+2
+
+16R2
+µ2 n
+
+u du
+
+0
+
+2
+
+. The last integral in
+
+Equation (17) may be bounded as follows:
+∞
+16R2
+µ2 n
+
+= E 1
+
+√
+µ n
++
+4R2
+
+θ¯n −θ∗
+
+2
+
+P θ¯n − θ∗
+
+16R2
+µ2 n
+
+2
+
+√
+µ n
++
+4R2
+
+2
+
+2
+
+u du
+
+θ¯n − θ∗
+
+√
+16R2 µ n
+2
++
+µ2 n 4R2
+using Cauchy-Schwarz inequality,
+√
+16R2 µ n
+2
+2
+¯
++
+P θn − θ∗
+2
+2
+µ n 4R
+
+P
+
+θ¯n − θ∗
+
+2
+1/2
+
+1/2
+
+E θ¯n − θ∗
+
+2
+
+4
+
+1/2
+
+θ 0 − θ∗
+623
+
+2
+
++ 9γ 2 nR2
+
+using Proposition 3.
+
+Bach
+
+√
+Moreover, if we denote by t0 the largest solution of 10 t0 + 20 t0 =
+√
+
+t0 =
+
+−10 +
+
+40
+√
+µ n
+20
+,
+100R
+
+9
+40
+√
+µ n
+100R
+
+as soon as 20
+
+∞
+√
+µ n
++
+4R2
+
+2
+
+=
+
+100, −1 +
+
+100, since if q
+
+16R2
+µ2 n
+
+√
+µ n
+R
+
+100 + 20
+
+P θ¯n − θ∗
+
+2
+
+√
+
+−10 + 10
+
+1 + 20
+
+√
+µ n
+,
+4R2
+
+we have:
+
+√
+µ n
+100R
+
+40
+
+1+q
+
+9 √
+10 q.
+
+This implies that
+
+u du
+
+1/2
+
+θ0 − θ ∗
+
+4 exp(−t0 )
+
+2
+
++ 9γ 2 nR2
+
+9
+θ0 − θ∗ 2 + 9γ 2 nR2 using exp(−α)
+2t20
+√
+9 404 4 1002 R4 9 2 2 γ n
+/R +
+2 94 202 2 µ2 n 4
+3
+2 R2 9
+1
+2
+686 × 64 2
++
+.
+µ n 4
+6
+
+9
+for all α > 0,
+16α2
+
+The second term in Equation (17) is bounded exactly like in Appendix F.2, leading to:
+√
+µ n
++
+4R2
+
+16R2
+µ2 n
+2 16R2
+µ2 n
+
+∞
+
+4e−t d
+
+0
+
+2
+
+P θ¯n − θ∗
+
+2
+
+u du
+
+√
+16R2
+10 t + 20 t +
+2
+µ n
+
+2
+
+64R2 ∞ −t
+3
+1 −1/2
+e
+100 + 400 2 2t + 400 t1/2 + 20
+t
++ 40
+dt
+2
+µ n 0
+2
+2
+64R2
+3
+1
+100Γ(1) + 400 2 2Γ(2) + 400 Γ(3/2) + 20
+Γ(1/2) + 40
+Γ(1) dt
+2
+µ n
+2
+2
+64R2
+3 1√
+1√
+100 + 400 2 2 + 400
+π + 20
+π + 40
+.
+2
+µ n
+22
+2
+We can now put all elements together to obtain, from Equation (17):
+E θ¯n − θ∗ 2
+64R2
+100 + 400
+µ2 n
+
+64R2
+nµ2
+
+3 1√
+1√
+π + 20
+π + 40
+22
+2
+2 R2 9
+16R2 2
+1
+2
++ 2
++ 686 × 64 2
++
+µ n
+µ n 4
+6
+3
+1 2
+9
++ 100 + 800 2 + 532 + 32 + 40
++ 686 4 + 686
+.
+4
+4
+6
+2
+
+2 + 400
+
+624
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+For γ =
+
+1√
+,
+2R2 N
+
+E θ¯N − θ∗
+
+2
+
+with α = R θ0 − θ∗ ,
+
+8R2
+N µ2
+8R2
+N µ2
+8R2
+N µ2
+R2
+N µ2
+
+= 1 and
+
+= 6α2 + 6α, we get
+
+2
+
+2
+
++ 8 (32 + 40 + 115) + 8(100 + 800 + 532 + 1544)
+
+2
+
+2
+
++ 1496
+
++ 23808
+
+72α4 + 144α3 + 72α2 + 1496 × 6α2 + 1496 × 6α + 23808
+1296α4 + 18144α3 + 95256α2 + 222264α + 194481 =
+
+The previous bound is valid as long as
+Lemma 1 shows that it is still valid.
+
+√
+µ N
+R
+
+10000
+20
+
+R2
+4
+6α + 21 .
+N µ2
+
+= 500. If it is not satisfied, then
+
+References
+A. Agarwal, P. L. Bartlett, P. Ravikumar, and M. J. Wainwright. Information-theoretic
+lower bounds on the oracle complexity of stochastic convex optimization. IEEE Transactions on Information Theory, 58(5):3235–3249, 2012.
+F. Bach. Self-concordant analysis for logistic regression. Electronic Journal of Statistics, 4:
+384–414, 2010.
+F. Bach and E. Moulines. Non-asymptotic analysis of stochastic approximation algorithms
+for machine learning. In Advances in Neural Information Processing Systems (NIPS),
+2011.
+F. Bach and E. Moulines. Non-strongly-convex smooth stochastic approximation with convergence rate O(1/n). In Advances in Neural Information Processing Systems (NIPS),
+2013.
+A. Bordes, S. Ertekin, J. Weston, and L. Bottou. Fast kernel classifiers with online and
+active learning. Journal of Machine Learning Research, 6:1579–1619, 2005.
+L. Bottou and O. Bousquet. The tradeoffs of large scale learning. In Advances in Neural
+Information Processing Systems (NIPS), 2008.
+L. Bottou and Y. Le Cun. On-line learning for very large data sets. Applied Stochastic
+Models in Business and Industry, 21(2):137–151, 2005.
+S. Boucheron, G. Lugosi, and P. Massart. Concentration Inequalities: A Nonasymptotic
+Theory of Independence. Oxford University Press, 2013.
+M. N. Broadie, D. M. Cicek, and A. Zeevi. General bounds and finite-time improvement
+for stochastic approximation algorithms. Technical report, Columbia University, 2009.
+J. Duchi and Y. Singer. Efficient online and batch learning using forward backward splitting.
+Journal of Machine Learning Research, 10:2899–2934, 2009.
+625
+
+Bach
+
+V. Fabian. On asymptotic normality in stochastic approximation. The Annals of Mathematical Statistics, 39(4):1327–1332, 1968.
+D. A. Freedman. On tail probabilities for martingales. Annals of Probability, 3(1):100–118,
+1975.
+E. Hazan and S. Kale. Beyond the regret minimization barrier: an optimal algorithm for
+stochastic strongly-convex optimization. In Proceedings of the Conference on Learning
+Theory (COLT), 2001.
+A. Juditsky and Y. Nesterov. Primal-dual subgradient methods for minimizing uniformly
+convex functions. Technical Report 00508933, HAL, 2010.
+S. M. Kakade and A. Tewari. On the generalization ability of online strongly convex programming algorithms. In Advances in Neural Information Processing Systems (NIPS),
+2009.
+H. J. Kushner and G. G. Yin. Stochastic Approximation and Recursive Algorithms and
+Applications. Springer-Verlag, second edition, 2003.
+S. Lacoste-Julien, M. Schmidt, and F. Bach. A simpler approach to obtaining an O(1/t) convergence rate for projected stochastic subgradient descent. Technical Report 1212.2002,
+ArXiv, 2012.
+J. Lafferty, A. McCallum, and F. Pereira. Conditional random fields: Probabilistic models
+for segmenting and labeling sequence data. In Proceedings of the International Conference
+on Machine Learning (ICML), 2001.
+G. Lan. An optimal method for stochastic composite optimization. Mathematical Programming, 133(1-2):365–397, 2012.
+N. Le Roux, M. Schmidt, and F. Bach. A stochastic gradient method with an exponential
+convergence rate for strongly-convex optimization with finite training sets. In Advances
+in Neural Information Processing Systems (NIPS), 2012.
+H. B. McMahan and M. Streeter. Open problem: Better bounds for online logistic regression.
+In COLT/ICML Joint Open Problem Session, 2012.
+A. Nemirovski, A. Juditsky, G. Lan, and A. Shapiro. Robust stochastic approximation
+approach to stochastic programming. SIAM Journal on Optimization, 19(4):1574–1609,
+2009.
+A. S. Nemirovski and D. B. Yudin. Problem Complexity and Method Efficiency in Optimization. Wiley & Sons, 1983.
+Y. Nesterov. Introductory Lectures on Convex Optimization: a Basic Course. Kluwer
+Academic Publishers, 2004.
+Y. Nesterov. Primal-dual subgradient methods for convex problems. Mathematical Programming, 120(1):221–259, 2009.
+626
+
+Adaptivity of Averaged Stochastic Gradient Descent
+
+Y. Nesterov and A. Nemirovskii. Interior-Point Polynomial Algorithms in Convex Programming. SIAM studies in Applied Mathematics, 1994.
+Y. Nesterov and J. P. Vial. Confidence level solutions for stochastic programming. Automatica, 44(6):1559–1568, 2008.
+I. Pinelis. Optimum bounds for the distributions of martingales in banach spaces. The
+Annals of Probability, 22(4):1679–1706, 1994.
+B. T. Polyak and A. B. Juditsky. Acceleration of stochastic approximation by averaging.
+SIAM Journal on Control and Optimization, 30(4):838–855, 1992.
+D. Ruppert. Efficient estimations from a slowly convergent Robbins-Monro process. Technical Report 781, Cornell University Operations Research and Industrial Engineering,
+1988.
+B. Sch¨olkopf and A. J. Smola. Learning with Kernels. MIT Press, 2001.
+S. Shalev-Shwartz and N. Srebro. SVM optimization: inverse dependence on training set
+size. In Proceedings of the International Conference on Machine Learning (ICML), 2008.
+S. Shalev-Shwartz, Y. Singer, and N. Srebro. Pegasos: Primal estimated sub-gradient solver
+for svm. In Proceedings of the International Conference on Machine Learning (ICML),
+2007.
+S. Shalev-Shwartz, O. Shamir, N. Srebro, and K. Sridharan. Stochastic convex optimization.
+In Proceedings of the Conference on Learning Theory (COLT), 2009.
+J. Shawe-Taylor and N. Cristianini. Kernel Methods for Pattern Analysis. Cambridge
+University Press, 2004.
+A. W. Van der Vaart. Asymptotic Statistics. Cambridge Univ. Press, 1998.
+Z. Wang, K. Crammer, and S. Vucetic. Breaking the curse of kernelization: Budgeted
+stochastic gradient descent for large-scale SVM training. Journal of Machine Learning
+Research, 13:3103–3131, 2012.
+L. Xiao. Dual averaging methods for regularized stochastic learning and online optimization.
+Journal of Machine Learning Research, 9:2543–2596, 2010.
+
+627
+
+

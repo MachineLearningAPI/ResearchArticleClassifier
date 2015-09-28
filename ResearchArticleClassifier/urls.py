@@ -30,11 +30,14 @@ urlpatterns = [
 ]
 
 urlpatterns += patterns('GUI.views',
+    url(r'^$','loadHome'),
     url(r'^home/$','loadHome'),
     url(r'^results/$','showResults'),
     url(r'^generateText/$','trainingDataList'),
     url(r'^addWordToDb/$','populateWordDb'),
     url(r'^KNN/$','applyKNN'),
-    url(r'^Bayesian/$','callBayesian')
+    url(r'^Bayesian/$','callBayesian'),
+    url(r'^stopWords/$','getStop'),
+    url(r'^loadText/$','loadTextFile'),
 )
 

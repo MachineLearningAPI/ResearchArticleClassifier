@@ -1,0 +1,8341 @@
+Journal of Machine Learning Research 15 (2014) 367-443
+
+Submitted 1/13; Revised 9/13; Published 2/14
+
+Unbiased Generative Semi-Supervised Learning
+Patrick Fox-Roberts∗
+
+pfoxroberts@gmail.com
+
+Cambridge University Engineering Department
+Trumpington Street
+Cambridge, CB2 1PZ, UK
+
+Edward Rosten
+
+ed@computervisionconsulting.com
+
+Computer Vision Consulting
+7th floor
+14 Bonhill Street
+London, EC2A 4BX, UK
+
+Editor: William Cohen
+
+Abstract
+Reliable semi-supervised learning, where a small amount of labelled data is complemented
+by a large body of unlabelled data, has been a long-standing goal of the machine learning
+community. However, while it seems intuitively obvious that unlabelled data can aid the
+learning process, in practise its performance has often been disappointing. We investigate
+this by examining generative maximum likelihood semi-supervised learning and derive novel
+upper and lower bounds on the degree of bias introduced by the unlabelled data. These
+bounds improve upon those provided in previous work, and are specifically applicable to
+the challenging case where the model is unable to exactly fit to the underlying distribution
+a situation which is common in practise, but for which fewer guarantees of semi-supervised
+performance have been found. Inspired by this new framework for analysing bounds, we
+propose a new, simple reweighing scheme which provides a provably unbiased estimator for
+arbitrary model/distribution pairs—an unusual property for a semi-supervised algorithm.
+This reweighing introduces no additional computational complexity and can be applied to
+very many models. Additionally, we provide specific conditions demonstrating the circumstance under which the unlabelled data will lower the estimator variance, thereby improving
+convergence.
+Keywords: Kullback-Leibler, semi-supervised, asymptotic bounds, bias, generative model
+
+1. Introduction
+Reliable semi-supervised learning has been a long standing goal of the machine learning
+community. Its desirability is motivated by the observation that when collecting data
+sets, often each sample has two distinct parts: some feature X, collected from some real
+world population, often consisting of one or more basic measurements; and some label Y ,
+assigned by the experimenter, representing a higher level concept. Furthermore the act of
+assigning this higher level label very often constitutes a major bottleneck in the data set
+creation process. It is perhaps expensive (requiring an expert’s opinion), slow (requiring
+∗. PFR is currently affiliated with The Randal Division, Guy’s Campus, King’s College London, SE1 1UL
+c 2014 Patrick Fox-Roberts and Edward Rosten.
+
+Fox-Roberts and Rosten
+
+an investment of time or staff), or in some way destructive (requiring a component to be
+tested to destruction, or the death of a patient).
+If we wish to fit a model parametrised by some set of parameters θ to this distribution,
+we will need some data set DL consisting of NL labelled samples, DL = (xi , yi )i=1,...,NL , to
+train our model with; for example, if we are training using maximum likelihood, we must
+find the parameters which maximise P (DL |θ), which for iid data is equivalent to finding
+NL
+
+log (P (xi , yi |θ)) .
+
+θ = arg max
+θ
+
+(1)
+
+i=1
+
+In order to get a solution which generalises well to unseen data NL may have to be quite
+large, especially if the model is rich or the feature space X high dimensional.
+A far preferable situation would be to be able to utilise a smaller labelled data set DL ,
+augmented with an additional data set DU consisting of NU unlabelled samples, DU =
+(xi )i=NL +1,...,NL +NU , which consist only of their observed feature rather than a feature label pair. In essence the unlabelled data is used to ‘bootstrap’ the labelled. Unlabelled
+samples tell us the shape of our distribution in the feature space, while labelled samples
+give us the classification information.
+At first glance, utilising unlabelled data to aid in fitting the parameters of some model
+appears trivial. Inspired by the likelihood principal (Jaynes, 2003), it is tempting to simply
+augment the likelihood function of the parameters, P (DL |θ), with the additional unlabelled
+data, P (DL , DU |θ), and proceed with training exactly as before, that is, find the parameters
+NL
+θ
+
+NL +NU
+
+log (P (xi , yi |θ)) +
+
+θS = arg max
+i=1
+
+log (P (xi |θ)) .
+
+(2)
+
+i=NL
+
+In practice however this has proven to give mixed results, sometime improving model fitting,
+other times worsening it. This unpredictable of performance has formed a very major barrier
+to more widespread adoption of semi-supervised techniques. Many alternative algorithms
+have been developed to counter this. However, there still exists a need to better understand
+and quantify why more standard methods fail.
+This paper examines the effect of including unlabelled data in a training set when performing maximum likelihood fitting of generative models. In particular, it is well known
+(see, for example, Bishop, 2006) that maximising the parameter likelihood for labelled data
+approximately minimises the Kullback Leibler divergence between the parametric distribution P (X, Y |θ) and the underlying distribution the data is sampled from, P (X, Y ). We
+show that maximising the likelihood of a data set containing unlabelled samples minimises
+a different divergence. We then show that the possible error between this and the correct divergence may grow rapidly with the proportion of unlabelled data, and will do so
+monotonically.
+Out of necessity, the analysis presented shall only concern itself with generative models.
+This follows in the footsteps of numerous other pieces of work which have shed light on
+the generative semi-supervised learning problem, for example Castelli and Cover (1995),
+Castelli and Cover (1996), Dillon et al. (2010), Cozman et al. (2003) and Yang and Priebe
+(2011). Moreover, generative models are of interest in and of themselves. For example, they
+368
+
+Unbiased Generative Semi-Supervised Learning
+
+are used in the fields of computer vision and text analysis, both of which could potentially
+benefit from better semi-supervised algorithms; recent examples of such work include that
+of Rauschert and Collins (2012), Beecks et al. (2011), L¨
+ucke and Eggert (2010), Kang et al.
+(2012) and Zhuang et al. (2012). In the general case there is also evidence that generative
+models can converge faster than discriminative, as shown by Ng and Jordan (2002), and so
+are valuable when dealing with small data sets.
+
+2. Previous Work
+A great deal of work has been done proposing algorithms designed to take advantage of
+semi-supervised data. Here we shall concern ourselves instead with examining the work
+done on finding general bounds on performance.
+We begin by considering the highly influential work by Castelli and Cover (1995, 1996).
+This looks not at a particular semi-supervised algorithm, but rather at a slightly more
+general question of when unlabelled samples can be of value. They conclude that for an
+identifiable (as defined in the paper) binary decision problem, using a generative model, the
+misclassification risk decreases exponentially fast towards the Bayes error as the number
+of labelled samples increases. This result is encouraging. However, the requirement of
+identifiability is a strict one. In practise it cannot often be guaranteed, and may even be
+flatly contradicted.
+The work of Dillon et al. (2010) builds upon this. Amongst other things they confirm
+that provided a data set is generated from P (X, Y |θ0 ) where θ0 ∈ Ω, the estimator
+NL
+
+θˆN = arg max
+θ∈Ω
+
+N
+
+log(P (xi |θ))
+
+log(P (xi , yi |θ)) +
+i=1
+
+i=NL +1
+
+is consistent. As such, in cases where there is good reason to believe the true distribution is
+drawn from the same family as our parametric model, we can expect consistent convergence.
+They also provide one of few examinations of the associated variance of an estimator, though
+again under the assumption of an identifiable model.
+In a similar vein Zhang (2000) examines the fisher information matrix when learning
+parameters for semi-supervised learning, and conclude that even when their true distribution
+can not be expressed by the model parameters being fitted, unlabelled samples always aid
+in learning in that they reduce the variance of the estimator. From this work we can
+conclude that adding unlabelled samples is not preventing consistent convergence. As such,
+if performance is observed to often worsen instead of improve as the number of unlabelled
+samples increases, the fault must lie elsewhere.
+The asymptotic behaviours of semi-supervised learning where the model is mis-specified
+has been further studied by Cozman et al. (2003); Cozman and Cohen (2006, 2002), where
+no assumptions are made about the parametric model being close to the underlying distribution. In particular, they show that the limiting value of the optimum parameters θ
+when performing ML semi-supervised learning in such a scenario is
+arg max (1 − λ)EP (X,Y ) (log P (x, y|θ)) + λEP (x) (log(P (x|θ)))
+θ
+
+where λ is the probability of a sample being unlabelled. If λ varies (say by adding unlabelled
+samples) then this will likely change the optimal parameters θ , and so the associated error
+369
+
+Fox-Roberts and Rosten
+
+rate. In the limit, as λ → 1, we will tend towards the solution found training entirely on
+unlabelled data. They argue that with a few assumptions on the modelling densities, θ
+is a continuous function of λ. They also show that an instance where the asymptotically
+optimal parameters are not changed by λ comes, as might be expected, when the model is
+“correct” and can be fitted exactly to the underlying distribution (i.e., the true distribution
+P (x, y) is a member of the family of distributions that can be modelled by P (x, y|θ)).
+The relative value of labelled/unlabelled samples was also investigated in Ratsaby and
+Venkatesh (1995) for the case of classifying between two multivariate gaussian distributions
+of unknown class prior and position parameters. As in the work by Castelli and Cover,
+an exponential decrease in error rate with the number of labelled samples is shown, and
+an only polynomial decrease in the same with the number of unlabelled samples. However
+they also demonstrate a deleterious effect in the dimensionality of the space, indicating
+unlabelled samples are likely to be less useful in high dimensional spaces. Separately, the
+work of Shahshahani and Landgrebe (1994) examines learning the parameters of both a
+single gaussian and a GMM when labels are missing. They too note an interesting effect
+of dimensionality on semi-supervised learning, in particular from the point of view of the
+Hughes phenomenon (Hughes, 1968). This is the observation that, in theory, increasing the
+dimensionality of a classification problem by taking new measurements should never increase
+the Bayes error; yet in practise, if we are learning from sampled data we find performance
+will after a while degrade due to the larger number of parameters that must be estimated
+(this is very closely linked to the perhaps more familiar Curse of Dimensionality, see Bishop,
+2006). They propose that semi-supervised learning can help mitigate this, but only if the
+rate of introduction of bias due to the unlabelled samples is lower than the decrease in
+variance of the estimator.
+Recently, Yang and Priebe (2011) has provided an investigation of semi-supervised generative learning that builds upon these conclusions. The key parameters they identify are
+∗ , and those
+the asymptotic optima achieved when performing fully supervised learning, θsup
+∗
+achieved from entirely un-supervised learning, θunsup . Provided that the ratio of NL to N
+tends towards 0 as N tends towards infinity (where N = NL + NU ) we have the scenario
+where we are moving from a high-variance, unbiased estimate, towards a low variance, bi∗
+ased estimate. Interestingly, the KL divergences between the distributions defined by θsup
+∗
+and θunsup
+, and between these distributions and a given estimate based on a data set (either
+fully labelled or a mixture of labelled and unlabelled), are identified as providing bounds
+on the probability that classification performance will improve/worsen as unlabelled data
+∗
+∗
+is added. Intuitively, if the divergence between the models specified by θsup
+and θunsup
+is
+small, then adding unlabelled data is less likely to significantly worsen results. They also
+show for a particular model that the point at which this occurs can be quite sharp. However, as it is likely to be different for different models and distributions, it still remains an
+open question how it can be best estimated.
+Additionally, theoretic examinations of expected performance for other semi supervised
+learning situations, such as transductive learning (for example, Wang et al., 2007; Vapnik,
+1998), PAC learning (Balcan and Blum, 2005; Blum and Balcan, 2010), and for generic loss
+functions (Syed and Taskar, 2010), have also been carried out. However, as our purpose
+here is to examine what can be said about generative semi-supervised learning we shall not
+discuss these further.
+370
+
+Unbiased Generative Semi-Supervised Learning
+
+2.1 Non-ML Algorithms
+Given the problems associated with standard ML semi-supervised learning, as well as the
+desire to utilise unlabelled samples in non-generative models, a large number of alternative
+objective functions have been proposed to take advantage of unlabelled data. Notable examples include Multi Conditional Learning (introduced by McCallum et al. 2006 and applied
+to semi-supervised learning by Druck et al. 2007 ) and the hybrid Bayesian approach of
+Lasserre et al. (2006), both of which utilise mixtures of generative and discriminative models; information theory based approaches, which consider the similarity of class predictions
+across the kNN graph such as Subramanya and Bilmes (2009, 2008), the mutual information
+of samples within local clusters (Szummer and Jaakkola, 2002), or the conditional entropy
+of class predictions across the unlabelled samples (Grandvalet and Bengio, 2006); Expectation Regularisation (Mann and McCallum, 2007), which seeks to enforce class proportion
+constraints; Co-training, (Blum and Mitchell, 1998), which makes use of situations where
+data is known to be separable in two different ‘views’; transduction, (Vapnik, 1998), and
+the transductive support vector machine; kernel methods, such as those investigated by
+Krishnapuram et al. (2005) and Jaakkola and Haussler (1999), which seek to use unlabelled
+samples to build better kernel functions; and many others. A thorough literature review
+was carried out by Zhu (2005).
+
+3. Local And Global Bounds On Semi-Supervised Divergences
+We now present a number of theorems, showing the asymptotic limits of the performance of
+models trained on semi-supervised data using the standard technique Equation (2). While
+it has been previously noted in the literature that ML semi-supervised learning introduces
+bias when the model and underlying distributions do not match, we provide new bounds
+on the degree of this bias as a function of the proportion of unlabelled data, and the best
+case performance of our model if it were to be trained on a large labelled data set, giving
+new insight into the reason behind these bounds.
+3.1 Notation And Conditions
+A semi-supervised data set consists of two types of data - labelled samples drawn from
+P (X, Y ), and unlabelled drawn from P (X). To allow us to deal with both of these within
+a single framework we shall introduce a new variable Z, and consider our entire data set to
+be drawn from P (X, Z), {xi , zi }i=1,...N in the space X × Z. We shall allow the ‘labelling’
+Z to take on the same set of values as Y , plus one extra, U , and therefore Z = Y ∪ U . For
+every “labelled” sample, zi = yi , and for every “unlabelled” sample zi = U . As such we now
+have the data set {xi , zi }i=1,...N . Similarly, we shall consider our parameters θ to specify a
+distribution P (X, Z|θ) rather than P (X, Y |θ), in a manner which will become clear as we
+proceed.
+We shall now apply several conditions to P (X, Z|θ) and P (X, Z) to allow them to
+reflect what we consider the typical maximum likelihood generative semi-supervised learning
+problem.
+
+371
+
+Fox-Roberts and Rosten
+
+Condition 1 X is conditionally independent of Z given Y — if we know the class y of
+sample x, z gives us no more information, that is,
+P (x|y, z, θ) = P (x|y, θ),
+
+P (x|y, z) = P (x|y)
+
+This first condition represents the fact that zi can be considered a noisy estimate of yi
+- in as much as it will either be equal to yi , or it will take on the value U to indicate yi is
+unknown. In either case, if we had access to the true value of yi , then zi would be irrelevant
+as it can give us no useful information. This condition is similar to the “missing at random”
+assumption discussed by Grandvalet and Bengio (2006).
+Condition 2 The labelled samples have been drawn randomly and labelled correctly. The
+unlabelled samples are similarly drawn randomly, with no class bias. As such,
+P (z|y, θ) =
+
+P (U |θ), z = U
+¯ |θ), z = U
+δk (z, y)P (U
+
+P (z|y) =
+
+P (U ), z = U
+¯ ), z = U
+δk (z, y)P (U
+
+¯ |θ)
+where δk indicates the Kronecker delta function, and we have denoted 1 − P (U |θ) as P (U
+¯)
+and 1 − P (U ) as P (U
+This second condition specifies our labelling process. It is imagined that a ‘bag’ full
+of unlabelled samples initially exists, and individual ones are then drawn from it and the
+correct label associated with them by some expensive labelling process1 to form the labelled
+set.
+In practise truly drawing samples completely at random runs with risk of certain classes
+having zero labelled samples, which is likely to cause highly undesirable behaviour of the
+algorithm. We do not foresee this as a problem for two reasons. Firstly, in the asymptotic
+limit (which is what most of our work will be concerned with in this section) we will almost
+surely achieve labelled samples being drawn from all classes. Secondly, in practise, the individuals running the experiment are likely to ensure that all classes have some representative
+samples. This breaks the assumption of iid data; however, provided the class priors are respected when choosing how many samples to label from each class (or suitable weighting
+applied) we can still attain an asymptotically unbiased estimate of the expectation term in
+the divergence.
+¯ |θ) = P (U
+¯) =
+Condition 3 The proportion of labelled data is known, letting us set P (U
+1 − P (U )
+We assume this as matching labels to samples is a process controlled entirely by the
+user, and that they use this knowledge to set P (U |θ) rather than having to infer it from
+the data.
+1. This can be considered a somewhat simpler model to that proposed by Rosset et al. (2005), where the
+labelling also depended on the feature vector x. This work however is interested in the case of biased
+semi-supervised learning, which we assume here to not be the case.
+
+372
+
+Unbiased Generative Semi-Supervised Learning
+
+3.1.1 Divergences
+The KL divergence is a widely used method of measuring the similarity between two distributions, and one which shall be made extensive use of in this article. For distributions
+P (X, Y ) and P (X, Y |θ) where X is a continuous random variable and Y is discrete, it is
+defined as
+P (x, y)
+KL(P (X, Y )||P (X, Y |θ)) =
+P (x, y) log
+P (x, y|θ)
+x∈X
+y∈Y
+
+It is perhaps most widely used as a justification of maximum likelihood methods, as it
+is a standard proof that the parameters
+NL
+
+log (p (xi , yi |θ))
+
+θ = arg max
+θ
+
+i=1
+
+are an asymptotically unbiased minimiser of KL(P (X, Y )||P (X, Y |θ)), for example, see
+Bishop (2006).
+For brevity and to make subsequent equations more readable we shall introduce a more
+concise notation to refer to the KL divergence. For random variables A and B and parameters θ, the full divergence shall be denoted as
+D(P (A, B), θ) ≡ KL(P (A, B)||P (A, B|θ))
+and the conditional divergence as
+D(P (A|B), θ) ≡ KL(P (A|B)||P (A|B, θ)).
+3.2 Standard ML Semi-Supervised Learning Expressed As A Divergence
+Our first step is to demonstrate that when a proportion of a data set whose likelihood we are
+maximising is lacking labels, in the asymptotic limit we will minimise a different divergence
+to that we might wish - specifically, we minimise D(P (X, Z)|θ) rather than D(P (X, Y )|θ).
+Theorem 4 Subject to the conditions in 3.1, maximising
+NL
+
+NL +NU
+
+P (xi , yi |θ)
+i=1
+
+P (xi |θ)
+
+(3)
+
+i=nL +1
+
+w.r.t. θ minimises an asymptotically unbiased estimate of a term directly proportional to
+D(P (X, Z), θ), not D(P (X, Y ), θ)
+Proof Given a set of N samples {xi , zi }i=1,...N drawn from P (X, Z), we can approximate
+the expectation term in D(P (X, Z)|θ) with an arithmetic mean over our samples (for example, see MacKay, 2003). Ignoring terms which are not a function of θ, and taking the
+antilog, we attain
+N
+
+arg min D(P (X, Z), θ) ≈ arg max
+θ
+
+θ
+
+373
+
+P (xi , zi |θ).
+i=1
+
+(4)
+
+Fox-Roberts and Rosten
+
+Examining the above, and making use of Condition 1 to simplify P (xi |zi , y, θ) into
+P (xi |y, θ), we can rewrite the likelihood contribution of a single sample i, P (xi , zi |θ) as
+follows
+P (xi , zi |θ) =
+
+P (xi , zi , y|θ)
+y∈Y
+
+P (xi |zi , y, θ)P (zi |y, θ)P (y|θ)
+
+=
+y∈Y
+
+P (xi |y, θ)P (zi |y, θ)P (y|θ)
+
+=
+y∈Y
+
+P (xi , y|θ)P (zi |y, θ).
+
+=
+y∈Y
+
+This can be simplified further using Conditions 2 and 3, depending on the value of zi . First
+consider the case where zi = U
+P (xi , zi |θ)|zi =U =
+
+P (xi , y|θ)P (U |θ) = P (xi |θ)P (U ).
+
+(5)
+
+y∈Y
+
+Thus, a sample whose labelling zi indicates it is unlabelled contributes a quantity proportional to P (xi |θ) to our likelihood expression. Now consider a single labelled example (i.e.,
+where zi = U ),
+P (xi , zi |θ)|zi =U
+
+¯ |θ)
+P (xi , y|θ)δk (y, zi )P (U
+
+=
+y∈Y
+
+¯)
+= P (xi , y|θ)|y=zi P (U
+¯)
+= P (xi , yi |θ)P (U
+
+(6)
+
+where we have made a slight change of notation in the last term to represent that if zi = U ,
+then yi is known. This contributes a term proportional to P (xi , yi |θ) to the likelihood. If
+we substitute these results back into Equation (4), our final likelihood expression is
+¯ )P (xi , yi |θ)
+P (U
+
+arg max
+θ
+
+P (U )P (xj |θ)
+j,zj =U
+
+i,zi =U
+
+which is equivalent to maximising Equation (3).
+The form of our final likelihood function is the same as that found by Cozman and
+Cohen (2006). The difference is in the interpretation of this. While Cozman and Cohen
+(2006) considers it simply as a biased approximate minimiser of D(P (X, Y ), θ), we consider it an unbiased minimiser of a new divergence D(P (X, Z), θ). The utility of this is
+that we can investigate the ‘bias’ introduced by considering the relationship between this
+semi-supervised divergence and the original fully supervised one, and the properties of KL
+divergences.
+374
+
+Unbiased Generative Semi-Supervised Learning
+
+3.3 Bounding D P (X, Y ), θ With D P (X, Z), θ
+Maximising the likelihood of a partially labelled data set corresponds to approximately minimising D (P (X, Z), θ). We now examine how D (P (X, Z), θ) is related to D (P (X, Y ), θ),
+and show that a set of upper and lower bounds can be formed using it.
+Theorem 5 Subject to the conditions in 3.1, for a given set of parameters θ, D P (X, Z), θ
+defines an upper and lower set of bounds on D P (X, Y ), θ as follows:
+D P (X, Z), θ ≤ D P (X, Y ), θ ≤
+
+D P (X, Z), θ
+.
+¯)
+P (U
+
+(7)
+
+Remark 6 These bounds imply that, for a given D P (X, Z), θ that we are optimising, the
+¯ )−1 . In situations
+divergence of interest D P (X, Y ), θ could vary by up to a factor P (U
+−1
+¯ ) is large, this uncertainty may become the dominant factor in determining the
+where P (U
+quality of our result.
+Proof Consider the KL divergence D(P (X, Z), θ). We shall take the summation over Z
+and split out the term z = U , noting that Z − U = Y
+D(P (X, Z), θ) =
+
+P (x, z) log
+x∈X z∈Y
+
+P (x, z)|z=U
+dx.
+P (x, z|θ)|z=U
+
+P (x, z)|z=U log
+
++
+
+P (x, z)
+dx
+P (x, z|θ)
+
+x∈X
+
+Using Equation (5) and Equation (6), and their corresponding counterparts when not conditioned on θ, we can simplify the terms within our logarithms
+P (x, z)|z=U
+P (x)P (U )
+P (x)
+=
+=
+,
+P (x, z|θ)|z=U
+P (x|θ)P (U )
+P (x|θ)
+P (x, z)|z=U
+P (x, y)|y=z
+=
+.
+P (x, z|θ)|z=U
+P (x, y|θ)|y=z
+Using these identities, and Equation (5) and Equation (6) this allows us to rewrite the
+divergence D(P (X, Z), θ)
+¯)
+D(P (X, Z), θ) = P (U
+
+P (x, y)|y=z log
+
+x∈X z∈Y
+
++P (U )
+
+P (x, y)|y=z
+dx
+P (x, y|θ)|y=z
+
+P (x) log
+
+P (x)
+dx.
+P (x|θ)
+
+x∈X
+
+which is exactly equivalent to
+¯ )D P (X, Y ), θ + P (U )D P (X), θ .
+D(P (X, Z), θ) = P (U
+375
+
+(8)
+
+Fox-Roberts and Rosten
+
+From this we can find a set of upper and lower bounds on D(P (X, Y ), θ) in terms of
+D(P (X, Z), θ) alone. The upper bound can be found by noting D(P (X), θ) ≥ 0, which
+given Equation (8) implies
+¯ )D P (X, Y ), θ
+D(P (X, Z), θ) ≥ P (U
+
+(9)
+
+which when rearranged gives the upper bound in Equation (7). The lower bound follows
+similarly, by noting that D(P (X, Y ), θ) = D(P (Y |X), θ) + D(P (X), θ) ≥ D(P (X), θ).
+Again using Equation (8) this gives
+¯ )D P (X, Y ), θ + P (U )D P (X, Y ), θ
+D(P (X, Z), θ) ≤ P (U
+¯ ) + P (U ) D P (X, Y ), θ
+= P (U
+= D P (X, Y ), θ
+
+(10)
+
+which gives us our lower bound. Combining Equation (10) and Equation (9) gives us Equation (7).
+It is notable that in deriving these bounds we have treated D(P (X), θ)) (or, equivalently,
+D(P (Y |X), θ))) simply as a value in the range 0 to D(P (X, Y ), θ). As we wished to find
+general bounds that would hold for any combination of P (X, Y ) and P (X, Y |θ) we feel that
+this is an entirely justifiable method of proceeding.
+In practice, however, we will not be dealing with arbitrary distributions for P (X, Y ) and
+P (X, Y |θ); rather, P (X, Y ) will usually represent some measurements of a real world phenomenon that we believe to be learnable in (hopefully) some well chosen space. Similarly our
+model may have been selected from a pool of potential models are that which is considered
+most likely (according to some prior beliefs) to be able to fit to the distribution of interest
+acceptably well, and will also often be smoothly varying with non-negligible correlations
+between P (Y |X, θ) and P (X|θ). As such, with additional problem specific knowledge, we
+suspect that tighter bounds on D(P (X, Y ), θ) will tend to exist.
+Another question one might raise is whether the lower bound can become tight even in
+instances where there is a mismatch between the model and true distribution - that is, given
+minθ D(P (X, Y ), θ) > 0, can we have the situation where D(P (X, Z), θ) = D(P (X, Y ), θ)?
+To answer this, consider D(P (X, Z), θ) as written in Equation (8). This can be re-written
+as follows
+D(P (X, Z), θ) = D P (X, Y ), θ − P (U )D P (Y |X), θ .
+As such, in order to achieve the situation where D(P (X, Z), θ) = D P (X, Y ), θ , it must
+be the case that P (U )D P (Y |X), θ = 0. Assuming P (U ) > 0 (as otherwise we are dealing
+with the trivial case of utilising no labelled data) then this must mean D(P (Y |X), θ) =
+0, that is, the conditional distribution specified by the model perfectly matches the true
+distribution. This observation seems to match intuition - if the model can correctly predict
+the class of unlabelled data, then its divergence estimate will not be biased by utilising
+these samples.
+3.4 Global Bounds
+The results in 3.3 give us bounds on D(P (X, Y ), θ) in terms of D(P (X, Z), θ) for a given θ.
+It is of more interest however to characterise the global minimisers of these two expressions.
+376
+
+Unbiased Generative Semi-Supervised Learning
+
+That is, if we make use of our unlabelled data to minimise D(P (X, Z), θ) with respect to
+θ, what can be inferred about the value of D(P (X, Y ), θ) evaluated at this minimum?
+Theorem 7 Define the optimum parameters for the supervised and ML semi-supervised
+learning problems as
+θ = arg min D(P (X, Y ), θ),
+θ
+
+θS = arg min D(P (X, Z), θ).
+θ
+
+Subject to the conditions in 3.1, it can be shown that
+D(P (X, Y ), θ ) ≤ D(P (X, Y ), θS ) ≤
+
+D(P (X, Y ), θ )
+.
+¯)
+P (U
+
+(11)
+
+That is, the divergence minimised by supervised learning, D(P (X, Y ), θ), evaluated at the
+parameters which minimise the semi-supervised divergence, θS , can be upper and lower
+bounded as a function of said divergence evaluated at its own optima, θ .
+Proof The lower bound
+D(P (X, Y ), θ ) ≤ D(P (X, Y ), θS )
+is true by the definition of θ∗ - it is the minimiser of D(P (X, Y ), θ), and so any other value
+of θ must result in a greater than or equal divergence.
+¯ ).
+The upper bound can be derived as follows. Consider the term D(P (X, Y ), θS )P (U
+Using Equation (9) evaluated at θ = θS we can see the following,
+¯ ) ≤ D(P (X, Z), θ ).
+D(P (X, Y ), θS )P (U
+S
+Given the definition of θS∗ we can further see that
+D(P (X, Z), θS ) ≤ D(P (X, Z), θ ).
+And using Equation (10) evaluated at θ = θ ,
+D(P (X, Z), θ ) ≤ D(P (X, Y ), θ ).
+Hence, utilising all three of these inequalities in that order,
+¯ ) ≤ D(P (X, Z), θ )
+D(P (X, Y ), θS )P (U
+S
+≤ D(P (X, Z), θ )
+≤ D(P (X, Y ), θ )
+we see that
+¯ ) ≤ D(P (X, Y ), θ ).
+D(P (X, Y ), θS )P (U
+¯ ) we achieve our upper bound in Equation (11), that is,
+By dividing through by P (U
+D(P (X, Y ), θS ) ≤
+
+D(P (X, Y ), θ )
+.
+¯)
+P (U
+
+377
+
+Fox-Roberts and Rosten
+
+Thus, we can place bounds on divergence D(P (X, Y ), θ) evaluated at θS∗ in terms
+¯ ), and D(P (X, Y ), θ∗ ). One immediate observation is that if
+of the proportion of P (U
+D P (X, Y, θ = 0, then D P (X, Y ), θS = 0. Thus, if the true distribution lies within
+the family of distributions expressible by our model, then the optima intersect regardless
+of P (U ), as confirmed by Cozman et al. (2003). Conversely, if D P (X, Y ), θ > 0 then
+our bounds loosen as P (U ) grows, and the rate of this depends on how well matched our
+model is to the data - if they are very similar then the bound grows slowly, whereas if they
+are different it may grow much faster. This confirms earlier results (see Section 2.2 in Zhu,
+2005, for a summary), and builds on them by providing explicit bounds on how rapidly
+performance may degrade.
+The overall conclusion is that performing ML semi-supervised learning in the manner of
+Equation (3) forces us to make a trade off. We can rarely evaluate KL divergences directly,
+and must use estimators whose variance is inversely proportional to N (MacKay, 2003). By
+including unlabelled data we can decrease this source of uncertainty. However in doing so
+we weaken our bounds, introducing a new source of error. This provides a complementary
+reinterpretation of the results noted by Cozman et al. (2003).
+As our bounds weaken then, how does our solution degrade? We now show that the
+supervised divergence, evaluated at the ML semi-supervised optima, grows monotonically
+with the proportion of unlabelled samples.
+Theorem 8 Subject to the conditions in 3.1, let us define two distributions P1 (X, Z) and
+P2 (X, Z), and corresponding models P1 (X, Z|θ) and P2 (X, Z|θ). These distributions shall
+differ from one another only in terms of the probability that Z = U ; that is, P1 (X, Y ) =
+P2 (X, Y ) and P1 (X, Y |θ) = P2 (X, Y |θ) (which in turn implies P1 (X) = P2 (X) and P1 (X|θ) =
+P2 (X|θ)). We shall assume that distribution P2 (X, Z) has a greater chance of an unlabelled
+sample, and so P2 (U ) > P1 (U ).
+Define the optima θS1 and θS2 as
+θS1 = arg min D(P1 (X, Z), θ),
+θ
+
+θS2 = arg min D(P2 (X, Z), θ).
+
+(12)
+
+θ
+
+It follows that
+D(P (X, Y ), θS1 ) ≤ D(P (X, Y ), θS2 )
+
+(13)
+
+D(P (Y |X), θS1 ) ≤ D(P (Y |X), θS2 ).
+
+(14)
+
+and
+
+Proof By definition,
+∗
+∗
+D(P1 (X, Z), θS1
+) ≤ D(P1 (X, Z), θS2
+).
+
+We can expand both these divergences to rewrite this expression as follows;
+¯ )D(P (X, Y ), θ ) + P1 (U )D(P (X), θ )
+P1 (U
+S1
+S1
+¯ )D(P (X, Y ), θ ) + P1 (U )D(P (X), θ )
+≤ P1 (U
+S2
+S2
+378
+
+Unbiased Generative Semi-Supervised Learning
+
+Rearranging this expression to isolate D(P (X), θS1 ) − D(P (X), θS2 ) gives us
+D(P (X), θS1 ) − D(P (X), θS2 ) ≤
+
+¯)
+P1 (U
+(D(P (X, Y ), θS2 ) − D(P (X, Y ), θS1 )) .
+P1 (U )
+
+(15)
+
+We shall utilise this term later.
+Now examining the divergences associated with the distribution P2 (X, Z), by the definition given in Equation (12) we see that
+∗
+∗
+D(P2 (X, Z), θS2
+) ≤ D(P2 (X, Z), θS1
+).
+
+This can be expanded as before,
+¯ )D(P (X, Y ), θS2 ) + P2 (U )D(P (X), θS2 )
+P2 (U
+¯ )D(P (X, Y ), θS1 ) + P2 (U )D(P (X), θS1 ),
+≤ P2 (U
+and D(P (X), θS1 ) − D(P (X), θS2 ) once again isolated,
+¯)
+P2 (U
+(D(P (X, Y ), θS2 ) − D(P (X, Y ), θS1 )) ≤ D(P (X), θS1 ) − D(P (X), θS2 ).
+P2 (U )
+
+(16)
+
+Combining Equation (15) and Equation (16) to eliminate D(P (X), θS1 ) − D(P (X), θS2 )
+gives us
+¯)
+P2 (U
+(D(P (X, Y ), θS2 ) − D(P (X, Y ), θS1 ))
+P2 (U )
+¯)
+P1 (U
+≤
+(D(P (X, Y ), θS2 ) − D(P (X, Y ), θS1 )) .
+P1 (U )
+Gathering together similar divergences, this implies that
+¯ ) P2 (U
+¯)
+P1 (U
+−
+P1 (U ) P2 (U )
+
+D(P (X, Y ), θS1 ) ≤
+
+¯ ) P2 (U
+¯)
+P1 (U
+−
+P1 (U ) P2 (U )
+
+D(P (X, Y ), θS2 )
+
+¯ ) < P1 (U
+¯ ), it follows that P2 (U )P1 (U
+¯) >
+As we know that P2 (U ) > P1 (U ), and so P2 (U
+¯
+P1 (U )P2 (U ), which in turn implies
+¯ ) P2 (U
+¯)
+P1 (U
+−
+> 0.
+P1 (U ) P2 (U )
+As it is positive we may cancel this term out without altering the inequality, indicating that
+D(P (X, Y ), θS1 ) ≤ D(P (X, Y ), θS2 )
+proving Equation (13).
+To prove Equation (14), note that if we take Equation (15), multiply though by P1 (U ),
+and then use some simple algebra to gather all terms relating to the marginal divergence
+together, it is equivalent to stating
+¯ ) (D(P (Y |X), θ ) − D(P (Y |X), θ )) .
+D(P (X), θS1 ) − D(P (X), θS2 ) ≤ P1 (U
+S2
+S1
+379
+
+Fox-Roberts and Rosten
+
+Similarly, Equation (16) can be rearranged as
+¯ ) (D(P (Y |X), θ ) − D(P (Y |X), θ )) ≤ D(P (X), θ ) − D(P (X), θ ).
+P2 (U
+S2
+S1
+S1
+S2
+Combining these two, we see that
+¯ ) (D(P (Y |X), θ ) − D(P (Y |X), θ ))
+P2 (U
+S2
+S1
+¯
+≤ P1 (U ) (D(P (Y |X), θ ) − D(P (Y |X), θ )) .
+S2
+
+S1
+
+Gathering together terms, this rearranges to
+¯ ) − P2 (U
+¯ ) D(P (Y |X), θ ) ≤ P1 (U
+¯ ) − P2 (U
+¯ ) D(P (Y |X), θ )
+P1 (U
+S1
+S2
+¯ ) < P1 (U
+¯ ), implies
+which, given P2 (U ) > P1 (U ), and hence P2 (U
+D(P (Y |X), θS2 ) ≥ D(P (Y |X), θS1 )
+proving Equation (14).
+This observation seems intuitively reasonable. As P (U ) grows the model is increasingly
+penalised by large values of D(P (X), θ), and so seeks to minimise this at the expense of
+letting D(P (Y |X), θ) get larger. However, if our end goal is to create a classifier then this
+result may give us cause to reconsider - adding unlabelled data not only weakens our bounds
+on the joint divergence, but asymptotically can only worsen (or at best leave unchanged)
+the conditional divergence.
+Thus, we can now conclude several things about the asymptotic optimum of the ML
+semi-supervised learning problem. Firstly, due to the observation of monotonicity, the divergence D(P (X, Y ), θS∗ ) is upper bounded by D(P (X, Y ), θU∗ ), confirming Yang and Priebe
+(2011). Secondly, that if we were to increase the quantity of unlabelled data, it will tend
+towards this approaching equality as P (U ) tends towards 1. Finally, it will do so monotonically - raising the proportion of unlabelled data will never decrease D(P (X, Y ), θS∗ ) or
+D(P (Y |X), θS∗ ).
+This result initially seems to contradict that of Cozman and Cohen (2006), where they
+gave an example of a ML semi-supervised learning process where despite the model not
+fitting the underlying distribution, adding unlabelled data asymptotically improved the
+decision boundary. We point out though that their measure of how well the boundary fits
+is based on the error rate, not the KL divergence. while it is true that minimising the
+conditional KL divergence will typically reduce the error rate this is not an absolute rule
+(and indeed forms a set of bounds). We would postulate that this is an example of a case
+where the divergence rises but the classification rate improves.
+Finally, it makes sense to more closely examine the final solution arrived at as P (U ) → 1,
+in a similar manner to that discussed by Yang and Priebe (2011). In particular, we wish to
+confirm that their result extend beyond identifiable models, and shall show that where there
+is a choice between multiple sets of parameters which minimise the unsupervised divergence
+D(P (X), θ), the semi-supervised divergence minimised by ML learning is upper bounded by
+the one set of these parameters which best minimises D(P (Y |X), θ). This proof is largely
+similar to that showing monotonicity but is included here for completeness.
+380
+
+Unbiased Generative Semi-Supervised Learning
+
+Theorem 9 Subject to the conditions in 3.1, define the optimum unsupervised parameters
+θU to be any parameters which meet these requirements:
+θU = arg min D(P (Y |X), θ) subject to D(P (X), θU ) = min D(P (X), θ )
+θ
+
+θ
+
+¯ ) = 0,
+It can be shown that provided P (U
+D(P (X, Y ), θS ) ≤ D(P (X, Y ), θU )
+
+(17)
+
+D(P (Y |X), θS ) ≤ D(P (Y |X), θU )
+
+(18)
+
+D(P (X, Z), θS ) ≤ D(P (X, Z), θU ).
+
+(19)
+
+and
+
+Proof By definition,
+The standard semi-supervised divergence can be expanded as follows,
+¯ )D P (X, Y ), θ + P (U )D P (X), θ .
+D(P (X, Z)|θ) = P (U
+As such, we can rewrite Equation (19) as follows
+¯ )D(P (X, Y ), θ ) + P (U )D(P (X), θ )
+P (U
+S
+S
+¯ )D(P (X, Y ), θ ) + P (U )D(P (X), θ ).
+≤ P (U
+U
+U
+If we subtract P (U )D(P (X), θU ) from both sides this becomes
+¯ )D(P (X, Y ), θS ) + P (U ) (D(P (X), θS ) − D(P (X), θU ))
+P (U
+¯ )D(P (X, Y ), θU ).
+≤ P (U
+However, by definition, D(P (X), θS ) ≥ D(P (X), θU ), implying
+¯ )D(P (X, Y ), θS ) ≤ P (U
+¯ )D(P (X, Y ), θU )
+P (U
+¯ ). Equation (18)
+and hence Equation (17) directly follows by dividing through by P (U
+follows similarly by noting that Equation (17) implies
+D(P (Y |X), θS ) + D(P (X), θS ) ≤ D(P (Y |X), θU ) + D(P (X), θU ).
+If we subtract D(P (X), θU ) from both sides we find that
+D(P (Y |X), θS ) + D(P (X), θS ) − D(P (X), θU ) ≤ D(P (Y |X), θU )
+and again note that by definition, D(P (X), θS ) ≥ D(P (X), θU ), and hence
+D(P (Y |X), θS ) ≤ D(P (Y |X), θU )
+directly follows, proving Equation (18).
+
+381
+
+Fox-Roberts and Rosten
+
+Note that the above derivation could have proceeded in exactly the same manner with
+θU chosen to be any parameters for which D(P (X), θU ) = minθ D(P (X), θ ). However, by
+choosing θU to be the parameters which also minimised D(P (Y |X), θU ) we attain as tight
+a bound as possible.
+For many models there will be only one set of parameters which minimise D(P (X), θ),
+and so this is not an issue. However for others this will not be the case. For example, many
+mixture models contain mixture components which are identical save for the class they
+are assigned to. In these cases, specifying that θU have the lowest conditional divergence
+amongst those set of parameters which have the minimum marginal divergence allows us
+to choose the best combination of class assignment for each mixture component given their
+other parameters, strengthening slightly the conclusions of Yang and Priebe (2011).
+We can now rewrite our global bounds as follows:
+D(P (X, Y ), θ ) ≤ D(P (X, Y ), θS ) ≤ min
+
+D(P (X, Y ), θ )
+, D(P (X, Y ), θU ) .
+¯)
+P (U
+
+Assuming that D(P (Y |X), θU ) < ∞, which will be the case provided P (Y |X, θU ) does not
+assign zero probability to any Y given any X, this gives tighter performance bounds as
+¯ ) → 0.
+P (U
+3.5 Summary
+This ends our theoretical examination of performing ML learning on a partially labelled
+data set. Overall we can conclude the following;
+• When we introduce unlabelled data into our likelihood expression, we change the
+divergence being minimised, from D(P (X, Y ), θ) to D(P (X, Z), θ).
+• We can form a set of upper and lower bounds on D(P (X, Y ), θ) using D(P (X, Z), θ)
+for a given θ, namely
+D(P (X, Z), θ) ≤ D(P (X, Y ), θ) ≤
+
+D(P (X, Z), θ)
+.
+¯)
+P (U
+
+The lower bound becomes tight if D(P (Y |X), θ) is equal to 0, that is, if our model is
+fits to the conditional distribution well.
+• If we find the parameters θS which minimise the standard semi-supervised divergence D(P (X, Z), θ), then these are linked to the parameters θ which minimise
+D(P (X, Y ), θ) using the expression
+D(P (X, Y ), θ ) ≤ D(P (X, Y ), θS ) ≤
+
+D(P (X, Y ), θ )
+,
+¯)
+P (U
+
+that is, our supervised divergence evaluated at the standard semi-supervised minima
+¯ )). Where there is a large
+may exceed the supervised minima by a factor of 1/(P (U
+quantity of unlabelled data this factor may be very high.
+• D(P (X, Y ), θS ) grows monotonically with the proportion of unlabelled data P (U ).
+Moreover, it is the term D(P (Y |X), θS ) which grows, indicating that we can expect
+classification results to remain steady or worsen.
+382
+
+Unbiased Generative Semi-Supervised Learning
+
+Taken together, this gives a clear indication of the problem we face conducting generative semi-supervised ML learning, and gives novel bounds on the asymptotic performance
+achievable.
+
+4. Unbiased Generative Semi-Supervised Learning
+Having investigated the properties of D(P (X, Z), θ), it is clear that if we wish to minimise
+D(P (X, Y ), θ), it is better we find an unbiased likelihood estimator. From examination of
+the form of the supervised divergence, we propose the following.
+¯ ) > 0, the expression
+Theorem 10 Subject to the conditions in 3.1, and provided P (U
+NL
+
+N
+
+P (yi |xi , θ)
+
+arg max
+θ
+
+i=1
+
+NL /N
+
+P (xi |θ)
+
+(20)
+
+i=1
+
+returns a set of parameters which minimise an asymptotically unbiased estimator of the
+divergence D(P (X, Y ), θ).
+Proof The divergence D(P (X, Y ), θ) is exactly equivalent to the following:
+D(P (Y |X), θ) + D(P (X), θ).
+
+(21)
+
+We draw samples (xi , yi )i=1,...,NL and (xi )i=NL +1,...,N . Assuming that as N → ∞, NL /N →
+¯ ), we can use these to construct an asymptotically unbiased estimator of the divergence
+P (U
+Equation (21),
+1
+NL
+
+NL
+
+log
+i=1
+
+P (yi |xi )
+P (yi |xi , θ)
+
+1
++
+N
+
+N
+
+log
+i=1
+
+P (xi )
+P (xi |θ)
+
+.
+
+(22)
+
+Disregarding all terms which are not a function of θ gives the expression
+−1
+NL
+
+NL
+
+log (P (yi |xi , θ)) +
+i=1
+
+−1
+N
+
+N
+
+log (P (xi |θ)) .
+
+(23)
+
+i=1
+
+Multiplying this by −NL and taking the antilog yields
+NL
+
+N
+
+P (xi |θ)NL /N .
+
+P (yi |xi , θ)
+i=1
+
+i=1
+
+This is the quantity which is maximised in Equation (20). As the log function is monotonic,
+the parameters which maximise this will minimise Equation (23) (due to the multiplication
+by −NL ). Minimising Equation (23) is equivalent to minimising Equation (22) as they only
+differ by terms that are constant with respect to the parameters. And Equation (22) is an
+unbiased estimator of Equation (21). Hence, the parameters returned by Equation (20) are
+equivalent to those which minimise an unbiased estimator of D(P (X, Y ), θ).
+
+383
+
+Fox-Roberts and Rosten
+
+¯ ) = 0. This corresponds to Equation (22) where NL is
+A special case occurs when P (U
+fixed while NU → ∞,
+1
+arg min
+θ NL
+
+NL
+
+P (yi |xi )
+P (yi |xi , θ)
+
+log
+i=1
+
++ D(P (X), θ)
+
+(24)
+
+which estimates the marginal component of the divergence exactly while using the available
+labelled data to estimate the conditional component as best possible.
+Our term Equation (20) is somewhat similar to the form of Equation 3 presented by
+McCallum et al. (2006), which was further investigated by Druck et al. (2007), but with the
+exponents of the conditional and generative components of the equation set by the ratio
+of labelled to unlabelled data, rather than being found by cross validation. Moreover, our
+purpose in using an equation of this form is different; we wish to fit a generative model,
+not a classifier. Rosset et al. (2005) has also previously noted that performance can be
+improved by requiring certain expectations in the labelled and unlabelled data set match.
+However, they enforced this as a strict requirement, rather than using it to find an unbiased
+likelihood estimate as we do. Nigam et al. (2000) implement down-weighting of the log
+likelihood of all unlabelled elements, by a factor which is set using cross validation. As the
+marginal likelihood of the labelled samples is not re-weighed this also produces a biased
+estimator of the joint likelihood.
+An argument might be made that a biased estimator which is tuned using cross validation
+has the potential to outperform the proposed unbiased objective function. While there is
+certainly merit to this, we would respond that the parameter tuning inherent in cross
+validation can increase the amount of time spent training dramatically, and that it requires
+a large enough corpus of labelled data that a holdout set can be safely put aside to validate
+with. Our objective function provides a simple, principled alternative, applicable in cases
+where such restrictions prevent cross validation, as well as others.
+4.1 Estimator Variance
+Note that we can already generate an asymptotically unbiased estimate by using the labelled
+data alone. Unlabelled samples are only of value if they make this process more reliable,
+so it is worth investigating the uncertainty of this estimator. Consider the variance V of
+Equation (22), where the variance is taken w.r.t. the probability of the possible data sets
+we may have observed
+V = Var
+
+1
+NL
+
+NL
+
+P (yi |xi )
+P (yi |xi , θ)
+
+log
+i=1
+
++
+
+1
+N
+
+N
+
+log
+i=1
+
+P (xi )
+P (xi |θ)
+
+.
+
+(25)
+
+We can expand Equation (25) as
+V
+
+= Var
+
++2 Cov
+
+1
+NL
+
+NL
+
+Ly|x (i)
+i=1
+NL
+
+1
+NL
+
+Ly|x (i),
+i=1
+
+384
+
++ Var
+1
+N
+
+1
+N
+
+N
+
+Lx (i)
+i=1
+
+N
+
+Lx (i)
+i=1
+
+(26)
+
+Unbiased Generative Semi-Supervised Learning
+
+where for ease of notation we have defined
+P (yi |xi )
+P (yi |xi , θ)
+
+Ly|x (i) ≡ log
+
+, Lx (i) ≡ log
+
+P (xi )
+P (xi |θ)
+
+.
+
+Using standard identities for variances and covariances,2 and taking advantage of our samples being iid, we can expand Equation (26) as follows
+V =
+
+1
+1
+2
+Var LY |X +
+Var (LX ) +
+Cov LY |X , LX
+NL
+N
+N
+
+(27)
+
+where we have now defined
+P (Y |X)
+P (Y |X, θ)
+
+LY |X ≡ log
+
+,
+
+LX ≡ log
+
+P (X)
+P (X|θ)
+
+.
+
+As such Equation (27) gives us the variance of Equation (22) in terms of a relationship
+between the distributions P (X, Y ), P (X, Y |θ), NL and NU . Clearly V → 0 as NL → ∞.
+However we are also interested in the case where we increase NU while holding NL steady,
+¯ ) = 0. By inspection, as NU → ∞, V → 1 Var LY |X (as one might
+corresponding to P (U
+NL
+expect from examination of Equation (24)), so the question becomes whether this reduces
+V . Remembering that N = NL + NU , the derivative3 of Equation (27) with respect to N
+(and hence NU since NL is fixed) is
+dV
+−1
+2
+= 2 Var (LX ) − 2 Cov LY |X , LX .
+dN
+N
+N
+2. The simplification of the variance terms is intuitively obvious and a standard result - for any random
+variable, we expect the variance of the arithmetic mean of a set of observations to be the variance of the
+variable itself, divided by the number of observations made (see MacKay, 2003). However the covariance
+term is perhaps a little more surprising, as it has no dependence on NL . This is due to the iid nature
+of the data, which implies a covariance of zero between different samples. As such we can derive the
+following:
+Cov
+
+=
+
+=
+
+1
+N NL
+1
+N NL
+
+=0+
+
+=
+=
+
+1
+NL
+
+NL
+
+Ly|x (i),
+i=1
+
+NL
+
+N
+
+Lx (i)
+i=1
+
+N
+
+Cov Ly|x (i), Lx (j)
+i=1 j=1
+NL
+
+N
+
+Cov Ly|x (i), Lx (j) +
+i=1 j=1
+j=i
+
+1
+N NL
+
+1
+N NL
+
+1
+N
+
+1
+N NL
+
+NL
+
+Cov Ly|x (i), Lx (i)
+i=1
+
+NL
+
+Cov Ly|x (i), Lx (i)
+i=1
+
+NL
+
+Cov LY |X , LX
+i=1
+
+1
+Cov LY |X , LX
+N
+
+which eliminates NL and so gives us the stated form of the covariance.
+3. Strictly NU is discrete, and does not have a derivative. However the expression is monotonic in NU , and
+so the overall trend will be the same if this constraint is relaxed.
+
+385
+
+Fox-Roberts and Rosten
+
+For Equation (25) to decrease as NU increases this quantity must be negative. This is the
+case iff
+− Var (LX )
+.
+2
+The conclusion is that even if NL is fixed our method of including unlabelled data reduces
+the variance of our estimator provided Cov LY |X , LX is above a lower bound, proportional
+to Var (LX ). Perhaps surprisingly this bound is negative, indicating they may be slightly
+anti-correlated. We feel this is a sufficiently weak criteria for our scheme to find application
+across a variety of data sets.
+Cov LY |X , LX ≥
+
+5. Empirical Demonstration
+We now examine the performance of the objective function given in Section 4 on real world
+data sets, compared to the standard semi-supervised learning, supervised learning, and
+several other alternative semi-supervised techniques. To maximally highlight the effect of
+mismatch between the model and true distribution, a simple marginal distribution consisting
+of a single axis aligned Gaussian was chosen to model each class.
+The following six learning schemes were tested with this model: our unbiased semisupervised expression (SSunb), that is, the natural log of Equation (20); the log likelihood
+of the labelled data (LL), that is, Equation (1); the log likelihood of the standard (biased) semi-supervised expression (SSb), that is, the natural log of Equation (3); the log
+likelihood of the standard semi-supervised expression plus an Entropy Regularisation term
+(Grandvalet and Bengio, 2006) with the parameter λ set by 5 fold cross validation, selecting the λ with the lowest holdout set error rate (ERer); Entropy Regularisation as before,
+except cross validation is carried out on the log likelihood of the holdout set (ERnll); the
+semi-supervised equivalent of Multi Conditional learning (as investigated in Druck et al.,
+2007), again cross validating hyper parameters once on error rate (MCer) and once on log
+likelihood (MCnll); and the log likelihood of the standard semi-supervised expression plus
+an Expectation Regularisation (Mann and McCallum, 2007) term (XR), with the trade off
+parameter set (after some experimentation) as in the original paper to the equivalent of 10
+times the number of labelled samples; Additionally, for the position parameter µ of each
+Gaussian a penalty term −C||µ||2 was added onto each objective function with C set to a
+small constant (≈ 10−5 ).
+We would point out that many of these learning schemes were originally designed for use
+with a discriminative model. Here we are using them in a different manner, to augment the
+objective function during the learning of a generative model. They have been selected due
+to their reported good performance in improving discriminative learning, in the hope that
+this will counteract the bias introduced by the missing class information in the likelihood
+of the unlabelled samples.
+We chose 7 data sets from the UCI repository (Frank and Asuncion, 2010); Diabetes,
+Wine, glass identification (Glass), blood transfusion (Blood) (Yeh et al., 2009), Ecoli,
+Haberman survival (Haber), and Pima Indian diabetes (Pima); and 2 from libsvm: SVM
+guide 1 (SVMg) (Hsu et al., 2003) and fourclass (Four) (Ho and Kleinberg, 1996). Due
+to computational constraints, data sets with > 3 classes had one or more merged to create
+3 approximately equally sized groupings. Each axis of the data was transformed to lie in
+386
+
+Unbiased Generative Semi-Supervised Learning
+
+data
+Diabetes
+SVMg
+Wine
+Glass
+Blood
+ecoli
+Haber
+Pima
+Four
+
+SSunb
+3.36
+0.379
+19.4
+23.7
+1.78
+8.80
+4.75
+3.60
+2.17
+
+LL
+
+SSb
+
+MCer
+
+MCnll
+
+ERer
+
+ERnll
+
+XR
+
+4.12
+0.417
+58.4
+40.9
+2.27
+13.7
+7.30
+4.30
+2.22
+
+3.90
+1.18
+23.0
+23.5
+3.01
+10.0
+5.02
+4.24
+2.25
+
+144
+99.4
+67.2
+213
+77.2
+68.6
+79.8
+136
+37.3
+
+3.58
+0.376
+21.4
+26.3
+2.08
+10.3
+5.10
+3.80
+2.19
+
+3.90
+1.23
+24.7
+22.7
+3.06
+9.97
+4.98
+4.26
+2.33
+
+3.97
+1.19
+24.7
+21.5
+3.06
+10.0
+4.90
+4.25
+2.32
+
+3.74
+1.16
+12.5
+21.5
+2.65
+9.63
+4.59
+3.87
+2.23
+
+Table 1: Overall mean negative log likelihood - best result for each data set shown in bold,
+second best underlined
+
+the range [−1, 1]. Samples with missing attributes were excluded. Where a data set had a
+dedicated test set, this was used; otherwise, one fifth of the data was randomly separated a
+priori for this purpose.
+A range of values of NL and NU were trialled. As a proportion of the total available training data, NL varied from [0.025, 0.05, 0.1, 0.2], and NU from [0.025, 0.05, 0.1, 0.2, 0.4, 0.8],
+with NU being formed by discarding labels prior to training (for example, a test where
+NL = 0.05 and NU = 0.4 would indicate 0.45 of the available data was used for training,
+of which one ninth was labelled). For each repetition a random set of parameters was generated and used as the starting point for each of the above learning schemes. Each model
+was optimised by repeatedly alternating between a small number of iterations of downhill
+simplex search (Lagarias et al., 1998), followed by a large numbers of iterations of BFGS
+search (Nocedal and Wright, 1999), until convergence. This process was repeated 100 times
+for each combination of NL and NU values. The error rate and negative log likelihood of
+the test set was found for each solution. A selection of these results are shown here. Full
+results over all test sets are included in the appendix.
+Note that we have purposefully used the same optimisation scheme for all objective
+functions - including LL, which has a closed form solution, and SSb, which can be optimised using expectation maximisation. Also note that for each repetition a single set
+of starting parameters was randomly generated, and then used to initialise every learning
+scheme investigated. The intent of this was to ensure that all variability encountered was
+solely due to the choice of objective function.
+Table 1 shows the mean negative log likelihood for each data set, that is, the negative
+log likelihood averaged over all all repetitions of all values of NL and NU . For each data set,
+the minimum negative log likelihood is shown in bold, and the second smallest underlined.
+Our method SSunb achieved the lowest mean for 5 of the 9 data sets, and the second lowest
+for a further 3. XR proved the best for two data sets, and MCnll and ERnll for one each.
+Mean error rates are shown in in Table 2. Our method performed best for 3 data sets
+and second best in a further 4, roughly equivalent to LL or MCer (without the need for the
+387
+
+Fox-Roberts and Rosten
+
+data
+
+SSunb
+
+LL
+
+SSb
+
+MCer
+
+MCnll
+
+ERer
+
+ERnll
+
+XR
+
+Diabetes
+SVMg
+Wine
+Glass
+Blood
+ecoli
+Haber
+Pima
+Four
+
+0.283
+0.0597
+0.144
+0.483
+0.277
+0.121
+0.298
+0.296
+0.249
+
+0.284
+0.0597
+0.163
+0.459
+0.277
+0.104
+0.298
+0.292
+0.250
+
+0.332
+0.189
+0.190
+0.539
+0.367
+0.266
+0.371
+0.348
+0.260
+
+0.299
+0.0572
+0.238
+0.470
+0.273
+0.140
+0.337
+0.302
+0.245
+
+0.294
+0.0678
+0.162
+0.501
+0.292
+0.147
+0.319
+0.306
+0.250
+
+0.337
+0.193
+0.230
+0.545
+0.372
+0.276
+0.379
+0.355
+0.281
+
+0.346
+0.175
+0.259
+0.555
+0.369
+0.280
+0.369
+0.358
+0.274
+
+0.312
+0.171
+0.218
+0.525
+0.309
+0.184
+0.301
+0.327
+0.259
+
+Table 2: Overall mean error rate - best result for each data set shown in bold, second best
+underlined
+
+latter’s expensive cross validation). We point out that we are training a simple generative
+model, and so error rates reported are not directly comparable to previous work using more
+powerful / conditional models.
+Figure 1 consists of four plots, showing how the mean negative log likelihood of the
+Blood data set varies as NU is increased, for all four values of NL tested. Error bars
+indicate a single standard deviation. Note how for small values of NU all methods perform
+similarly, with some benefit from using unlabelled data. As NU increases and the upper
+bound weakens, the methods begin to diverge - the ER methods, along with SSb and XR
+worsen consistently. LL remains approximately constant (as expected) and slightly larger
+than SSunb. MCnll sits somewhere between LL and SSunb, worsening a little as the
+proportion of unlabelled data grows. This qualitative description of the observed behaviour
+applies to a significant proportion of the results. The main exceptions to this trend were in
+the Glass, Wine and Haber data sets for small values of NL , where competing methods
+(noticeably XR) performed better though this advantage tended to tail off as NL grew for example see Figure 3, which shows the Haberman data set performing very well under
+XR training.
+Figure 2 shows how the mean error rate of the same data set varies. For small quantities
+of labelled data SSunb tends to tie with LL. However as the quantity of labelled data grows
+competing methods begin to out perform it. In general we found that the proposed unbiased method was not always best (most commonly being out performed by XR), but often
+very competitive. It also rarely showed degradation in behaviour as the quantity of unlabelled data was increased - as we would expect, given the manner in which it automatically
+downgrades the influence of additional unlabelled samples.
+As well as looking at the mean log likelihood and error rates though, we believe another
+informative measure of the success of a semi-supervised algorithm is the raw frequency
+with which it out performs alternate methods. This gives an estimate of the probability
+that, should you include unlabelled data in your training data set, the performance of the
+algorithm will improve.
+388
+
+Unbiased Generative Semi-Supervised Learning
+
+mean negative log likelihood
+
+10
+
+10
+8
+6
+4
+2
+0
+0
+
+6
+mean negative log likelihood
+
+Blood Transfusion, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.1
+
+4
+3
+2
+1
+0
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+6
+
+4
+
+2
+
+4.5
+
+5
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+1
+
+Blood Transfusion, NL =0.2
+
+4
+3.5
+3
+2.5
+2
+1.5
+1
+0.5
+0
+
+1
+
+Blood Transfusion, NL =0.05
+
+8
+
+0
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+12
+
+0.2
+
+ERnll
+SSb
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+1
+
+ERer
+XR
+
+Figure 1: Four sample plots of the mean negative log likelihood of the Blood data set
+for a variety of values of NL , as NU grows. Note that M Cer is excluded, as it
+significantly underperformed and caused unfavourable axis scaling.
+
+An example of this is shown in Figure 4, which shows the proportion of occasions each
+semi-supervised algorithm out performs supervised learning, where performance is measured
+in terms of the negative log likelihood of the test set. For this particular case our proposed
+unbiased estimator is consistently the superior one - on only one occasion does another
+algorithm (MCnll) outperform supervised learning with greater frequency. In general it
+was found that only when NU is small that we typically saw other methods performing
+389
+
+Fox-Roberts and Rosten
+
+Blood Transfusion, NL =0.025
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Blood Transfusion, NL =0.05
+
+0.2
+
+0.4
+
+NU
+
+Blood Transfusion, NL =0.1
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.1
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Blood Transfusion, NL =0.2
+
+0.3
+
+0.1
+0.4
+
+1
+
+0.4
+
+0.2
+
+0.2
+
+0.8
+
+0.5
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+NU
+
+SSunb
+MCer
+
+ERnll
+SSb
+
+ERer
+XR
+
+Figure 2: Four sample plots of the mean error rate of the Blood data set for a variety of
+values of NL , as NU grows.
+
+better. What is also notable is how, while several other methods initially provide a bonus
+when NU is small (where the proportion rises above 0.5, indicating that they were more
+likely than not to improve learning), they tend to degrade quite rapidly as unlabelled data
+is added, often making it more probable that they will worsen performance by the time
+NU = 0.8. It was much rarer that our algorithm did this (one example occurring in the
+Ecoli data set with NL = 0.2).
+390
+
+Unbiased Generative Semi-Supervised Learning
+
+1
+
+Haberman Survival, NL =0.025
+
+0.8
+
+Haberman Survival, NL =0.05
+
+0.7
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.6
+
+0.4
+
+0.5
+0.4
+0.3
+0.2
+
+0.2
+
+0.1
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+NU
+
+Haberman Survival, NL =0.1
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.1
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Haberman Survival, NL =0.2
+
+0.3
+
+0.1
+0.4
+
+1
+
+0.4
+
+0.2
+
+0.2
+
+0.8
+
+0.5
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+NU
+
+SSunb
+MCer
+
+ERnll
+SSb
+
+ERer
+XR
+
+Figure 3: Four sample plots of the proportion of tests in which each semi-supervised learning
+scheme outperformed learning on the labelled data alone as measured by the
+negative log likelihood on the Haberman data set for a variety of values of NL ,
+as NU grows.
+
+Finally, Figure 5 shows the proportion of repetitions for which each semi-supervised
+algorithm reduced the error compared to supervised learning alone. Here our algorithm
+behaves much less impressively. With NL set to its lowest value 0.025 it tends to be the
+better of the algorithms as NU grows, but the proportion of occasions it provides a benefit
+is barely above 0.5. As the number of labelled data samples grows the two multi conditional
+391
+
+Fox-Roberts and Rosten
+
+Proportion (negative log likelihood)
+
+1
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+Blood Transfusion, NL =0.025
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Blood Transfusion, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.2
+
+0.4
+NU
+
+SSunb
+MCer
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.8
+
+ERnll
+SSb
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+Blood Transfusion, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERer
+XR
+
+0.4
+NU
+
+0.6
+
+0.8
+
+MCnll
+
+Figure 4: Four sample plots of the proportion of tests in which each semi-supervised learning
+scheme outperformed learning on the labelled data alone as measured by the
+negative log likelihood on the Blood data set for a variety of values of NL , as
+NU grows.
+
+learning algorithms begin to out perform all others, especially when cross validated to reduce
+error.
+392
+
+Unbiased Generative Semi-Supervised Learning
+
+1
+
+Blood Transfusion, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Blood Transfusion, NL =0.1
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.2
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Blood Transfusion, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+SSunb
+MCer
+
+0.6
+
+0
+0
+
+0.8
+
+ERnll
+SSb
+
+0.2
+
+ERer
+XR
+
+0.4
+NU
+
+0.6
+
+0.8
+
+MCnll
+
+Figure 5: Four sample plots of the proportion of tests in which each semi-supervised learning
+scheme outperformed learning on the labelled data alone as measured by the error
+rate on the Blood data set for a variety of values of NL , as NU grows.
+
+6. Conclusions
+We have presented tighter bounds on the bias introduced when performing semi-supervised
+(as opposed to full supervised) maximum likelihood learning with a generative model using
+the standard technique. We also provide a new interpretation which gives an intuitive
+explanation for why the results are often poor with large amounts of unlabelled data.
+393
+
+Fox-Roberts and Rosten
+
+Additionally, we have demonstrated a simple example of a new unbiased objective function which approximately minimises KL (P (X, Y )||P (X, Y |θ)). This method is no more
+computationally complex than simply augmenting the likelihood, demonstrates very good
+behaviour with even very large quantities of unlabelled data, and requires quite weak conditions on the correlation between the conditional and generative components of the likelihood
+to reduce the variance of our estimator.
+Although not covered, much of the analysis presented here likely to be applicable to
+regression problems as well as classification ones. We leave this as an avenue for possible
+future work.
+
+Acknowledgments
+This work was supported by the EPSRC.
+
+Appendix A. Supplementary Results Of Unbiased Semi-Supervised
+Training
+There are two measures of performance we examine, evaluated over a holdout set:
+• The error rate
+• The negative log likelihood
+For each of these measures two statistics are calculated:
+• The mean performance over all repetitions, and the associated variance.
+• The proportion of repetitions in which the performance was better than that achieved
+using the labelled data alone.
+The former gives an approximate measure of ‘average risk’, according to whether we consider
+risk in terms of misclassification rate (for example when designing a classification algorithm)
+or negative log likelihood (such as when building a compression algorithm, say). The latter
+tells us, for each measure of ‘risk’, whether or not including unlabelled data has improved
+or worsened our performance.
+Multi conditional learning, when cross validated according to error rate, often gave
+extremely bad negative log likelihood results. This caused unfavourable scaling of the axis,
+making other results indistinguishable. As such, the mean negative log likelihood results of
+MCer have been separated out and plotted alone.
+See the main body of the text for such as abbreviations and data sets.
+A.1 Mean Errors And Negative Log Likelihood
+This section shows the mean error and negative log likelihood results.
+394
+
+Unbiased Generative Semi-Supervised Learning
+
+Diabetes, NL =0.025
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+Diabetes, NL =0.05
+
+0.8
+
+mean error rate
+
+mean error rate
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+NU
+
+Diabetes, NL =0.1
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+
+0.5
+0.4
+0.3
+
+0.4
+0.3
+0.2
+
+0.1
+
+0.1
+0.2
+
+0.4
+
+1
+
+0.5
+
+0.2
+
+0
+0
+
+0.8
+
+0.6
+
+Diabetes, NL =0.2
+
+0.8
+
+mean error rate
+
+mean error rate
+
+0.8
+
+0.6
+NU
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 6: Mean error results of Diabetes data set
+
+A.2 Proportion In Which Performance Improves
+This section shows the proportion of test in which the error / negative log likelihood was
+improved by the addition of unlabelled data. That is, for every data set, the performance of
+the model was evaluated for each training scheme, and compared to the performance when
+only the labelled data was used. The frequency with which each semi-supervised scheme
+outperforms supervised learning was recorded and normalised. This gives an estimate of the
+probability that including unlabelled data will improve performance compared to supervised
+learning alone. A value close to 1 indicates reliable improvement when unlabelled data is
+added, whereas one close to 0 shows reliable worsening of results.
+395
+
+Fox-Roberts and Rosten
+
+Diabetes, NL =0.025
+mean negative log likelihood
+
+8
+
+10
+
+8
+
+6
+
+4
+
+2
+0
+
+mean negative log likelihood
+
+7
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Diabetes, NL =0.1
+
+5
+4
+3
+2
+1
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+6
+5
+4
+3
+2
+
+5
+
+6
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Diabetes, NL =0.2
+
+4
+3.5
+3
+2.5
+2
+1.5
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 7: Mean log likelihood results of Diabetes data set
+
+396
+
+0.8
+
+4.5
+
+1
+0
+
+1
+
+Diabetes, NL =0.05
+
+7
+
+1
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+12
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+mean negative log likelihood
+
+400
+
+300
+250
+200
+150
+100
+50
+0
+
+250
+mean negative log likelihood
+
+Diabetes, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Diabetes, NL =0.1
+
+150
+
+100
+
+50
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+300
+250
+200
+150
+100
+0.2
+
+0.8
+
+SSunb
+MCer
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+100
+80
+60
+40
+20
+0
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 8: Mean log likelihood results of Diabetes data set
+
+397
+
+0.8
+
+120
+
+−20
+0
+
+1
+
+0.4
+
+Diabetes, NL =0.2
+
+140
+
+200
+
+0
+0
+
+Diabetes, NL =0.05
+
+350
+
+50
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+350
+
+Fox-Roberts and Rosten
+
+0.8
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+0.7
+
+0.5
+0.4
+0.3
+
+0.4
+0.3
+0.2
+
+0.1
+
+0.1
+
+0.8
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+SVMguide1, NL =0.1
+
+0.7
+
+0.6
+
+0.6
+
+0.5
+0.4
+0.3
+
+0.1
+
+NU
+
+LL
+MCnll
+
+0.8
+
+0
+0
+
+1
+
+SSunb
+MCer
+
+0.6
+
+1
+
+SVMguide1, NL =0.2
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 9: Mean error results of the SVMguide data set
+
+398
+
+0.8
+
+0.3
+
+0.1
+0.6
+
+NU
+
+0.4
+
+0.2
+
+0.4
+
+0.4
+
+0.5
+
+0.2
+
+0.2
+
+0.2
+
+0.8
+
+0.7
+
+0
+0
+
+SVMguide1, NL =0.05
+
+0.5
+
+0.2
+
+0
+0
+
+mean error rate
+
+SVMguide1, NL =0.025
+
+mean error rate
+
+mean error rate
+
+0.8
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+6
+mean negative log likelihood
+
+6
+5
+4
+3
+2
+1
+0
+0
+
+5
+mean negative log likelihood
+
+SVMguide1, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+SVMguide1, NL =0.1
+
+3
+
+2
+
+1
+
+0
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+4
+3
+2
+1
+
+3
+
+4
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+SVMguide1, NL =0.2
+
+2
+1.5
+1
+0.5
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 10: Mean log likelihood results of the SVMguide data set
+
+399
+
+1
+
+2.5
+
+0
+0
+
+1
+
+SVMguide1, NL =0.05
+
+5
+
+0
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+7
+
+1
+
+Fox-Roberts and Rosten
+
+SVMguide1, NL =0.025
+
+300
+
+200
+
+100
+
+0
+
+mean negative log likelihood
+
+150
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+SVMguide1, NL =0.1
+
+50
+
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+200
+150
+100
+50
+0
+0.2
+
+SSunb
+MCer
+
+NU
+
+0.6
+
+1
+
+80
+60
+40
+20
+0
+−20
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 11: Mean log likelihood results of the SVMguide data set
+
+400
+
+0.8
+
+100
+
+−40
+0
+
+1
+
+0.4
+
+SVMguide1, NL =0.2
+
+120
+
+100
+
+−50
+0
+
+250
+
+−50
+0
+
+1
+
+mean negative log likelihood
+
+−100
+0
+
+SVMguide1, NL =0.05
+
+300
+mean negative log likelihood
+
+mean negative log likelihood
+
+400
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+Wine, NL =0.025
+
+1
+
+Wine, NL =0.05
+
+0.8
+0.7
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.6
+
+0.4
+
+0.5
+0.4
+0.3
+0.2
+
+0.2
+
+0.1
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+NU
+
+Wine, NL =0.1
+
+0.8
+
+0.6
+
+0.8
+
+1
+
+NU
+
+Wine, NL =0.2
+
+0.8
+
+0.7
+0.6
+mean error rate
+
+mean error rate
+
+0.6
+0.5
+0.4
+0.3
+0.2
+
+0.4
+
+0.2
+
+0
+
+0.1
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+−0.2
+0
+
+1
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 12: Mean error results of the Wine data set
+
+401
+
+0.8
+
+1
+
+Fox-Roberts and Rosten
+
+Wine, NL =0.025
+
+150
+
+100
+
+50
+
+0
+0
+
+0.2
+
+NU
+
+0.6
+
+0.8
+
+mean negative log likelihood
+
+30
+20
+10
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+60
+50
+40
+30
+20
+10
+0.2
+
+0.8
+
+SSunb
+MCer
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+6
+
+4
+
+2
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 13: Mean log likelihood results of the Wine data set
+
+402
+
+0.8
+
+8
+
+0
+0
+
+1
+
+0.4
+
+Wine, NL =0.2
+
+10
+
+40
+
+−10
+0
+
+70
+
+0
+0
+
+1
+
+Wine, NL =0.1
+
+50
+mean negative log likelihood
+
+0.4
+
+Wine, NL =0.05
+
+80
+mean negative log likelihood
+
+mean negative log likelihood
+
+200
+
+Unbiased Generative Semi-Supervised Learning
+
+Wine, NL =0.025
+
+90
+80
+70
+60
+50
+40
+30
+20
+0
+
+0.2
+
+NU
+
+0.6
+
+0.8
+
+mean negative log likelihood
+
+80
+
+60
+
+40
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+60
+50
+40
+30
+
+0.2
+
+0.8
+
+SSunb
+MCer
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+140
+120
+100
+80
+60
+40
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 14: Mean log likelihood results of the Wine data set
+
+403
+
+0.8
+
+160
+
+20
+0
+
+1
+
+0.4
+
+Wine, NL =0.2
+
+180
+
+100
+
+20
+0
+
+70
+
+20
+0
+
+1
+
+Wine, NL =0.1
+
+120
+mean negative log likelihood
+
+0.4
+
+Wine, NL =0.05
+
+80
+mean negative log likelihood
+
+mean negative log likelihood
+
+100
+
+Fox-Roberts and Rosten
+
+1.4
+
+Glass Identification, NL =0.025
+
+1
+
+Glass Identification, NL =0.05
+
+1.2
+1
+
+mean error rate
+
+mean error rate
+
+0.8
+
+0.8
+0.6
+0.4
+
+0.6
+
+0.4
+
+0.2
+0.2
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+1
+
+Glass Identification, NL =0.1
+
+1
+
+0.8
+
+1
+
+Glass Identification, NL =0.2
+
+0.8
+mean error rate
+
+mean error rate
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+NU
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 15: Mean error results of the Glass data set
+
+404
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+Glass Identification, NL =0.025
+
+70
+mean negative log likelihood
+
+120
+100
+80
+60
+40
+20
+0
+0
+
+mean negative log likelihood
+
+35
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Glass Identification, NL =0.1
+
+25
+20
+15
+10
+5
+0
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+50
+40
+30
+20
+10
+
+20
+
+30
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Glass Identification, NL =0.2
+
+10
+
+5
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 16: Mean log likelihood results of the Glass data set
+
+405
+
+0.8
+
+15
+
+0
+0
+
+1
+
+Glass Identification, NL =0.05
+
+60
+
+0
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+140
+
+0.8
+
+1
+
+Fox-Roberts and Rosten
+
+mean negative log likelihood
+
+500
+
+200
+
+150
+
+100
+
+50
+
+0
+0
+
+500
+mean negative log likelihood
+
+Glass Identification, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Glass Identification, NL =0.1
+
+400
+350
+300
+250
+200
+150
+100
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+300
+
+200
+
+100
+
+450
+
+450
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Glass Identification, NL =0.2
+
+350
+300
+250
+200
+150
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 17: Mean log likelihood results of the Glass data set
+
+406
+
+0.8
+
+400
+
+100
+0
+
+1
+
+Glass Identification, NL =0.05
+
+400
+
+0
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+250
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+Blood Transfusion, NL =0.025
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Blood Transfusion, NL =0.05
+
+0.2
+
+0.4
+
+NU
+
+Blood Transfusion, NL =0.1
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.1
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Blood Transfusion, NL =0.2
+
+0.3
+
+0.1
+0.4
+
+1
+
+0.4
+
+0.2
+
+0.2
+
+0.8
+
+0.5
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 18: Mean error results of the Blood data set
+
+407
+
+0.8
+
+1
+
+Fox-Roberts and Rosten
+
+Blood Transfusion, NL =0.025
+mean negative log likelihood
+
+10
+
+10
+8
+6
+4
+2
+0
+0
+
+mean negative log likelihood
+
+6
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.1
+
+4
+3
+2
+1
+0
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+6
+
+4
+
+2
+
+4.5
+
+5
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Blood Transfusion, NL =0.2
+
+3.5
+3
+2.5
+2
+1.5
+1
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 19: Mean log likelihood results of the Blood data set
+
+408
+
+0.8
+
+4
+
+0.5
+0
+
+1
+
+Blood Transfusion, NL =0.05
+
+8
+
+0
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+12
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+200
+mean negative log likelihood
+
+250
+200
+150
+100
+50
+0
+−50
+0
+
+200
+mean negative log likelihood
+
+Blood Transfusion, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.1
+
+100
+
+50
+
+0
+
+−50
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+100
+
+50
+
+0
+
+150
+
+150
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Blood Transfusion, NL =0.2
+
+50
+
+0
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 20: Mean log likelihood results of the Blood data set
+
+409
+
+0.8
+
+100
+
+−50
+0
+
+1
+
+Blood Transfusion, NL =0.05
+
+150
+
+−50
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+300
+
+0.8
+
+1
+
+Fox-Roberts and Rosten
+
+Ecoli, NL =0.025
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+Ecoli, NL =0.05
+
+0.8
+
+mean error rate
+
+mean error rate
+
+0.8
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+NU
+
+Ecoli, NL =0.1
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+
+0.5
+0.4
+0.3
+
+1
+
+0.3
+
+0.1
+
+0.1
+0.4
+
+0.8
+
+0.4
+
+0.2
+
+0.2
+
+1
+
+0.5
+
+0.2
+
+0
+0
+
+0.8
+
+0.6
+
+Ecoli, NL =0.2
+
+0.8
+
+mean error rate
+
+mean error rate
+
+0.8
+
+0.6
+NU
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 21: Mean error results of the Ecoil data set
+
+410
+
+Unbiased Generative Semi-Supervised Learning
+
+Ecoli, NL =0.025
+
+35
+30
+25
+20
+15
+10
+5
+0
+0
+
+0.2
+
+NU
+
+0.6
+
+0.8
+
+mean negative log likelihood
+
+40
+30
+20
+10
+0
+−10
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+20
+15
+10
+5
+
+0.2
+
+0.8
+
+SSunb
+MCer
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+5
+
+0
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 22: Mean log likelihood results of the Ecoil data set
+
+411
+
+0.8
+
+10
+
+−5
+0
+
+1
+
+0.4
+
+Ecoli, NL =0.2
+
+15
+
+50
+
+−20
+0
+
+25
+
+0
+0
+
+1
+
+Ecoli, NL =0.1
+
+60
+mean negative log likelihood
+
+0.4
+
+Ecoli, NL =0.05
+
+30
+mean negative log likelihood
+
+mean negative log likelihood
+
+40
+
+Fox-Roberts and Rosten
+
+Ecoli, NL =0.025
+
+80
+60
+40
+20
+0
+−20
+0
+
+0.2
+
+NU
+
+0.6
+
+0.8
+
+mean negative log likelihood
+
+100
+
+50
+
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+150
+100
+50
+0
+
+0.2
+
+0.8
+
+SSunb
+MCer
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+150
+
+100
+
+50
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 23: Mean log likelihood results of the Ecoli data set
+
+412
+
+0.8
+
+200
+
+0
+0
+
+1
+
+0.4
+
+Ecoli, NL =0.2
+
+250
+
+150
+
+−50
+0
+
+200
+
+−50
+0
+
+1
+
+Ecoli, NL =0.1
+
+200
+mean negative log likelihood
+
+0.4
+
+Ecoli, NL =0.05
+
+250
+mean negative log likelihood
+
+mean negative log likelihood
+
+100
+
+Unbiased Generative Semi-Supervised Learning
+
+1
+
+Haberman Survival, NL =0.025
+
+0.8
+
+Haberman Survival, NL =0.05
+
+0.7
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.6
+
+0.4
+
+0.5
+0.4
+0.3
+0.2
+
+0.2
+
+0.1
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+NU
+
+Haberman Survival, NL =0.1
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.1
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Haberman Survival, NL =0.2
+
+0.3
+
+0.1
+0.4
+
+1
+
+0.4
+
+0.2
+
+0.2
+
+0.8
+
+0.5
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 24: Mean error results of the Haberman data set
+
+413
+
+0.8
+
+1
+
+Fox-Roberts and Rosten
+
+12
+mean negative log likelihood
+
+30
+25
+20
+15
+10
+5
+0
+0
+
+10
+mean negative log likelihood
+
+Haberman Survival, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Haberman Survival, NL =0.1
+
+4
+
+2
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+6
+4
+2
+
+6
+
+6
+
+0
+0
+
+8
+
+0
+0
+
+1
+
+8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Haberman Survival, NL =0.2
+
+4
+
+3
+
+2
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 25: Mean log likelihood results of the Haberman data set
+
+414
+
+1
+
+5
+
+1
+0
+
+1
+
+Haberman Survival, NL =0.05
+
+10
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+35
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+mean negative log likelihood
+
+250
+
+200
+150
+100
+50
+0
+−50
+0
+
+200
+mean negative log likelihood
+
+Haberman Survival, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Haberman Survival, NL =0.1
+
+100
+
+50
+
+0
+
+−50
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+150
+
+100
+
+50
+
+100
+
+150
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Haberman Survival, NL =0.2
+
+60
+40
+20
+0
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 26: Mean log likelihood results of the Haberman data set
+
+415
+
+0.8
+
+80
+
+−20
+0
+
+1
+
+Haberman Survival, NL =0.05
+
+200
+
+0
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+250
+
+0.8
+
+1
+
+Fox-Roberts and Rosten
+
+Pima Indian Diabetes, NL =0.025
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+Pima Indian Diabetes, NL =0.05
+
+0
+0
+
+1
+
+0.2
+
+0.4
+
+NU
+
+Pima Indian Diabetes, NL =0.1
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.1
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Pima Indian Diabetes, NL =0.2
+
+0.3
+
+0.1
+0.4
+
+1
+
+0.4
+
+0.2
+
+0.2
+
+0.8
+
+0.5
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 27: Mean error results of the Pima Indian data set
+
+416
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+Pima Indian Diabetes, NL =0.025
+mean negative log likelihood
+
+10
+
+8
+
+6
+
+4
+
+2
+0
+
+40
+mean negative log likelihood
+
+8
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Pima Indian Diabetes, NL =0.1
+
+20
+10
+0
+−10
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+7
+6
+5
+4
+3
+2
+
+5
+
+30
+
+−20
+0
+
+Pima Indian Diabetes, NL =0.05
+
+1
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+12
+
+SSunb
+MCer
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Pima Indian Diabetes, NL =0.2
+
+4
+3.5
+3
+2.5
+2
+1.5
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 28: Mean log likelihood results of the Pima Indian data set
+
+417
+
+1
+
+4.5
+
+1
+0
+
+1
+
+0.2
+
+1
+
+Fox-Roberts and Rosten
+
+mean negative log likelihood
+
+400
+
+300
+250
+200
+150
+100
+50
+0
+
+200
+mean negative log likelihood
+
+Pima Indian Diabetes, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Pima Indian Diabetes, NL =0.1
+
+100
+
+50
+
+0
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+0.8
+
+300
+250
+200
+150
+100
+
+140
+
+150
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+Pima Indian Diabetes, NL =0.2
+
+100
+80
+60
+40
+20
+0
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 29: Mean log likelihood results of the Pima Indian data set
+
+418
+
+0.8
+
+120
+
+−20
+0
+
+1
+
+Pima Indian Diabetes, NL =0.05
+
+350
+
+50
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+350
+
+0.8
+
+1
+
+Unbiased Generative Semi-Supervised Learning
+
+Fourclass, NL =0.025
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+0
+
+1
+
+Fourclass, NL =0.05
+
+0.2
+
+0.4
+
+NU
+
+Fourclass, NL =0.1
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+
+0.6
+mean error rate
+
+mean error rate
+
+0.8
+
+0.5
+0.4
+0.3
+
+0.1
+0.6
+
+0.8
+
+0
+0
+
+1
+
+0.8
+
+1
+
+Fourclass, NL =0.2
+
+0.3
+
+0.1
+0.4
+
+1
+
+0.4
+
+0.2
+
+0.2
+
+0.8
+
+0.5
+
+0.2
+
+0
+0
+
+0.6
+NU
+
+0.2
+
+NU
+
+LL
+MCnll
+
+0.4
+
+0.6
+NU
+
+SSunb
+MCer
+
+ERnll
+SS
+
+ERer
+XR
+
+Figure 30: Mean error results of the Fourclass data set
+
+419
+
+Fox-Roberts and Rosten
+
+4.5
+mean negative log likelihood
+
+4.5
+4
+3.5
+3
+2.5
+2
+1.5
+1
+0
+
+4
+mean negative log likelihood
+
+Fourclass, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Fourclass, NL =0.1
+
+3
+2.5
+2
+1.5
+1
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+3.5
+3
+2.5
+2
+1.5
+
+3.5
+
+3.5
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+Fourclass, NL =0.2
+
+2.5
+
+2
+
+1.5
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 31: Mean log likelihood results of the Fourclass data set
+
+420
+
+0.8
+
+3
+
+1
+0
+
+1
+
+Fourclass, NL =0.05
+
+4
+
+1
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+5
+
+Unbiased Generative Semi-Supervised Learning
+
+140
+mean negative log likelihood
+
+100
+80
+60
+40
+20
+0
+−20
+0
+
+100
+mean negative log likelihood
+
+Fourclass, NL =0.025
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+0.8
+
+Fourclass, NL =0.1
+
+60
+40
+20
+0
+−20
+0
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+LL
+MCnll
+
+100
+80
+60
+40
+20
+0
+
+100
+
+80
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+
+NU
+
+0.6
+
+1
+
+0.8
+
+1
+
+Fourclass, NL =0.2
+
+60
+40
+20
+0
+
+0.2
+
+ERnll
+SS
+
+0.4
+
+NU
+
+0.6
+
+ERer
+XR
+
+Figure 32: Mean log likelihood results of the Fourclass data set
+
+421
+
+0.8
+
+80
+
+−20
+0
+
+1
+
+Fourclass, NL =0.05
+
+120
+
+−20
+0
+
+1
+
+mean negative log likelihood
+
+mean negative log likelihood
+
+120
+
+Fox-Roberts and Rosten
+
+1
+
+Diabetes, NL =0.025
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Diabetes, NL =0.1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Diabetes, NL =0.2
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Diabetes, NL =0.05
+
+1
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 33: Chance of error rate improvement VS labelled data alone - Diabetes data set
+
+422
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Diabetes, NL =0.1
+
+0.4
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+SSunb
+MCer
+
+0.6
+
+0.8
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+0.4
+NU
+
+Diabetes, NL =0.2
+
+1
+
+0.6
+
+0.2
+
+0.8
+
+0
+0
+
+0.8
+
+0.8
+
+0
+0
+
+Diabetes, NL =0.05
+
+1
+
+0.8
+
+0
+0
+
+Proportion (negative log likelihood)
+
+Diabetes, NL =0.025
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 34: Chance of log likelihood improvement VS labelled data alone - Diabetes data
+set
+
+423
+
+Fox-Roberts and Rosten
+
+1
+
+SVMguide1, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+SVMguide1, NL =0.1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+SVMguide1, NL =0.2
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+SVMguide1, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 35: Chance of error rate improvement VS labelled data alone - SVMguide data set
+
+424
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+1
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+SVMguide1, NL =0.025
+
+0.2
+
+0.4
+NU
+
+0.6
+
+SVMguide1, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+SSunb
+MCer
+
+0.6
+
+0.8
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+0.4
+NU
+
+SVMguide1, NL =0.2
+
+1
+
+0.8
+
+0
+0
+
+SVMguide1, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 36: Chance of log likelihood improvement VS labelled data alone - SVMguide data
+set
+
+425
+
+Fox-Roberts and Rosten
+
+1
+
+Wine, NL =0.025
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Wine, NL =0.1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+0.6
+
+0.8
+
+Wine, NL =0.2
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Wine, NL =0.05
+
+1
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+ERer
+XR
+
+Figure 37: Chance of error rate improvement VS labelled data alone - Wine data set
+
+426
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+1
+0.8
+0.6
+0.4
+0.2
+
+1.4
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Wine, NL =0.1
+
+0.8
+0.6
+0.4
+0.2
+0.4
+NU
+
+LL
+MCnll
+
+1
+0.8
+0.6
+0.4
+0.2
+0.2
+
+0.6
+
+SSunb
+MCer
+
+0.6
+
+0.8
+
+0.6
+
+0.8
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+0.4
+NU
+
+Wine, NL =0.2
+
+1
+
+1
+
+0.2
+
+1.2
+
+0
+0
+
+0.8
+
+1.2
+
+0
+0
+
+Wine, NL =0.05
+
+1.4
+
+1.2
+
+0
+0
+
+Proportion (negative log likelihood)
+
+Wine, NL =0.025
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1.4
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+ERer
+XR
+
+Figure 38: Chance of log likelihood improvement VS labelled data alone - Wine data set
+
+427
+
+Fox-Roberts and Rosten
+
+1
+
+Glass Identification, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Glass Identification, NL =0.1
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Glass Identification, NL =0.2
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Glass Identification, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 39: Chance of error rate improvement VS labelled data alone - Glass data set
+
+428
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+1
+
+1.2
+1
+0.8
+0.6
+0.4
+0.2
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+Glass Identification, NL =0.025
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Glass Identification, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Glass Identification, NL =0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+Glass Identification, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1.4
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 40: Chance of log likelihood improvement VS labelled data alone - Glass data set
+
+429
+
+Fox-Roberts and Rosten
+
+1
+
+Blood Transfusion, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Blood Transfusion, NL =0.1
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.2
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Blood Transfusion, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 41: Chance of error rate improvement VS labelled data alone - Blood data set
+
+430
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+1
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+Blood Transfusion, NL =0.025
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Blood Transfusion, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Blood Transfusion, NL =0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+Blood Transfusion, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 42: Chance of log likelihood improvement VS labelled data alone - Blood data set
+
+431
+
+Fox-Roberts and Rosten
+
+1
+
+Ecoli, NL =0.025
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Ecoli, NL =0.1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+0.6
+
+0.8
+
+Ecoli, NL =0.2
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Ecoli, NL =0.05
+
+1
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+ERer
+XR
+
+Figure 43: Chance of error rate improvement VS labelled data alone - Ecoli data set
+
+432
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Ecoli, NL =0.1
+
+0.4
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.6
+
+SSunb
+MCer
+
+0.6
+
+0.8
+
+0.6
+
+0.8
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+0.4
+NU
+
+Ecoli, NL =0.2
+
+1
+
+0.6
+
+0.2
+
+0.8
+
+0
+0
+
+0.8
+
+0.8
+
+0
+0
+
+Ecoli, NL =0.05
+
+1
+
+0.8
+
+0
+0
+
+Proportion (negative log likelihood)
+
+Ecoli, NL =0.025
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+ERer
+XR
+
+Figure 44: Chance of log likelihood improvement VS labelled data alone - Ecoli data set
+
+433
+
+Fox-Roberts and Rosten
+
+1
+
+Haberman Survival, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Haberman Survival, NL =0.1
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Haberman Survival, NL =0.2
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Haberman Survival, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 45: Chance of error rate improvement VS labelled data alone - Haberman data set
+
+434
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+1
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+Haberman Survival, NL =0.025
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Haberman Survival, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Haberman Survival, NL =0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+Haberman Survival, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 46: Chance of log likelihood improvement VS labelled data alone - Haberman data
+set
+
+435
+
+Fox-Roberts and Rosten
+
+1
+
+Pima Indian Diabetes, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Pima Indian Diabetes, NL =0.1
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Pima Indian Diabetes, NL =0.2
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Pima Indian Diabetes, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 47: Chance of error rate improvement VS labelled data alone - Pima Indian data
+set
+
+436
+
+Unbiased Generative Semi-Supervised Learning
+
+Pima Indian Diabetes, NL =0.025
+Proportion (negative log likelihood)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Pima Indian Diabetes, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Pima Indian Diabetes, NL =0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+Pima Indian Diabetes, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 48: Chance of log likelihood improvement VS labelled data alone - Pima Indian data
+set
+
+437
+
+Fox-Roberts and Rosten
+
+1
+
+Fourclass, NL =0.025
+
+1
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.4
+
+0
+0
+
+0.8
+
+Fourclass, NL =0.1
+
+1
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Fourclass, NL =0.2
+
+0.8
+Proportion (error)
+
+Proportion (error)
+
+0.6
+
+0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+Fourclass, NL =0.05
+
+0.6
+
+0.4
+
+0.2
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0
+0
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 49: Chance of error rate improvement VS labelled data alone - Fourclass data set
+
+438
+
+Unbiased Generative Semi-Supervised Learning
+
+Proportion (negative log likelihood)
+
+1
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+1
+Proportion (negative log likelihood)
+
+Fourclass, NL =0.025
+
+0.2
+
+0.4
+NU
+
+0.6
+
+Fourclass, NL =0.1
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.2
+
+0.4
+NU
+
+LL
+MCnll
+
+0.6
+
+0.6
+
+0.4
+
+0.2
+
+1
+
+0.8
+
+SSunb
+MCer
+
+0.2
+
+0.4
+NU
+
+0.6
+
+0.8
+
+Fourclass, NL =0.2
+
+0.8
+
+0.6
+
+0.4
+
+0.2
+
+0
+0
+
+0.8
+
+Fourclass, NL =0.05
+
+0.8
+
+0
+0
+
+0.8
+
+Proportion (negative log likelihood)
+
+Proportion (negative log likelihood)
+
+1
+
+0.2
+
+ERnll
+SS
+
+0.4
+NU
+
+0.6
+
+0.8
+
+ERer
+XR
+
+Figure 50: Chance of log likelihood improvement VS labelled data alone - Fourclass data
+set
+
+439
+
+Fox-Roberts and Rosten
+
+References
+M. Balcan and A. Blum. An augmented PAC model for semi-supervised learning. In Oliver
+Chapelle, B. Sch¨
+olkopf, and A. Zien, editors, Semi-Supervised Learning, pages 383–404.
+MIT Press, 2005.
+C. Beecks, A. Ivanescu, S. Kirchhoff, and T. Seidl. Modeling image similarity by gaussian
+mixture models and the signature quadratic form distance. In Computer Vision (ICCV),
+2011 IEEE International Conference On, pages 1754–1761, 2011.
+C. Bishop. Pattern Recognition And Machine Learning. Springer, 2006.
+A. Blum and N. Balcan. A discriminative model for semi-supervised learning. In Journal
+Of The ACM (JACM), volume 57, pages 19:1–19:46, 2010.
+A. Blum and T. Mitchell. Combining labeled and unlabeled data with co-training. In
+Proceedings Of The Workshop On Computational Learning Theory, pages 92–100, 1998.
+V. Castelli and T. Cover. On the exponential value of labeled samples. Pattern Recognition
+Letters, 16(1):105 – 111, 1995.
+V. Castelli and T. Cover. The relative value of labeled and unlabeled samples in pattern
+recognition with an unknown mixing parameter. Information Theory, IEEE Transactions
+on, 42(6):2102 – 2117, 1996.
+F. Cozman and I. Cohen. Unlabeled data can degrade classification performance of generative classifiers. In Fifteenth International Florida Artificial Intelligence Society Conference, pages 327–331, 2002.
+F. Cozman and I. Cohen. Risks of semi-supervised learning: How unlabelled data can
+degrade performance of generative classifiers. In O. Chapelle, B. Sch¨olkopf, and A. Zien,
+editors, Semi-Supervised Learning, pages 57–72. MIT press, 2006.
+F. Cozman, I. Cohen, M. Cirelo, and E. Polit´ecnica. Semi-supervised learning of mixture
+models. In Proceedings Of The 20th International Conference On Machine Learning
+(ICML), pages 99–106, 2003.
+J. Dillon, K. Balasubramanian, and G. Lebanon. Asymptotic analysis of generative semisupervised learning. In Proceedings Of The 27th International Conference On Machine
+Learning (ICML), 2010.
+G. Druck, C. Pal, A. McCallum, and X. Zhu. Semi-supervised classification with hybrid
+generative/discriminative methods. In KDD ’07: Proceedings Of The 13th ACM SIGKDD
+International Conference On Knowledge Discovery And Data Mining, pages 280–289,
+2007.
+A. Frank and A. Asuncion. UCI machine learning repository, 2010. URL http://archive.
+ics.uci.edu/ml.
+Y. Grandvalet and Y. Bengio. Entropy Regularization. In Semi-Supervised Learning, pages
+151–168. MIT Press, 2006.
+440
+
+Unbiased Generative Semi-Supervised Learning
+
+T. Ho and E. Kleinberg. Building projectable classifiers of arbitrary complexity. In International Conference On Pattern Recognition (ICPR), volume 2, pages 880–885, 1996.
+C. Hsu, C. Chang, and C. Lin. A practical guide to support vector classification. Technical
+report, Department of Computer Science, National Taiwan University, 2003.
+G. Hughes. On the mean accuracy of statistical pattern recognizers. Information Theory,
+IEEE Transactions On, 14(1):55 – 63, 1968.
+T. Jaakkola and D. Haussler. Exploiting generative models in discriminative classifiers.
+In Proceedings Of The 1998 Conference On Advances In Neural Information Processing
+Systems II, pages 487–493, 1999.
+E. Jaynes. Probability Theory. Cambridge University Press, 2003.
+H. Kang, S. Yoo, and D. Han. Senti-lexicon and improved na¨ıve bayes algorithms for
+sentiment analysis of restaurant reviews. Expert Systems With Applications, 39(5):6000
+– 6010, 2012.
+B. Krishnapuram, D. Williams, Y. Xue, A. Hartemink, L. Carin, and M. Figueiredo. On
+semi-supervised classification. In Advances In Neural Information Processing Systems
+(NIPS), pages 721–728, 2005.
+J. Lagarias, J. Reeds, M. Wright, and P. Wright. Convergence properties of the NelderMead simplex method in low dimensions. SIAM Journal Of Optimization, 9(1):112–147,
+1998.
+J. Lasserre, C. Bishop, and T. Minka. Principled hybrids of generative and discriminative
+models. In Computer Vision And Pattern Recognition (CVPR), volume 1, pages 87 – 94,
+2006.
+J. L¨
+ucke and J. Eggert. Expectation truncation and the benefits of preselection in training
+generative models. In Journal Of Machine Learning Research (JMLR), pages 2855–2900,
+October 2010.
+D. MacKay. Information Theory, Inference, And Learning Algorithms. Cambridge University Press, 2003.
+G. Mann and A. McCallum. Simple, robust, scalable semi-supervised learning via Expectation Regularization. In Proceedings Of The 24th International Conference On Machine
+Learning (ICML), pages 593–600, 2007.
+A. McCallum, C. Pal, G. Druck, and X. Wang. Multi-conditional learning: Generative/discriminative training for clustering and classification. In National Conference On
+Artificial Intelligence, pages 433–439, 2006.
+A. Ng and M. Jordan. On discriminative vs. generative classifiers: A comparison of logistic
+regression and Naive Bayes. Advances In Neural Information Processing Systems (NIPS),
+2:841–848, 2002.
+441
+
+Fox-Roberts and Rosten
+
+K. Nigam, A. McCallum, S. Thrun, and T. Mitchell. Text classification from labeled and
+unlabeled documents using EM. Machine Learning, 39:103–134, 2000.
+J. Nocedal and S. Wright. Numerical Optimization, Springer Series In Operations Research.
+Springer-Verlag, 1999.
+J. Ratsaby and S. Venkatesh. Learning from a mixture of labeled and unlabeled examples
+with parametric side information. In Conference On Learning Theory (COLT), pages
+412–417, 1995.
+I. Rauschert and R. Collins. A generative model for simultaneous estimation of human body
+shape and pixel-level segmentation. In Proceedings Of The 12th European Conference On
+Computer Vision - Volume Part V, European Conference On Computer Vision (ECCV),
+pages 704–717. Springer-Verlag, 2012.
+S. Rosset, J. Zhu, H. Zou, and T. Hastie. A method for inferring label sampling mechanisms in semi-supervised learning. In Advances In Neural Information Processing Systems
+(NIPS), volume 17, pages 1161 – 1168, 2005.
+B. Shahshahani and D. Landgrebe. The effect of unlabeled samples in reducing the small
+sample size problem and mitigating the Hughes phenomenon. Geoscience And Remote
+Sensing, IEEE Transactions on, 32(5):1087 –1095, 1994.
+A. Subramanya and J. Bilmes. Soft-supervised learning for text classification. In Proceedings
+Of The Conference On Empirical Methods In Natural Language Processing, pages 1090–
+1099, 2008.
+A. Subramanya and J. Bilmes. Entropic graph regularization in non-parametric semisupervised classification. In Advances In Neural Information Processing Systems (NIPS),
+December 2009.
+U. Syed and B. Taskar. Semi-supervised learning with adversarially missing label information. In Advances In Neural Information Processing Systems (NIPS), pages 2244–2252,
+2010.
+M. Szummer and T. Jaakkola. Information Regularization with partially labeled data. In
+Advances In Neural Information Processing Systems (NIPS), 2002.
+V. Vapnik. Statistical Learning Theory. John Wiley & Sons, Inc, 1998.
+J. Wang, X. Shen, and W. Pan. On transductive support vector machines. In Prediction
+And Discovery. American Mathematical Society, 2007.
+T. Yang and C. Priebe. The effect of model misspecification on semi-supervised classification. Pattern Analysis And Machine Intelligence (PAMI), 33:2093–2103, 2011.
+I. Yeh, K. Yang, and T. Ting. Knowledge discovery on RFM model using Bernoulli sequence.
+Expert Systems With Applications, 36(3, Part 2):5866 – 5871, 2009.
+T. Zhang. The value of unlabeled data for classification problems. In International Conference On Machine Learning (ICML), pages 1191–1198, 2000.
+442
+
+Unbiased Generative Semi-Supervised Learning
+
+X. Zhu. Semi-supervised learning literature survey. Technical report, Department of Computer Sciences, University of Wisconsin, Madison, 2005.
+F. Zhuang, P. Luo, Z. Shen, Q. He, Y. Xiong, Z. Shi, and H. Xiong. Mining distinction
+and commonality across multiple domains using generative model for text classification.
+Knowledge And Data Engineering, IEEE Transactions On, 24(11):2025–2039, 2012.
+
+443
+
+

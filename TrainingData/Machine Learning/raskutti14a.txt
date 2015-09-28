@@ -1,0 +1,2792 @@
+Journal of Machine Learning Research 15 (2014) 335-366
+
+Submitted 8/13; Revised 12/13; Published 1/14
+
+Early Stopping and Non-parametric Regression:
+An Optimal Data-dependent Stopping Rule
+Garvesh Raskutti
+
+raskutti@stat.wisc.edu
+
+Department of Statistics
+University of Wisconsin-Madison
+Madison, WI 53706-1799, USA
+
+Martin J. Wainwright
+Bin Yu
+
+wainwrig@berkeley.edu
+binyu@stat.berkeley.edu
+
+Department of Statistics∗
+University of California
+Berkeley, CA 94720-1776, USA
+
+Editor: Sara van de Geer
+
+Abstract
+Early stopping is a form of regularization based on choosing when to stop running an
+iterative algorithm. Focusing on non-parametric regression in a reproducing kernel Hilbert
+space, we analyze the early stopping strategy for a form of gradient-descent applied to
+the least-squares loss function. We propose a data-dependent stopping rule that does not
+involve hold-out or cross-validation data, and we prove upper bounds on the squared error
+of the resulting function estimate, measured in either the L2 (P) and L2 (Pn ) norm. These
+upper bounds lead to minimax-optimal rates for various kernel classes, including Sobolev
+smoothness classes and other forms of reproducing kernel Hilbert spaces. We show through
+simulation that our stopping rule compares favorably to two other stopping rules, one based
+on hold-out data and the other based on Stein’s unbiased risk estimate. We also establish
+a tight connection between our early stopping strategy and the solution path of a kernel
+ridge regression estimator.
+Keywords: early stopping, non-parametric regression, kernel ridge regression, stopping
+rule, reproducing kernel hilbert space, rademacher complexity, empirical processes
+
+1. Introduction
+The phenomenon of overfitting is ubiquitous throughout statistics. It is especially problematic in nonparametric problems, where some form of regularization is essential in order to
+prevent it. In the non-parametric setting, the most classical form of regularization is that
+of Tikhonov regularization, where a quadratic smoothness penalty is added to the leastsquares loss. An alternative and algorithmic approach to regularization is based on early
+stopping of an iterative algorithm, such as gradient descent applied to the unregularized
+loss function. The main advantage of early stopping for regularization, as compared to
+penalized forms, is lower computational complexity.
+∗. Also in the Department of Electrical Engineering and Computer Science.
+c 2014 Garvesh Raskutti, Martin J. Wainwright and Bin Yu.
+
+Raskutti, Wainwright and Yu
+
+The idea of early stopping has a fairly lengthy history, dating back to the 1970’s in
+the context of the Landweber iteration. For instance, see the paper by Strand (1974) as
+well as the subsequent papers (Anderssen and Prenter, 1981; Wahba, 1987). Early stopping
+has also been widely used in neural networks (Morgan and Bourlard, 1990), for which
+stochastic gradient descent is used to estimate the network parameters. Past work has
+provided intuitive arguments for the benefits of early stopping. Roughly speaking, it is
+clear that each step of an iterative algorithm will reduce bias but increase variance, so
+early stopping ensures the variance of the estimator is not too high. However, prior to
+the 1990s, there had been little theoretical justification for these claims. A more recent
+line of work has developed a theory for various forms of early stopping, including boosting
+algorithms (Bartlett and Traskin, 2007; Buhlmann and Yu, 2003; Freund and Schapire, 1997;
+Jiang, 2004; Mason et al., 1999; Yao et al., 2007; Zhang and Yu, 2005), greedy methods
+(Barron et al., 2008), gradient descent over reproducing kernel Hilbert spaces (Caponneto,
+2006; Caponetto and Yao, 2006; Vito et al., 2010; Yao et al., 2007), the conjugate gradient
+algorithm (Blanchard and Kramer, 2010), and the power method for eigenvalue computation
+(Orecchia and Mahoney, 2011). Most relevant to our work is the paper of Buhlmann and Yu
+(2003), who derived optimal mean-squared error bounds for L2 -boosting with early stopping
+in the case of fixed design regression. However, these optimal rates are based on an “oracle”
+stopping rule, one that cannot be computed based on the data. Thus, their work left open
+the following natural question: is there a data-dependent and easily computable stopping
+rule that produces a minimax-optimal estimator?
+The main contribution of this paper is to answer this question in the affirmative for
+a certain class of non-parametric regression problems, in which the underlying regression
+function belongs to a reproducing kernel Hilbert space (RKHS). In this setting, a standard estimator is the method of kernel ridge regression (Wahba, 1990), which minimizes a
+weighted sum of the least-squares loss with a squared Hilbert norm penalty as a regularizer.
+Instead of a penalized form of regression, we analyze early stopping of an iterative update
+that is equivalent to gradient descent on the least-squares loss in an appropriately chosen
+coordinate system. By analyzing the mean-squared error of our iterative update, we derive
+a data-dependent stopping rule that provides the optimal trade-off between the estimated
+bias and variance at each iteration. In particular, our stopping rule is based on the first time
+that a running sum of step-sizes after t steps increases above the critical trade-off between
+bias and variance. For Sobolev spaces and other types of kernel classes, we show that the
+function estimate obtained by this stopping rule achieves minimax-optimal estimation rates
+in both the empirical and generalization norms. Importantly, our stopping rule does not
+require the use of cross-validation or hold-out data.
+In more detail, our first main result (Theorem 1) provides bounds on the squared prediction error for all iterates prior to the stopping time, and a lower bound on the squared
+error for all iterations after the stopping time. These bounds are applicable to the case of
+fixed design, where as our second main result (Theorem 2) provides similar types of upper
+bounds for randomly sampled covariates. These bounds are stated in terms of the squared
+L2 (P) norm or generalization error, as opposed to the in-sample prediction error, or equivalently, the L2 (Pn ) seminorm defined by the data. Both of these theorems apply to any
+reproducing kernel, and lead to specific predictions for different kernel classes, depending on
+their eigendecay. For the case of low rank kernel classes and Sobolev spaces, we prove that
+336
+
+Early Stopping and Non-parametric Regression
+
+our stopping rule yields a function estimate that achieves the minimax optimal rate (up
+to a constant pre-factor), so that the bounds from our analysis are essentially unimprovable. Our proof is based on a combination of analytic techniques (Buhlmann and Yu, 2003)
+with techniques from empirical process theory (van de Geer, 2000). We complement these
+theoretical results with simulation studies that compare its performance to other rules, in
+particular a method using hold-out data to estimate the risk, as well as a second method
+based on Stein’s Unbiased Risk Estimate (SURE). In our experiments for first-order Sobolev
+kernels, we find that our stopping rule performs favorably compared to these alternatives,
+especially as the sample size grows. In Section 3.4, we provide an explicit link between our
+early stopping strategy and the kernel ridge regression estimator.
+
+2. Background and Problem Formulation
+We begin by introducing some background on non-parametric regression and reproducing
+kernel Hilbert spaces, before turning to a precise formulation of the problem studied in this
+paper.
+2.1 Non-parametric Regression and Kernel Classes
+Suppose that our goal is to use a covariate X ∈ X to predict a real-valued response Y ∈ R.
+We do so by using a function f : X → R, where the value f (x) represents our prediction
+of Y based on the realization X = x. In terms of mean-squared error, the optimal choice
+is the regression function defined by f ∗ (x) : = E[Y | x]. In the problem of non-parametric
+regression with random design, we observe n samples of the form {(xi , yi ), i = 1, . . . , n},
+each drawn independently from some joint distribution on the Cartesian product X × R,
+and our goal is to estimate the regression function f ∗ . Equivalently, we observe samples of
+the form
+yi = f ∗ (xi ) + wi ,
+
+for i = 1, 2, . . . , n,
+
+where wi : = yi − f ∗ (xi ) are independent zero-mean noise random variables. Throughout
+this paper, we assume that the random variables wi are sub-Gaussian with parameter σ,
+meaning that
+2 σ 2 /2
+
+E[etwi ] ≤ et
+
+for all t ∈ R.
+
+For instance, this sub-Gaussian condition is satisfied for normal variates wi ∼ N (0, σ 2 ), but
+it also holds for various non-Gaussian random variables. Parts of our analysis also apply
+to the fixed design setting, in which we condition on a particular realization {xi }ni=1 of the
+covariates.
+In order to estimate the regression function, we make use of the machinery of reproducing
+kernel Hilbert spaces (Aronszajn, 1950; Wahba, 1990; Gu and Zhu, 2001). Using P to denote
+the marginal distribution of the covariates, we consider a Hilbert space H ⊂ L2 (P), meaning
+a family of functions g : X → R, with g L2 (P) < ∞, and an associated inner product ·, · H
+under which H is complete. The space H is a reproducing kernel Hilbert space (RKHS)
+if there exists a symmetric function K : X × X → R+ such that: (a) for each x ∈ X , the
+function K(·, x) belongs to the Hilbert space H, and (b) we have the reproducing relation
+337
+
+Raskutti, Wainwright and Yu
+
+f (x) = f, K(·, x) H for all f ∈ H. Any such kernel function must be positive semidefinite.
+Moreover, under suitable regularity conditions, Mercer’s theorem (1909) guarantees that
+the kernel has an eigen-expansion of the form
+∞
+
+K(x, x ) =
+
+λk φk (x)φk (x ),
+k=1
+
+where λ1 ≥ λ2 ≥ λ3 ≥ . . . ≥ 0 are a non-negative sequence of eigenvalues, and {φk }∞
+k=1
+are the associated eigenfunctions, taken to be orthonormal in L2 (P). The decay rate of the
+eigenvalues will play a crucial role in our analysis.
+Since the eigenfunctions {φk }∞
+k=1 form
+√ an orthonormal basis, any function f ∈ H has
+an expansion of the form f (x) = ∞
+k=1 λk ak φk (x), where for all k such that λk > 0, the
+coefficients
+1
+ak : = √
+f (x)φk (x) d P(x)
+f, φk L2 (P) =
+λk
+X
+1 Associated with any two
+are rescaled versions of the generalized
+Fourier coefficients.
+∞ √
+∞ √
+functions in H—where f = k=1 λk ak φk and g = k=1 λk bk φk —are two distinct inner
+products.
+The first is the usual inner product in the space L2 (P)—namely,
+f, g L2 (P) : = X f (x)g(x) d P(x). By Parseval’s theorem, it has an equivalent representation
+in terms of the rescaled expansion coefficients and kernel eigenvalues—that is,
+∞
+
+f, g
+
+L2 (P)
+
+=
+
+λk ak bk .
+k=1
+
+The second inner product, denoted by f, g H , is the one that defines the Hilbert space; it
+can be written in terms of the rescaled expansion coefficients as
+∞
+
+f, g
+
+H
+
+=
+
+ak bk .
+k=1
+
+Using this definition, the unit ball for the Hilbert space H with eigenvalues {λk }∞
+k=1 and
+takes
+the
+form
+eigenfunctions {φk }∞
+k=1
+∞
+
+∞
+
+BH (1) : = f =
+
+λk bk φk
+k=1
+
+b2k ≤ 1 .
+
+for some
+k=1
+
+The class of reproducing kernel Hilbert spaces contains many interesting classes that are
+widely used in practice, including polynomials of degree d, Sobolev spaces of varying smoothness, and Gaussian kernels. For more background and examples on reproducing kernel
+Hilbert spaces, we refer the reader to various standard references (Aronszajn, 1950; Saitoh,
+1988; Sch¨
+olkopf and Smola, 2002; Wahba, 1990; Weinert, 1982).
+Throughout this paper, we assume that any function f in the unit ball of the Hilbert
+space is uniformly bounded, meaning that there is some constant B < ∞ such that
+f
+
+∞
+
+: = sup |f (x)| ≤ B
+
+for all f ∈ BH (1).
+
+x∈X
+
+1. We have chosen this particular rescaling for later theoretical convenience.
+
+338
+
+(1)
+
+Early Stopping and Non-parametric Regression
+
+This boundedness condition (1) is satisfied for any RKHS with a kernel such that
+supx∈X K(x, x) ≤ B. Kernels of this type include the Gaussian and Laplacian kernels,
+the kernels underlying Sobolev and other spline classes, as well as as well as any trace
+class kernel with trignometric eigenfunctions. The boundedness condition (1) is quite standard in non-asymptotic analysis of non-parametric regression procedures (e.g., van de Geer,
+2000). We study non-parametric regression when the unknown function f ∗ is viewed as
+fixed, meaning that no prior is imposed on the function space.
+2.2 Gradient Update Equation
+We now turn to the form of the gradient update that we study in this paper. Given the
+samples {(xi , yi )}ni=1 , consider minimizing the least-squares loss function
+L(f ) : =
+
+1
+2n
+
+n
+
+yi − f (xi )
+
+2
+
+i=1
+
+over some subset of the Hilbert space H. By the representer theorem (Kimeldorf and
+Wahba, 1971), it suffices to restrict attention to functions f belonging to the span of the
+kernel functions defined on the data points—namely, the span of {K(·, xi ), i = 1, . . . , n}.
+Accordingly, we adopt the parameterization
+1
+f (·) = √
+n
+
+n
+
+ωi K(·, xi ),
+
+(2)
+
+i=1
+
+√
+for some coefficient vector ω ∈ Rn . Here the rescaling by 1/ n is for later theoretical
+convenience.
+Our gradient descent procedure is based on a parameterization of the least-squares loss
+that involves the empirical kernel matrix K ∈ Rn×n with entries
+[K]ij =
+
+1
+K(xi , xj )
+n
+
+for i, j = 1, 2, . . . , n.
+
+For any positive semidefinite kernel function, this matrix
+must be positive semidefinite, and
+√
+so has a unique symmetric square root denoted by K. By first introducing the convenient
+shorthand y1n : = y1 y2 · · · yn ∈ Rn , we can write the least-squares loss in the form
+L(ω) =
+
+1 n √
+y − nKω 22 .
+2n 1
+
+A direct approach would be to perform gradient descent on this form of the least-squares
+loss. For our purposes, it turns out to be√ more natural to perform gradient descent in
+the transformed co-ordinate system θ = K ω. Some straightforward calculations (see
+Appendix A for details) yield that the gradient descent algorithm in this new co-ordinate
+system generates a sequence of vectors {θt }∞
+t=0 via the recursion
+1 √
+θt+1 = θt − αt K θt − √
+K y1n ,
+n
+339
+
+(3)
+
+Raskutti, Wainwright and Yu
+
+where {αt }∞
+t=0 is a sequence of positive step sizes (to be chosen by the user). We assume
+throughout that the gradient descent procedure is initialized with θ0 = 0.
+The parameter estimate θt at iteration t defines
+√ a function estimate ft in the following
+way. We first compute2 the weight vector ω t = K −1 θt , which then defines the function
+estimate ft (·) = √1n ni=1 ωit K(·, xi ) as before. In this paper, our goal is to study how
+∗
+the sequence {ft }∞
+t=0 evolves as an approximation to the true regression function f . We
+measure the error in two different ways: the L2 (Pn ) norm
+ft − f ∗
+
+2
+n
+
+:=
+
+1
+n
+
+n
+
+ft (xi ) − f ∗ (xi )
+
+2
+
+i=1
+
+compares the functions only at the observed design points, whereas the L2 (P)-norm
+ft − f ∗
+
+2
+2
+
+: = E ft (X) − f ∗ (X)
+
+2
+
+corresponds to the usual mean-squared error.
+2.3 Overfitting and Early Stopping
+In order to illustrate the phenomenon of interest in this paper, we performed some simulations on a simple problem. In particular, we formed n = 100 i.i.d. observations of
+the form y = f ∗ (xi ) + wi , where wi ∼ N (0, 1), and using the fixed design xi = i/n for
+i = 1, . . . , n. We then implemented the gradient descent update (3) with initialization
+θ0 = 0 and constant step sizes αt = 0.25. We performed this experiment with the regression
+function f ∗ (x) = |x − 1/2| − 1/2, and two different choices of kernel functions. The kernel
+K(x, x ) = min{x, x } on the unit square [0, 1] × [0, 1] generates an RKHS of Lipschitz functions, whereas the Gaussian kernel K(x, x ) = exp(− 12 (x − x )2 ) generates a smoother class
+of infinitely differentiable functions.
+Figure 1 provides plots of the squared prediction error ft − f ∗ 2n as a function of the
+iteration number t. For both kernels, the prediction error decreases fairly rapidly, reaching
+a minimum before or around T ≈ 20 iterations, before then beginning to increase. As the
+analysis of this paper will clarify, too many iterations lead to fitting the noise in the data
+(i.e., the additive perturbations wi ), as opposed to the underlying function f ∗ . In a nutshell,
+the goal of this paper is to quantify precisely the meaning of “too many” iterations, and in
+a data-dependent and easily computable manner.
+
+3. Main Results and Consequences
+In more detail, our main contribution is to formulate a data-dependent stopping rule, meaning a mapping from the data {(xi , yi )}ni=1 to a positive integer T , such that the two forms
+of prediction error fT − f ∗ n and fT − f ∗ 2 are minimal. In our formulation of such a
+2. If the empirical matrix K is not invertible, then we use the pseudoinverse. Note that it may appear
+as though a matrix inversion is required to estimate ω t for each t which is computationally intensive.
+yn
+However, the weights ω t may be computed directly via the iteration ω t+1 = ω t −αt K(ω t − √1n ). However,
+the equivalent update (3) is more convenient for our analysis.
+
+340
+
+Early Stopping and Non-parametric Regression
+
+Prediction error for first−order Sobolev kernel
+
+Prediction error for Gaussian kernel
+
+0.08
+
+0.06
+
+0.075
+
+0.055
+0.05
+
+0.065
+
+Prediction error
+
+Prediction error
+
+0.07
+
+0.06
+0.055
+0.05
+
+0.04
+0.035
+0.03
+
+0.045
+
+0.025
+
+0.04
+0
+
+0.045
+
+20
+
+40
+
+60
+
+80
+
+0.02
+0
+
+100
+
+20
+
+40
+
+Iteration
+
+60
+
+80
+
+100
+
+Iteration
+
+(a)
+
+(b)
+
+Figure 1: Behavior of gradient descent update (3) with constant step size α = 0.25 applied
+to least-squares loss with n = 100 with equi-distant design points xi = i/n for
+i = 1, . . . , n, and regression function f ∗ (x) = |x−1/2|−1/2. Each panel gives plots
+the L2 (Pn ) error ft −f ∗ 2n as a function of the iteration number t = 1, 2, . . . , 100.
+(a) For the first-order Sobolev kernel K(x, x ) = min{x, x }. (b) For the Gaussian
+kernel K(x, x ) = exp(− 21 (x − x )2 ).
+
+stopping rule, two quantities play an important role: first, the running sum of the step sizes
+t−1
+
+ηt : =
+
+ατ ,
+τ =0
+
+and secondly, the eigenvalues λ1 ≥ λ2 ≥ · · · ≥ λn ≥ 0 of the empirical kernel matrix K
+previously defined (2.2). The kernel matrix and hence these eigenvalues are computable
+from the data. We also note that there is a large body of work on fast computation of
+kernel eigenvalues (e.g., see Drineas and Mahoney, 2005 and references therein).
+3.1 Stopping Rules and General Error Bounds
+Our stopping rule involves the use of a model complexity measure, familiar from past work
+on uniform laws over kernel classes (Bartlett et al., 2005; Koltchinskii, 2006; Mendelson,
+2002), known as the local empirical Rademacher complexity. For the kernel classes studied
+in this paper, it takes the form
+1
+RK (ε) : =
+n
+
+n
+
+1/2
+
+min λi , ε2
+
+.
+
+(4)
+
+i=1
+
+For a given noise variance σ > 0, a closely related quantity—one of central importance to
+our analysis—is the critical empirical radius εn > 0, defined to be the smallest positive
+341
+
+Raskutti, Wainwright and Yu
+
+solution to the inequality
+RK (ε) ≤ ε2 /(2eσ).
+
+(5)
+
+The existence and uniqueness of εn is guaranteed for any reproducing kernel Hilbert space;
+see Appendix D for details. As clarified in our proof, this inequality plays a key role in
+trading off the bias and variance in a kernel regression estimate.
+Our stopping rule is defined in terms of an analogous inequality that involves the running
+sum ηt = t−1
+τ =0 ατ of the step sizes. Throughout this paper, we assume that the step sizes
+are chosen to satisfy the following properties:
+• Boundedness: 0 ≤ ατ ≤ min{1, 1/λ1 } for all τ = 0, 1, 2, . . ..
+• Non-increasing: ατ +1 ≤ ατ for all τ = 0, 1, 2, . . ..
+t−1
+τ =0 ατ
+
+• Infinite travel: the running sum ηt =
+
+diverges as t → +∞.
+
+We refer to any sequence {ατ }∞
+τ =0 that satisfies these conditions as a valid stepsize sequence.
+We then define the stopping time
+√
+T : = arg min t ∈ N | RK 1/ ηt > (2eσηt )−1
+
+− 1.
+
+(6)
+
+As discussed in Appendix D, the integer T belongs to the interval [0, ∞) and is unique
+for any valid stepsize sequence. As will be clarified in our proof, the intuition underlying
+the stopping rule (6) is that the sum of the step-sizes ηt acts as a tuning parameter that
+controls the bias-variance tradeoff. The minimizing value is specified by a fixed point of the
+local Rademacher complexity, in a manner analogous to certain calculations in empirical
+process theory (van de Geer, 2000; Mendelson, 2002). The stated choice of T optimizes the
+bias-variance trade-off.
+The following result applies to any sequence {ft }∞
+t=0 of function estimates generated by
+the gradient iteration (3) with a valid stepsize sequence.
+Theorem 1 Given the stopping time T defined by the rule (6) and critical radius εn defined
+in Equation (5), there are universal positive constants (c1 , c2 ) such that the following events
+hold with probability at least 1 − c1 exp(−c2 nε2n ):
+(a) For all iterations t = 1, 2, ..., T :
+ft − f ∗
+
+2
+n
+
+≤
+
+4
+.
+e ηt
+
+(b) At the iteration T chosen according to the stopping rule (6), we have
+fT − f ∗
+
+2
+n
+
+≤ 12 ε2n .
+
+(c) Moreover, for all t > T ,
+E[ ft − f ∗
+
+2
+n]
+
+≥
+
+342
+
+σ2
+−1/2
+ηt R2K (ηt
+).
+4
+
+Early Stopping and Non-parametric Regression
+
+3.1.1 Remarks
+Although the bounds (a) and (b) are stated as high probability claims, a simple integration argument can be used to show that the expected mean-squared error (over the noise
+variables, with the design fixed) satisfies a bound of the form
+E ft − f ∗
+
+2
+n
+
+4
+e ηt
+
+≤
+
+for all t ≤ T .
+
+To be clear, note that the critical radius εn cannot be made arbitrarily small, since it
+must satisfy the defining inequality (5). But as will be clarified in corollaries to follow,
+this critical radius is essentially optimal: we show how the bounds in Theorem 1 lead to
+minimax-optimal rates for various function classes. The interpretation of Theorem 1 is as
+follows: if the sum of the step-sizes ηt remains below the threshold defined by (6), applying
+the gradient update (3) reduces the prediction error. Moreover, note that for Hilbert spaces
+with a larger kernel complexity, the stopping time T is smaller, since fitting functions in a
+larger class incurs a greater risk of overfitting.
+Finally, the lower bound (c) shows that for large t, running the iterative algorithm
+beyond the optimal stopping point leads to inconsistent estimators for infinite rank kernels.
+More concretely, let us suppose that λi > 0 for all 1 ≤ i ≤ n. In this case, we have
+−1/2
+ηt R2K (ηt
+)
+
+1
+=
+n
+
+n
+
+ˆ i ηt , 1),
+min(λ
+i=1
+
+which converges to 1 as t →. Consequently, part (c) implies that lim inf t→∞ E[ ft − f ∗ 2n ] ≥
+σ2
+4 as t → ∞, thereby showing the inconsistency of the method.
+The statement of Theorem 1 is for the case of fixed design points {xi }ni=1 , so that the
+probability is taken only over the sub-Gaussian noise variables {wi }ni=1 In the case of random
+design point xi ∼ P i.i.d. , we can also provide bounds on generalization error in the form
+the L2 (P)-norm ft − f ∗ 2 . In this setting, for the purposes of comparing to minimax lower
+bounds, it is also useful to state some results in terms of the population analog of the local
+empirical Rademacher complexity (4), namely the quantity
+1
+RK (ε) : =
+n
+
+∞
+
+1/2
+
+min λj , ε2
+
+,
+
+(7)
+
+j=1
+
+where λj correspond to the eigenvalues of the population kernel K defined in (3). Using
+this complexity measure, we define the critical population rate εn to be the smallest positive
+solution to the inequality
+40 RK (ε) ≤
+
+ε2
+.
+σ
+
+(8)
+
+(Our choice of the pre-factor 40 is for later theoretical convenience.) In contrast to the
+critical empirical rate εn , this quantity is not data-dependent, since it is specified by the
+population eigenvalues of kernel operator underlying the RKHS.
+343
+
+Raskutti, Wainwright and Yu
+
+Theorem 2 (Random design) Suppose that in addition to the conditions of Theorem 1,
+the design variables {xi }ni=1 are sampled i.i.d. according to P and that the population critical
+radius εn satisfies inequality (8). Then there are universal constants cj , j = 1, 2, 3 such that
+fT − f ∗
+
+2
+2
+
+≤ c3 ε2n
+
+with probability at least 1 − c1 exp(−c2 nε2n ).
+Theorems 1 and 2 are general results that apply to any reproducing kernel Hilbert space.
+Their proofs involve combination of direct analysis of our iterative update (3), combined
+with techniques from empirical process theory and concentration of measure (van de Geer,
+2000; Ledoux, 2001); see Section 4 for the details.
+It is worthwhile to compare with the past work of Buhlmann and Yu (2003) (hereafter
+BY), who also provide some theory for gradient descent, referred to as L2 -boosting in their
+paper, but focusing exclusively on the fixed design case. Our theory applies to random as
+well as fixed design, and a broader set of stepsize choices. The most significant difference
+between Theorem 1 in our paper and Theorem 3 of BY is that we provide a data-dependent
+stopping rule, whereas their analysis does not lead to a stopping rule that can be computed
+from the data.
+3.2 Consequences for Specific Kernel Classes
+Let us now illustrate some consequences of our general theory for special choices of kernels
+that are of interest in practice.
+3.2.1 Kernels with Polynomial Eigendecay
+We begin with the class of RKHSs whose eigenvalues satisfy a polynomial decay condition,
+meaning that
+λk ≤ C
+
+1
+k
+
+2β
+
+for some β > 1/2 and constant C.
+
+(9)
+
+Among other examples, this type of scaling covers various types of Sobolev spaces, consisting
+of functions with β derivatives (Birman and Solomjak, 1967; Gu, 2002). As a very special
+case, the first-order Sobolev kernel K(x, x ) = min{x, x } on the unit square [0, 1] × [0, 1]
+generates an RKHS of functions that are differentiable almost everywhere, given by
+1
+
+(f (x))2 dx < ∞ ,
+
+H : = f : [0, 1] → R | f (0) = 0,
+
+(10)
+
+0
+
+For the uniform measure on [0, 1], this class exhibits polynomial eigendecay (9) with β = 1.
+For any class that satisfies the polynomial decay condition, we have the following corollary:
+Corollary 3 Suppose that in addition to the assumptions of Theorem 2, the kernel class
+H satisfies the polynomial eigenvalue decay (9) for some parameter β > 1/2. Then there is
+a universal constant c5 such that
+E fT − f ∗ 22 ] ≤ c5
+344
+
+σ2
+n
+
+2β
+2β+1
+
+.
+
+(11)
+
+Early Stopping and Non-parametric Regression
+
+Moreover, if λk ≥ c (1/k)2β for all k = 1, 2, . . ., then
+1
+
+E ft −
+
+f ∗ 22
+
+(ηt ) 2β
+1
+≥ min 1, σ 2
+4
+n
+
+for all iterations t = 1, 2, . . ..
+
+The proof, provided in Section 4.3, involves showing that the population critical rate (7)
+−
+
+2β
+
+is of the order O(n 2β+1 ). By known results on non-parametric regression (Stone, 1985;
+Yang and Barron, 1999), the error bound (11) is minimax-optimal.
+In the special case of the first-order spline family (10), Corollary 3 guarantees that
+σ 2 2/3
+.
+(12)
+n
+In order to test the accuracy of this prediction, we performed the following set of simulations.
+First, we generated samples from the observation model
+E[ fT − f ∗ 22 ]
+
+yi = f ∗ (xi ) + wi ,
+
+for i = 1, 2, . . . , n,
+
+(13)
+
+where xi = i/n, and wi ∼ N (0, σ 2 ) are i.i.d. noise terms. We present results for the
+function f ∗ (x) = |x − 1/2| − 1/2, a piecewise linear function belonging to the first-order
+Sobelev class. For all our experiments, the noise variance σ 2 was set to one, but so as to
+have a data-dependent method, this knowledge was not provided to the estimator. There
+is a large body of work on estimating the noise variance σ 2 in non-parametric regression.
+For our simulations, we use a simple method due to Hall and Marron (1990). They proved
+that their estimator is ratio consistent, which is sufficient for our purposes.
+For a range of sample sizes n between 10 and 300, we performed the updates (3) with
+constant stepsize α = 0.25, stopping at the specified time T . For each sample size, we performed 10, 000 independent trials, and averaged the resulting prediction errors. In panel (a)
+of Figure 2, we plot the mean-squared error versus the sample size, which shows consistency
+of the method. The bound (12) makes a more specific prediction: the mean-squared error
+raised to the power −3/2 should scale linearly with the sample size. As shown in panel (b) of
+Figure 2, the simulation results do indeed reveal this predicted linear relationship. We also
+performed the same experiments for the case of randomly drawn designs xi ∼ Unif(0, 1).
+In this case, we observed similar results, but with more trials required to average out the
+additional randomness in the design.
+3.2.2 Finite Rank Kernels
+We now turn to the class of RKHSs based on finite-rank kernels, meaning that there is some
+finite integer m < ∞ such that λj = 0 for all j ≥ m + 1. For instance, the kernel function
+K(x, x ) = (1 + xx )2 is a finite rank kernel with m = 2, and it generates the RKHS of all
+quadratic functions. More generally, for any integer d ≥ 2, the kernel K(x, x ) = (1 + xx )d
+generates the RKHS of all polynomials with degree at most d. For any such kernel, we have
+the following corollary:
+Corollary 4 If, in addition to the conditions of Theorem 2, the kernel has finite rank m,
+then
+m
+E fT − f ∗ 22 ≤ c5 σ 2 .
+n
+345
+
+Raskutti, Wainwright and Yu
+
+Prediction error using our stopping rule
+
+Transformed prediction error using our rule
+
+0.14
+
+1200
+
+0.12
+
+(Prediction error)−3/2
+
+1000
+
+Prediciton error
+
+0.1
+0.08
+0.06
+0.04
+
+600
+
+400
+
+200
+
+0.02
+0
+0
+
+800
+
+50
+
+100
+
+150
+
+200
+
+250
+
+0
+0
+
+300
+
+Sample size (n)
+
+50
+
+100
+
+150
+
+200
+
+250
+
+300
+
+Sample size (n)
+
+(a)
+
+(b)
+
+Figure 2: Prediction error obtained from the stopping rule (6) applied to a regression model
+with n samples of the form f ∗ (xi ) + wi at equidistant design points xi = i/n for
+i = 0, 1, . . . 99, and i.i.d. Gaussian noise wi ∼ N (0, 1). For these simulations, the
+true regression function is given by f ∗ (x) = |x − 12 | − 12 . (a) Mean-squared error
+(MSE) using the stopping rule (6) versus the sample size n. Each point is based
+on 10, 000 independent realizations of the noise variables {wi }ni=1 . (b) Plots of
+the quantity M SE −3/2 versus sample size n. As predicted by the theory, this
+form of plotting yields a straight line.
+
+2
+For any rank m-kernel, the rate m
+n is minimax optimal in terms of squared L (P) error; this
+fact follows as a consequence of more general lower bounds due to Raskutti et al. (2012).
+
+3.3 Comparison with Other Stopping Rules
+In this section, we provide a comparison of our stopping rule to two other stopping rules,
+as well as a oracle method that involves knowledge of f ∗ , and so cannot be computed in
+practice.
+3.3.1 Hold-out Method
+We begin by comparing to a simple hold-out method that performs gradient descent using
+50% of the data, and uses the other 50% of the data to estimate the risk. In more detail,
+assuming that the sample size is even for simplicity, we split the full data set {xi }ni=1 into two
+equally sized subsets Str and Ste . The data indexed by the training set Str is used to estimate
+the function ftr,t using the gradient descent update (3). At each iteration t = 0, 1, 2, . . .,
+2
+the data indexed by Ste is used to estimate the risk via RHO (ft ) = n1 i∈Ste yi − ftr,t (xi ) ,
+which defines the stopping rule
+THO : = arg min t ∈ N | RHO (ftr, t+1 ) > RHO (ftr,t ) − 1.
+
+346
+
+(14)
+
+Early Stopping and Non-parametric Regression
+
+A line of past work (Yao et al., 2007; Bauer et al., 2007; Caponneto, 2006; Caponetto and
+Yao, 2006, 2010; Vito et al., 2010) has analyzed stopping rules based on this type of hold-out
+rule. For instance, Caponneto (2006) analyzes a hold-out method, and shows that it yields
+rates that are optimal for Sobolev spaces with β ≤ 1 but not in general. A major drawback
+of using a hold-out rule is that it “wastes” a constant fraction of the data, thereby leading
+to inflated mean-squared error.
+3.3.2 SURE Method
+Alternatively, we can use Stein’s Unbiased Risk estimate (SURE) to define another stopping
+rule. Gradient descent is based on the shrinkage matrix S˜t = t−1
+τ =0 (I − ατ K). Based on
+this fact, it can be shown that the SURE estimator (Stein, 1981) takes the form
+RSU (ft ) =
+
+1
+{nσ 2 + (y1n )T (S˜t )2 y1n − 2σ 2 trace(S˜t )}.
+n
+
+This risk estimate can be used to define the associated stopping rule
+TSU : = arg min t ∈ N | RSU (ft+1 ) > RSU (ft ) − 1.
+
+(15)
+
+In contrast with hold-out, the SURE stopping rule (15) makes use of all the data. However,
+we are not aware of any theoretical guarantees for early stopping based on the SURE rule.
+For any valid sequence of stepsizes, it can be shown that both stopping rules (14) and
+(15) define a unique stopping time. Note that our stopping rule T based on (6) requires
+estimation of both the empirical eigenvalues, and the noise variance σ 2 . In contrast, the
+SURE-based rule requires estimation of σ 2 but not the empirical eigenvalues, whereas the
+hold-out rule requires no parameters to be estimated, but a percentage of the data is used
+to estimate the risk.
+3.3.3 Oracle Method
+As a third point of reference, we also plot the mean-squared error for an “oracle” method.
+It is allowed to base its stopping time on the exact in-sample prediction error ROR (ft ) =
+ft − f ∗ 2n , which defines the oracle stopping rule
+TOR : = arg min t ∈ N | ROR (ft+1 ) > ROR (ft ) − 1.
+
+(16)
+
+Note that this stopping rule is not computable from the data, since it assumes exact knowledge of the function f ∗ that we are trying to estimate.
+In order to compare our stopping rule (6) with these alternatives, we generated i.i.d.
+samples from the previously described model (see Equation (13) and the following discussion). We varied the sample size n from 10 to 300, and for each sample size, we performed
+M = 10, 000 independent trials (randomizations of the noise variables {wi }ni=1 ), and computed the average of squared prediction error over these M trials.
+Figure 3 compares the resulting mean-squared errors of our stopping rule (6), the holdout stopping rule (14), the SURE-based stopping rule (15), and the oracle stopping rule (16).
+Panel (a) shows the mean-squared error versus sample size, whereas panel (b) shows the
+347
+
+Raskutti, Wainwright and Yu
+
+Prediction error comparison of stopping rules
+
+Comparison of stopping rules on log−log scale
+
+0.14
+10
+
+Prediction error
+
+Prediction error
+
+0.1
+
+Our Rule
+Hold−out
+SURE
+Oracle
+
+−1
+
+Our rule
+Hold−out
+SURE
+Oracle
+
+0.12
+
+0.08
+0.06
+
+−2
+
+10
+
+0.04
+0.02
+0
+0
+
+−3
+
+50
+
+100
+
+150
+
+200
+
+250
+
+10
+
+300
+
+1
+
+10
+
+Sample size (n)
+
+2
+Sample size (n) 10
+
+(a)
+
+(b)
+
+Figure 3: Illustration of the performance of different stopping rules for kernel gradient descent with the kernel K(x, x) = min{|x|, |x |} and noisy samples of the function
+f ∗ (x) = |x − 21 | − 12 . In each case, we applied the gradient update (3) with constant stepsizes αt = 1 for all t. Each curve corresponds to the mean-squared error,
+estimated by averaging over M = 10, 000 independent trials, versus the sample
+size for n ∈ {10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300}. Each panel shows MSE
+curves for four different stopping rules: (i) the stopping rule (6); (ii) holding out
+50% of the data and using (14); (iii) the SURE stopping rule (15); and (iv) the
+oracle stopping rule (14). (a) MSE versus sample size on a standard scale. (b)
+MSE versus sample size on a log-log scale.
+
+same curves in terms of logarithm of mean-squared error. Our proposed rule exhibits better
+performance than the hold-out and SURE-based rules for sample sizes n larger than 50. On
+the flip side, since the construction of our stopping rule is based on the assumption that f ∗
+belongs to a known RKHS, it is unclear how robust it would be to model mis-specification.
+In contrast, the hold-out and SURE-based stopping rules are generic methods, not based
+directly on the RKHS structure, so might be more robust to model mis-specification. Thus,
+one interesting direction is to explore the robustness of our stopping rule. On the theoretical front, it would be interesting to determine whether the hold-out and/or SURE-based
+stopping rules can be proven to achieve minimax optimal rates for general kernels, as we
+have established for our stopping rule.
+3.4 Connections to Kernel Ridge Regression
+We conclude by presenting an interesting link between our early stopping procedure and
+kernel ridge regression. The kernel ridge regression (KRR) estimate is defined as
+1
+fν : = arg min
+f ∈H 2n
+
+n
+
+(yi − f (xi ))2 +
+i=1
+
+348
+
+1
+f
+2ν
+
+2
+H
+
+,
+
+(17)
+
+Early Stopping and Non-parametric Regression
+
+where ν is the (inverse) regularization parameter. For any ν < ∞, the objective is strongly
+convex, so that the KRR solution is unique.
+Friedman and Popescu (2004) observed through simulations that the regularization
+paths for early stopping of gradient descent and ridge regression are similar, but did not
+provide any theoretical explanation of this fact. As an illustration of this empirical phenomenon, Figure 4 compares the prediction error fν − f ∗ 2n of the kernel ridge regression
+estimate over the interval ν ∈ [1, 100] versus that of the gradient update (3) over the first
+100 iterations. Note that the curves, while not identical, are qualitatively very similar.
+Prediction error for first−order Sobolev kernel
+
+Prediction error for first−order Sobolev kernel
+
+0.3
+
+0.25
+Kernel ridge
+Gradient
+
+Kernel ridge
+Gradient
+0.2
+
+Prediction error
+
+Prediction error
+
+0.25
+
+0.2
+
+0.15
+
+0.1
+
+0.05
+0
+
+0.15
+
+0.1
+
+0.05
+
+20
+
+40
+60
+Inverse penalty parameter
+
+80
+
+0
+0
+
+100
+
+(a)
+
+20
+
+40
+60
+Inverse penalty parameter
+
+80
+
+100
+
+(b)
+
+Figure 4: Comparison of the prediction error of the path of kernel ridge regression estimates (17) obtained by varying ν ∈ [1, 100] to those of the gradient updates (3)
+over 100 iterations with constant step size. All simulations were performed with
+the kernel K(x, x ) = min{|x|, |x |} based on n = 100 samples at the design points
+xi = i/n with f ∗ (x) = |x − 12 | − 12 . (a) Noise variance σ 2 = 1. (b) Noise variance
+σ 2 = 2.
+
+From past theoretical work (van de Geer, 2000; Mendelson, 2002), kernel ridge regression
+with the appropriate setting of the penalty parameter ν is known to achieve minimaxoptimal error for various kernel classes. These classes include the Sobolev and finite-rank
+kernels for which we have previously established that our stopping rule (6) yields optimal
+rates. In this section, we provide a theoretical basis for these connections. More precisely,
+we prove that if the inverse penalty parameter ν is chosen using the same criterion as
+our stopping rule, then the prediction error satisfies the same type of bounds, with ν now
+playing the role of the running sum ηt .
+Define ν > 0 to be the smallest positive solution to the inequality
+4σν
+
+−1
+
+√
+< RK (1/ ν .
+
+(18)
+
+Note that this criterion is identical to the one underlying our stopping rule, except that the
+continuous parameter ν replaces the discrete parameter ηt = t−1
+τ =0 ατ .
+349
+
+Raskutti, Wainwright and Yu
+
+Proposition 5 Consider the kernel ridge regression estimator (17) applied to n i.i.d. samples {(xi , yi )} with σ-sub Gaussian noise. Then there are universal constants (c1 , c2 , c3 ) such
+that with probability at least 1 − c1 exp(−c2 n ε2n ):
+(a) For all 0 < ν ≤ ν, we have
+fν − f ∗
+
+2
+n
+
+≤
+
+2
+ν
+
+(b) With ν chosen according to the rule (18), we have
+fν − f ∗
+
+2
+n
+
+≤ c3 ε2n .
+
+(c) Moreover, for all ν > ν, we have
+E[ fν − f ∗
+
+2
+n]
+
+≥
+
+σ2
+ν R2K (ν −1/2 ).
+4
+
+Note that apart from a slightly different leading constant, the upper bound (a) is identical to the upper bound in Theorem 1 part (a). The only difference is that the inverse
+regularization parameter ν replaces the running sum ηt = t−1
+τ =0 ατ . Similarly, part (b) of
+Proposition 5 guarantees that the kernel ridge regression (17) has prediction error that is
+upper bounded by the empirical critical rate ε2n , as in part (b) of Theorem 1. Let us emphasize that bounds of this type on kernel ridge regression have been derived in past work
+(Mendelson, 2002; Zhang, 2005; van de Geer, 2000). The novelty here is that the structure
+of our result reveals the intimate connection to early stopping, and in fact, the proofs follow
+a parallel thread.
+In conjunction, Proposition 5 and Theorem 1 provide a theoretical explanation for why,
+as shown in Figure 4, the paths of the gradient descent update (3) and kernel ridge regression estimate (17) are so similar. However, it is important to emphasize that from a
+computational point of view, early stopping has certain advantages over kernel ridge regression. In general, solving a quadratic program of the form (17) requires on the order
+of O(n3 ) basic operations, and this must be done repeatedly for each new choice of ν. On
+the other hand, by its very construction, the iterates of the gradient algorithm correspond
+to the desired path of solutions, and each gradient update involves multiplication by the
+kernel matrix, incurring O(n2 ) operations.
+
+4. Proofs
+We now turn to the proofs of our main results. The main steps in each proof are provided
+in the main text, with some of the more technical results deferred to the appendix.
+4.1 Proof of Theorem 1
+In order to derive upper bounds on the L2 (Pn )-error in Theorem 1, we first rewrite the
+gradient update (3) in an alternative form. For each iteration t = 0, 1, 2, . . ., let us introduce
+the shorthand
+ft (xn1 ) : = ft (x1 ) ft (x2 ) · · ·
+350
+
+ft (xn ) ∈ Rn ,
+
+Early Stopping and Non-parametric Regression
+
+corresponding to the n-vector obtained by evaluating the function f t at all design points,
+and the short-hand
+w : = w1 , w2 , ..., wn ∈ Rn ,
+corresponding to the vector of zero mean sub-Gaussian noise random variables. From
+Equation (2), we have the relation
+1 √
+1
+f t (xn1 ) = √ K ω t = √
+K θt .
+n
+n
+Consequently, by multiplying both sides of the gradient update (3) by
+the sequence {ft (xn1 )}∞
+t=0 evolves according to the recursion
+ft+1 (xn1 ) = ft (xn1 ) − αt K (ft (xn1 ) − y1n ) =
+
+√
+
+K, we find that
+
+In×n − αt K ft (xn1 ) + αt K y1n .
+
+(19)
+
+Since θ0 = 0, the sequence is initialized with f0 (xn1 ) = 0. The recursion (19) lies at the
+heart of our analysis.
+Letting r = rank(K), the empirical kernel matrix has the eigendecomposition K =
+U ΛU T , where U ∈ Rn×n is an orthonormal matrix (satisfying U U T = U T U = In×n ) and
+Λ : = diag(λ1 , λ2 , . . . , λr , 0, 0, · · · , 0)
+is the diagonal matrix of eigenvalues, augmented with n − r zero eigenvalues as needed. We
+then define a sequence of diagonal shrinkage matrices S t as follows:
+t−1
+
+St : =
+
+(In×n − ατ Λ) ∈ Rn×n .
+τ =0
+
+The matrix S t indicates the extent of shrinkage towards the origin; since 0 ≤ αt ≤
+min{1, 1/λ1 } for all iterations t, in the positive semodefinite ordering, we have the sandwich
+relation
+0
+
+S t+1
+
+St
+
+In×n .
+
+Moreover, the following lemma shows that the L2 (Pn )-error at each iteration can be bounded
+in terms of the eigendecomposition and these shrinkage matrices:
+Lemma 6 (Bias/variance decomposition) At each iteration t = 0, 1, 2, . . .,
+ft −
+
+f ∗ 2n
+
+2
+≤
+n
+
+r
+
+(S t )2jj [U T f ∗ (xn1 )]2j
+j=1
+
+2
++
+n
+
+n
+T
+
+[U f
+
+∗
+
+(xn1 )]2j +
+
+j=r+1
+
+Squared Bias Bt2
+
+2
+n
+
+r
+t 2
+(1 − Sjj
+) [U T w]2j .
+j=1
+
+Variance Vt
+(20)
+
+Moreover, we have the lower bound E[ ft − f ∗
+351
+
+2]
+n
+
+≥ E[Vt ].
+
+Raskutti, Wainwright and Yu
+
+See Appendix B.1 for the proof of this intermediate claim.
+In order to complete the proof of the upper bound in Theorem 1, our next step is to
+obtain high probability upper bounds on these two terms. We summarize our conclusions
+in an additional lemma, and use it to complete the proof of Theorem 1(a) before returning
+to prove it.
+Lemma 7 (Bounds on the bias and variance) For all iterations t = 1, 2, . . ., the squared
+bias is upper bounded as
+Bt2 ≤
+
+1
+,
+e ηt
+
+(21)
+
+Moreover, there is a universal constant c1 > 0 such that, for any iteration t = 1, 2, . . . , T ,
+√
+Vt ≤ 5σ 2 ηt R2K 1/ ηt
+(22)
+with probability at least 1 − exp − c1 nε2n . Moreover we have E[Vt ] ≥
+
+σ2
+4
+
+√
+ηt R2K 1/ ηt .
+
+We can now complete the proof of Theorem 1(a). Conditioned on the event Vt ≤
+√
+5σ 2 ηt R2K 1/ ηt , we have
+ft − f ∗
+
+2
+n
+
+(i)
+
+(ii)
+
+≤ Bt2 + Vt ≤
+
+1
+√
++ 5σ 2 ηt R2K 1/ ηt
+e ηt
+
+(iii)
+
+≤
+
+4
+,
+e ηt
+
+where inequality (i) follows from (20) in Lemma 6, and inequality (ii) follows from the
+bounds in Lemma 7 and (iii) follows since t ≤ T . The lower bound (c) follows from (22).
+Turning to the proof of part (b), using the upper bound from (a)
+fT − f ∗
+
+2
+n
+
+≤
+
+5
+4
+1
++
+≤
+.
+e ηT
+ηT
+eηT
+
+Based on the definition of T and εn , we are guaranteed that η 1 ≤ ε2n , Moreover, by the
+T +1
+non-decreasing nature of our step sizes, we have αT +1 ≤ αT , which implies that ηT +1 ≤ 2ηT ,
+and hence
+2
+1
+≤
+≤ 2ε2n .
+ηT
+ηT +1
+Putting together the pieces establishes the bound claimed in part (b).
+It remains to establish the bias and variance bounds stated in Lemma 7, and we do so
+in the following subsections. The following auxiliary lemma plays a role in both proofs:
+Lemma 8 (Properties of shrinkage matrices) For all indices j ∈ {1, 2, . . . , r}, the
+shrinkage matrices S t satisfy the bounds
+0 ≤ (S t )2jj ≤
+
+1
+2eηt λj
+
+,
+
+and
+
+1
+t
+min{1, ηt λj } ≤ 1 − Sjj
+≤ min{1, ηt λj }.
+2
+See Appendix B.2 for the proof of this result.
+352
+
+(23)
+(24)
+
+Early Stopping and Non-parametric Regression
+
+4.1.1 Bounding the Squared Bias
+Let us now prove the upper bound (21) on the squared bias. We bound each of the two
+terms in the definition (20) of Bt2 in term. Applying the upper bound (23) from Lemma 8,
+we see that
+2
+n
+
+r
+
+(S t )2jj [U T f ∗ (xn1 )]2j ≤
+j=1
+
+r
+
+1
+e n ηt
+
+[U T f ∗ (xn1 )]2j
+λj
+
+j=1
+
+.
+
+Now consider the linear operator ΦX : 2 (N) → Rn defined element-wise via [ΦX ]jk = φj (xk ).
+Similarly, we define a (diagonal) linear operator D : 2 (N) → 2 (N) with entries [D]jj = λj
+and [D]jk = 0 for j = k. With these definitions, the vector f (xn1 ) ∈ Rn can be expressed in
+terms of some sequence a ∈ 2 (N) in the form
+f (xn1 ) = ΦX D1/2 a.
+In terms of these quantities, we can write K = n1 ΦX DΦTX . Moreover, as previously noted,
+we also have K = U ΛU T where Λ = diag{λ1 , λ2 , . . . , λn }, and U ∈ Rn×n is orthonormal.
+Combining the two representations, we conclude that
+ΦX D1/2
+√
+= U Λ1/2 Ψ∗ ,
+n
+for some linear operator Ψ : Rn →
+this equality, we have
+1
+e ηt n
+
+r
+j=1
+
+2 (N)
+
+[U T f ∗ (X)]2j
+λj
+
+(with adjoint Ψ∗ ) such that Ψ∗ Ψ = In×n . Using
+
+=
+
+1
+e ηt n
+
+=
+
+1
+e ηt
+
+1
+=
+e ηt
+
+r
+
+[U T ΦX D1/2 a]2j
+
+λj
+j=1
+r
+[U T U Λ1/2 V ∗ a]2j
+λj
+
+j=1
+r
+
+λj [Ψ∗ a]2j
+
+1
+Ψ∗ a
+e ηt
+1
+≤
+,
+e ηt
+
+≤
+
+λj
+
+j=1
+2
+2
+
+Here the final step follows from the fact that Ψ is a unitary operator, so that
+Ψ∗ a 22 ≤ a 22 = f ∗ 2H ≤ 1.
+353
+
+(25)
+
+Raskutti, Wainwright and Yu
+
+Turning to the second term in the definition (20), we have
+n
+T
+
+[U f
+
+∗
+
+(xn1 )]2j
+
+j=r+1
+
+2
+=
+n
+
+n
+
+[U T ΦX D1/2 a]2j
+j=r+1
+n
+
+[U T U Λ1/2 Ψ∗ a]2j
+
+=
+j=r+1
+n
+
+[Λ1/2 Ψ∗ a]2j
+
+=
+
+j=r+1
+
+= 0,
+
+(26)
+
+1/2
+
+where the final step uses the fact that Λjj = 0 for all j ∈ {r + 1, . . . , n} by construction. Combining the upper bounds (25) and (26) with the definition (20) of Bt2 yields the
+claim (21).
+4.1.2 Controlling the Variance
+Let us now prove the bounds (22) on the variance term Vt . (To simplify the proof, we
+assume throughout that σ = 1; the general case can be recovered by a simple rescaling
+argument). By the definition of Vt , we have
+Vt =
+
+2
+n
+
+r
+t 2
+(1 − Sjj
+) [U T w]2j =
+j=1
+
+2
+trace(U QU T wwT ),
+n
+
+t )2 , j = 1, . . . , n} is a diagonal matrix. Since E[ww T ] ≤ I
+where Q = diag{(1 − Sjj
+n×n by
+2
+assumption, we have E[Vt ] = n trace(Q). Using the upper bound in Equation (24) from
+Lemma 8, we have
+
+1
+1
+trace(Q) ≤
+n
+n
+
+r
+
+√
+RK (1/ ηt )
+
+min{1, (ηt λj )2 } = ηt
+
+2
+
+,
+
+j=1
+
+where the final equality uses the definition of RK . Putting together the pieces, we see that
+√
+E[Vt ] ≤ 2 ηt RK (1/ ηt )
+
+2
+
+.
+
+Similarly, using the lower bound in Equation (24), we can show that
+E[Vt ] ≥
+
+σ2
+√
+ηt RK (1/ ηt )
+4
+
+2
+
+.
+
+Our next step is to obtain a bound on the two-sided tail probability P[|Vt −E[Vt ]| ≥ δ], for
+which we make use of a result on two-sided deviations for quadratic forms in sub-Gaussian
+variables. In particular, consider a random variable of the form Qn = ni,j=1 aij (Zi Zj −
+354
+
+Early Stopping and Non-parametric Regression
+
+E[Zi Zj ]) where {Zi }ni=1 are i.i.d. zero-mean and sub-Gaussian variables (with parameter
+1). Wright (1973) proves that there is a constant c such that
+P |Q − E[Q]| ≥ δ ≤ exp − c min
+
+δ2
+δ
+,
+|||A|||op |||A|||2F
+
+for all u > 0,
+
+(27)
+
+where (|||A|||op , |||A|||F ) are (respectively) the operator and Frobenius norms of the matrix
+A = {aij }ni,j=1 .
+If we apply this result with A = n2 U QU T and Zi = wi , then we have Q = Vt , and
+moreover
+2
+, and
+n
+4
+4
+4
+4
+= 2 trace(U T QU T U QU T ) = 2 trace(Q2 ) ≤ 2 trace(Q) ≤ ηt
+n
+n
+n
+n
+|||A|||op ≤
+
+|||A|||2F
+
+√
+RK (1/ ηt ) .
+
+Consequently, the bound (27) implies that
+√
+P |Vt − E[Vt ]| ≥ δ ≤ exp − 4c n δ min{1, δ ηt RK (1/ ηt )
+Since t ≤ T setting δ = 3σ 2 ηt
+
+−1
+
+} .
+
+√
+RK (1/ ηt ) , the claim (22) follows.
+
+4.2 Proof of Theorem 2
+This proof is based on the following two steps:
+• first, proving that the error fT − f ∗ 2 in the L2 (P) norm is, with high probability,
+close to the error in the L2 (Pn ) norm, and
+• second, showing the empirical critical radius εn defined in Equation (5) is upper
+bounded by the population critical radius εn defined in Equation (8).
+Our proof is based on a number of more technical auxiliary lemmas, proved in the
+appendices. The first lemma provides a high probability bound on the Hilbert norm of the
+estimate fT .
+Lemma 9 There exist universal constants c1 and c2 > 0 such that ft
+with probability greater than or equal to 1 − c1 exp(−c2 nε2n ).
+
+H
+
+≤ 2 for all t ≤ T
+
+See Appendix E.1 for the proof of this claim. Our second lemma shows in any bounded
+RKHS, the L2 (P) and L2 (Pn ) norms are uniformly close up to the population critical radius
+εn over a Hilbert ball of constant radius:
+Lemma 10 Consider a Hilbert space such that g ∞ ≤ B for all g ∈ BH (3). Then there
+exist universal constants (c1 , c2 , c3 ) such that for any t ≥ εn , we have
+| g
+
+2
+n
+
+− g 22 | ≤ c1 t2 ,
+
+with probability at least 1 − c2 exp(−c3 nt2 ).
+355
+
+Raskutti, Wainwright and Yu
+
+This claim follows from known results on reproducing kernel Hilbert spaces (e.g., Lemma
+5.16 in the paper van de Geer, 2000 and Theorem 2.1 in the paper Bartlett et al., 2005).
+Our final lemma, proved in Appendix E.2, relates the critical empirical radius εn to the
+population radius εn :
+Lemma 11 There exist constants c1 and c2 such that εn ≤ εn holds with probability at least
+1 − c1 exp(−c2 nε2n ).
+With these lemmas in hand, the proof of the theorem is straightforward. First, from
+Lemma 9, we have fT H ≤ 2 and hence by triangle inequality, fT − f ∗ H ≤ 3 with high
+probability as well. Next, applying Lemma 10 with t = εn , we find that
+fT − f ∗
+
+2
+2
+
+≤ fT − f ∗
+
+2
+n
+
++ c1 ε2n ≤ c4 (ε2n + ε2n ),
+
+with probability greater than 1 − c2 exp(−c3 nε2n ). Finally, applying Lemma 11 yields that
+the bound fT − f ∗ 22 ≤ cε2n holds with the claimed probability.
+4.3 Proof of Corollaries
+In each case, it suffices to upper bound the generalization rate ε2n previously defined.
+4.3.1 Proof of Corollary 4
+In this case, we have
+1
+RK ( ) = √
+n
+
+m
+
+min{λj ,
+
+≤
+
+m
+n
+
+M
++
+n
+
+C
+n
+
+M
++
+n
+
+C
+n
+
+2}
+
+j=1
+
+so that ε2n = c σ 2 m
+n.
+4.3.2 Proof of Corollary 3
+For any M ≥ 1, we have
+1
+RK ( ) = √
+n
+
+∞
+
+min{C j −2β ,
+
+2}
+
+≤
+
+j=1
+
+≤
+≤
+
+Setting M =
+RK ( ) ≤ 40
+
+−1/β
+
+2 /σ
+
+yields RK ( ) ≤ C ∗
+
+is satisfied for εn
+
+1
+1− 2β
+
+∞
+
+j −2β
+j= M
+∞
+
+t−2β dt
+M
+
+1
+M
+1
++ C √ (1/M )β− 2 .
+n
+n
+
+. Consequently, the critical inequality
+2β
+
+(σ 2 /n) 2β+1 ,
+356
+
+as claimed.
+
+Early Stopping and Non-parametric Regression
+
+4.4 Proof of Proposition 5
+We now turn to the proof of our results on the kernel ridge regression estimate (17). The
+proof follows a very similar structure to that of Theorem 1. Recall the eigendecomposition
+K = U ΛU T of the empirical kernel matrix, and that we use r to denote its rank. For each
+ν > 0, we define the ridge shrinkage matrix
+Rν : = In×n + νΛ
+
+−1
+
+.
+
+(28)
+
+We then have the following analog of Lemma 7 from the proof of Theorem 1:
+Lemma 12 (Bias/variance decomposition for kernel ridge regression) For any ν >
+0, the prediction error for the estimate fν is bounded as
+fν − f ∗
+
+2
+n
+
+≤
+
+2
+n
+
+r
+
+[Rν ]2jj [U T f ∗ (xn1 )]2j +
+j=1
+
+2
+n
+
+n
+
+[U T f ∗ (xn1 )]2j +
+j=r+1
+
+2
+n
+
+r
+2
+
+ν
+1 − Rjj
+[U T w]2j .
+j=1
+
+Note that Lemma 12 is identical to Lemma 7 with the shrinkage matrices S t replaced by
+their analogues Rν . See Appendix C.1 for the proof of this claim.
+Our next step is to show that the diagonal elements of the shrinkage matrices Rν are
+bounded:
+Lemma 13 (Properties of kernel ridge shrinkage) For all indices j ∈ {1, 2, . . . , r},
+the diagonal entries Rν satisfy the bounds
+ν 2
+) ≤
+0 ≤ (Rjj
+
+1
+min 1, ν λj
+2
+
+1
+4ν λj
+
+,
+
+and
+
+(29)
+
+ν
+≤ 1 − Rjj
+≤ min 1, ν λj .
+
+Note that this is the analog of Lemma 8 from Theorem 1, albeit with the constant 14 in the
+1
+bound (29) instead of 2e
+. See Appendix C.2 for the proof of this claim. With these lemmas
+in place, the remainder of the proof follows as in the proof of Theorem 1.
+
+5. Discussion
+In this paper, we have analyzed the early stopping strategy as applied to gradient descent
+on the non-parametric least squares loss. Our main contribution was to propose an easily
+computable and data-dependent stopping rule, and to provide upper bounds on the empirical L2 (Pn ) error (Theorem 1) and generlization L2 (P) error (Theorem 2). We demonstrate
+in Corollaries 3 and 4 that our stopping rule yields minimax optimal rates for both low
+rank kernel classes and Sobolev spaces. Our simulation results confirm that our stopping
+rule yields theoretically optimal rates of convergence for Lipschitz kernels, and performs favorably in comparison to stopping rules based on hold-out data and Stein’s Unbiased Risk
+Estimate. We also showed that early stopping with sum of step-sizes ηt = t−1
+k=0 αk has
+a regularization path that satisfies almost identical mean-squared error bounds as kernel
+ridge regression indexed by penalty parameter ν.
+357
+
+Raskutti, Wainwright and Yu
+
+Our analysis and stopping rule may be improved and extended in a number of ways.
+First, it would interesting to see how our stopping rule can be adapted to mis-specified
+models. As specified, our method relies on computation of the eigenvalues of the kernel
+matrix. A stopping rule based on approximate eigenvalue computations, for instance via
+some form of sub-sampling (Drineas and Mahoney, 2005), would be interesting to study as
+well.
+
+Acknowledgments
+This work was partially supported by NSF grant DMS-1107000 to MJW and BY. In addition, BY was partially supported by the NSF grant SES-0835531 (CDI), ARO-W911NF-111-0114 and the Center for Science of Information (CSoI), an US NSF Science and Technology Center, under grant agreement CCF-0939370, and MJW was also partially supported
+ONR MURI grant N00014-11-1-086. During this work, GR received partial support from a
+Berkeley Graduate Fellowship.
+
+Appendix A. Derivation of Gradient Descent Updates
+In this appendix, we provide the details of√how the gradient descent updates (3) are obtained.
+In terms of the transformed vector θ = K ω, the least-squares objective takes the form
+L(θ) : =
+
+1 n √ √
+y − n Kθ
+2n 1
+
+2
+2
+
+=
+
+1 n
+y
+2n 1
+
+2
+2
+
+√
+1
+1
+− √ y1n , K θ + (θ)T Kθ.
+2
+n
+
+Given a sequence {αt }∞
+t=0 , the gradient descent algorithm operates via the recursion θt+1 =
+t
+θt − αt ∇L(θ ). Taking the gradient of L yields
+1 √
+∇L(θ) = K θ − √
+K y1n .
+n
+Substituting into the gradient descent update yields the claim (3).
+
+Appendix B. Auxiliary Lemmas for Theorem 1
+In this appendix, we collect together the proofs of the lemmas for Theorem 1.
+B.1 Proof of Lemma 6
+We prove this lemma by analyzing the gradient descent iteration in an alternative coordinate system. In particular, given a vector f t (xn1 ) ∈ Rn and the SVD K = U ΛU T of
+the empirical kernel matrix, we define the vector γ t = √1n U T f t (xn1 ). In this new-coordinate
+system, our goal is to estimate the vector γ ∗ = √1n U T f ∗ (xn1 ). Recalling the alternative
+form (19) of the gradient recursion, some simple algebra yields that the sequence {γ t }∞
+t=0
+evolves as
+w
+˜
+γ t+1 = γ t + αt Λ √ − αt Λ(γ t − γ ∗ ),
+n
+358
+
+Early Stopping and Non-parametric Regression
+
+where w
+˜ : = U T w is a rotated noise vector. Since γ 0 = 0, unwrapping this recursion then
+yields γ t − γ ∗ = I − S t √w˜n − S t γ ∗ , where we have made use of the previously defined
+shrinkage matrices S t . Using the inequality a + b 22 ≤ 2( a 22 + b 22 ), we find that
+γt − γ∗
+
+2
+2
+
+≤
+=
+
+2
+(I − S t )w
+˜
+n
+2
+(I − S t )w
+˜
+n
+
+2
+2
+
++ 2 Stγ∗
+
+2
+2
+
++2
+
+2
+2
+
+r
+
+n
+∗ 2
+) +2
+[S t ]2jj (γjj
+
+j=1
+
+∗ 2
+(γjj
+) .
+j=r+1
+
+where the equality uses the fact that λj = 0 for all j ∈ {r + 1, . . . , n}. Finally, the
+orthogonality of U implies that γ t − γ ∗ 22 = n1 f t (xn1 ) − f ∗ (xn1 ) 22 , from which the upper
+bound (20) follows.
+B.2 Proof of Lemma 8
+Using the definition of S t and the elementary inequality 1 − u ≤ exp(−u), we have
+t−1
+
+[S t ]2jj =
+
+2
+
+(1 − ατ λj )
+
+(i)
+
+≤ exp(−2ηt λj ) ≤
+
+τ =0
+
+1
+2eηt λj
+
+,
+
+where inequality (i) follows from the fact that sup u exp(−u) = 1/e.
+u∈R
+
+Turning to the second set of inequalities, we have 1 − [S t ]jj = 1 −
+induction, it can be shown that
+
+t−1
+τ =0 (1
+
+− ατ λj ). By
+
+1 − [S t ]jj ≤ 1 − max{0, 1 − ηt λj } = min{1, ηt λj }.
+As for the remaining claim, we have
+t−1
+
+1−
+
+(i)
+
+(1 − ατ λj ) ≥ 1 − exp(−ηt λi )
+τ =0
+(ii)
+
+≥ 1 − (1 + ηt λi )−1
+
+=
+
+ηt λi
+
+1 + ηt λi
+1
+≥ min{1, ηt λi },
+2
+
+where step (i) follows from the inequality 1 − u ≤ exp(−u); and step (ii) follows from the
+inequality exp(−u) ≤ (1 + u)−1 , valid for u > 0.
+
+Appendix C. Auxiliary Results for Proposition 5
+In this appendix, we prove the auxiliary lemmas used in the proof of Proposition 5 on kernel
+ridge regression.
+359
+
+Raskutti, Wainwright and Yu
+
+C.1 Proof of Lemma 12
+By definition of the KRR estimate, we have
+
+K + ν1 I fν (xn1 ) = Ky1n . Consequently, some
+
+straightforward algebra yields the relation
+U T fν (xn1 ) = (I − Rν )U T y1n ,
+where the shrinkage matrix Rν was previously defined (28). The remainder of the proof
+follows using identical steps to the proof of Lemma 6 with S t replaced by Rν .
+C.2 Proof of Lemma 13
+By definition (28) of the shrinkage matrix, we have [Rν ]2jj = (1 + ν λj )−2 ≤
+
+1
+.
+4ν λj
+
+Moreover,
+
+we also have
+1 − [Rν ]jj = 1 − (1 + ν λj )−1 =
+1 − [Rν ]jj =
+
+ν λj
+1 + ν λj
+
+≥
+
+ν λj
+1 + ν λj
+
+≤ min{1, ν λj },
+
+and
+
+1
+min{1, ν λj }.
+2
+
+Appendix D. Properties of the Empirical Rademacher Complexity
+In this section, we prove that the εn lies in the interval (0, ∞), and is unique. Recall that the
+stopping point T is defined as εn : = arg min
+and substituting for RK
+
+> 0 | RK
+
+>
+
+2 /(2eσ)
+
+. Re-arranging
+
+yields the equivalent expression
+n
+
+εn : = arg min
+
+>0 |
+
+min
+
+−2
+
+λi , 1 > n 2 /(4e2 σ 2 ) .
+
+i=1
+
+Note that ni=1 min −2 λi , 1 is non-increasing in while n 2 is increasing in . Furthermore when = 0, 0 = n 2 < ni=1 min −2 λi , 1 > 0 while for = ∞, ni=1 min ηt λi , 1 <
+n 2 , recalling that ηt = t−1
+τ =0 ατ . Hence εn exists. Further, RK ( ) is a continuous function
+of since it is the sum of n continuous functions, Therefore, the critical radius εn exists, is
+unique and satisfies the fixed point equation
+RK εn = ε2n /(2eσ).
+Finally, we show that the integer T belongs to the interval [0, ∞) and is unique for any
+valid sequence of step-sizes. Be the definition of T given by the stopping rule (6) and εn ,
+we have η 1 ≤ ε2n ≤ η1 . Since η0 = 0 and ηt → ∞ as t → ∞ and εn ∈ (0, ∞), there exists
+T +1
+
+T
+
+a unique stopping point T in the interval [0, ∞).
+
+Appendix E. Auxiliary Results for Theorem 2
+This appendix is devoted to the proofs of auxiliary lemmas used in the proof for Theorem 2.
+360
+
+Early Stopping and Non-parametric Regression
+
+E.1 Proof of Lemma 9
+∞ √
+∞
+2
+2
+Let us write ft =
+k=0 λk ak φk , so that ft H =
+k=0 ak . Recall the linear opera2
+n
+tor ΦX : (N) → R defined element-wise via [ΦX ]jk = φj (xk ) and the diagonal operator
+D : 2 (N) → 2 (N) with entries [D]jj = λj and [D]jk = 0 for j = k. By the definition of the
+gradient update (3), we have the relation a = n1 D1/2 ΦTX K −1 ft (xn1 ). Since n1 ΦX DΦTX = K,
+ft
+
+2
+H
+
+= a
+
+2
+2
+
+=
+
+1
+ft (xn1 )T K −1 ft (xn1 ).
+n
+
+(30)
+
+Recall the eigendecomposition K = U ΛU T with Λ = diag(λ1 , λ2 , . . . λr ), and the relation
+U T f t (xn1 ) = (I − S t )U T y1n . Substituting into Equation (30) yields
+1
+ft 2H = (y1n )T U (I − S t )2 Λ−1 U T y1n
+n
+(i) 1
+= (f ∗ (xn1 ) + w)T U (I − St )2 Λ−1 U T (f ∗ (xn1 ) + w)
+n
+2 T
+1
+= w U (I − St )2 Λ−1 U T f ∗ (xn1 ) + wT U (I − St )2 Λ−1 U T w
+n
+n
+At
+
+Bt
+
+1
++ f ∗ (xn1 )T U (I − St )2 Λ−1 U T f ∗ (xn1 )
+n
+Ct
+
+where equality (i) follows from the observation equation y1n = f ∗ (xn1 ) + w. From Lemma 8,
+(i)
+
+t ≤ 1, and hence C ≤ 1 f ∗ (xn )T U Λ−1 U T f ∗ (xn ) ≤ 1, where the last step
+we have 1 − Sjj
+t
+1
+1
+n
+follows from the analysis in Section 4.1.1.
+It remains to derive upper bounds on the random variables At and Bt .
+
+E.1.1 Bounding At
+Since the elements of w are i.i.d, zero-mean and sub-Gaussian with parameter σ, we have
+P[|At | ≥ 1] ≤ 2 exp(− 2σn2 ν 2 ), where ν 2 : = n4 [f ∗ (xn1 )]T U (I − St )4 Λ−2 U T f ∗ (xn1 ). Since (1 −
+(St )jj ) ≤ 1, we have
+4
+4
+ν ≤ f ∗ (xn1 )T U (I − St )Λ−2 U T f ∗ (xn1 ) ≤
+n
+n
+
+r
+
+[U T f ∗ (xn1 )]2j
+
+2
+
+≤4
+
+λ2j
+
+j=1
+
+ηt
+n
+
+r
+j=1
+
+min(1, ηt λj )
+
+[U T f ∗ (xn1 )]2j
+λj
+
+≤ 4ηt ,
+where the final inequality follows from the analysis in Section 4.1.1.
+E.1.2 Bounding Bt
+We begin by noting that
+Bt =
+
+1
+n
+
+r
+j=1
+
+t )2
+(1 − Sjj
+
+λj
+
+[U T w]2j =
+
+361
+
+1
+trace(U QU T , wwT ),
+n
+
+Raskutti, Wainwright and Yu
+
+where Q = diag{
+
+t )2
+(1−Sjj
+
+λj
+
+, j = 1, 2, . . . r}. Consequently, Bt is a quadratic form in zero-mean
+
+sub-Gaussian variables, and using the tail bound (27), we have
+2
+T −2
+P |Bt − E[Bt ]| ≥ 1 ] ≤ exp(−c min{n|||U QU T |||−1
+op , n |||U QU |||F })
+
+for a universal constant c. It remains to bound E[Bt ], |||U QU T |||op and |||U QU T |||F .
+We first bound the mean. Since E[wwT ] σ 2 In×n by assumption, we have
+E[Bt ] ≤
+
+1
+σ2
+trace(Q)
+n
+n
+
+r
+
+= (
+
+t )2
+(1 − Sjj
+
+λj
+
+j=1
+
+) ≤
+
+ηt
+n
+
+r
+
+min((ηt λj )−1 , ηt λj )
+j=1
+
+But by the definition (6) of the stopping rule and the fact that t ≤ T , we have
+ηt
+n
+
+r
+j=1
+
+1
+√
+min((ηt λj )−1 , ηt λj ) ≤ ηt2 R2K (1/ ηt ) ≤ 2 ,
+σ
+
+showing that E[Bt ] ≤ 1.
+Turning to the operator norm, we have
+|||U QU T |||op = max (
+
+t )2
+(1 − Sjj
+
+j=1,...,r
+
+λj
+
+) ≤ max min(λj
+
+−1
+
+j=1,...,r
+
+, ηt2 λj ) ≤ ηt .
+
+As for the Frobenius norm, we have
+1
+|||U QU T |||2F =
+n
+
+r
+
+(
+j=1
+
+t )4
+(1 − Sjj
+
+λj
+
+2
+
+)≤
+
+1
+n
+
+r
+
+min(λj
+
+−2
+
+2
+
+, ηt4 λj ) ≤
+
+j=1
+
+ηt3
+n
+
+r
+
+min(ηt−3 λj
+
+−2
+
+j=1
+
+Using the definition of the empirical kernel complexity, we have
+1
+ηt
+√
+|||U QU T |||2F ≤ ηt3 R2K (1/ ηt ) ≤ 2 ,
+n
+σ
+where the final inequality holds for t ≤ T , using the definition of the stopping rule.
+Putting together the pieces, we have shown that
+P[|Bt | ≥ 2
+for all t ≤ T . Since
+
+1
+ηt
+
+or |At | ≥ 1] ≤ exp(−cn/ηt )
+
+≥ ε2n for any t ≤ T , the claim follows.
+
+E.2 Proof of Lemma 11
+In this section, we need to show that εn ≤ εn . Recall that εn and εn satisfy
+RK (εn ) =
+It suffices to prove that RK (εn ) ≤
+
+ε2n
+2eσ
+
+ε2n
+ε2
+and RK (εn ) = n .
+2eσ
+40σ
+using the definition of εn .
+362
+
+2
+
+, ηt λj )
+
+Early Stopping and Non-parametric Regression
+
+In order to prove the claim, we define the random variables
+Zn (w, t) : = sup
+g
+g
+
+H ≤1
+n ≤t
+
+1
+n
+
+n
+
+wi g(xi ) ,
+
+and
+
+sup
+
+Zn (w, t) : = Ex
+
+g
+g
+
+i=1
+
+H ≤1
+2 ≤t
+
+1
+n
+
+n
+
+wi g(xi ) ,
+i=1
+
+where wi ∼ N (0, 1) are i.i.d. standard normal, as well as the associated (deterministic)
+functions
+Qn (t) : = Ew Zn (w; t)
+
+Qn (t) : = Ew Zn (w; t) .
+
+and
+
+By results of Mendelson (2002), there are universal constants 0 < c ≤ cu such that for all
+t2 ≥ 1/n, we have
+c RK (t) ≤ Qn (t) ≤ cu RK (t),
+
+and c RK (t) ≤ Qn (t) ≤ cu RK (t).
+
+We first appeal to the concentration of Lipschitz functions for Gaussian random variables
+to show that Zn (w, t) and Zn (w, t) are concentrated around their respective means. For
+any t > 0 and vectors w, w ∈ Rn , we have
+1
+|
+n
+
+|Zn (w, t) − Zn (w , t)| ≤ sup
+g
+g
+
+n ≤t
+H ≤1
+
+n
+i=1
+
+t
+(wi − wi )g(xi )| ≤ √ w − w
+n
+
+showing that w → Zn (w, t) is √tn -Lipschitz with respect to the
+tion for w → Zn (w, t) shows that
+1
+|Ex [Zn (w, t)] − Ex [Zn (w , t)]| ≤ Ex [ sup
+|
+n
+g 2 ≤t
+g
+
+so that it is also Lipschitz
+imply that
+
+√t .
+n
+
+H ≤1
+
+n
+i=1
+
+2
+
+2,
+
+norm. A similar calcula-
+
+t
+(wi − wi )g(xi )|] ≤ √ w − w
+n
+
+2,
+
+Consequently, standard concentration results (Ledoux, 2001)
+
+P |Zn (w, t) − Qn (t)| ≥ t0
+P |Zn (w, t) − Qn (t)| ≥ t0
+
+nt20
+,
+2t2
+nt2
+≤ 2 exp − 20 .
+2t
+≤ 2 exp −
+
+and
+(31)
+
+Now let us condition on the two events
+A(t, t0 ) : = {|Zn (w, t) − Qn (t)| ≤ t0 },
+
+and A (t, t0 ) : = {|Zn (w, t) − Qn (t)| ≤ t0 }.
+
+We then have
+(a)
+
+RK (εn ) ≤ Zn (w, εn ) +
+
+ε2 (c)
+3ε2 (d) ε2n
+ε2n (b)
+≤ Zn (w, 2εn ) + n ≤ 2RK (εn ) + n ≤
+,
+4eσ
+4eσ
+8eσ
+2eσ
+2
+
+εn
+where inequality (a) follows the first bound in Equation (31) with t0 = 4eσ
+and t = ε2n ,
+inequality (b) follows from Lemma 10 with t = εn , inequality (c) follows from the second
+ε2n
+bound (31) with t0 = 8eσ
+and t = ε2n , and inequality (d) follows from the definition of εn .
+Since the events A(t, t0 ) and A (t, t0 ) hold with the stated probability, the claim follows.
+
+363
+
+Raskutti, Wainwright and Yu
+
+References
+R. S. Anderssen and P. M. Prenter. A formal comparison of methods proposed for the
+numerical solution of first kind integral equations. Jour. Australian Math. Soc. (Ser. B),
+22:488–500, 1981.
+N. Aronszajn. Theory of reproducing kernels. Transactions of the American Mathematical
+Society, 68:337–404, 1950.
+A. R. Barron, A. Cohen, W. Dahmen, and R. A. DeVore. Approximation and learning by
+greedy algorithms. Annals of Statistics, 36(1):64–94, 2008.
+P. Bartlett and M. Traskin. Adaboost is consistent. Journal of Machine Learning Research,
+8:2347–2368, 2007.
+P. Bartlett, O. Bousquet, and S. Mendelson. Local Rademacher complexities. Annals of
+Statistics, 33(4):1497–1537, 2005.
+F. Bauer, S. Pereverzev, and L. Rosasco. On regularization algorithms in learning theory.
+J. Complexity, 23:52–72, 2007.
+M. S. Birman and M. Z. Solomjak. Piecewise-polynomial approximations of functions of
+the classes Wpα . Math. USSR-Sbornik, 2(3):295–317, 1967.
+G. Blanchard and M. Kramer. Optimal learning rates for kernel conjugate gradient regression. In Proceedings of the NIPS Conference, 2010.
+P. Buhlmann and B. Yu. Boosting with L2 loss: Regression and classification. Journal of
+American Statistical Association, 98:324–340, 2003.
+A. Caponetto and Y. Yao. Adaptation for regularization operators in learning theory.
+Technical Report CBCL Paper #265/AI Technical Report #063, Massachusetts Institute
+of Technology, September 2006.
+A. Caponetto and Y. Yao. Cross-validation based adaptation for regularization operators
+in learning theory. Analysis and Applications, 8(2):161–183, 2010.
+A. Caponneto. Optimal rates for regularization operators in learning theory. Technical
+Report CBCL Paper #264/AI Technical Report #062, Massachusetts Institute of Technology, September 2006.
+P. Drineas and M. W. Mahoney. On the Nystr¨om method for approximating a Gram matrix
+for improved kernel-based learning. Journal of Machine Learning Research, 6:2153–2175,
+2005.
+Y. Freund and R. Schapire. A decision-theoretic generalization of on-line learning and an
+application to boosting. Journal of Computer and System Sciences, 55(1):119–139, 1997.
+J.H. Friedman and B. Popescu. Gradient directed regularization. Technical report, Stanford
+University, 2004.
+364
+
+Early Stopping and Non-parametric Regression
+
+C. Gu. Smoothing Spline ANOVA Models. Springer Series in Statistics. Springer, New York,
+NY, 2002.
+M. G. Gu and H. T. Zhu. Maximum likelihood estimation by markov chain monte carlo
+approximation. J. R. Statist. Soc. B, 63:339–355, 2001.
+P. Hall and J.S. Marron. On variance estimation in nonparametric regression. Biometrika,
+77:415–419, 1990.
+W. Jiang. Process consistency for adaboost. Annals of Statistics, 32:13–29, 2004.
+G. Kimeldorf and G. Wahba. Some results on Tchebycheffian spline functions. Jour. Math.
+Anal. Appl., 33:82–95, 1971.
+V. Koltchinskii. Local Rademacher complexities and oracle inequalities in risk minimization.
+Annals of Statistics, 34(6):2593–2656, 2006.
+M. Ledoux. The Concentration of Measure Phenomenon. Mathematical Surveys and Monographs. American Mathematical Society, Providence, RI, 2001.
+L. Mason, J. Baxter, P., and M. Frean. Boosting algorithms as gradient descent. In Neural
+Information Processing Systems (NIPS), December 1999.
+S. Mendelson. Geometric parameters of kernel machines. In Proceedings of COLT, pages
+29–43, 2002.
+J. Mercer. Functions of positive and negative type and their connection with the theory of
+integral equations. Philosophical Transactions of the Royal Society A, 209:415–446, 1909.
+N. Morgan and H. Bourlard. Generalization and parameter estimation in feedforward nets:
+Some experiments. In Proceedings of Neural Information Processing Systems, 1990.
+L. Orecchia and M. W. Mahoney. Implementing regularization implicitly via approximate
+eigenvector computation. In ICML ’11, 2011.
+G. Raskutti, M. J. Wainwright, and B. Yu. Minimax-optimal rates for sparse additive models
+over kernel classes via convex programming. Journal of Machine Learning Research, 12:
+389–427, March 2012.
+S. Saitoh. Theory of Reproducing Kernels and its Applications. Longman Scientific &
+Technical, Harlow, UK, 1988.
+B. Sch¨olkopf and A. Smola. Learning with Kernels. MIT Press, Cambridge, MA, 2002.
+C. M. Stein. Estimation of the mean of a multivariate normal distribution. Annals of
+Statistics, 9(6):1135–1151, 1981.
+C. J. Stone. Additive regression and other nonparametric models. Annals of Statistics, 13
+(2):689–705, 1985.
+O. N. Strand. Theory and methods related to the singular value expansion and Landweber’s
+iteration for integral equations of the first kind. SIAM J. Numer. Anal., 11:798–825, 1974.
+365
+
+Raskutti, Wainwright and Yu
+
+S. van de Geer. Empirical Processes in M-Estimation. Cambridge University Press, 2000.
+E. De Vito, S. Pereverzyev, and L. Rosasco. Adaptive kernel methods using the balancing
+principle. Foundations of Computational Mathematics, 10(4):455–479, 2010.
+G. Wahba. Three topics in ill-posed problems. In M. Engl and G. Groetsch, editors, Inverse
+and ill-posed problems, pages 37–50. Academic Press, 1987.
+G. Wahba. Spline Models for Observational Data. CBMS-NSF Regional Conference Series
+in Applied Mathematics. SIAM, Philadelphia, PN, 1990.
+H. L. Weinert, editor. Reproducing Kernel Hilbert Spaces : Applications in Statistical Signal
+Processing. Hutchinson Ross Publishing Co., Stroudsburg, PA, 1982.
+F. T. Wright. A bound on tail probabilities for quadratic forms in independent random
+variables whose distributions are not necessarily symmetric. Annals of Probability, 1(6):
+1068–1070, 1973.
+Y. Yang and A. Barron. Information-theoretic determination of minimax rates of convergence. Annals of Statistics, 27(5):1564–1599, 1999.
+Y. Yao, L. Rosasco, and A. Caponnetto. On early stopping in gradient descent learning.
+Constructive Approximation, 26:289–315, 2007.
+T. Zhang. Learning bounds for kernel regression using effective data dimensionality. Neural
+Computation, 17(9):2077–2098, 2005.
+T. Zhang and B. Yu. Boosting with early stopping: Convergence and consistency. Annal
+of Statistics, 33:1538–1579, 2005.
+
+366
+
+

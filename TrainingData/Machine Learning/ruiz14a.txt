@@ -1,0 +1,3878 @@
+Journal of Machine Learning Research 15 (2014) 1215-1247
+
+Submitted 1/13; Revised 12/13; Published 4/14
+
+Bayesian Nonparametric Comorbidity Analysis of
+Psychiatric Disorders
+Francisco J. R. Ruiz∗
+Isabel Valera∗
+
+franrruiz@tsc.uc3m.es
+ivalera@tsc.uc3m.es
+
+Department of Signal Processing and Communications
+University Carlos III in Madrid
+Avda. de la Universidad, 30
+28911 Legan´es (Madrid, Spain)
+
+Carlos Blanco
+
+cblanco@nyspi.columbia.edu
+
+Department of Psychiatry, New York State Psychiatric Institute
+Columbia University
+1051 Riverside Drive, Unit #69
+New York, NY 10032 (United States of America)
+
+Fernando Perez-Cruz
+
+fernando@tsc.uc3m.es
+
+Department of Signal Processing and Communications
+University Carlos III in Madrid
+Avda. de la Universidad, 30
+28911 Legan´es (Madrid, Spain)
+
+Editor: Athanasios Kottas
+
+Abstract
+The analysis of comorbidity is an open and complex research field in the branch of psychiatry, where clinical experience and several studies suggest that the relation among the
+psychiatric disorders may have etiological and treatment implications. In this paper, we
+are interested in applying latent feature modeling to find the latent structure behind the
+psychiatric disorders that can help to examine and explain the relationships among them.
+To this end, we use the large amount of information collected in the National Epidemiologic
+Survey on Alcohol and Related Conditions (NESARC) database and propose to model these
+data using a nonparametric latent model based on the Indian Buffet Process (IBP). Due
+to the discrete nature of the data, we first need to adapt the observation model for discrete
+random variables. We propose a generative model in which the observations are drawn from
+a multinomial-logit distribution given the IBP matrix. The implementation of an efficient
+Gibbs sampler is accomplished using the Laplace approximation, which allows integrating
+out the weighting factors of the multinomial-logit likelihood model. We also provide a
+variational inference algorithm for this model, which provides a complementary (and less
+expensive in terms of computational complexity) alternative to the Gibbs sampler allowing
+us to deal with a larger number of data. Finally, we use the model to analyze comorbidity
+among the psychiatric disorders diagnosed by experts from the NESARC database.
+Keywords: Bayesian nonparametrics, Indian buffet process, categorical observations,
+multinomial-logit function, Laplace approximation, variational inference
+∗. Both authors contributed equally.
+c 2014 Francisco J. R. Ruiz, Isabel Valera, Carlos Blanco and Fernando Perez-Cruz..
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+1. Introduction
+Health care increasingly needs to address the management of individuals with multiple
+coexisting diseases, who are now the norm, rather than the exception. In the United
+States, about 80% of Medicare spending is devoted to patients with four or more chronic
+conditions, with costs growing as the number of chronic conditions increases (Wolff et al.,
+2002). This explains the growing interest of researchers in the impact of comorbidity on a
+range of outcomes, such as mortality, health-related quality of life, functioning, and quality
+of health care. However, attempts to study the impact of comorbidity are complicated by
+the lack of consensus about how to define and measure it (Valderas et al., 2009).
+Comorbidity becomes particularly relevant in psychiatry, where clinical experience and
+several studies suggest that the relation among the psychiatric disorders may have etiological and treatment implications. Several studies have focused on the search of the underlying
+interrelationships among psychiatric disorders, which can be useful to analyze the structure
+of the diagnostic classification system, and guide treatment approaches for each disorder
+(Blanco et al., 2013). Krueger (1999) found that 10 psychiatric disorders (available in
+the National Comorbidity Survey) can be explained by only two correlated factors, one
+corresponding to internalizing disorders and the other to externalizing disorders. The existence of the internalizing and the externalizing factors was also confirmed by Kotov et al.
+(2011). More recently, Blanco et al. (2013) have used factor analysis to find the latent feature structure under 20 common psychiatric disorders, drawing on data from the National
+Epidemiologic Survey on Alcohol and Related Conditions (NESARC). In particular, the
+authors found that three correlated factors, one related to externalizing, and the other two
+to internalizing disorders, characterized well the underlying structure of these 20 diagnoses.
+From a statistical point of view, the main limitation of this study lies on the use of factor
+analysis, which assumes that the number of factors is known and that the observations are
+Gaussian distributed. However, the latter assumption does not fit the observed data, since
+they are discrete in nature.
+In order to avoid the model selection step needed to infer the number of factors in
+factor analysis, we can resort to Bayesian nonparametric tools, which allow an open-ended
+number of degrees of freedom in a model (Jordan, 2010). In this paper, we apply the
+Indian Buffet Process (IBP) (Griffiths and Ghahramani, 2011), because it allows us to infer
+which latent features influence the observations and how many features there are. We
+adapt the observation model for discrete random variables, as the discrete nature of the
+data does not allow using the standard Gaussian observation model. There are several
+options for modeling discrete outputs given the hidden latent features, like a Dirichlet
+distribution or sampling from the features, but we opted for the generative model partially
+introduced by Ruiz et al. (2012), in which the observations are drawn from a multinomiallogit distribution, because it resembles the standard Gaussian observation model, as the
+observation probability distribution depends on the IBP matrix weighted by some factors.
+The IBP model combined with discrete observations has already been tackled in several
+related works. Williamson et al. (2010) propose a model that combines properties from
+both the hierarchical Dirichlet process (HDP) and the IBP, called IBP compound Dirichlet
+(ICD) process. They apply the ICD to focused topic modeling, where the instances are
+documents and the observations are words from a finite vocabulary, and focus on decoupling
+1216
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+the prevalence of a topic in a document and its prevalence in all documents. Despite the
+discrete nature of the observations under this model, these assumptions are not appropriate
+for observations such as the set of possible diagnoses or responses to the questions from
+the NESARC database, since categorical observations can only take values from a finite
+set where elements do not present any particular ordering. Titsias (2007) introduced the
+infinite gamma-Poisson process as a prior probability distribution over non-negative integer
+valued matrices with a potentially infinite number of columns, and he applied it to topic
+modeling of images. In this model, each (discrete) component in the observation vector
+of an instance depends only on one of the active latent features of that object, randomly
+drawn from a multinomial distribution. Therefore, different components of the observation
+vector might be equally distributed. Our model is more flexible in the sense that it allows
+different probability distributions for every component in the observation vector, which
+is accomplished by weighting differently the latent variables. Furthermore, a preliminary
+version of this model has been successfully applied to identify the factors that model the
+risk of suicide attempts (Ruiz et al., 2012).
+The rest of the paper is organized as follows. In Section 2, we review the IBP model
+and the basic Gibbs sampling inference for the IBP, and set the notation used throughout
+the paper. In Section 3, we propose the generative model which combines the IBP with
+discrete observations generated from a multinomial-logit distribution. In this section, we
+focus on the inference based on the Gibbs sampler, where we make use of the Laplace
+approximation to integrate out the random weighting factors in the observation model. In
+Section 4, we develop a variational inference algorithm that presents lower computational
+complexity than the Gibbs sampler. In Section 5, we validate our model on synthetic data
+and apply it over the real data extracted from the NESARC database. Finally, Section 6 is
+devoted to the conclusions.
+
+2. The Indian Buffet Process
+Unsupervised learning aims to recover the latent structure responsible for generating the
+observed properties of a set of objects. In latent feature modeling, the properties of each
+object can be represented by an unobservable vector of latent features, and the observations
+are generated from a distribution determined by those latent feature values. Typically, we
+have access to the set of observations and the main goal of latent feature modeling is to
+find out the latent variables that represent the data.
+The most common nonparametric tool for latent feature modeling is the Indian Buffet
+Process (IBP). The IBP places a prior distribution over binary matrices, in which the
+number of rows is finite but the number of columns (features) K is potentially unbounded,
+that is, K → ∞. This distribution is invariant to the ordering of the features and can be
+derived by taking the limit of a properly defined distribution over N × K binary matrices
+as K tends to infinity (Griffiths and Ghahramani, 2011), similarly to the derivation of the
+Chinese restaurant process as the limit of a Dirichlet-multinomial model (Aldous, 1985).
+However, given a finite number of data points N , it ensures that the number of non-zero
+columns, namely, K+ , is finite with probability one.
+Let Z be a random N × K binary matrix distributed following an IBP, i.e., Z ∼ IBP(α),
+where α is the concentration parameter of the process, which controls the number of non-zero
+1217
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+columns K+ . The nth row of Z, denoted by zn• , represents the vector of latent features of the
+nth data point, and every entry nk is denoted by znk . Note that each element znk ∈ {0, 1}
+indicates whether the k th feature contributes to the nth data point. Since only the K+ nonzero columns of Z contain the features of interest, and due to the exchangeability property
+of the features under the IBP prior, they are usually grouped in the left hand side of the
+matrix, as illustrated in Figure 1.
+Given a binary latent feature matrix Z, we assume that the N ×D observation matrix X,
+where the nth row contains a D-dimensional observation vector xn• , is distributed according
+to a probability distribution p(X|Z). For instance, in the standard observation model
+by Griffiths and Ghahramani (2011), p(X|Z) is a Gaussian probability density function.
+Throughout the paper, we denote by x•d the dth column of X, and the elements in X by
+xnd .
+
+6
+6
+Z=6
+4
+
+z11
+z21
+..
+.
+
+z12
+z22
+..
+.
+
+···
+···
+..
+.
+
+z1K+
+z2K+
+..
+.
+
+zN 1
+
+zN 2
+
+···
+
+zN K +
+
+0 0 ···
+0 0 ···
+.. .. . .
+.
+. .
+0 0 ···
+
+K+ non-zero columns
+
+3
+
+N data points
+
+2
+
+7
+7
+7
+5
+
+K columns (features)
+Figure 1: Illustration of an IBP matrix.
+
+2.1 The Stick-Breaking Construction
+The stick-breaking construction of the IBP is an equivalent representation of the IBP prior,
+useful for inference algorithms other than Gibbs sampling, such as slice sampling or variational inference algorithms (Teh et al., 2007; Doshi-Velez et al., 2009).
+In this representation, the probability of each latent feature being active is represented
+explicitly by a random variable. In particular, the probability of feature znk taking value 1
+is denoted by ωk , that is,
+znk ∼ Bernouilli(ωk ).
+Since this probability does not depend on n, the stick-breaking representation explicitly
+shows that the ordering of the data does not affect the distribution.
+The probabilities ωk are, in turn, generated by first drawing a sequence of independent
+random variables v1 , v2 , . . . from a beta distribution of the form
+vk ∼ Beta(α, 1).
+Given the sequence of variables v1 , v2 , . . ., the probability ω1 is assigned to v1 , and each
+subsequent ωk is obtained as
+k
+
+ωk =
+
+vi ,
+i=1
+
+1218
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+resulting in a decreasing sequence of probabilities ωk . Specifically, the expected probability
+of feature znk being active decreases exponentially with the index k.
+This construction can be understood with the stick-breaking process illustrated in Figure 2. Starting with a stick of length 1, at each iteration k = 1, 2, . . ., a piece is broken off
+at a point vk relative to the current length of the stick. The variable ωk corresponds to the
+length of the stick just broken off, and the other piece of the stick is discarded.
+
+1
+!1 = v 1
+!2 = !1 v 2
+
+k=1
+k=2
+
+!3 = !2 v 3
+
+k=3
+...
+
+Figure 2: Illustration of the stick-breaking construction of the IBP.
+
+2.2 Inference
+Markov Chain Monte Carlo (MCMC) methods have been broadly applied to infer the latent structure Z from a given observation matrix X (see, e.g., in Griffiths and Ghahramani
+(2011); Williamson et al. (2010); Van Gael et al. (2009); Titsias (2007)), being Gibbs sampling the standard method of choice. This algorithm iteratively samples the value of each
+element znk given the remaining variables, that is, it samples from
+p(znk = 1|X, Z¬nk ) ∝ p(X|Z)p(znk = 1|Z¬nk ),
+
+(1)
+
+where Z¬nk denotes all the entries of Z other than znk . The conditional distribution p(znk =
+1|Z¬nk ) can be readily derived from the exchangeable IBP and can be written as
+p(znk = 1|Z¬nk ) =
+
+m−n,k
+,
+N
+
+where m−n,k is the number of data points with feature k, not including n, i.e., m−n,k =
+i=n zik . For each data point n, after having sampled all elements znk for the K+ nonzero columns in Z, the algorithm samples from a distribution (where the prior is a Poisson
+distribution with mean α/N ) a number of new features necessary to explain that data point.
+Although MCMC methods perform exact inference, they typically suffer from high computational complexity. To solve this limitation, variational inference algorithms can be
+applied instead at a lower computational cost, at the expense of performing approximate
+inference (Jordan et al., 1999). A variational inference algorithm for the IBP under the standard Gaussian observation model is presented by Doshi-Velez et al. (2009). This algorithm
+makes use of the stick breaking construction of the IBP, summarized above.
+1219
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+3. Observation Model
+Unlike the standard Gaussian observation model, let us consider discrete observations, that
+is, each element xnd ∈ {1, . . . , Rd }, where this finite set contains the indexes to all the
+possible values of xnd . For simplicity and without loss of generality, we consider that
+Rd = R, but the following results can be readily extended to a different cardinality per
+input dimension, as well as mixing continuous variables with discrete variables, since given
+the latent feature matrix Z the columns of X are assumed to be independent.
+We introduce the K × R matrices Bd and the length-R row vectors bd0 to model the
+probability distribution over X, such that Bd links the latent features with the dth column
+of the observation matrix X, denoted by x•d , and bd0 is included to model the bias term
+in the distribution over the data points. This bias term plays the role of a latent variable
+that is always active. For a categorical observation space, if we do not have a bias term and
+all latent variables are inactive, the model assumes that all the outcomes are independent
+and equally likely, which is not a suitable assumption in most cases. In our application, the
+bias term is used to model the people that do not suffer from any disorder and it captures
+the baseline diagnosis in the general population. Additionally, this bias term simplifies the
+inference since the latent features of those subjects that are not diagnosed any disorder do
+not need to be sampled.
+Hence, we assume that the probability of each element xnd taking value r (r = 1, . . . , R),
+r , is given by the multiple-logistic function, i.e.,
+denoted by πnd
+r
+πnd
+= p(xnd = r|zn• , Bd , bd0 ) =
+
+exp (zn• bd•r + bd0r )
+
+,
+
+R
+
+exp (zn• bd•r
+
++
+
+bd0r
+
+(2)
+
+)
+
+r =1
+
+where bd•r denotes the rth column of Bd and bd0r denotes the rth element of vector bd0 . Note
+that the matrices Bd are used to weight differently the contribution of each latent feature
+to every component d, similarly as in the standard Gaussian observation model in Griffiths
+and Ghahramani (2011). We assume that the mixing vectors bd•r are Gaussian distributed
+2 I, and the elements bd are also Gaussian
+with zero mean and covariance matrix Σb = σB
+0r
+2
+distributed with zero mean and variance σB . The corresponding graphical model is shown
+in Figure 3.
+
+↵
+2
+B
+
+Z
+Bd
+
+X
+
+bd0
+d = 1, . . . , D
+
+Figure 3: Graphical probabilistic model of the IBP with discrete observations.
+The choice of the observation model in Eq. (2), which combines the multiple-logistic
+function with Gaussian parameters, is based on the fact that it induces dependencies among
+1220
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+r that cannot be captured with other distributions, such as the Dirichthe probabilities πnd
+let distribution (Blei and Lafferty, 2007). Furthermore, this multinomial-logistic normal
+distribution has been widely used to define probability distributions over discrete random
+variables (Williams and Barber, 1998; Blei and Lafferty, 2007).
+We consider that elements xnd are independent given the latent feature matrix Z, the
+weighting matrices Bd and the weighting vectors bd0 . Then, the likelihood for any matrix
+X can be expressed as
+N
+
+D
+
+p(X|Z, B1 , . . . , BD , b10 , . . . , bD
+0 )=
+n=1 d=1
+
+N
+
+p(xnd |zn• , Bd , bd0 ) =
+
+D
+xnd
+.
+πnd
+
+(3)
+
+n=1 d=1
+
+3.1 Laplace Approximation for Gibbs Sampling Inference
+In Section 2, the (heuristic) Gibbs sampling algorithm for posterior inference over the latent
+variables of the IBP, detailed in Griffiths and Ghahramani (2011), has been briefly reviewed.
+To sample from Eq. (1), we need to integrate out Bd and bd0 in (3), as sequentially sampling
+from the posterior distribution of these variables is intractable, for which an approximation
+is required. We rely on the Laplace approximation to integrate out the parameters Bd
+and bd0 for simplicity and ease of implementation. We first consider the finite form of the
+proposed model, where K is bounded.
+We can simplify the notation in Eqs. 2 and 3 by considering an extended latent feature
+matrix Z of size N × (K + 1), in which the elements of the first column are equal to one,
+and D extended weighting matrices Bd of size (K + 1) × R, in which the first row equals
+the vector bd0 . With these definitions, Eq. (2) can be rewritten as
+r
+= p(xnd = r|zn• , Bd ) =
+πnd
+
+exp (zn• bd•r )
+
+.
+
+R
+
+exp (zn• bd•r
+
+)
+
+r =1
+
+Unless otherwise specified, we use the simplified notation throughout this section. For this
+reason, the index k over the latent variables takes the values in {0, 1, . . . , K}, with zn0 = 1
+for all n.
+Recall that our model assumes independence among the observations given the hidden
+latent variables. Then, the posterior p(B1 , . . . , BD |X, Z) factorizes as
+D
+
+p(B1 , . . . , BD |X, Z) =
+
+d=1
+
+D
+
+p(Bd |x•d , Z) =
+
+d=1
+
+p(x•d |Bd , Z)p(Bd )
+.
+p(x•d |Z)
+
+Hence, we only need to deal with each term p(Bd |x•d , Z) individually. The marginal likelihood p(x•d |Z), which we are interested in, can be obtained as
+p(x•d |Z) =
+
+p(x•d |Bd , Z)p(Bd )dBd .
+
+(4)
+
+Although the prior p(Bd ) is Gaussian, due to the non-conjugacy with the likelihood term,
+the computation of this integral, as well as the computation of the posterior p(Bd |x•d , Z),
+turns out to be intractable.
+1221
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+Following a similar procedure as in Gaussian processes for multiclass classification
+(Williams and Barber, 1998), we approximate the posterior p(Bd |x•d , Z) as a Gaussian
+distribution using Laplace’s method. In order to obtain the parameters of the Gaussian
+distribution, we define f (Bd ) as the un-normalized log-posterior of p(Bd |x•d , Z), i.e.,
+f (Bd ) = log p(x•d |Bd , Z) + log p(Bd ).
+
+(5)
+
+As proven in Appendix A, the function f (Bd ) is a strictly concave function of Bd and
+therefore it has a unique maximum, which is reached at BdMAP , denoted by the subscript
+‘MAP’ (maximum a posteriori ) because it coincides with the mean of the Gaussian distribution in the Laplace’s approximation. We resort to Newton’s method to compute BdMAP .
+We stack the columns of Bd into β d , i.e., β d = Bd (:) for avid Matlab users. The
+posterior p(Bd |x•d , Z) can be approximated as
+p(β d |x•d , Z) ≈ N β d β dMAP , (−∇∇f )|βd
+
+MAP
+
+,
+
+where β dMAP contains all the columns of BdMAP stacked into a vector and ∇∇f is the Hessian
+of f (β d ). Hence, by taking the second-order Taylor series expansion of f (β d ) around its
+maximum, the computation of the marginal likelihood in (4) results in a Gaussian integral,
+whose solution can be expressed as
+log p(x•d |Z) ≈ −
+−
+
+1
+d
+d
+2 trace (BMAP ) BMAP
+2σB
+
+1
+2
+log IR(K+1) + σB
+2
+
+N
+n=1
+
+diag(π nd ) − (π nd ) π nd ⊗ (zn• zn• ) + log p(x•d |BdMAP , Z),
+(6)
+
+1 , π 2 , . . . , π R evaluated at Bd = Bd
+where π nd is the vector π nd = πnd
+MAP , and diag(π nd )
+nd
+nd
+is a diagonal matrix with the values of π nd as its diagonal elements.
+Similarly as in Griffiths and Ghahramani (2011), it is straightforward to prove that the
+limit of Eq. (6) is well-defined if Z has an unbounded number of columns, that is, as K → ∞.
+The resulting expression for the marginal likelihood p(x•d |Z) can be readily obtained from
+Eq. (6) by replacing K by K+ , Z by the submatrix containing only the non-zero columns
+of Z, and BdMAP by the submatrix containing the K+ +1 corresponding rows.
+
+3.2 Speeding Up the Matrix Inversion
+In this section, we propose a method that reduces the complexity of computing the inverse
+3 + N R2 K 2 )
+of the Hessian for Newton’s method (as well as its determinant) from O(R3 K+
++
+3
+2
+2
+to O(RK+ + N R K+ ), effectively accelerating the inference procedure for large values of
+R.
+Let us denote with Z the matrix that contains only the K+ + 1 non-zero columns of
+the extended full IBP matrix. The inverse of the Hessian for Newton’s method, as well as
+its determinant in (6), can be efficiently carried out if we rearrange the inverse of ∇∇f as
+follows:
+−1
+
+N
+
+(−∇∇f )
+
+−1
+
+=
+
+D−
+1222
+
+vn vn
+n=1
+
+,
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+where vn = (π nd ) ⊗zn• and D is a block-diagonal matrix, in which each diagonal submatrix
+is given by
+1
+(7)
+Dr = 2 IK+ +1 + Z diag (π r•d ) Z,
+σB
+r , . . . , πr
+with π r•d = π1d
+. Since vn vn is a rank-one matrix, we can apply the WoodNd
+bury identity (Woodbury, 1949) N times to invert the matrix −∇∇f , similar to the RLS
+(Recursive Least Squares) updates (Haykin, 2002). At each iteration n = 1, . . . , N , we
+compute
+−1
+
+(D(n) )−1 = D(n−1) − vn vn
+
+= (D(n−1) )−1 +
+
+(D(n−1) )−1 vn vn (D(n−1) )−1
+.
+1 − vn (D(n−1) )−1 vn
+
+(8)
+
+For the first iteration, we define D(0) as the block-diagonal matrix D, whose inverse
+matrix involves computing the R matrix inversions of size (K+ + 1) × (K+ + 1) of the
+matrices in (7), which can be efficiently solved applying the Matrix Inversion Lemma. After
+N iterations of (8), it turns out that (−∇∇f )−1 = (D(N ) )−1 .
+In practice, there is no need to iterate over all observations, since all subjects sharing
+the same latent feature vector zn• and observation xnd can be grouped together, therefore
+requiring (at most) R2K+ iterations instead of N . In our applications, it provides significant
+savings in run-time complexity, since R2K+
+N.
+For the determinant in (6), similar recursions can be applied using the Matrix Determinant Lemma (Harville, 1997), which states that |D + vu | = (1 + v Du)|D|, and
+|D(0) | = R
+r=1 |Dr |.
+
+4. Variational Inference
+Variational inference provides a complementary (and less expensive in terms of computational complexity) alternative to MCMC methods as a general source of approximation
+methods for inference in large-scale statistical models (Jordan et al., 1999). In this section,
+we adapt the infinite variational approach for the linear-Gaussian model with respect to
+a full IBP prior introduced by Doshi-Velez et al. (2009) to the model proposed in Section 3. This approach assumes the (truncated) stick-breaking construction for the IBP in
+Section 2.1, which bounds the number of columns of the IBP matrix by a finite (but large
+enough) value, K. Then, in the truncated stick-breaking process, ωk = ki=1 vi for k ≤ K
+and zero otherwise.
+2 } and, similarly,
+The hyperparameters of the model are contained in the set H = {α, σB
+Ψ = {Z, B1 , . . . , BD , b10 , . . . , bD
+0 , v1 , . . . , vK } denotes the set of unobserved variables in the
+model. Under the truncated stick-breaking construction for the IBP, the joint probability
+distribution over all the variables p(Ψ, X|H) can be factorized as
+K
+
+N
+
+p(vk |α)
+
+p(Ψ, X|H) =
+k=1
+N
+
+×
+
+n=1
+
+D
+
+p(znk |{vi }ki=1 )
+
+D
+
+n=1 d=1
+
+p(xnd |zn• , Bd , bd0 ),
+1223
+
+d=1
+
+K
+2
+p(bd0 |σB
+)
+
+k=1
+
+2
+p(bdk• |σB
+)
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+where bdk• is the k th row of matrix Bd .
+We approximate p(Ψ|X, H) with the variational distribution q(Ψ) given by
+K
+
+N
+
+q(vk |τk1 , τk2 )
+
+q(Ψ) =
+k=1
+
+n=1
+
+K
+
+q(znk |νnk )
+
+R
+
+D
+
+k=0 r=1 d=1
+
+2
+
+d
+q(bdkr |φdkr , (σkr
+) ),
+
+where the elements of matrix Bd are denoted by bdkr , and
+q(vk |τk1 , τk2 ) = Beta(τk1 , τk2 ),
+2
+
+2
+
+d
+d
+q(bdkr |φdkr , (σkr
+) ) = N (φdkr , (σkr
+) ),
+
+q(znk |νnk ) = Bernoulli(νnk ).
+
+Inference involves optimizing the variational parameters of q(Ψ) to minimize the KullbackLeibler divergence from q(Ψ) to p(Ψ|X, H), i.e., DKL (q||p). This optimization is equivalent
+to maximizing a lower bound on the evidence p(X|H), since
+log p(X|H) = Eq [log p(Ψ, X|H)] + H[q] + DKL (q||p)
+
+(9)
+
+Eq [log p(Ψ, X|H)] + H[q],
+
+where Eq [·] denotes the expectation with respect to the distribution q(Ψ), H[q] is the entropy
+of distribution q(Ψ) and
+K
+
+D
+
+Eq [log p(vk |α)] +
+
+Eq [log p(Ψ, X|H)] =
+
+k=1
+K
+
+D
+
+K
+
+d=1 k=1
+
+2
+) +
+Eq log p(bdk• |σB
+
+N
+
++
+k=1 n=1
+
+N
+
+Eq log p(znk |{vi }ki=1 ) +
+
+d=1
+
+2
+Eq log p(bd0 |σB
+)
+
+D
+
+n=1 d=1
+
+Eq log p(xnd |zn• , Bd , bd0 ) .
+(10)
+
+The derivation of the lower bound in (9) is straightforward, with the exception of the terms
+Eq log p(znk |{vi }ki=1 ) and Eq log p(xnd |zn• , Bd , bd0 ) in (10), which have no closed-form
+solution, so we instead need to bound them. Deriving these bounds leads to a new bound
+L(H, Hq ), which can be obtained in closed-form, such that log p(X|H) ≥ L(H, Hq ), being
+Hq the full set of variational parameters. The final expression for L(H, Hq ), as well as the
+details on the derivation of the bound, are provided in Appendix B.
+In order to maximize the lower bound L(H, Hq ), we need to optimize with respect to
+the value of the variational parameters. To this end, we can iteratively maximize the bound
+with respect to each variational parameter by taking the derivative of L(H, Hq ) and setting
+it to zero. This procedure readily leads to the following fixed-point equations:
+1. For the variational Beta distribution q(vk |τk1 , τk2 ),
+K
+
+N
+
+m=k
+
+n=1
+
+τk1 = α +
+
+K
+
+νnm
+K
+
+τk2 = 1 +
+m=k
+
++
+m=k+1
+
+N
+
+N−
+
+νnm
+
+λmk .
+
+n=1
+
+1224
+
+N
+
+N−
+
+m
+
+νnm
+n=1
+
+λmi
+i=k+1
+
+,
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+2. For the Bernoulli distribution q(znk |νnk ),
+1
+,
+1 + exp(−Ank )
+
+νnk =
+where
+k
+
+k
+
+Ank =
+i=1
+
+[ψ(τi1 ) − ψ(τi1 + τi2 )] −
+k
+
+n=m
+
+d=1
+
+×
+
+ψ(τm1 + τm2 ) −
+R
+
+φdkxnd − ξnd
+
++
+
+k =k
+
+m=1
+
+n=m+1
+
+λkn
+
+ψ(τm1 )
+
+k
+
+λkn
+
+m=1
+D
+
+k
+
+λkm ψ(τm2 ) +
+m=1
+
+k
+
+−
+
+k−1
+
+r=1
+
+λkm log(λkm )
+m=1
+
+1 d 2
+1 − exp φdkr + (σkr
+)
+2
+
+
+1 d 2
+)
+exp φd0r + (σ0r
+2
+
+1
+2
+1 − νnk + νnk exp φdk r + (σkd r )
+2
+
+×
+
+,
+
+and ψ(·) stands for the digamma function (Abramowitz and Stegun, 1972, p. 258–259).
+3. For the feature assignments, which are Bernoulli distributed given the feature probabilities, we have lower bounded Eq log p(znk |{vi }ki=1 ) by using the multinomial approach in Doshi-Velez et al. (2009) (see Appendix B for further details). This approximation introduces the auxiliary multinomial distribution λk = [λk1 , . . . , λkk ], where
+each λki can be updated as
+i−1
+
+λki ∝ exp ψ(τi2 ) +
+
+m=1
+
+i
+
+ψ(τm1 ) −
+
+ψ(τm1 + τm2 ) ,
+m=1
+
+where the proportionality ensures that λk is a valid distribution.
+2
+
+d ) , and
+4. The maximization with respect to the variational parameters φdkr , φd0r , (σkr
+d
+2
+(σ0r ) has no analytical solution, and therefore, we need to resort to a numerical
+method to find the maximum, such as Newton’s method or conjugate gradient algorithm, for which the first and the second derivatives1 (given in Appendix C) are
+required.
+
+5. Finally, we lower bound the likelihood term Eq log p(xnd |zn• , Bd , bd0 ) by resorting to a
+−1
+first-order Taylor series expansion around the auxiliary variables ξnd
+for n = 1, . . . , N
+and d = 1, . . . , D (see Appendix B for further details), which are optimized by the
+expression
+R
+
+ξnd =
+
+exp
+r=1
+
+φd0r
+
+1 d 2
++ (σ0r
+)
+2
+
+K
+k=1
+
+1 − νnk + νnk exp
+
+φdkr
+
+1 d 2
++ (σkr
+)
+2
+
+−1
+
+.
+
+1. Note that the second derivatives are strictly negative and, therefore, the maximum with respect to each
+parameter is unique.
+
+1225
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+5. Experiments
+In this section, we first use a toy example to show how our model with discrete observations
+works and then we turn to two experiments over the NESARC database.
+5.1 Inference over Synthetic Images
+We generate an illustrative example inspired by the example in Griffiths and Ghahramani
+(2011) to show that the proposed model works as expected. We define four base black-andwhite images, shown in Figure 4a, that can be present with probability 0.3, independently
+of the others. These base images are combined to create a binary composite image. We also
+multiply each white pixel independently with equiprobable binary noise, hence each white
+pixel in the composite image can be turned black 50% of the times, while black pixels always
+remain black. We generate 200 observations to learn the IBP model (several examples can
+be found in Figure 4c). The Gibbs sampler has been initialized with K+ = 2, setting each
+2 = 1.
+znk = 1 with probability 1/2, and setting the hyperparameters to α = 0.5 and σB
+After 350 iterations, the Gibbs sampler returns four latent features. Each of the four
+features recovers one of the base images with a different ordering, which is inconsequential.
+In Figure 4b, we have plotted the posterior probability for each pixel being white, when
+only one of the components is active. As expected, the black pixels are known to be black
+(almost zero probability of being white) and the white pixels have about a 50/50 chance of
+being black or white, due to the multiplicative noise. The Gibbs sampler has used as many
+as eleven hidden features, as shown in Figure 4e, but after less than 50 iterations, the first
+four features represent the base images and the others just lock on to a noise pattern, which
+eventually fades away.
+In Figure 4d, we depict the posterior probability of pixels being white for the four
+images in Figure 4c, given the inferred latent feature vectors for these observations. Note
+that the model behaves as expected and properly captures the generative process, even for
+those observations which do not possess any latent features, for which the vectors bd0 do
+not provide significant information about the black-or-white probabilities.
+5.2 Comorbidity Analysis of Psychiatric Disorders
+In the present study, our objective is to provide an alternative to the factor analysis approach
+used by Blanco et al. (2013) with the IBP for discrete observations introduced in the present
+paper. We build an unsupervised model taking the 20 disorders used by Blanco et al. (2013)
+as input data, drawn from the NESARC data.
+The NESARC database was designed to estimate the prevalence of psychiatric disorders,
+as well as their associated features and level of disability. The NESARC had two waves
+of interviews (first wave in 2001-2002 and second wave in 2004-2005). For the following
+experimental results, we only use the data from the first wave, for which 43,093 people were
+selected to represent the U.S. population of 18 years of age and older. Through 2,991 entries,
+the NESARC collects data on the background of participants, alcohol and other drug use
+and use disorders, and other mental disorders. Public use data are currently available for
+this wave of data collection.2
+2. See http://aspe.hhs.gov/hsp/06/catalog-ai-an-na/nesarc.htm
+
+1226
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+12
+
+−4200
+
+10
+
+log p(X|Z)
+
+Number of features (K+)
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+8
+6
+4
+2
+0
+
+50
+
+100
+
+150
+
+200
+
+250
+
+300
+
+350
+
+−4400
+−4600
+−4800
+−5000
+0
+
+Iteration
+
+50
+
+100
+
+150
+
+200
+
+250
+
+300
+
+350
+
+Iteration
+
+(e)
+
+(f)
+
+Figure 4: Experimental results of the infinite binary multinomial-logistic model over the
+image data set. (a) The four base images used to generate the 200 observations.
+(b) Probability of each pixel being white, when a single feature is active (ordered
+to match the images on the left), computed using the matrices BdMAP . (c) Four
+data points generated as described in the text. The numbers above each figure
+indicate which features are present in that image. (d) Probabilities of each pixel
+being white after 350 iterations of the Gibbs sampler inferred for the four data
+points on (c). The numbers above each figure show the inferred value of zn• for
+these data points. (e) The number of latent features K+ and (f) the approximate
+log of p(X|Z) over the 200 iterations of the Gibbs sampler.
+
+The 20 disorders include substance use disorders (alcohol abuse and dependence, drug
+abuse and dependence and nicotine dependence), mood disorders (major depressive disorder (MDD), bipolar disorder and dysthymia), anxiety disorders (panic disorder, social anxiety disorder (SAD), specific phobia and generalized anxiety disorder (GAD)), pathological
+gambling (PG) and seven personality disorders (avoidant, dependent, obsessive-compulsive
+(OC), paranoid, schizoid, histrionic and antisocial personality disorders (PDs)).
+We run the Gibbs sampler over 3, 500 randomly chosen subjects out of the 43,093 participants in the survey, having initialized the sampler with an active feature, i.e., K+ = 1,
+2 = 1. After
+having set znk = 1 randomly with probability 0.5, and fixing α = 1 and σB
+convergence, we run an additional Gibbs sampler with 10 iterations for each of the remaining subjects in the database, restricted to their latent features (that is, we fix the latent
+features learned for the 3, 500 subjects to sample the feature vector of each subject). Then,
+we run additional iterations of the Gibbs sampler over the whole database, finally obtaining
+three latent features. In order to speed up the sampling procedure, we do not sample the
+1227
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+0
+
+10
+
+−1
+
+Probability
+
+10
+
+−2
+
+10
+
+[000]
+[100]
+[010]
+[001]
+Baseline
+
+−3
+
+10
+
+20.
+
+19.
+
+Hist
+ri
+
+onic
+PD
+Ant
+isoc
+ial P
+D
+
+PD
+
+D
+
+oid
+
+oid
+P
+
+Sch
+iz
+18.
+
+nt P
+D
+
+OC
+PD
+
+Par
+an
+17.
+
+16.
+
+t PD
+15.
+
+Dep
+e
+
+nde
+
+idan
+
+PG
+
+Avo
+
+13.
+
+14.
+
+GAD
+
+bia
+pho
+
+12.
+
+SAD
+
+cific
+
+10.
+
+Spe
+11.
+
+isor
+der
+8. D
+ysth
+ymi
+a
+9. P
+anic
+diso
+rder
+
+DD
+
+ar d
+
+6. M
+
+ipol
+7. B
+
+end
+.
+
+end
+.
+
+dep
+
+dep
+
+ine
+5. N
+icot
+
+abu
+
+4. D
+rug
+
+nd.
+
+3. D
+
+rug
+
+e
+
+epe
+
+bus
+
+ol d
+
+ol a
+
+lcoh
+2. A
+
+lcoh
+1. A
+
+se
+
+−4
+
+10
+
+Figure 5: Probabilities of suffering from the 20 considered disorders. These probabilities
+have been obtained using the matrices BdMAP , when none or a single latent feature
+is active. The legend shows the latent feature vector corresponding to each curve.
+The baseline has been obtained taking into account the 43, 093 subjects in the
+database.
+
+rows of Z corresponding to those subjects who do not suffer from any of the 20 disorders,
+but instead fix these latent features to zero. The idea is that the bd0 terms must capture
+the general population that does not suffer from any psychiatric disorder, and we use the
+active components of the matrix Z to characterize the disorders.
+To examine the three latent features, we plot in Figure 5 the posterior probability of
+having each of the considered disorders, when none or one of the latent features is active.
+As expected, for those subjects who do not possess any feature, the probability of having
+any of the disorders is below the baseline level (due to the contribution of the vectors
+bd0 ), defined as the empirical probability in the full sample, that is, taking into account the
+43, 093 participants. Feature 1 increases the probability of having all the disorders, and thus
+seems to represent a general psychopathology factor, although it may particularly increase
+the risk of personality disorders. Feature 2 models substance use disorders and antisocial
+personality disorder, consistent with the externalizing factor identified in previous studies
+of the structure of psychiatric disorders (Krueger, 1999; Kendler et al., 2003; Vollebergh
+et al., 2001; Blanco et al., 2013). Feature 3 models mood or anxiety disorders, and thus
+seems to represent the internalizing factor also identified in previous studies.
+1228
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Feature vector
+Empirical Probability
+
+1 x x
+0.0748
+
+x 1 x
+0.0330
+
+x x 1
+0.0227
+
+1 x 1
+0.0012
+0.0017
+
+x 1 1
+0.0009
+0.0007
+
+(a)
+
+Feature vector
+Empirical Probability
+Product Probability
+
+1 1 x
+0.0028
+0.0025
+(b)
+
+Table 1: Probabilities of possessing at least (a) one latent feature, or (b) two latent features,
+as given in the patterns shown in the heading rows. The symbol ‘x’ denotes either 0
+or 1. The ‘empirical probability’ rows contain the probabilities extracted directly
+from the inferred IBP matrix Z, while the ‘product probability’ row shows the
+product of the corresponding two latent feature probabilities given in (a).
+
+Thus, in accord to previous results from the studies on the latent structure of the
+comorbidity of psychiatric disorders, detailed in Section 1, we find that the patterns of
+comorbidity of common psychiatric disorders can be well described by a small number of
+latent features. In addition, nosologically related disorders, such as social anxiety disorder
+and avoidant personality disorder, tend to be modeled by similar features. As found in
+previous results (Blanco et al., 2013), no disorder is perfectly aligned along one single latent
+feature, therefore suggesting that disorders can develop through multiple etiological paths.
+For instance, the risk of nicotine dependence may be particularly high in individuals with
+a propensity towards externalization or internalization.
+In Table 1a, we first show the empirical probability of possessing each latent feature,
+that is, the number of subjects in the database that possess each latent feature divided by
+the total number of subjects. We also show in Table 1b the probability of possessing at
+least two features as the product of the probabilities in Table 1a (Product Probability),
+and also the empirical probability. We include Table 1 to show that the three features are
+nearly independent of one another, since the probability of possessing any two particular
+features is close to the product of the probabilities of possessing them individually. The
+differences in Table 1b are not statistically significant. Then, besides explicitly capturing
+the probability of each disorder, our model also provides a way to measure independence
+among the latent features. Note that although the proposed model assumes that the latent
+features are independent a priori, we could have found that the empirical probability does
+not correspond to the product one. Therefore, the independence among the three latent
+features follows the model’s assumption and, from a psychiatric perspective, it also shows
+that the three factors (internalizing, externalizing and general psychopathology factor) are
+independent one another, that is, suffering from one group of disorders does not imply an
+increased probability of suffering from any other group of disorders.
+Finally, we remark that we have also applied the variational inference algorithm to study
+the comorbidity patterns of psychiatric disorders but, since both algorithms (the variational
+and the Gibbs sampler) infer the same three latent features, we only plot the results for the
+1229
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+Gibbs sampling algorithm in this section and apply the variational inference algorithm in
+next section.
+5.3 Comorbidity Analysis of Personality Disorders
+In order to identify the seven personality disorders studied in the previous section, psychiatrists have established specific diagnostic criteria for each of them. These criteria correspond to affirmative responses to one or several questions in the NESARC survey and
+this correspondence is shown in Appendix D. Then, there exists a set of criteria to identify if a subject presents any of the following personality disorders: avoidant, dependent,
+obsessive-compulsive, paranoid, schizoid, histrionic and antisocial. In the present analysis,
+we consider as input data the fulfillment of the 52 criteria (i.e., R = 2) corresponding to
+all the disorders for the 43,093 subjects and we apply the variational inference algorithm
+truncated to K = 25 features, as detailed in Section 4, to find the latent structure of the
+data.
+In order to properly initialize the huge amount of variational parameters, we have previously run six Gibbs samplers over the data but taking only the criteria corresponding to
+the avoidant PD and another PD (that is, the seven criteria for the avoidant PD and the
+seven for the dependent PD, the criteria for the avoidant PD with the eight for the OCPD,
+etc.) for 10, 000 randomly chosen subjects. After running the six Gibbs samplers, we obtain 18 latent features that we group in a unique matrix Z to obtain the weighting matrices
+BdMAP , which are used to initialize some parameters νnk and φdkr . We do this because the
+variational algorithm is sensitive to the starting point and a random initialization would
+not produce good solutions.
+We run enough iterations of the variational algorithm to ensure convergence of the
+variational lower bound (the lower bound at each iteration is shown in Figure 6). We
+construct a binary matrix Z by setting each element znk = 1 if νnk > 0.5. We flip (changing
+zeros by ones, and vice versa) those features possessed by more than 80% of the subjects,
+obtaining only 10 latent features possessed by more than 50 subjects among the 43, 093
+in the database and then recomputing the weighting matrices. In Table 2, we show the
+probability of occurrence of each feature (top row), as well as the probability of having
+active only one single feature (bottom row). We also show the ‘empirical’ and the ‘product’
+probabilities of possessing at least two latent features in Table 3, and the probabilities of
+possessing at least two features given that one of them is active in Table 4.
+Features
+Total
+Single feature
+
+1
+43.45
+13.48
+
+2
+19.01
+3.62
+
+3
+15.28
+2.22
+
+4
+13.99
+1.34
+
+5
+11.76
+2.27
+
+6
+8.97
+0.49
+
+7
+7.54
+0.76
+
+8
+6.91
+1.07
+
+9
+1.86
+0
+
+10
+1.43
+0
+
+Table 2: Probabilities (%) of possessing (top row) at least one latent feature, or (bottom
+row) a single feature.
+
+In Figure 7, we plot the probability of meeting each criterion in the general population
+(dashed line) and the probability of meeting each criterion for those subjects that do not
+have any active feature in our model (solid line). There are 15, 185 subjects (35.2% of the
+1230
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Features
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+1
+
+2
+9.92
+
+8.26
+6.64
+6.08
+5.11
+3.90
+3.28
+3.00
+0.81
+0.62
+
+2.90
+2.66
+2.23
+1.71
+1.43
+1.31
+0.35
+0.27
+
+3
+8.96
+4.43
+
+4
+8.48
+4.54
+3.29
+
+2.14
+1.80
+1.37
+1.15
+1.06
+0.28
+0.22
+
+5
+5.67
+3.67
+2.18
+2.79
+
+1.65
+1.26
+1.06
+0.97
+0.26
+0.20
+
+6
+7.22
+1.90
+3.00
+1.91
+1.31
+
+1.05
+0.89
+0.81
+0.22
+0.17
+
+7
+4.92
+1.43
+2.02
+2.39
+1.35
+1.10
+
+0.68
+0.62
+0.17
+0.13
+
+0.52
+0.14
+0.11
+
+8
+3.85
+2.08
+1.58
+1.40
+0.85
+0.80
+0.65
+0.13
+0.10
+
+9
+1.46
+0.71
+0.54
+1.25
+0.57
+0.44
+0.28
+0.51
+
+10
+1.42
+0.21
+0.20
+0.03
+0.00
+0.14
+0.00
+0.07
+0.00
+
+0.03
+
+Table 3: Probabilities (%) of possessing at least two latent features. The elements above
+the diagonal correspond to the ‘empirical probability’, that is, extracted directly
+from the inferred IBP matrix Z, and the elements below the diagonal correspond
+to the ‘product probability’ of the corresponding two latent feature probabilities
+given in the first row of Table 2.
+
+population) which do not present any active feature, and for these people the probability
+of meeting any criterion is reduced significantly.
+We have found results that are in accordance with previous studies and at the same
+time provide new information to understand personality disorders. Out of the 10 features,
+6 of them directly describe personality disorders. Feature 1 increases the probability of
+fulfilling the criteria for OCPD, Feature 3 increases the probability of fulfilling the criteria
+for antisocial, Feature 4 increases the probability of fulfilling the criteria for paranoid,
+Feature 5 increases the probability of meeting the criteria for schizoid, Feature 8 increases
+the probability of fulfilling the criteria for histrionic and Feature 7 increases the probability
+of meeting the criteria for avoidant and dependent. In Figure 8, we plot the probability
+ratio between the probability of meeting each criterion when a single feature is active with
+respect to the probability of meeting each criterion in the general population (baseline in
+6
+
+Vartaitional lower bound
+
+−0.5
+
+x 10
+
+−1
+
+−1.5
+
+−2
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+35
+
+40
+
+Iteration
+
+Figure 6: Variational lower bound L(H, Hq ) at each iteration.
+1231
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+❍❍
+
+k1
+
+k
+
+❍ 2
+❍❍
+❍
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+100
+52.19
+58.68
+60.63
+48.22
+80.47
+65.26
+55.62
+78.46
+99.19
+
+22.83
+100
+29.03
+32.47
+31.25
+21.18
+18.92
+30.11
+38.23
+14.40
+
+20.63
+23.33
+100
+23.52
+18.57
+33.47
+26.83
+22.86
+28.77
+13.75
+
+19.53
+23.90
+21.54
+100
+23.77
+21.29
+31.63
+20.28
+67.00
+1.94
+
+13.05
+19.32
+14.29
+19.97
+100
+14.56
+17.91
+12.32
+30.76
+0.00
+
+16.62
+10.00
+19.66
+13.65
+11.11
+100
+14.55
+11.58
+23.41
+9.55
+
+11.33
+7.51
+13.25
+17.05
+11.49
+12.23
+100
+9.43
+14.82
+0.16
+
+8.85
+10.95
+10.34
+10.02
+7.24
+8.92
+8.65
+100
+27.40
+5.18
+
+3.37
+3.75
+3.51
+8.92
+4.88
+4.86
+3.66
+7.39
+100
+0.16
+
+3.27
+1.09
+1.29
+0.20
+0.00
+1.53
+0.03
+1.07
+0.12
+100
+
+Table 4: Probabilities (%) of possessing at least features k1 and k2 given that k1 is active,
+N
+N
+i.e.,
+n=1 znk1 znk2 /
+n=1 znk1 .
+
+0.5
+
+Baseline
+None
+
+Probability
+
+0.4
+0.3
+0.2
+
+OCPD
+AvPD
+
+0.1
+0
+
+SPD
+
+1234567
+
+APD
+PPD
+HPD
+
+DPD
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 7: Probability of meeting each criterion. The probabilities when no latent feature
+is active (solid curve) have been obtained using the matrices BdMAP , while the
+baseline (dashed curve) has been obtained taking into account the 43, 093 subjects
+in the database.
+(AvPD=Avoidant PD, DPD=Dependent PD, OCPD=Obsessive-compulsive PD,
+PPD=Paranoid PD, SPD=Schizoid PD, HPD=Histrionic PD, APD=Antisocial
+PD)
+
+Figure 7). So, if the ratio is above one, it means that the feature increases the probability
+of meeting that criterion with respect to the general population. In all these plots, we also
+show the probability ratio between not having any active feature and the general population,
+which serves as a reference for a low probability of fulfilling a criterion. Note that the scale
+on the vertical axis may be different through all the figures for a better display. In Figure 8,
+we can see that only the criteria for one of the personality disorders is systematically above
+one, when one feature is active, except for Feature 7 that increases the probability for both
+avoidant and dependent. In the figure, we can also notice that when one feature is active
+1232
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Prob. Ratio
+
+2
+
+None
+F1
+F4
+
+PPD
+
+1.5
+
+DPD
+
+1
+
+SPD
+
+OCPD
+
+HPD
+APD
+
+AvPD
+0.5
+0
+
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Prob. Ratio
+
+5
+4
+3
+
+HPD
+
+None
+F3
+F8
+
+APD
+2
+1
+0
+
+AvPD
+1234567
+
+DPD
+12345678
+
+OCPD
+12345678
+
+PPD
+
+SPD
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Prob. Ratio
+
+4
+
+None
+F5
+F7
+
+3
+
+DPD
+
+SPD
+
+2
+1
+0
+
+AvPD
+
+HPD
+
+OCPD
+PPD
+
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+APD
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 8: Probability ratio of meeting each criterion, with respect to the baseline. These
+probabilities have been obtained using the matrices BdMAP , when none or a single
+feature is active (the legend shows the active latent features).
+
+the probability of the criteria for the other disorders is above the probability for the subjects
+that do not have any active feature, although lower than the general population (above the
+solid line and below one). It partially shows the comorbidity pattern for each personality
+disorder. For example, Feature 1, besides increasing the probability of meeting the criteria
+for OCPD, also increases the probability of meeting criterion 3 for schizoid and criterion
+1 for histrionic. It is also important to point out that Feature 8 increases significantly the
+probability of meeting criteria 1, 2, 4 and 6 for histrionic (and mildly for criterion 7), but
+it does not affect criteria 3, 5 and 8, although the probability of meeting these criteria are
+increased by Feature 4 (paranoid) and Feature 5 (schizoid). In a way, it indicates that
+criteria 3 and 8 are more related to paranoid disorder and criterion 5 to schizoid disorder.
+As seen in Figure 9, Features 2 and 6 mainly reduce the probability of meeting the criteria
+for dependent PD. Feature 2 also reduces criteria 4-7 for avoidant and mildly increases
+1233
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+Prob. Ratio
+
+1.5
+
+1
+
+AvPD
+
+0.5
+
+0
+
+None
+F2
+F6
+
+DPD
+1234567
+
+12345678
+
+SPD
+
+APD
+HPD
+
+OCPD
+
+12345678
+
+PPD
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 9: Probability ratio of meeting each criterion, with respect to the baseline. These
+probabilities have been obtained using the matrices BdMAP , when none or a single
+feature is active (the legend shows the active latent features).
+
+criterion 1 for OCPD, criterion 6 for schizoid and criteria 5 and 6 for antisocial. Feature
+6 also reduces some criteria below the probability for the subjects with no active features.
+But for most of the criteria the probability ratio moves between one and the ratio for the
+subjects with no active feature. When these features appear by themselves, the subjects
+might be similar to the subjects without any active feature, they become relevant when they
+appear together with other features. These features are less likely to be isolated features
+than the previous ones, as reported in Table 2. For example, Feature 2 appears frequently
+with Features 1, 3, 4 and 5, as shown in Table 4, and the probability ratios are plotted
+in Figure 10 and compared to the probability ratio when each feature is not accompanied
+by Feature 2. We can see that when we add Feature 2 to Feature 1, the comorbidity
+pattern changes significantly and it results in subjects with higher probabilities of meeting
+the criteria for every other disorder except avoidant and dependent. Additionally, when we
+add Feature 2 to Feature 5, we can see that meeting the criteria for schizoid is even more
+probable, together with criterion 5 for histrionic.
+Either Feature 1 or Features 1 and 3 typically accompany Feature 6, and Feature 6 is
+seldom seen by itself (see Tables 2 and 5). In Figure 11, we show the probability ratio
+when Feature 1 is active and when Features 1 and 3 are active, as reference, and when we
+add Feature 6 to them. Adding Feature 6 mainly reduces the probability of meeting the
+criteria for dependent. It is also relevant to point out that Features 1 and 3 increase the
+probability of meeting the criteria 5 and 6 for paranoid, while Feature 4 mainly increased
+the probability of meeting the criteria 1-4 for paranoid personality disorder, as shown in
+Figure 8.
+Feature 9 is similar to Feature 7, as it captures an increase in the probability of meeting
+the criteria for avoidant and dependent, but it never appears isolated and most times it
+appears together with Features 1 and 4.
+Feature 10 never appears isolated and it mainly appears only with Feature 1. This
+feature by itself only indicates that the probability of all the criteria should be much lower
+than the subjects with no active features, except for antisocial, which behaves as the subjects
+with no active features. When we add Feature 1 to Feature 10, we get that the probability
+of meeting the criteria for OCDP goes to that of the subject with no active features, as can
+1234
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Prob. Ratio
+
+4
+
+None
+F1
+F1 & F2
+
+3
+
+OCPD
+SPD
+
+2
+1
+0
+
+HPD
+
+APD
+
+12345678
+
+1234567
+
+PPD
+
+DPD
+AvPD
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+Criterion
+
+Prob. Ratio
+
+10
+
+None
+F3
+F3 & F2
+
+8
+6
+
+APD
+
+4
+2
+0
+
+AvPD
+1234567
+
+DPD
+
+OCPD
+
+PPD
+
+12345678
+
+12345678
+
+1234567
+
+SPD
+1234567
+
+HPD
+12345678
+
+1234567
+
+Criterion
+
+Prob. Ratio
+
+4
+3
+
+PPD
+
+None
+F4
+F4 & F2
+
+SPD
+
+2
+1
+0
+
+AvPD
+
+DPD
+
+1234567
+
+12345678
+
+APD
+HPD
+
+OCPD
+12345678
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+4
+
+Prob. Ratio
+
+SPD
+
+None
+F5
+F5 & F2
+
+3
+
+HPD
+
+2
+1
+0
+
+AvPD
+
+DPD
+
+OCPD
+
+PPD
+
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+APD
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 10: Probability ratio of meeting each criterion, with respect to the baseline. These
+probabilities have been obtained using the matrices BdMAP , when none, a single
+or two features are active (the legend shows the active latent features).
+
+be seen in Figure 12. For us this is a spurious feature that is equivalent to not having any
+active feature and that the variational algorithm has not been able to eliminate. This is
+always a risk when working with flexible models, like BNP, in which a spurious component
+1235
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+Prob. Ratio
+
+2.5
+2
+1.5
+1
+
+None
+F1
+F1 & F6
+
+AvPD
+
+OCPD
+
+PPD
+SPD
+
+HPD
+
+1234567
+
+12345678
+
+APD
+
+DPD
+
+0.5
+0
+
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+Criterion
+6
+
+Prob. Ratio
+
+5
+4
+3
+
+APD
+
+None
+F1 & F3
+F1, F3 & F6
+
+AvPD
+
+DPD
+
+OCPD
+
+PPD
+SPD
+
+2
+
+HPD
+
+1
+0
+
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 11: Probability ratio of meeting each criterion, with respect to the baseline. These
+probabilities have been obtained using the matrices BdMAP , when none, a single
+or several features are active (the legend shows the active latent features).
+
+Prob. Ratio
+
+1
+0.8
+0.6
+
+None
+F1 & F10
+F10
+
+OCPD
+
+0.4
+0.2
+0
+
+APD
+SPD
+
+AvPD
+
+DPD
+
+1234567
+
+12345678
+
+HPD
+PPD
+
+12345678
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 12: Probability ratio of meeting each criterion, with respect to the baseline. These
+probabilities have been obtained using the matrices BdMAP , when none, a single
+or two features are active (the legend shows the active latent features).
+
+might appear when it should not. These components can be eliminated by common sense
+in most cases or by further analysis by experts (psychiatric experts in our case). But it
+can also indicate an unknown component that can point towards a new research direction
+previously unknown, which is one of the attractive features of using generative models.
+Besides the comorbidity patterns shown by the individual features that we have already
+reported, we can also see that almost all the features are positively correlated. In Table 3, we
+1236
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+12
+
+None
+F4
+F4 & F7
+
+Prob. Ratio
+
+10
+8
+
+AvPD
+6
+
+DPD
+
+4
+2
+0
+
+PPD
+SPD
+
+OCPD
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+HPD
+12345678
+
+APD
+1234567
+
+Criterion
+12
+
+None
+F4
+F4 & F9
+
+Prob. Ratio
+
+10
+
+PPD
+
+8
+6
+
+AvPD
+
+DPD
+HPD
+
+4
+
+SPD
+
+0
+
+APD
+
+OCPD
+
+2
+1234567
+
+12345678
+
+12345678
+
+1234567
+
+1234567
+
+12345678
+
+1234567
+
+Criterion
+
+Figure 13: Probability ratio of meeting each criterion, with respect to the baseline. These
+probabilities have been obtained using the matrices BdMAP , when none, a single
+or two features are active (the legend shows the active latent features).
+
+show the probability that any two features appear together (upper triangular sub-matrix)
+and the joint probability that we should observe if the features were independent (lower
+triangular sub-matrix). Ignoring Feature 10, all of the other features are positively correlated, except Features 2 and 7 and Features 8 and 5 that seem uncorrelated (the differences
+are not statistically significant). Most of the features are strongly correlated and the differences in Table 3 correspond to several standard deviations higher (between 3 and 42)
+that we should expect from independent random observations. For example, the correlation between Features 4 and 9 and Features 4 and 7 is quite high and both show subjects
+with higher probability of meeting the criteria for avoidant, dependent and paranoid. The
+difference between Features 7 and 9 is given by the criteria 1-4 for paranoid PD, that are
+significantly increased by Feature 9 and slightly by Feature 7, as it can be seen in Figure 13.
+Finally, it is worth mentioning that Feature 4 (paranoid) is the most highly correlated feature with all the others, so we can say that anyone suffering from paranoid PD has a higher
+comorbidity with any other personality disorder.
+
+6. Conclusions
+In this paper, we have proposed a new model that combines the IBP with discrete observations using the multinomial-logit distribution. We have used the Laplace approximation
+to integrate out the weighting factors, which allows us to efficiently run the Gibbs sampler.
+1237
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+# Occurrences
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+
+15185
+5811
+1561
+1389
+1021
+977
+958
+956
+946
+687
+576
+553
+495
+486
+460
+451
+438
+414
+385
+370
+
+1
+0
+1
+0
+1
+1
+0
+1
+0
+1
+1
+0
+1
+0
+1
+0
+0
+1
+1
+0
+1
+
+2
+0
+0
+1
+1
+0
+0
+0
+0
+0
+0
+0
+0
+1
+0
+0
+1
+0
+0
+1
+1
+
+3
+0
+0
+0
+0
+1
+0
+0
+1
+0
+0
+0
+0
+0
+0
+0
+1
+0
+1
+0
+0
+
+4
+0
+0
+0
+0
+0
+0
+0
+0
+1
+0
+1
+0
+0
+0
+0
+0
+0
+0
+1
+1
+
+Features
+5 6 7
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+1 0 0
+0 1 0
+0 0 0
+0 0 0
+1 0 0
+0 0 0
+0 0 1
+1 0 0
+0 0 0
+0 0 0
+0 0 0
+0 0 0
+0 1 0
+0 0 0
+0 0 0
+
+8
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+0
+0
+0
+0
+0
+
+9
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+10
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+0
+0
+0
+
+Table 5: List of the 20 most common feature patterns.
+We have also derived a variational inference algorithm, which allows dealing with larger
+databases and provides accurate results.
+We have applied our model to the NESARC database to find out the hidden features
+that characterize the psychiatric disorders. First, we have used the Gibbs sampler to extract
+the latent structure behind 20 of the most common psychiatric disorders. As a result, we
+have found that the comorbidity patterns of these psychiatric disorders can be described
+by only three latent features, which mainly model the internalizing disorders, the externalizing disorders, and a general psychopathology factor. Additionally, we have applied
+the variational inference algorithm to analyze the relation among the 52 criteria defined by
+the psychiatrists to diagnose each of the seven personality disorders (that is, externalizing
+disorders). We have obtained that for most of the disorders, a latent feature appears to
+model all the criteria that characterize that particular disorder. In this experiment, we have
+also seen that avoidant and dependent PDs are jointly modeled by four features, and that
+paranoid disorder is the most highly correlated PD with all the others.
+
+1238
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Acknowledgments
+Francisco J. R. Ruiz is supported by an FPU fellowship from the Spanish Ministry of Education (AP2010-5333), Isabel Valera is supported by the Plan Regional-Programas I+D of
+Comunidad de Madrid (AGES-CM S2010/BMD-2422), Fernando P´erez-Cruz has been partially supported by a Salvador de Madariaga grant, and Carlos Blanco acknowledges NIH
+grants (DA019606 and DA023200) and the New York State Psychiatric Institute for their
+support. The authors also acknowledge the support of Ministerio de Ciencia e Innovaci´
+on
+of Spain (projects DEIPRO TEC2009-14504-C02-00, ALCIT TEC2012-38800-C03-01, and
+program Consolider-Ingenio 2010 CSD2008-00010 COMONSENS). This work was also supported by the European Union 7th Framework Programme through the Marie Curie Initial
+Training Network “Machine Learning for Personalized Medicine” MLPM2012, Grant No.
+316861.
+
+Appendix A. Laplace Approximation Details
+In this section we provide the necessary details for the implementation of the Laplace
+approximation proposed in Section 3.1. The expression in (5) can be rewritten as
+N
+d
+
+d
+
+f (B ) = trace M
+
+d
+
+B
+
+−
+
+R
+
+exp(zn• bd•r )
+
+log
+n=1
+
+r=1
+
+1
+R(K + 1)
+2
+− 2 trace Bd Bd −
+log(2πσB
+),
+2
+2σB
+where (Md )kr counts the number of data points for which xnd = r and znk = 1, namely,
+(Md )kr = N
+n=1 δ(xnd = r)znk , where δ(·) is the Kronecker delta function. By definition,
+N
+d
+(M )0r = n=1 δ(xnd = r).
+N
+r
+znk πnd
+, the gradient of f (Bd ) can be derived as
+
+By defining (ρd )kr =
+n=1
+
+∇f = Md − ρd −
+
+1 d
+2 B .
+σB
+
+To compute the Hessian, it is easier to define the gradient ∇f as a vector, instead of a
+matrix, and hence we stack the columns of Bd into β d , i.e., β d = Bd (:) for avid Matlab users.
+The Hessian matrix can now be readily computed taking the derivatives of the gradient,
+yielding
+∇∇f = −
+
+1
+d
+2 IR(K+1) + ∇∇ log p(x•d |β , Z)
+σB
+N
+
+=−
+
+1
+diag(π nd ) − (π nd ) π nd ⊗ (zn• zn• ),
+2 IR(K+1) −
+σB
+n=1
+
+1 , π2 , . . . , πR
+where diag(π nd ) is a diagonal matrix with the values of the vector π nd = πnd
+nd
+nd
+as its diagonal elements.
+
+1239
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+Finally, note that, since p(x•d |β d , Z) is a log-concave function of β d (Boyd and Vandenberghe, 2004, p. 87), −∇∇f is a positive definite matrix, which guarantees that the
+maximum of f (β d ) is unique.
+
+Appendix B. Lower Bound Derivation
+In this section we derive the lower bound L(H, Hq ) on the evidence p(X|H). From Eq. (9),
+log p(X|H) = Eq [log p(Ψ, X|H)] + H[q] + DKL (q||p)
+Eq [log p(Ψ, X|H)] + H[q].
+The expectation Eq [log p(Ψ, X|H)] can be derived as
+K
+
+D
+
+Eq [log p(Ψ, X|H)] =
+k=1
+
+Eq [log p(vk |α)] +
+
+K
+
+1
+
+K
+
+d=1 k=1
+
+D
+2
+Eq log p(bdk• |σB
+)
+
+k=1 n=1
+
+d=1
+
+2
+Eq log p(bd0 |σB
+)
+
+2
+
+N
+
++
+
++
+
+N
+
+Eq log p(znk |{vi }ki=1 ) +
+
+3
+D
+
+n=1 d=1
+
+Eq log p(xnd |zn• , Bd , bd0 ) ,
+
+4
+
+5
+
+(11)
+where each term can be computed as shown below:
+1. For the Beta distribution over vk ,
+Eq [log p(vk |α)] = log(α) + (α − 1) [ψ(τk1 ) − ψ(τk1 + τk2 )] .
+2. For the Gaussian distribution over vectors bdk• ,
+2
+Eq log p(bdk• |σB
+)
+
+1
+R
+2
+)− 2
+= − log(2πσB
+2
+2σB
+
+R
+
+R
+
+(φdkr )2
+
+2
+
+d
+(σkr
+)
+
++
+
+r=1
+
+r=1
+
+R
+
+R
+
+.
+
+3. For the Gaussian distribution over bd0 ,
+2
+Eq log p(bd0 |σB
+) =−
+
+R
+1
+2
+log(2πσB
+)− 2
+2
+2σB
+
+(φd0r )2 +
+r=1
+
+d 2
+(σ0r
+)
+
+.
+
+r=1
+
+4. For the feature assignments, which are Bernoulli distributed given the feature probabilities, we have
+k
+
+Eq log p(znk |{vi }ki=1 ) =(1 − νnk )Eq log 1 −
+
+vi
+i=1
+
+k
+
++ νnk
+i=1
+
+1240
+
+[ψ(τi1 ) − ψ(τi1 + τi2 )] ,
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+where the expectation Eq log 1 − ki=1 vi has no closed-form solution. We can instead lower bound it by using the multinomial approach (Doshi-Velez et al., 2009). Under this approach, we introduce an auxiliary multinomial distribution λk = [λk1 , . . . , λkk ]
+in the expectation and apply Jensen’s inequality, yielding
+k
+
+Eq log 1 −
+
+k
+
+vi
+i=1
+
+≥
+
+k−1
+
+k
+
+m=1
+
+n=m+1
+
+λkm ψ(τm2 ) +
+m=1
+k
+
+−
+
+λkn
+
+ψ(τm1 )
+
+k
+
+k
+
+λkn
+n=m
+
+m=1
+
+ψ(τm1 + τm2 ) −
+
+λkm log(λkm ),
+m=1
+
+which holds for any distribution represented by the probabilities λk1 , . . . , λkk , for
+1 ≤ k ≤ K. Then,
+k
+
+Eq log p(znk |{vi }ki=1 )
+
+≥ (1 − νnk )
+
+k
+
+m=1
+
+n=m+1
+
+λkm ψ(τm2 ) +
+m=1
+
+k
+
+−
+
+k−1
+
+λkn
+
+k
+
+k
+
+λkn
+n=m
+
+m=1
+
+ψ(τm1 )
+
+ψ(τm1 + τm2 ) −
+
+λkm log(λkm )
+m=1
+
+k
+
+[ψ(τi1 ) − ψ(τi1 + τi2 )] .
+
++ νnk
+i=1
+
+5. For the likelihood term, we can write
+K
+d
+
+Eq log p(xnd |zn• , B
+
+, bd0 )
+
+=
+
+R
+
+φd0xnd +
+k=1
+
+νnk φdkxnd −Eq
+
+exp(zn• bd•r + bd0r )
+
+log
+
+,
+
+r=1
+
+where the logarithm can be upper bounded by its first-order Taylor series expansion
+−1
+(for n = 1, . . . , N and d = 1, . . . , D) (Blei and
+around the auxiliary variable ξnd
+Lafferty, 2007; Bouchard, 2007), yielding
+R
+
+R
+
+exp(zn• bd•r
+
+log
+r=1
+
++
+
+bd0r )
+
+exp(zn• bd•r + bd0r )
+
+≤ ξnd
+
+r=1
+
+− log(ξnd ) − 1.
+
+The main advantage of this bound lies on the fact that it allows us to compute the
+expectation of the bound for the Gaussian distribution, since it involves the moment
+generating functions of the distributions q(bd•r ) and q(bd0r ). Then, we can lower bound
+the likelihood term as
+K
+
+Eq log p(xnd |zn• , Bd , bd0 ) ≥ φd0xnd +
+R
+
+− ξnd
+
+r=1
+
+1 d 2
+exp φd0r + (σ0r
+)
+2
+
+νnk φdkxnd + log(ξnd ) + 1
+
+k=1
+K
+
+k=1
+
+1241
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+.
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+Substituting the previous results in (11), we obtain
+
+K
+
+Eq [log p(Ψ, X|H)] ≥
+
+k=1
+
+−
+
+[log(α) + (α − 1) (ψ(τk1 ) − ψ(τk1 + τk2 ))]
+
+1
+R(K + 1)D
+2
+log(2πσB
+)− 2
+2
+2σB
+N
+
+K
+
++
+
+K
+
+D
+
+R
+d
+(φdkr )2 + (σkr
+)
+
+k=0 d=1 r=1
+
+k
+
+νnk
+n=1 k=1
+
+i=1
+
+[ψ(τi1 ) − ψ(τi1 + τi2 )]
+k
+
++(1 − νnk )
+−
+N
+
+k
+
+m=1
+
+n=m
+
+k
+
+m=1
+
+n=m+1
+
+λkn
+
+ψ(τm1 )
+
+k
+
+λkn
+
+ψ(τm1 + τm2 ) −
+
+λkm log(λkm )
+m=1
+
+K
+
+φd0xnd +
+n=1 d=1
+
+νnk φdkxnd + log(ξnd ) + 1
+k=1
+
+R
+
+−ξnd
+
+k−1
+
+λkm ψ(τm2 ) +
+m=1
+
+k
+
+D
+
++
+
+2
+
+1 d 2
+)
++ (σ0r
+2
+
+φd0r
+
+exp
+r=1
+
+K
+k=1
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+.
+
+Additionally, the entropy of the distribution q(Ψ) is given by
+
+H[q] = Eq [log q(Ψ)]
+K
+
+=
+k=1
+K
+
+D
+
+Eq [log q(vk |τk1 , τk2 )] +
+
+=
+
+log
+k=1
+D
+
+R
+
+Γ(τk1 )Γ(τk2 )
+Γ(τk1 + τk2 )
+K
+
++
+d=1 r=1 k=0
+
+R
+
+K
+
+d=1 r=1 k=0
+
+d 2
+Eq log q(bdkr |φdkr , (σkr
+) )
+
+N
+
+K
+
++
+n=1 k=1
+
+Eq [log q(znk |νnk )]
+
+− (τk1 − 1)ψ(τk1 ) − (τk2 − 1)ψ(τk2 ) + (τk1 + τk2 − 2)ψ(τk1 + τk2 )
+
+1
+d 2
+log(2πe(σkr
+) )+
+2
+
+N
+
+K
+
+n=1 k=1
+
+[−νnk log(νnk ) − (1 − νnk ) log(1 − νnk )] .
+
+1242
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Finally, we obtain the lower bound on the evidence p(X|H) as
+log p(X|H) ≥ Eq [log p(Ψ, X|H)] + H[q]
+K
+
+≥
+
+k=1
+
+−
+
+[log(α) + (α − 1) (ψ(τk1 ) − ψ(τk1 + τk2 ))]
+
+R(K + 1)D
+1
+2
+log(2πσB
+)− 2
+2
+2σB
+N
+
+K
+
++
+
+K
+
+D
+
+R
+
+k=0 d=1 r=1
+
+k
+
+νnk
+n=1 k=1
+
+i=1
+
+[ψ(τi1 ) − ψ(τi1 + τi2 )]
+k
+
++(1 − νnk )
+−
+N
+
+r=1
+
+m=1
+
+ψ(τm1 )
+
+n=m+1
+k
+
+m=1
+
+n=m
+
+λkn
+
+ψ(τm1 + τm2 ) −
+
+λkm log(λkm )
+m=1
+
+νnk φdkxnd + log(ξnd ) + 1
+
++
+
+1 d 2
+)
+exp φd0r + (σ0r
+2
+Γ(τk1 )Γ(τk2 )
+Γ(τk1 + τk2 )
+
+log
+k=1
+D R
+
+λkn
+
+k=1
+
+K
+
++
+
+k
+
+K
+
+n=1 d=1
+
+−ξnd
+
+m=1
+
+k
+
+φd0xnd
+R
+
+k−1
+
+λkm ψ(τm2 ) +
+
+k
+
+D
+
++
+
+2
+
+d
+(φdkr )2 + (σkr
+)
+
+K
+
++
+d=1 r=1 k=0
+
+K
+k=1
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+− (τk1 − 1)ψ(τk1 ) − (τk2 − 1)ψ(τk2 ) + (τk1 + τk2 − 2)ψ(τk1 + τk2 )
+
+1
+d 2
+) )+
+log(2πe(σkr
+2
+
+N
+
+K
+
+n=1 k=1
+
+[−νnk log(νnk ) − (1 − νnk ) log(1 − νnk )]
+
+= L(H, Hq ),
+2
+
+d ) , (σ d )2 } (for k = 1, . . . , K, m = 1, . . . , k,
+where Hq = {τk1 , τk2 , λkm , ξnd , νnk , φdkr , φd0r , (σkr
+0r
+d = 1, . . . , D, and n = 1, . . . , N ) represents the set of the variational parameters.
+
+Appendix C. Derivatives for Newton’s Method
+2
+
+d ) ) for k = 1, . . . , K,
+- For the parameters of the Gaussian distribution q(bdkr |φdkr , (σkr
+N
+
+∂
+1
+1 d 2
+1 d 2
+L(H, Hq ) = − 2 φdkr +
+νnk δ(xnd = r) − νnk ξnd exp φd0r + (σ0r
+) exp φdkr + (σkr
+)
+d
+2
+2
+σB
+∂φkr
+n=1
+×
+
+k =k
+
+1
+1 − νnk + νnk exp φdk r + (σkd r )2
+2
+1243
+
+.
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+N
+
+1
+∂2
+1 d 2
+1 d 2
+L(H, Hq ) = − 2 −
+νnk ξnd exp φd0r + (σ0r
+) exp φdkr + (σkr
+)
+d
+2
+2
+2
+σB n=1
+∂(φkr )
+×
+
+1
+1 − νnk + νnk exp φdk r + (σkd r )2
+2
+
+k =k
+
+.
+
+N
+
+∂
+
+1 d 2
+1 d 2
+1
+1 d −2 1
+νnk ξnd exp φd0r + (σ0r
+L(H, Hq ) = − 2 + (σkr
+) −
+) exp φdkr + (σkr
+)
+2
+d )
+2
+2
+2
+2
+2σB
+∂(σkr
+n=1
+×
+
+k =k
+
+1
+1 − νnk + νnk exp φdk r + (σkd r )2
+2
+
+.
+
+N
+
+∂2
+
+1 d −4 1
+1 d 2
+1 d 2
+L(H, Hq ) = − (σkr
+) −
+νnk ξnd exp φd0r + (σ0r
+) exp φdkr + (σkr
+)
+2
+d ) )2
+2
+4
+2
+2
+(∂(σkr
+n=1
+×
+
+k =k
+
+1
+1 − νnk + νnk exp φdk r + (σkd r )2
+2
+
+.
+
+d )2 ),
+- For the parameters of the Gaussian distribution q(bd0r |φd0r , (σ0r
+
+∂
+L(H, Hq )
+∂φd0r
+
+K
+
+N
+
+=−
+
+1 d
+1 d 2
+)
+φ0r +
+δ(xnd = r) − ξnd exp φd0r + (σ0r
+2
+2
+σB
+n=1
+
+k=1
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+.
+
+∂2
+L(H, Hq )
+(∂φd0r )2
+N
+
+=−
+
+1
+1 d 2
+ξnd exp φd0r + (σ0r
+)
+2 −
+2
+σB
+n=1
+
+K
+k=1
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+.
+
+∂
+L(H, Hq )
+d )2
+∂(σ0r
+N
+
+1
+1 d 2
+1 d −2 1
+= − 2 + (σ0r
+) −
+ξnd exp φd0r + (σ0r
+)
+2
+2
+2
+2σB
+n=1
+
+K
+k=1
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+∂2
+L(H, Hq )
+d )2 )2
+(∂(σ0r
+1 d −4 1
+= − (σ0r
+) −
+2
+4
+
+N
+n=1
+
+1 d 2
+ξnd exp φd0r + (σ0r
+)
+2
+
+1244
+
+K
+k=1
+
+1 d 2
+1 − νnk + νnk exp φdkr + (σkr
+)
+2
+
+.
+
+.
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+Appendix D. Correspondence Between Criteria and Questions in
+NESARC
+Question Code
+S10Q1A1-S10Q1B7
+S10Q1A8-S10Q1B15
+S10Q1A16-S10Q1B17
+S10Q1A18-S10Q1B23
+S10Q1A24-S10Q1B25
+S10Q1A26-S10Q1B29
+S10Q1A30-S10Q1A31
+S10Q1A32-S10Q1B33
+S10Q1A45-S10Q1B46
+S10Q1A47-S10Q1B48
+S10Q1A50-S10Q1B50
+S10Q1A43-S10Q1B43
+S10Q1A51-S10Q1B52
+S10Q1A49-S10Q1B49 or S10Q1A53-S10Q1B53
+S10Q1A54-S10Q1B54 or S10Q1A56-S10Q1B56
+S10Q1A58-S10Q1B58 or S10Q1A60-S10Q1B60
+S10Q1A55-S10Q1B55
+S10Q1A61-S10Q1B61
+S10Q1A64-S10Q1B64
+S10Q1A59-S10Q1B59 or S10Q1A62-S10Q1B62
+S10Q1A63-S10Q1B63
+S10Q1A57-S10Q1B57
+S11Q1A20-S11Q1A25
+S11Q1A11- S11Q1A13
+S11Q1A8- S11Q1A10
+S11Q1A17- S11Q1A18
+S11Q1A26- S11Q1A33
+S11Q1A14- S11Q1A16
+S11Q1A6 and S11Q1A19
+S11Q8A-B
+
+Personality disorder and criterion
+Avoidant (1 question for each diagnostic criterion)
+Dependent (1 question for each diagnostic criterion)
+OCPD criterion 1
+OCPD criteria 2-7
+OCPD criterion 8
+Paranoid criteria 1-4
+Paranoid criterion 5
+Paranoid criteria 6-7
+Schizoid criterion 1
+Schizoid criteria 2-3
+Schizoid criterion 4
+Schizoid criterion 5
+Schizoid criterion 6
+Schizoid criterion 7
+Histrionic criterion 1
+Histrionic criterion 2
+Histrionic criterion 3
+Histrionic criterion 4
+Histrionic criterion 5
+Histrionic criterion 6
+Histrionic criterion 7
+Histrionic criterion 8
+Antisocial, criterion 1
+Antisocial, criterion 2
+Antisocial, criterion 3
+Antisocial, criterion 4
+Antisocial, criterion 4
+Antisocial, criterion 5
+Antisocial, criterion 6
+Antisocial, criterion 7
+
+Table 6: Correspondence between the criteria for each personality disorder and questions
+in NESARC.
+
+References
+M. Abramowitz and I. A. Stegun. Handbook of Mathematical Functions with Formulas,
+Graphs, and Mathematical Tables. Dover Publications, New York, 1972.
+´
+D. Aldous. Exchangeability and related topics. In Ecole
+d’´et´e de Probabilit´es de Saint-Flour,
+XIII—1983, pages 1–198. Springer, Berlin, 1985.
+1245
+
+Ruiz, Valera, Blanco and Perez-Cruz
+
+C. Blanco, R. F. Krueger, D. S. Hasin, S. M. Liu, S. Wang, B. T. Kerridge, T. Saha, and
+M. Olfson. Mapping common psychiatric disorders: Structure and predictive validity in
+the National Epidemiologic Survey on Alcohol and Related Conditions. Journal of the
+American Medical Association Psychiatry, 70(2):199–208, 2013.
+D. M. Blei and J. D. Lafferty. A correlated topic model of Science. Annals of Applied
+Statistics, 1(1):17–35, August 2007.
+G. Bouchard. Efficient bounds for the softmax and applications to approximate inference in
+hybrid models. Advances in Neural Information Processing Systems (NIPS), Workshop
+on Approximate Inference in Hybrid Models, 2007.
+S. Boyd and L. Vandenberghe. Convex Optimization. Cambridge University Press, March
+2004.
+F. Doshi-Velez, K. T. Miller, J. Van Gael, and Y. W. Teh. Variational inference for the
+Indian buffet process, 2009.
+T. L. Griffiths and Z. Ghahramani. The Indian buffet process: an introduction and review.
+Journal of Machine Learning Research, 12:1185–1224, 2011.
+D. A. Harville. Matrix Algebra From a Statistician’s Perspective. Springer-Verlag, 1997.
+S. Haykin. Adaptive Filter Theory. Prentice Hall, 2002.
+M. I. Jordan. Hierarchical models, nested models and completely random measures. In
+M.-H. Chen, D. Dey, P. Mueller, D. Sun, and K. Ye, editors, Frontiers of Statistical
+Decision Making and Bayesian Analysis: In Honor of James O. Berger. Springer, New
+York, (NY), 2010.
+M. I. Jordan, Z. Ghahramani, T. S. Jaakkola, and L. K. Saul. An introduction to variational
+methods for graphical models. Machine Learning, 37(2):183–233, November 1999.
+K. S. Kendler, C. A. Prescott, J. Myers, and M. C. Neale. The structure of genetic and
+environmental risk factors for common psychiatric and substance use disorders in men
+and women. Archives of General Psychiatry, 60(9):929–937, Sep 2003.
+R. Kotov, C. J. Ruggero, R. F. Krueger, D. Watson, Q. Yuan, and M. Zimmerman. New
+dimensions in the quantitative classification of mental illness. Archives of General Psychiatry, 68(10):1003–1011, 2011.
+R. F. Krueger. The structure of common mental disorders. Archives of General Psychiatry,
+56(10):921–926, 1999.
+F. J. R. Ruiz, I. Valera, C. Blanco, and F. Perez-Cruz. Bayesian nonparametric modeling
+of suicide attempts. Advances in Neural Information Processing Systems (NIPS), 25:
+1862–1870, 2012.
+Y. W. Teh, D. G¨
+or¨
+ur, and Z. Ghahramani. Stick-breaking construction for the Indian
+buffet process. In Proceedings of the International Conference on Artificial Intelligence
+and Statistics, volume 11, 2007.
+1246
+
+Bayesian Nonparametric Comorbidity Analysis of Psychiatric Disorders
+
+M. Titsias. The infinite gamma-Poisson feature model. Advances in Neural Information
+Processing Systems (NIPS), 19, 2007.
+J. M. Valderas, B. Starfield, B. Sibbald, C. Salisbury, and M. Roland. Defining comorbidity:
+implications for understanding health and health services. Annals of Family Medicine, 7
+(4):357–363, 2009.
+J. Van Gael, Y. W. Teh, and Z. Ghahramani. The infinite factorial hidden Markov model.
+In Advances in Neural Information Processing Systems (NIPS), volume 21, 2009.
+W. A. Vollebergh, J. Ledema, R.V. Bijl, R. de Graaf, F. Smit, and J. Ormel. The structure
+and stability of common mental disorders: the NEMESIS study. Archives of General
+Psychiatry, 58(6):597–603, Jun 2001.
+C. K. I. Williams and D. Barber. Bayesian classification with Gaussian processes. IEEE
+Transactions on Pattern Analysis and Machine Intelligence, 20:1342–1351, 1998.
+S. Williamson, C. Wang, K. A. Heller, and D. M. Blei. The IBP compound Dirichlet process
+and its application to focused topic modeling. In International Conference on Machine
+Learning (ICML), pages 1151–1158, 2010.
+J. L. Wolff, B. Starfield, and G. Anderson. Prevalence, expenditures, and complications
+of multiple chronic conditions in the elderly. Archives of Internal Medicine, 162(20):
+2269–2276, 2002.
+M. A. Woodbury. The stability of out-input matrices. Mathematical Reviews, 1949.
+
+1247
+
+

@@ -1,0 +1,5292 @@
+Journal of Machine Learning Research 15 (2014) 1-58
+
+Submitted 7/10; Revised 7/12; Published 1/14
+
+Bridging Viterbi and Posterior Decoding: A Generalized
+Risk Approach to Hidden Path Inference Based on Hidden
+Markov Models
+J¨
+uri Lember
+
+juri.lember@ut.ee
+
+Institute of Mathematical Statistics
+Tartu University
+J. Liivi 2-507, Tartu, 50409, Estonia
+
+Alexey A. Koloydenko
+
+alexey.koloydenko@rhul.ac.uk
+
+Department of Mathematics
+Royal Holloway University of London
+Egham, TW20 0EX, UK
+
+Editor: Richard Maclin
+
+Abstract
+Motivated by the unceasing interest in hidden Markov models (HMMs), this paper reexamines hidden path inference in these models, using primarily a risk-based framework.
+While the most common maximum a posteriori (MAP), or Viterbi, path estimator and the
+minimum error, or Posterior Decoder (PD) have long been around, other path estimators,
+or decoders, have been either only hinted at or applied more recently and in dedicated
+applications generally unfamiliar to the statistical learning community. Over a decade
+ago, however, a family of algorithmically defined decoders aiming to hybridize the two
+standard ones was proposed elsewhere. The present paper gives a careful analysis of this
+hybridization approach, identifies several problems and issues with it and other previously
+proposed approaches, and proposes practical resolutions of those. Furthermore, simple
+modifications of the classical criteria for hidden path recognition are shown to lead to a
+new class of decoders. Dynamic programming algorithms to compute these decoders in
+the usual forward-backward manner are presented. A particularly interesting subclass of
+such estimators can be also viewed as hybrids of the MAP and PD estimators. Similar to
+previously proposed MAP-PD hybrids, the new class is parameterized by a small number of
+tunable parameters. Unlike their algorithmic predecessors, the new risk-based decoders are
+more clearly interpretable, and, most importantly, work “out-of-the box” in practice, which
+is demonstrated on some real bioinformatics tasks and data. Some further generalizations
+and applications are discussed in the conclusion.
+Keywords: admissible path, decoder, HMM, hybrid, interpolation, MAP sequence, minimum error, optimal accuracy, power transform, risk, segmental classification, symbol-bysymbol, posterior decoding, Viterbi algorithm
+
+1. Introduction
+Besides their classical and traditional applications in signal processing and communications
+(Viterbi, 1967; Bahl et al., 1974; Hayes et al., 1982; Brushe et al., 1998) (see also further
+references in Capp´e et al., 2005) and speech recognition (Huang et al., 1990; Jelinek, 1976,
+c 2014 J¨
+uri Lember and Alexey A. Koloydenko.
+
+Lember and Koloydenko
+
+2001; McDermott and Hazen, 2004; Ney et al., 1994; Padmanabhan and Picheny, 2002;
+Rabiner and Juang, 1993; Rabiner et al., 1986; Shu et al., 2003; Steinbiss et al., 1995; Str¨om
+et al., 1999), hidden Markov models have recently become indispensable in computational
+biology and bioinformatics (Burge and Karlin, 1997; Durbin et al., 1998; Eddy, 2004; Krogh,
+1998; Brejov´
+a et al., 2007b; Majoros and Ohler, 2007) as well as in natural language modeling
+(Manning and Sch¨
+utze, 1999; Vogel et al., 1996) and information security (Mason et al.,
+2006).
+At the same time, their spatial extensions, known as hidden Markov random field models
+(HMRFM), have been immensely influential in spatial statistics (Besag and Green, 1993;
+Green and Richardson, 2002; K¨
+unsch et al., 1995; McGrory et al., 2009), and particularly
+in image analysis, restoration, and segmentation (Besag, 1986; Geman and Geman, 1984;
+Li et al., 2000; Marroquin et al., 2003; Winkler, 2003). Indeed, hidden Markov models have
+been called ‘one of the most successful statistical modeling ideas that have [emerged] in the
+last forty years’ (Capp´e et al., 2005).
+HM(RF)Ms owe much of their success to the following: The posterior distribution of the
+hidden layer inherits the Markov property from the prior distribution (although the posterior
+distribution is generally inhomogeneous even if the prior distribution is homogeneous). At
+the same time, the marginal law of the observed layer can still include global, that is nonMarkovian, dependence, hence the richness of the observed system (K¨
+unsch et al., 1995).
+The Markov property of the posterior distribution and the conditional independence
+of the observed variables given the hidden ones, have naturally led to a number of computationally feasible methods for inference about the hidden realizations as well as model
+parameters. HMMs are also naturally a special case of graphical models (Lauritzen, 1996;
+Bishop, 2006, Chap. 8).
+HMMs, or one dimensional HMRFMs, have been particularly popular not least due to
+the fact that the linear order of the indexing set (usually associated with time) makes exploration of hidden realizations relatively straightforward from the computational viewpoint.
+In contrast, higher dimensional HMRFMs generally require approximate, possibly stochastic, techniques in order to compute optimal configurations of the hidden field (CocozzaThivent and Bekkhoucha, 1993; Joshi et al., 2006; Winkler, 2003; McGrory et al., 2009).
+In particular, a maximum a posteriori (MAP) estimator of the hidden layer of an HMM is
+efficiently and exactly computed by a dynamic programming algorithm bearing the name
+of Viterbi, whereas a general higher dimensional HMRFM would employ, for example, a
+simulated annealing type method (Geman and Geman, 1984; Winkler, 2003) to produce
+approximate solutions to the same task.
+There are also various useful extensions of the ordinary HMM, such as variable duration
+semi-Markov models, coupled HMMs (Brand et al., 1997), and factorial HMMs (Bishop,
+2006, Chap. 13), etc. All of the material in this paper is applicable to those extensions in
+a straightforward way. However, to simplify the exposition we focus below on the ordinary
+HMM.
+1.1 Notation and Main Ingredients
+We adopt the machine and statistical learning convention, referring to the hidden and
+observed processes as Y and X, respectively, in effect reversing the convention that is more
+2
+
+Bridging Viterbi and Posterior Decoding
+
+commonly used in the HMM context. Thus, let Y = {Yt }t≥1 be a Markov chain with state
+space S = {1, . . . , K}, K > 1, and initial probabilities πs = P (Y1 = s), s ∈ S. Although we
+include inhomogeneous chains in most of what follows, for brevity we will still be suppressing
+the time index wherever this does not cause ambiguity. Hence, we write P = (pij )i,j∈S for
+all transition matrices. Let X = {Xt }t≥1 be a process with the following properties. First,
+given {Yt }t≥1 , the random variables {Xt }t≥1 are conditionally independent. Second, for
+each t = 1, 2, . . ., the distribution of Xt depends on {Yt }t≥1 (and t) only through Yt . The
+process X is sometimes called the hidden Markov process (HMP) and the pair (Y, X) is
+referred to as a hidden Markov model (HMM). The name is motivated by the assumption
+that the process Y (sometimes called a regime) is generally non-observable. The conditional
+distribution of X1 given Y1 = s is called an emission distribution, written as Ps , s ∈ S. We
+shall assume that the emission distributions are defined on a measurable space (X , B), where
+X is usually Rd and B is the corresponding Borel σ-algebra. Without loss of generality, we
+assume that the measures Ps have densities fs with respect to some reference measure λ,
+such as the counting or Lebesgue measure.
+Given a set A, integers m and n, m < n, and a sequence a1 , a2 , . . . ∈ A∞ , we write
+n
+am for the subsequence (am , . . . , an ). When m = 1, it will be often suppressed. Thus,
+xT := (x1 , . . . , xT ) and y T := (y1 , . . . , yT ) stand for the fixed observed and unobserved
+realizations, respectively, of the HMM (Xt , Yt )t≥1 up to time T ≥ 1. Any sequence sT ∈ S T
+is called a path. This parallel notation (that is, sT in addition to y T ) is necessitated largely
+by our forthcoming discussion of various loss functions, which do require two arguments.
+We shall denote the joint probability density of (xT , y T ) by p(xT , y T ), that is,
+T
+
+p(xT , y T ) := P(Y T = y T )
+
+fyt (xt ).
+t=1
+
+To make mathematical expressions more compact, we overload the notation when this causes
+no ambiguity. Thus, p(sT ) stands for the probability mass function P(Y T = sT ) of path
+sT , and p(xT ) stands for the (unconditional) probability density function sT ∈S T p(xT , sT )
+of the observed data xT . Furthermore, we write pt (s) and pt (s | xT ) for P (Yt = s) and
+P Yt = s | X T = xT , respectively. It is standard (see Bishop, 2006, Chap. 13; Ephraim
+and Merhav, 2002; Capp´e et al., 2005) in this context to define the so-called forward and
+backward variables
+αt (s) := p(xt | Yt = s)P (Yt = s), βt (s) :=
+
+1,
+if t = T
+,
+p(xTt+1 | Yt = s), if t < T
+
+(1)
+
+where p(xt | Yt = s) and p(xTt+1 | Yt = s) are the conditional densities of the data segments
+xt and xTt+1 , respectively, given Yt = s.
+1.2 Path Estimation
+Our focus here is estimation of the hidden path y T . This task can also be viewed as
+segmentation of the data sequence into regions with distinct class labels (Lember et al.,
+2011). Treating y T as missing data (Rabiner, 1989), or parameters, a classical and by far
+the most popular solution to this task is to maximize p(xT , sT ) in sT ∈ S T . Often, especially
+3
+
+Lember and Koloydenko
+
+in the digital communication literature (Lin and Costello Jr., 1983; Brushe et al., 1998),
+p(xT , sT ) is called the likelihood function which might become potentially problematic in
+the presence of any genuine model parameters. Such “maximum likelihood” paths are also
+called Viterbi paths or Viterbi alignments after the Viterbi algorithm (Viterbi, 1967; Rabiner,
+1989) commonly used for their computation. If p(sT ) is thought of as the prior distribution
+of Y T , then the Viterbi path also maximizes p(sT | xT ) := P(Y T = sT | X T = xT ), the
+probability mass function of the posterior distribution of Y T , hence the term ‘maximum a
+posteriori (MAP) path’.
+
+In spite of its computational attractiveness, inference based on the Viterbi paths may
+be unsatisfactory for a number of reasons, including its sub-optimality with regard to the
+number of correctly estimated states yt . Also, using the language of information theory,
+there is no reason to expect a Viterbi path to be typical (Lember and Koloydenko, 2010).
+Indeed, “there might be many similar paths through the model with probabilities that add
+up to a higher probability than the single most probable path” (K¨all et al., 2005). The fact
+that a MAP estimate need not be representative of the posterior distribution has also been
+recently discussed in a more general context by Carvalho and Lawrence (2008). Atypicality
+of Viterbi paths particularly concerns situations when estimation of y T is combined with
+inference about model parameters, such as the transition probabilities pij (Lember and
+Koloydenko, 2010). Even when estimating, say, the probability of heads from independent
+tosses of a biased coin, we naturally hope to observe a typical realization and not the
+constant one of maximum probability.
+
+An alternative and very natural way to estimate y T is by maximizing the posterior probability pt (s | xT ) of each individual hidden state Yt , 1 ≤ t ≤ T (Bahl et al., 1974). We refer
+to the corresponding estimator as pointwise maximum a posteriori (PMAP). PMAP is wellknown to maximize the expected number of correctly estimated states (Section 2), hence
+the characterization ‘optimal accuracy’ (Holmes and Durbin, 1998). In statistics, especially
+spatial statistics and image analysis, this type of estimation is known as Marginal Posterior
+Mode (Winkler, 2003) or Maximum Posterior Marginals (Rue, 1995) (MPM) estimation.
+This is also known as the posterior decoding (PD) in computational biology (Brejov´a et al.,
+2007b) and machine translation (Ganchev et al., 2008), and has been reported to be particularly successful in pairwise sequence alignment (Holmes and Durbin, 1998) and when
+more than one path has its posterior probability as “high” or nearly as “high” as that of the
+Viterbi path (Eddy, 2004). In the wider context of biological applications of discrete highdimensional probability models, this has also been called consensus estimation, and in the
+absence of constraints, centroid estimation (Carvalho and Lawrence, 2008). In communications applications of HMMs, largely influenced by the BCJR algorithm (Bahl et al., 1974),
+the terms ‘optimal symbol-by-symbol detection’ (Hayes et al., 1982), ‘symbol-by-symbol MAP
+estimation’ (Robertson et al., 1995), and ‘MAP state estimation’ (Brushe et al., 1998) have
+been used for this. Remarkably, even before observing the data, optimal accuracy (that is,
+based on the prior instead of the posterior distribution) decoding can still be more accurate
+than the Viterbi decoding (Subsection 5.4).
+4
+
+Bridging Viterbi and Posterior Decoding
+
+1.2.1 How Different are PMAP and MAP Inferences and How Much Room is
+in between the Two?
+This is a natural question in both practice and theory, especially for anyone interested
+in improving performance of applications based on these methods while maintaining their
+computational attractiveness.
+A not so uncommon misconception that the difference between PMAP and Viterbi
+inferences is negligible may in part be explained by the concluding remark made by Bahl
+et al. (1974) in the special context of linear codes: “Even though Viterbi decoding is not
+optimal in the sense of bit error rate, in most applications of interest the performance of both
+[PMAP and Viterbi] algorithms would be effectively identical.” This conclusion may in turn
+be explained by the dominance of binary chains in the telecommunication applications, and
+the binary state space indeed leaves too little room for the two inferences to differ. However,
+as HMMs with larger state spaces gained more prominence, it became clear that appreciable
+differences between the PMAP and Viterbi inferences do occur (see, for example, Ganchev
+et al., 2008). In fact, already two decades after Bahl et al. (1974), Brushe et al. (1998)
+contemplated hybridization of the PMAP and Viterbi decoders, writing “Indeed, there may
+be applications where a delicate performance dependence exists between [the Viterbi and
+PMAP] estimates. In such cases, the use of a hybrid scheme . . . may result in performance
+gains.” We return to their idea later in this paper.
+Although interesting comparisons of the PMAP and Viterbi decoders on special tasks
+(e.g., Ganchev et al., 2008), have been recently reported, we are not aware of any systematic
+general studies of the two decoders that would exploit such comparisons in order to design
+new interesting hybrid schemes. Soon after the first version of this article was posted on
+arXiv, however, Yau and Holmes (2010) reported similar interests in this subject, supported
+by real and simulated examples. Of course, it has long been well-known (Rabiner, 1989) that
+despite being optimal in the sense of maximizing the expected number of correctly estimated
+states, a PMAP path can at the same time have very low, possibly zero, probability. Thus,
+on the logarithmic scale, the difference in path probabilities between the PMAP and Viterbi
+decoders can easily be infinite. In Section 5, we give a real data example with only six hidden
+states to show that besides the infinite difference in the log-probabilities, the two decoders
+can differ significantly (by more than 13%) in accuracy. This could have been expected if
+the data were indeed generated by an HMM and if that same HMM were used for decoding.
+However, when the model is misspecified, which is very common in practice, empirical
+performance measures, such as the symbol-by-symbol error rate, are generally biased as
+estimators of corresponding model based expected performance measures. In particular, in
+such situations there is no guarantee that the PMAP decoding is empirically more accurate
+than MAP. Although these points are fairly straightforward, we felt, especially during the
+reviewing process, that some readers might still appreciate a concrete illustration, which we
+give in Section 5. Other readers can simply glance over Section 5 without interrupting the
+overall flow of the manuscript.
+It is actually not difficult to constrain the PMAP decoder to admissible paths (Subsection
+2.2.1), where admissibility is defined relative to the posterior distribution. Specifically,
+given xT , a path y T is called admissible if its posterior probability p(y T | xT ) is defined and
+positive, that is, if p(xT , y T ) > 0. We then point out that constraining the PMAP decoder
+5
+
+Lember and Koloydenko
+
+to the paths of positive prior probability, as already done by others (see more below), is not
+sufficient (albeit necessary) for admissibility of the PMAP paths. Note that in a slightly
+more general form allowing for state aggregation, K¨all et al. (2005) do exactly this, that is,
+force PMAP paths to have positive prior probability, referring to the result as “a possible
+path through the model”. Thus, K¨all et al. (2005) appear to ignore that having a positive
+prior probability is not sufficient in general for a PMAP path to be “a possible path through
+the model”, unless, of course, “the model” is to be understood as the hidden Markov chain
+only and not the whole HMM. We will refer to the PMAP decoder constrained to the
+admissible paths as the admissibly constrained PMAP, or, simply constrained PMAP. This
+also details and clarifies our earlier discussion of admissibility (Lember et al., 2011, Section
+2), which, like Rabiner (1989); K¨
+all et al. (2005), also ignored the distinction between a
+priori and a posteriori modes of admissibility.
+A variation on the same idea of making PMAP paths admissible has been applied
+for prediction of membrane proteins, giving rise to the posterior Viterbi decoding (PVD)
+(Fariselli et al., 2005). PVD, however, maximizes the product Tt=1 pt (st | xT ) (Fariselli
+et al., 2005) (and also Equation 9 below) and not the sum Tt=1 pt (st | xT ), whereas the two
+criteria are no longer equivalent in the presence of path constraints (Subsection 2.2.1). While
+acknowledging this latter distinction between their decoder and PVD and not distinguishing
+between the prior and posterior modes of admissibility, K¨all et al. (2005) appear to be
+unaware of the other distinction between their decoder and PVD: PVD paths are guaranteed
+to be of not only positive prior probability but also of positive posterior probability, that
+is, admissible (in our sense of the term). Holmes and Durbin (1998) proposed a PMAP
+decoder to compute optimal pairwise sequence alignments. Holmes and Durbin (1998) used
+the term “legitimate alignment”, which suggests admissibility, but the description of their
+algorithm (Holmes and Durbin, 1998, Section 3.8) appears to be insufficiently detailed to
+verify if the output is guaranteed to be admissible, or only of positive prior probability, or,
+if inadmissible solutions are altogether an issue in that context.
+Our own experiments (Section 5) show that both PVD and constrained PMAP decoder
+can return paths of very low (posterior) probabilities. Moreover, in many applications,
+for example, gene identification and protein secondary structure prediction, the pointwise
+(e.g., nucleotide level) error rate is not necessarily the main measure of accuracy (see also
+Subsection 1.2.2 below), hence the constrained PMAP need not be an ultimate answer
+in that respect either. Together with the above problem of atypicality of MAP paths,
+this has been addressed by moving from single path inference towards envelopes (Holmes
+and Durbin, 1998). Thus, for example, in computational biology a common approach
+would be to aggregate individual states into a smaller number of semantic labels (e.g.,
+codon, intron, intergenic). In effect, this would realize the notion of path similarity by
+mapping many “similar” state paths to a single label path, or annotation (Krogh, 1997;
+K¨all et al., 2005; Fariselli et al., 2005; Brejov´a et al., 2007b). However, since this mapping
+would usually be many-to-one (what Brejov´a et al., 2007a refer to as the “multiple path
+problem”), the annotation of the Viterbi path would generally be inferior to the optimal (in
+the MAP sense) annotation. On the other hand, to compute the MAP annotation in many
+practically important HMMs can be NP-hard (Brejov´a et al., 2007a) (which is not surprizing
+given that the coarsened hidden chain on the set of labels is generally no longer Markov).
+Unlike the Viterbi/MAP decoder, the PMAP decoder, owing it to its symbol-by-symbol
+6
+
+Bridging Viterbi and Posterior Decoding
+
+nature, handles annotations as easily as it does state paths, including the enforcement of
+admissibility. Interpreting admissibility relative to the prior distribution, this was shown
+by K¨all et al. (2005), and this paper extends their result to admissible (that is, of positive
+posterior probability) paths and indicates further extensions (Section 8).
+A number of alternative heuristic approaches are also known in computational biology,
+but none appears to be fully satisfactory (Brejov´a et al., 2007b). Overall, although the
+original Viterbi decoder has still been the most popular paradigm in many applications,
+and in computational biology in particular, alternative approaches have often demonstrated
+significantly better performance, for example, in predicting various biological features. For
+example, Krogh (1997) suggested the 1-best algorithm for optimal labeling. More recently,
+Fariselli et al. (2005) have demonstrated PVD to be superior to the 1-best algorithm, and,
+not surprisingly, to the Viterbi and PMAP decoders, on tasks of predicting membrane
+proteins.
+Thus, a starting point of this contribution was that restricting the PMAP decoder to
+admissible paths is but one of numerous ways to combine the strong points of the MAP
+and PMAP path estimators. Indeed, the popular seminal tutorial (Rabiner, 1989) briefly
+mentions maximization of the expected number of correctly decoded (overlapping) blocks
+of length two or three, rather than single states as a sensible remedy against vanishing
+probabilities (albeit leaving it unclear if prior or posterior probability was meant). With
+k ≥ 1 and y T (k) being the block length and corresponding path estimate, respectively, this
+approach yields Viterbi inference as k increases to T (with y T (1) corresponding to PMAP).
+Therefore, this could be interpreted as discrete interpolation between the PMAP and Viterbi
+inferences. Intuitively, following Rabiner’s logic, one might also expect p(xT , y T (k)) to
+increase with k. However, this is not true and it is possible for the decoder with k = 2 to
+produce an inadmissible (with the prior probability being also zero) path y T (2) while the
+PMAP path is admissible: p(xT , y T (2)) = 0 = p(y T (2)) < p(xT , y T (1)). We are not aware
+of this observation being previously made in the literature. Moreover, our experiments in
+Section 5 show that this situation is far from being uncommon.
+On a related note, concerned with the same deficiencies of the MAP and PMAP inferences, Yau and Holmes (2010) have most recently also used the decision-theoretic framework
+to allow for full asymmetry in the otherwise symmetric pairwise loss (Equation 30 below
+with k = 2) that underpins the y T (2) inference. This is no doubt a very natural extension
+to provide to the end user, and (partially) asymmetric pairwise losses had indeed been incorporated in a prominent web-server in the context of RNA secondary structure prediction
+(Sato et al., 2009).
+Despite the possibility of y T (2) or its asymmetric siblings to be inadmissible, we find
+the idea of interpolation between the PMAP and Viterbi inferences very interesting. Besides Yau and Holmes (2010) acknowledging the need for intermediate modes of inference,
+to the best of our knowledge, the only published work that explicitly proposed such an
+interpolation is that of Brushe et al. (1998). However, the approach of Brushe et al. (1998)
+is algorithmic, which makes it difficult to interpret its paths in general and analyze their
+properties (e.g., asymptotic behavior in particular). More importantly, Brushe et al. (1998)
+claim that the family of their interpolating decoders will work in practice, which, as we
+explain in detail in Section 6, need not be true apart from trivial situations. Despite these
+7
+
+Lember and Koloydenko
+
+and other deficiencies of their approach, it raises some interesting questions and inspires
+interesting modifications, which we also discuss in Section 6. It had not been our original
+intention to dwell on the algorithmic approach in this manuscript as this approach is peripheral to the present theme of the risk-based approach. However, encouraged by some
+of the reviewers and taking into account their queries on and interest in that particular
+discussion, we have now made that discussion into a full section (Section 6), which might,
+however, appear somewhat hypertrophied to some readers.
+
+1.2.2 Further Motivation
+One other motivation for considering new decoders is that unlike the error rate or path
+probability, analytic optimization of other performance measures (e.g., Matthew’s correlation Aydin et al., 2006, Q2 , Qok , SOV Fariselli et al., 2005, etc.) used in practice is difficult
+if at all possible. Having a large family of computationally efficient decoders, such as the
+new generalized hybrid decoders, and using some training data, one can select empirically
+a member from the family that optimizes the performance measure of interest. More generally, it seems advantageous for applications to be aware of the new choices of decoders and
+their properties.
+Also, depending on the application, the emphasis sometimes shifts from purely automatic decoding with hard decisions to data exploration. Indeed, some performance measures
+may be hard to formalize and subsequently hard to compute. For example, an estimated
+path can be deemed correct if it is only structurally identical to the true path, say, conforming to the description “a long run of 1’s followed by a short run of 2’s followed by a
+long run of alternating 2’s and 3’s”. It is then particularly valuable to gain insights into the
+topology of the state space in the sense of identifying compartments of high concentration
+of the posterior distribution. The significance of identifying clusters (of similar sequences)
+of high (total) posterior probability in high-dimensional discrete spaces has been recently
+discussed by Carvalho and Lawrence (2008), and a thorough discussion of the advantages
+of topological and geometric approaches to analysis of complex data in general has more
+recently been given by Carlsson (2009). Thus, it may be beneficial to output a family of
+related decodings instead of one or several (“N best”) decodings that are optimal relative
+to a single criterion such as MAP. For instance, by slowly varying the optimization criterion
+(e.g., decreasing the penalty for false discovery of rare states or transitions), saliency of detections of interesting features can be assessed and a better understanding of a neighborhood
+of solutions can be gained (e.g., discerning between an “archipelago” and a “continent”),
+all without having to compute, or even define explicitly, a path similarity measure (such
+as those based on, for example, BLAST scores Altschul et al., 1990). At the same time,
+by varying the optimization criteria more aggressively, alternative structures might be encountered coming from neighborhoods of remote (say, in the Hamming distance sense) local
+maxima of the posterior distribution. Viewed within this context, this relatively inexpensive
+type of “neighborhood” inference might become alternative or complementary to the direct
+sampling (from the posterior distribution); see also Section 5 and Section 8.
+8
+
+Bridging Viterbi and Posterior Decoding
+
+1.3 Further Notation and Organization of the Rest of the Paper
+In this paper, we consider the path inference problem in the more general framework of
+statistical learning. Namely, we consider sequence classifier mappings
+g : X T → ST ,
+
+T = 1, 2, . . . ,
+
+and optimality criteria for their selection. When all g’s are obtained using the same decoding principle, or optimality criterion, regardless of T , we refer to them collectively as a
+classification method, or simply, decoder. This will be the case in this paper, and therefore
+we simplify the notation by writing g(xT ) instead of g(xT ; T ) or the like. In Section 2,
+criteria for optimality of g are naturally formulated in terms of risk minimization whereby
+R(sT | xT ), the risk of of outputting path sT , derives from a suitable loss function. A Bayes
+decoder, that is one that minimizes R(g(xT ) | xT ) over all possible g, will be denoted by v
+with a suitable reference to the risk R. In Section 3, we consider families of risk functions
+which naturally generalize those corresponding to the Viterbi and PMAP solutions (Subsection 2.1). There we will need the full two argument notation v(xT ; ·) using the second
+argument to single out an individual member of such a family. Furthermore, as shown
+in Section 4, these risk functions define a family of path decoders v(xT ; k) parameterized
+by an integer k with k = 1 and k → ∞ corresponding to the PMAP and Viterbi cases,
+respectively (Theorem 6). A continuous mapping via k = 1/(1 − α), 0 ≤ α ≤ 1 compactifies
+this parameterization and further enriches the solution space by including fractional k. It
+is then discussed how the new family of decoders can be embedded into yet a wider class
+with a principled criterion of optimality. We also compare the new family of decoders with
+the Rabiner k-block approach. Any decoder would only be of theoretical interest if it could
+not be efficiently computed. In Section 3, we show that all of the newly defined decoders
+can be implemented efficiently as a dynamic programming algorithm in the usual forwardbackward manner with essentially the same (computational as well as memory) complexity
+as the PMAP or Viterbi decoders (Theorem 4). Recent advances in the asymptotic theory
+of some of the main decoders and risks presented in this paper are reviewed in Section 7
+together with sketches of how these may be relevant in practice. Various further extensions
+are discussed in the concluding Section 8.
+1.4 Contributions of the Paper
+We review HMM-based decoding within the sound framework of statistical decision theory,
+and do so notably more broadly than has been done before, for example, in the prominent
+work of Carvalho and Lawrence (2008). We also investigate thoroughly previous work on
+combining the desirable properties of the two most common decoders, that is the Viterbi and
+optimal accuracy decoders. In doing so, we discover several relevant claims and suggestions
+to be unjustified, misleading, or plainly incorrect. We explain in detail those deficiencies,
+giving relevant counterexamples, and show how they can be resolved. Some such resolutions
+are naturally left within the native frameworks of the originals, whereas others are more
+naturally given within the general risk-based framework. All of the resulting decoders are
+shown to be easily implementable within the usual forward-backward computational frameworks of the optimal accuracy and Viterbi decoders. We argue that the richness, flexibility,
+9
+
+Lember and Koloydenko
+
+and analytic interpretation of the resulting families of decoders offer new possibilities for
+applications and invite further theoretical analysis. Specifically, this paper
+1) clarifies the definition of admissibility of hidden paths and shows that, when constrained to the paths of positive prior probability, the optimal accuracy decoding can
+still return inadmissible paths;
+2) shows that the suggestion of Rabiner (1989) to maximize the expected rate of
+correctly recognized blocks can lead to inadmissible paths for blocks of size two, and
+therefore can be misleading;
+3) proposes suitable risk functions to “repair” the above suggestion, and subsequently
+designs new families of computationally efficient decoders, providing an experimental
+illustration;
+4) unifies virtually all of the key decoders within the same risk-based framework;
+5) analyzes the relationships between the risks achieved by the different decoders,
+yielding a general result on convex decomposition of the key risk functionals for
+Markov chains;
+6) analyzes the related earlier work of Brushe et al. (1998), and in particular:
+(a) explains how the idea of hybridization of the Viterbi and optimal accuracy decoders
+proposed in the above work can fail when the Viterbi path is not unique;
+(b) establishes that the claims made in the same work regarding the implementation of
+their algorithm to hybridize the Viterbi and optimal accuracy decoders are incorrect;
+(c) shows how the corresponding forward and backward variables given in the same
+work can be scaled to produce an operational decoding algorithm;
+(d) shows that the resulting decoders are different from the original hybrid decoders
+of Brushe et al. (1998);
+(e) proposes an immediately operational algorithm to hybridize the Viterbi and optimal accuracy decoders (at least when the Viterbi path is unique), which is based on
+the more common power-transform, and which also allows for extrapolations “beyond”
+the optimal accuracy decoder;
+7) indicates a number of further extensions of the new families of decoders.
+At the same time, a thorough performance evaluation, including asymmetric variants of the
+main loss functions, and using several applications with their own performance measures,
+is outside the scope of this paper (Section 8).
+
+2. Risk-Based Path Inference
+Given a sequence of observations xT with p(xT ) > 0, we view the (posterior) risk as a
+function
+R(· | xT ) : S T → [0, ∞].
+10
+
+Bridging Viterbi and Posterior Decoding
+
+Naturally, we seek a state sequence with minimum risk: v(xT ) := arg minsT ∈S T R sT | xT .
+In the statistical decision and pattern recognition theories, the classifier v is known as the
+Bayes classifier (relative to risk R). Within the same framework, the risk is often specified
+via a loss-function
+L : S T × S T → [0, ∞],
+interpreting L(sT , y T ) as the loss incurred by the decision to predict sT when the actual
+state sequence was y T . Therefore, for any state sequence sT ∈ S T , the risk is given by
+L(sT , y T )p(y T | xT ).
+
+R(sT | xT ) := E[L(sT , Y T ) | X T = xT ] =
+y T ∈S T
+
+2.1 Standard Path Inferences Re-Examined
+The most popular loss function is the so-called symmetrical or zero-one loss L∞ defined as
+follows:
+1, if sT = y T ;
+L∞ (sT , y T ) =
+0, if sT = y T .
+We shall denote the corresponding risk by R∞ . With this loss, clearly
+R∞ (sT | xT ) = P(Y T = sT | X T = xT ) = 1 − p(sT | xT ),
+
+(2)
+
+thus R∞ (· | xT ) is minimized by a Viterbi path, that is, a sequence of maximum posterior
+probability. Let v(·; ∞) stand for the corresponding classifier, that is
+v(xT ; ∞) := arg max p(sT | xT ),
+sT ∈S T
+
+with a suitable tie-breaking rule.
+Note that Viterbi paths also minimize the following risk
+¯ ∞ (sT | xT ) := − 1 log p(sT | xT ).
+R
+T
+
+(3)
+
+It can actually be advantageous to use the logarithmic risk (3) since, as we shall see later,
+this leads to various natural generalizations (Sections 3 and 4).
+When sequences are compared pointwise, it is common to use additive loss functions of
+the form
+T
+1
+L1 (sT , y T ) =
+l(st , yt ),
+(4)
+T
+t=1
+
+where l(s, y) ≥ 0 is the loss associated with classifying y as s. Typically, for every state
+s, l(s, s) = 0. It is not hard to see that, with L1 as in (4), the corresponding risk can be
+represented as follows
+T
+1
+R1 (sT | xT ) =
+ρt (st | xT ),
+T
+t=1
+
+T
+where ρt (s | xT ) =
+y∈S l(s, y)pt (y | x ). Most commonly, l is again symmetrical, or
+zero-one, that is l(s, y) = I{s=y} , where IA stands for the indicator function of set A. In
+
+11
+
+Lember and Koloydenko
+
+this case, L1 is naturally related to the Hamming distance (Carvalho and Lawrence, 2008).
+Then also ρt (st | xT ) = 1 − pt (st | xT ) so that the corresponding risk is
+R1 (sT | xT ) = 1 −
+
+1
+T
+
+T
+
+pt (st | xT ).
+
+(5)
+
+t=1
+
+Let v(·; 1) stand for the Bayes classifier relative to this R1 -risk. It is easy to see from
+the above definition of R1 , that v(·; 1) delivers PMAP paths, which minimize the expected
+number of misclassification errors. In addition to maximizing Tt=1 pt (st | xT ), v(·; 1) also
+maximizes Tt=1 pt (st | xT ), and therefore minimizes the following risk
+¯ 1 (sT | xT ) := − 1
+R
+T
+
+T
+
+log pt (st | xT ).
+
+(6)
+
+t=1
+
+2.2 Generalizations
+Next, we begin to consider various generalizations of the the standard path inferences.
+2.2.1 Admissible PMAP and Posterior Viterbi Decoders
+Recall (Subsection 1.2.1) that PMAP paths can be inadmissible. According to our definition
+of admissibility (Subsection 1.2.1), a path is inadmissible if it is of zero posterior probability.
+Although Rabiner (1989) gives no explicit definition of admissibility, or validity, he refers to
+forbidden transitions, that is, of zero prior probability (which, of course, also implies zero
+posterior probability) as an example of how a path can be “not valid”; the possibility of a
+path to have a positive prior probability but zero posterior probability is not discussed there.
+As far as we are aware, K¨
+all et al. (2005) were the first to formally write down an amended
+PMAP optimization problem to guarantee path validity, or admissibility. However, they
+too do not state explicitly if “a possible path through the model” means for them positivity
+only of the prior probability or also of the posterior probability. If “the model” is to be
+understood as the HMM in its entirety, then this would require positivity of the posterior
+probability. However, the optimization presented by K¨all et al. (2005) does not guarantee
+positivity of the posterior probability, that is, it only guarantees positivity of the prior
+probability. Perhaps, it does not happen very often in practice that the PMAP decoder
+constrained to return a priori possible paths returns an inadmissible path (it does not
+happen in our own experiments in Section 5 as all of our emission probabilities are non-zero
+on the entire emission alphabet). However, as the example in Appendix A shows, this is
+indeed possible.
+Thus, to enforce admissibility properly, R1 -risk needs to be minimized over the admissible paths (R1 minimization over the paths of positive prior probability is revisited in
+Subsection 2.2.2 below):
+T
+
+min
+
+sT :p(sT |xT )>0
+
+T
+
+T
+
+R1 (s | x )
+
+⇔
+
+pt (st | xT ).
+
+max
+
+sT :p(sT |xT )>0
+
+(7)
+
+t=1
+
+Assuming that pt (s | xT ), 1 ≤ t ≤ T , s ∈ S, have been precomputed (e.g., by the classical
+forward-backward recursion Rabiner, 1989), a solution to (7) can be easily found by a
+12
+
+Bridging Viterbi and Posterior Decoding
+
+Viterbi-like recursion (8)
+δ1 (j) := p1 (j | xT ), ∀ j ∈ S,
+
+(8)
+T
+
+δt+1 (j) := max (δt (i) + log rt (i, j)) + pt+1 (j | x ) for t = 1, 2, . . . , T − 1, and ∀j ∈ S,
+i
+
+where rt (i, j) := I{pij fj (xt+1 )>0} (recall that pij = P(Yt+1 = j | Yt = i) and fj is the density
+of the conditional probability distribution of Xt+1 conditioned on Yt+1 = j). To the best of
+our knowledge this has not been stated in the literature before. We will refer to this decoder
+as the Constrained PMAP decoder.
+Next note that in the presence of path constraints, minimization of the R1 -risk (5) is no
+¯ 1 -risk (6). In particular, the problem (7) is not
+longer equivalent to minimization of the R
+equivalent to the following problem
+T
+
+min
+
+sT :p(sT |xT )>0
+
+¯ 1 (sT | xT )
+R
+
+⇔
+
+log pt (st | xT ).
+
+max
+
+sT :p(sT |xT )>0
+
+(9)
+
+t=1
+
+It is also important to note that the problem (9) above is equivalent to what has been
+termed the posterior-Viterbi decoding, or PVD (Fariselli et al., 2005):
+T
+
+min
+
+sT :p(sT )>0
+
+¯ 1 (sT | xT )
+R
+
+⇔
+
+log pt (st | xT ),
+
+max
+
+sT :p(sT )>0
+
+t=1
+
+¯ 1 (sT | xT ) over
+that is, unlike in the case of R1 (sT | xT ) minimization, minimization of R
+the paths of positive prior probability is indeed sufficient to produce admissible paths.
+A solution to (9) can be computed by a related recursion given in (10) below
+δ1 (j) := log p1 (j | xT ), ∀j ∈ S,
+
+(10)
+T
+
+δt+1 (j) := max δt (i) + log rij + log pt+1 (j | x ), for t = 1, 2, . . . , T − 1, ∀j ∈ S,
+i
+
+where rij := I{pij >0} (which for inhomogeneous chains will depend on t).
+2.2.2 Beyond PVD and A priori Admissible PMAP
+¯ 1 risk are by definition of positive probability,
+Although admissible minimizers of R1 and R
+this probability can still be very small. Indeed, in the above recursions, the weight rij is
+1 even when pij is very small. We next replace rij by the true transition probability pij
+¯ 1 -risk (that is maximization of T pt (st | xT )). Then the solutions
+in minimizing the R
+t=1
+remain admissible and also tend to maximize the prior path probability. To bring the newly
+obtained optimization problem to a more elegant form (11), we pretend that δ1 (j) in (10)
+above was defined as δ1 (j) := log p1 (j | xT ) + log I{πj >0} (which indeed does not change the
+results of the recursion (10)) and replace the last term by log πj .
+Thus, with the above replacements, the recursion (10) now solves the following seemingly
+unconstrained optimization problem (see Theorem 4)
+T
+
+log pt (st | xT ) + log p(sT )
+
+max
+sT
+
+t=1
+
+13
+
+⇔
+
+¯ 1 (sT | xT ) + h(sT ) ,
+min R
+sT
+
+(11)
+
+Lember and Koloydenko
+
+where the penalty term
+¯ ∞ (sT )
+h(sT ) = − T1 log p(sT ) =: R
+
+(12)
+
+is the logarithmic risk based on the prior distribution,1 which does not involve the observed
+data.
+The thereby modified recursions immediately generalize as follows:
+δ1 (j) := log p1 (j | xT ) + C log πj , ∀j ∈ S,
+δt+1 (j) := max δt (i) + C log pij + log pt+1 (j | xT ) for t = 1, 2, . . . , T − 1, ∀j ∈ S,
+i
+
+solving
+¯ 1 (sT | xT ) + Ch(sT ) ,
+min R
+
+(13)
+
+sT
+
+where C > 0 is a trade-off constant, which can also be viewed as a regularization parameter.
+Indeed, Proposition 2 below states that C > 0 implies admissibility of solutions to (13).
+In particular, PVD, that is the problem solved by the original recursion (10), can now
+be recovered by taking C sufficiently small. (Alternatively, the PVD problem can also be
+formally written in the form (13) with C = ∞ and h(sT ) given, for example, by I{p(sT )=0} .)
+What if the actual probabilities pij (πj ) were also used in the optimal accuracy/PMAP
+decoding? To motivate this, we re-consider the optimal accuracy/PMAP decoding imposing
+the positivity constraint not on the posterior but on the prior path probability:
+T
+
+min
+
+sT :p(sT )>0
+
+R1 (sT | xT )
+
+⇔
+
+pt (st | xT ).
+
+max
+
+sT :p(sT )>0
+
+(14)
+
+t=1
+
+Solution to (14) can be easily found by yet another Viterbi-like recursion given in (15) below
+δ1 (j) := p1 (j | xT ), ∀ j ∈ S,
+
+(15)
+T
+
+δt+1 (j) := max (δt (i) + log rij ) + pt+1 (j | x ) for t = 1, 2, . . . , T − 1, and ∀j ∈ S,
+i
+
+which is the same as (8) apart from the rij in place of the rt (i, j).
+We again replace the indicators rij by the actual probabilities pij . We once more pretend
+that δ1 (j) in (15) above was defined, this time, as δ1 (j) := p1 (j | xT )+log I{πj >0} . Replacing
+the last term by log πj yields the following problem:
+T
+
+pt (st | xt ) + log p(sT )
+
+max
+sT
+
+⇔
+
+¯ ∞ (sT ) .
+min R1 (sT | xT ) + R
+
+t=1
+
+sT
+
+(16)
+
+A more general problem can be written in the form
+min R1 (sT | xT ) + Ch(sT ) ,
+sT
+
+(17)
+
+¯ ∞ ) can be based on the posterior (p(sT | xT )), joint
+1. More generally, the same type of risk (e.g., R
+T
+T
+T
+(p(s , x )) or prior (p(s )) distribution. Compromising between notational accuracy on the one hand
+and notational simplicity and consistency on the other hand, throughout the paper we disambiguate
+these cases solely by the argument.
+
+14
+
+Bridging Viterbi and Posterior Decoding
+
+where h is some penalty function (independent of the data xT ). Thus, the problem (14) of
+optimal accuracy/PMAP decoding over the paths of positive prior probability is obtained
+¯ ∞ (sT ). (Setting C × h(sT ) = ∞ × I{p(sT )=0}
+by taking C sufficiently small and h(sT ) = R
+also reduces the problem (17) back to (7).)
+Clearly, if instead of (14) we started off with (7) (R1 (sT | xT ) minimization over the
+¯ ∞ (sT | xT ) in place of R
+¯ ∞ (sT ) in (16) above.
+admissible paths), we would arrive at R
+T
+T
+¯ ∞ (s | x ) more generally is treated next in Section 3.
+Inclusion of R
+
+3. Combined Risks
+Motivated by the previous section, we consider the following general problem
+¯ 1 (sT | xT ) + C2 R
+¯ ∞ (sT | xT ) + C3 R
+¯ 1 (sT ) + C4 R
+¯ ∞ (sT ) ,
+min C1 R
+sT
+
+where Ci ≥ 0, i = 1, 2, 3, 4,
+
+4
+i=1 Ci
+
+> 0.2 This is also equivalent to
+
+¯ 1 (sT | xT ) + C2 R
+¯ ∞ (sT , xT ) + C3 R
+¯ 1 (sT ) + C4 R
+¯ ∞ (sT ) ,
+min C1 R
+sT
+
+where, recalling (6),
+
+(18)
+
+¯ 1 (sT | xT ) = − 1
+R
+T
+
+(19)
+
+T
+
+log pt (st | xT ),
+t=1
+
+¯ ∞ (s , x ) := − 1 log p(xT , sT ),
+R
+T
+T
+
+T
+
+T
+
+1
+= − [log p(sT ) +
+T
+1
+= − [log πs1 +
+T
+recalling (3),
+
+log fst (xt )],
+
+t=1
+T −1
+
+T
+
+log pst st+1 +
+t=1
+
+log fst (xt )],
+t=1
+
+¯ ∞ (sT | xT ) = − 1 log p(sT | xT ),
+R
+T
+¯ ∞ (sT , xT ) + 1 log p(xT ),
+=R
+T
+¯ 1 (sT ) := − 1
+R
+T
+
+T
+
+log pt (st ),
+
+(20)
+
+t=1
+
+¯ ∞ (sT ) = − 1 log p(sT ),
+R
+T
+1
+= − [log πs1 +
+T
+
+recalling (12),
+T −1
+
+log pst st+1 ].
+
+(21)
+
+t=1
+
+¯ 1 (sT ) involves only the prior marginals. Note that the comThe newly introduced risk R
+bination C1 = C3 = C4 = 0 corresponds to the MAP/Viterbi decoding; the combination
+2. For uniqueness of representation, one may want to additionally require
+
+15
+
+4
+i=1
+
+Ci = 1.
+
+Lember and Koloydenko
+
+C2 = C3 = C4 = 0 yields the PMAP case, whereas the combinations C1 = C2 = C3 = 0 and
+C1 = C2 = C4 = 0 give the maximum a priori decoding and marginal prior mode decoding,
+respectively. The case C2 = C3 = 0 subsumes (13) and the case C1 = C3 = 0 is the problem
+¯ ∞ (sT | xT ) + C R
+¯ ∞ (sT ) .
+min R
+sT
+
+(22)
+
+Thus, a solution to (22) is a generalization of the Viterbi decoding that allows one to
+suppress (C > 0) contribution of the data.
+Remark 1 If C2 > 0, then every solution of (18) is admissible and the minimized risk is
+finite.
+No less important and perhaps a little less obvious is that C1 , C4 > 0 also guarantees admissibility of the solutions, as stated in Proposition 2 below.
+Proposition 2 Let C1 , C4 > 0. Then, the minimized risk (18) is finite and any minimizer
+sT is admissible.
+Proof Without loss of generality, assume C2 = C3 = 0. Since p(xT ) > 0 (assumed in
+the beginning of Section 2), there exists some admissible path sT . Clearly, the combined
+risk of this path is finite, hence so is the minimum risk. Now, suppose sT is a minimizer
+of the combined risk and suppose further that sT is inadmissible, that is p(sT | xT ) = 0.
+Since the minimized risk (18) is finite, we must have p(sT ) > 0. Therefore, it must be
+that p(xT | sT ) = 0, and therefore we must have some t, 1 ≤ t ≤ T , such fst (xt ) = 0.
+This would imply that any path through (t, st ) is inadmissible, hence pt (st | xT ), the sum
+¯ 1 (sT | xT ) = ∞,
+of the posterior probabilities of all such paths, is zero. This implies R
+contradicting optimality of sT .
+
+Remark 3 Note that for any xT , the Posterior-Viterbi decoding (Fariselli et al., 2005)
+(Problem 9 above) can be obtained by setting C3 = C4 = 0 and taking C2 sufficiently small,
+that is, 0 < C2
+C1 . Also, PVD can be obtained almost surely by setting C2 = C3 = 0 and
+taking C4 sufficiently small, that is, 0 < C4
+C1 .
+It is fairly intuitive that PVD can be realized as solutions to (18), but we nonetheless prove
+this formally in Appendix B.
+If the smoothing probabilities pt (s | xT ), t = 1, . . . , T and s ∈ S, have been already computed, a solution to (18) can be found also by a standard dynamic programming algorithm.
+Let us first introduce more notation. For every t ∈ 1, . . . , T and j ∈ S, let
+γt (j) := C1 log pt (j | xT ) + C2 log fj (xt ) + C3 log pt (j).
+Note that the function γt depends on the entire data xT . Next, let us also define the
+following scores
+δ1 (j) := (C2 + C4 ) log πj + γ1 (j), ∀j ∈ S,
+δt (j) := max δt−1 (i) + (C2 + C4 ) log pij + γt (j),
+i
+
+for t = 2, 3, . . . , T, and ∀j ∈ S.
+16
+
+(23)
+
+Bridging Viterbi and Posterior Decoding
+
+Using the above scores δt (j) and a suitable tie-breaking rule, below we define the backpointers it (j), terminal state iT , and the optimal path y T (iT ).
+it (j) := arg max[δt (i) + (C2 + C4 ) log pij ],
+i∈S
+
+when t = 1, . . . , T − 1;
+
+iT := arg max δT (i);
+
+(24)
+
+i∈S
+
+y t (j) :=
+
+i1 (j),
+when t = 1;
+t−1
+y (it−1 (j)), j , when t = 2, . . . , T .
+
+(25)
+
+Thus, given xt+1 and the best path that ends in state j (at time t + 1), it (j) represents the
+t-th state in this path.
+The following theorem formalizes the dynamic programming argument; its proof is standard and we state it below for completeness only.
+Theorem 4 Any solution to (18) can be represented in the form y T (iT ) provided the ties
+in (24) are broken accordingly.
+Proof With a slight abuse of notation, for every st ∈ S t , let
+t
+
+U (st ) =
+
+γu (su ) + (C2 + C4 ) log psu−1 su ,
+u=1
+
+where s0 := 0 and p0s := πs . Hence,
+¯ 1 (sT | xT ) + C2 R
+¯ ∞ (sT , xT ) + C3 R
+¯ 1 (sT ) + C4 R
+¯ ∞ (sT )] = U (sT )
+−T [C1 R
+and any maximizer of U (sT ) is clearly a solution to (18) and (19).
+Next, let U (j) := δ1 (j) for all j ∈ S, and let
+U (st+1 ) = U (st ) + (C2 + C4 ) log pst st+1 + γt+1 (st+1 ),
+for t = 1, 2, . . . , T − 1 and also st ∈ S t . By induction on t, these yield
+δt (j) = max U (st )
+st :st =j
+
+for every t = 1, 2, . . . , T and for all j ∈ S. Clearly, every maximizer y T of U (sT ) over
+the set S T must end up in iT , or, more precisely, in the set arg maxj∈S δT (j), allowing for
+non-uniqueness. Continuing to interpret arg max as a set, recursion (23) implies recursions
+(24) and (25), hence any maximizer y T can indeed be computed in the form y T (iT ) via the
+forward (recursion (24))-backward (recursion (25)) procedure.
+Similarly to the generalized risk minimization of (18), the generalized problem of accuracy
+optimization (17) can also be further generalized as follows:
+¯ ∞ (sT | xT ) + C3 R1 (sT ) + C4 R
+¯ ∞ (sT ) ,
+min C1 R1 (sT | xT ) + C2 R
+sT
+
+17
+
+(26)
+
+Lember and Koloydenko
+
+where risk
+1
+R1 (s ) :=
+T
+
+T
+
+T
+
+t=1
+
+1
+P(Yt = st ) = 1 −
+T
+
+T
+
+pt (st )
+
+(27)
+
+t=1
+
+is the error rate relative to the prior distribution. This problem can also be solved by a
+recursion formally identical to that in (23) except for the removed logarithms in the marginal
+probabilities:
+γt (j) = C1 pt (j | xT ) + C2 log fj (xt ) + C3 pt (j).
+
+(28)
+
+The following remarks compare this generalized Problem with the generalized Problem
+(18) (Remarks 1 and 3, Proposition 2).
+Remark 5
+1. As in the generalized posterior-Viterbi decoding (18), here C2 > 0 also
+implies admissibility of the optimal paths.
+2. Now, C4 > 0 implies that the minimized risk is finite for any xT , but unlike in (18),
+C1 , C4 > 0 is not sufficient to guarantee admissibility almost surely of the solutions to
+the problem (26).
+3. Taking C3 = C4 = 0, the constrained PMAP problem (K¨
+all et al., 2005) (Problem 7
+above) is obtained for some C1 , C2 such that 0 < C2
+C1 .
+We refer to a decoder solving the generalized risk minimization Problem (18) as a generalized
+posterior-Viterbi hybrid decoder. Similarly, a decoder solving the generalized optimal accuracy Problem (26) is referred to as a generalized PMAP hybrid decoder to distinguish the
+¯ 1 (sT | xT ) in the former case from the sum-based risk R1 (sT | xT ) in
+product-based risk R
+the latter case. Both the generalized families, however, naturally extend the PMAP/optimal
+accuracy/posterior decoder (Section 2.1).
+Corollary 15 of Apendix C establishes the usual trade-off type of resuls for the solutions
+¯ 1 and R
+¯ ∞ risks will in
+to Problems (18) and (26). The results on the trade-off between R
+particular be useful in Corollary 8 (see further below) for establishing monotonicity of the
+solution to Problem (18).
+
+4. The k-Block Posterior-Viterbi Decoding
+The next approach provides a surprisingly different insight into what otherwise has already
+been formulated as the generalized Problem (18). This, first of all, helps better understand
+how the generalized Problem (18) resolves the drawback of Rabiner’s suggestion (introduced in the last paragraph of Subsection 1.2.1 above). Secondly, the same approach gives
+an elegant relationship (Theorem 6, Corollary 7) between the main types of risk, which
+surprisingly amounts to, as far as we know, a novel property of ordinary Markov chains
+(Equation 34, and Proposition 14 of the concluding Section 8).
+Recall (Subsection 1.2) that Rabiner’s compromise between MAP and PMAP is to
+maximize the expected number of correctly decoded pairs or triples of (adjacent) states.
+With k being the length of the overlapping block (k = 2, 3, . . .) this means to minimize the
+18
+
+Bridging Viterbi and Posterior Decoding
+
+conditional risk
+1
+Rk (s | x ) := 1 −
+T −k+1
+T
+
+T −k+1
+
+p(st+k−1
+| xT ),
+t
+
+T
+
+(29)
+
+t=1
+
+which derives from the following loss function:
+1
+Lk (s , y ) :=
+T −k+1
+T
+
+T −k+1
+
+T
+
+I{st+k−1 =yt+k−1 } .
+t=1
+
+t
+
+(30)
+
+t
+
+When k = 1 this gives the usual R1 maximization, that is, the PMAP decoding, which is
+known to fault by allowing inadmissible paths. Just as in (4) with k = 1, we could also
+consider a general (possibly asymmetric) loss function lk (st+k−1
+, ytt+k−1 ) for larger k in (30)
+t
+above. Thus, for k = 2 this is the Markov loss function studied by Yau and Holmes (2010).
+It is natural to think that minimizers of Rk (sT | xT ) “move” towards Viterbi paths
+“monotonically” as k increases to T . Indeed, when k = T , minimization of Rk (sT | xT )
+¯ ∞ (sT | xT ) achieved by the Viterbi decoding. How(29) is equivalent to minimization of R
+ever, as the experiments in Section 5 below show, minimizers of (29) are not guaranteed
+to be admissible (even if admissibility were defined relative to the prior distribution) for
+k > 1. Also, as we already pointed out in Subsection 1.2.1, this approach does not give
+monotonicity, that is, allows the optimal path for k = 2 to have lower (prior and posterior)
+probabilities than those of the PMAP path (that is, k = 1). Another drawback of using the
+loss Lk (30) and its more general variants is that, unlike in the generalized PVD and PMAP
+hybrid decoders, the computational complexity of Rabiner’s approach grows with the block
+length k. We now show how these drawbacks go away when the sum in (29) is replaced by
+a product, eventually arriving at a subfamily of the generalized posterior Viterbi decoders.
+Certainly, replacing the sum by the product alters the problem, and it does so in a way that
+makes the block-wise coding idea work well. Namely, the longer the block, the larger the
+resulting path probability, which is also now guaranteed to be positive already for k = 2.
+¯ 1 (sT | xT ) + C R
+¯ ∞ (sT | xT ) (see
+Moreover, this gives another interpretation of the risks R
+T
+T
+¯ 1 (s ) + C R
+¯ ∞ (s ), and consequently the generalized
+also Remark 3 above), the prior risks R
+Problem (18).
+Let k be a positive integer. For the time being, let p represent any first order Markov
+chain on S T , and let us define
+T −1
+min(j+k,T )
+
+¯k (sT ) :=
+U
+
+p smax(j+1,1) ,
+j=1−k
+
+¯ k (sT ) := − 1 ln U
+¯k (sT ).
+R
+T
+
+Thus
+¯k (sT ) = U1k · U2k · U3k ,
+U
+where
+k−1
+U1k := p(s1 ) · · · p(sk−2
+1 )p(s1 ),
+T −1
+T
+U2k := p(sk1 )p(sk+1
+2 ) · · · p(sT −k )p(sT −k+1 ),
+
+U3k := p(sTT −k+2 )p(sTT −k+3 ) · · · p(sT ).
+19
+
+Lember and Koloydenko
+
+¯ k is a natural generalization of R
+¯ 1 (introduced first for the posterior distribution in
+Thus, R
+¯k = R
+¯1.
+(6)) since when k = 1, R
+Theorem 6 Let k be such that T ≥ k > 1. Then the following recursion holds
+¯ k (sT ) = R
+¯ ∞ (sT ) + R
+¯ k−1 (sT ),
+R
+
+∀sT ∈ S T .
+
+Proof Note that
+U1k = U1k−1 p(sk−1
+1 ),
+
+U3k = p(sTT −k+2 )U3k−1 .
+
+Next, for all j such that j + k ≤ T , the Markov property gives
+j+k−1
+p(sj+k
+j+1 ) = p(sj+k | sj+k−1 )p(sj+1 )
+
+and
+T
+T
+U2k p(sTT −k+2 ) = p(sk1 )p(sk+1
+2 ) · · · p(sT −k+1 )p(sT −k+2 ) =
+T −1
+T
+k
+p(sk | sk−1 )p(sk−1
+1 )p(sk+1 | sk )p(s2 ) · · · p(sT | sT −1 )p(sT −k+1 )p(sT −k+2 ) =
+T −1
+T
+p(sk | sk−1 )p(sk+1 | sk ) · · · p(sT | sT −1 )p(sk−1
+1 ) · · · p(sT −k+1 )p(sT −k+2 ) =
+
+p(sk | sk−1 ) · · · p(sT | sT −1 )U2k−1 .
+Hence,
+¯k (sT ) = U k−1 p(sk−1 )p(sk | sk−1 ) · · · p(sT | sT −1 )U k−1 U k−1 ,
+U
+1
+1
+2
+3
+¯k−1 (sT ).
+= p(sT )U k−1 U k−1 U k−1 = p(sT )U
+1
+
+1
+
+2
+
+3
+
+The second equality above also follows from the Markov property. Taking logarithms on
+both sides and dividing by −T completes the proof.
+Now, we specialize this result to our HMM context, and, thus, p(sT ) and p(sT | xT ) are
+again the prior and posterior hidden path distributions.
+¯ k and
+Corollary 7 Let k be such that T ≥ k > 1. For all paths sT ∈ S T the prior risks R
+T
+T
+T
+T
+¯ ∞ satisfy (31). For every x ∈ X and for all paths s ∈ S , the posterior risks R
+¯ k and
+R
+¯
+R∞ satisfy (32).
+¯ k (sT ) = R
+¯ ∞ (sT ) + R
+¯ k−1 (sT ),
+R
+¯ k (sT | xT ) = R
+¯ ∞ (sT | xT ) + R
+¯ k−1 (sT | xT ).
+R
+
+(31)
+(32)
+
+Proof Clearly, conditioned on the data xT , Y T remains a first order Markov chain (generally inhomogeneous even if it was homogeneous a priori). Hence, Theorem 6 applies.
+Below, we focus on the posterior distribution and risks, but the discussion readily extends
+to any first order Markov chain.
+¯ k (sT | xT ), returning a path yˆ(k), that is,
+Let v(xT ; k) be a decoder that minimizes R
+¯k (sT | xT ) = arg min R
+¯ k (sT | xT ).
+yˆ(k) = arg max U
+sT ∈S T
+
+sT ∈S T
+
+(33)
+
+¯ k (sT | xT ) minimization is a special case of the generalized
+Corollary (8) below states how R
+Problem (18). We refer to the generalized posterior-Viterbi hybrid decoders v(xT ; k) as
+k-block PVD and summarize their properties in Corollary (8).
+20
+
+Bridging Viterbi and Posterior Decoding
+
+Corollary 8 For every xT ∈ X T , and for every sT ∈ S T , we have
+¯ k (sT | xT ) = (k − 1)R
+¯ ∞ (sT | xT ) + R
+¯ 1 (sT | xT ),
+R
+
+∀k such that 1 ≤ k ≤ T.
+
+(34)
+
+yˆ(k) is admissible,
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+R
+y (k) | xT ) ≤ R
+y (k − 1) | xT ),
+
+∀k such that k > 1.
+
+(35)
+
+∀k such that 1 < k ≤ T.
+
+(36)
+
+¯ 1 (ˆ
+¯ 1 (ˆ
+R
+y (k) | x ) ≥ R
+y (k − 1) | x ),
+
+∀k such that 1 < k ≤ T.
+
+(37)
+
+T
+
+T
+
+Proof Equation (34) follows immediately from Equation (32) of Corollary 7. Admissibility
+of yˆ(k) for k > 1 in (35) becomes obvious recalling Remark 1. Inequalities (36) and (37)
+are established by Corollary 15.
+Equation (34) is also of practical significance showing that yˆ(k) is a solution to (18)
+with C1 = 1, C2 = k − 1, C3 = C4 = 0, and as such can be computed in the same fashion
+for all k, 1 ≤ k ≤ T (see Theorem 4 above).
+Inequality (36) means that the posterior path probability p(ˆ
+y (k) | xT ) increases with k.
+¯ 1 -risk, that is, decreases the product of the
+At the same time, increasing k also increases R
+(posterior) marginal probabilities of states along the path yˆ(k). Inequalities (36) and (37)
+clearly show that as k increases, v(·; k) monotonically moves from v(·; 1) (PMAP) towards
+the Viterbi decoder, that is v(·; ∞). However, the maximum block length is k = T .
+¯k
+A natural way to complete this bridging of PMAP with MAP is by embedding the R
+k−1
+¯ α via α =
+risks into the family R
+k ∈ [0, 1]. Thus, (34) extends to
+¯ α (sT | xT ) := αR
+¯ ∞ (sT | xT ) + (1 − α)R
+¯ 1 (sT | xT )
+R
+
+(38)
+
+with α = 0 and α = 1 corresponding to the PMAP and Viterbi cases, respectively. This
+embedding is clearly still within the generalized Problem (18) via C1 = 1 − α, C2 = α,
+C3 = C4 = 0. In particular, v(xT ; k(α)) can be computed by using the same dynamic programming algorithm of Theorem 4 for all k ∈ [1, ∞] (that is, all α ∈ [0, 1]), and inequalities
+(36) and (37) are special cases of Corollary 15 (part 1) to Lemma 16.
+Recalling Remark 3, we note that on the lower end of 0 ≤ α ≤ 1, before reaching
+PMAP (α = 0) we encounter PVD for some sufficiently small α ≈ 0. Note also that in
+(35) k need not be integer either, that is, Remark 1 establishes admissibility of yˆ(k(α)),
+k(α) = 1/(1 − α), for all α ∈ (0, 1] (that is, all k ∈ (1, ∞]).
+¯ α (sT |
+Given xT and a sufficiently large k (equivalently, α ≈ 1), yˆ(k), the minimizer of R
+T
+T
+x ) (38) (and (34)) would become a Viterbi path yˆ(∞) (since S is finite). However, such
+α (and k) would generally depend on xT , and in particular k may need to be larger than
+T , that is, yˆ(T ) may be different from yˆ(∞).
+At the same time, for k > 1 we have
+¯ 1 (ˆ
+R
+y (∞) | xT )
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+R
+y (∞) | xT ) ≤ R
+y (k) | xT ) ≤ R
+y (∞) | xT ) +
+,
+k−1
+
+(39)
+
+on which we comment more in Section 7 below. The first inequality of (39) above follows
+immediately from the definition of the Viterbi decoder. To obtain the second inequality,
+apply (34) to both yˆ(k) and yˆ(∞) and subtract one equation from the other. Dividing the
+21
+
+Lember and Koloydenko
+
+¯ k (ˆ
+¯ k (ˆ
+¯ 1 (ˆ
+resulting terms by k − 1, noticing that R
+y (∞) | xT ) ≥ R
+y (k) | xT ) and R
+y (k) | xT ) ≥
+0, and rearranging the other terms yields the result.
+Considering the prior chain Y T and risks in (31), we immediately obtain statements
+analogous to (34)-(38) extending these new interpretations to the entire generalized Problem (18). In particular, it might be of general interest to note that for any first order
+Markov chain (that is, not necessarily representing the posterior distribution of an HMM)
+the following convexly combined risk
+¯ α (sT ) := αR
+¯ ∞ (sT ) + (1 − α)R
+¯ 1 (sT )
+R
+can be efficiently minimized in the usual forward-backward manner (Theorem 4).
+
+5. Experiments
+We illustrate the performance of the Viterbi, PMAP, and some of the other known and
+new decoders on the task of predicting protein secondary structure in single amino-acid
+sequences. We show that the differences in performance between the various decoders
+can be significant. For this illustration purpose, our decoders are based entirely on the
+ordinary first order HMM. In particular, when decoding an amino-acid sequence, they
+do not use cues from decoded homologous sequences (other than by allowing homologous
+sequences to be part of the training set for estimation of the model parameters). Certainly,
+successful predictors in practice are significantly more elaborate. In particular, they do
+exploit intensively information from decoded homologs, and also include interactions at
+ranges considerably longer than that of the first order HMM (Aydin et al., 2006). However,
+our current goal is not to compete for the absolute record on the task (which, not so long
+ago, was reported to be about 70% (Aydin et al., 2006)), but to merely emphasize the
+following two points. First, the difference in performance between the Viterbi and PMAP
+decoders can be appreciable in practice already with the ordinary first order HMMs having
+as few as six hidden states. Secondly, using the new family of decoders (that is, solutions to
+the generalized risk minimization 18 and 26) gives a potentially useful additional flexibility
+by exercising trade-offs between principled performance measures (Subsection 1.2.2).
+Our data are a non-redundant subset of the Protein Data Bank (Berman et al., 2000).
+Specifically, the secondary structural elements have been found from their atomic coordinates using SSENVID (Softberry, Inc., 2001) and the resulting data can be freely downloaded
+from http://personal.rhul.ac.uk/utah/113/VA/env_seqssnr.txt. The data contain
+N = 25713 realizations (xTn (n), y Tn (n)), n = 1, 2, . . . , N , with three original hidden states
+{a, b, c}, representing α−helix, β−strand, and coil, respectively. The average length T¯ of
+a realization is 167 positions. The observations xTn (n) come from a 20 symbol emission
+alphabet of amino-acids
+X = {A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y }.
+We further distinguish four subclasses of the α-helix class a. The definition and enumeration
+of the final six classes are as follows: Class one consists of the short, up to seven a long,
+α-helices. Classes two and three consist of the β-strands (any number of b’s) and coil
+sequences (any number of c’s), respectively. Classes four, five, and six derive from the a’s
+22
+
+Bridging Viterbi and Posterior Decoding
+
+that comprise an α-helix of length at least eight, thereafter referred to as long. Specifically,
+class four is the so-called N -end, which is the first four a’s of a long α-helix. Similarly,
+class six is the so called C-end, which is the last four a’s of a long α-helix. Any a’s in the
+middle of a long α-helix are class five. Refining the original classification has been known
+to improve prediction of protein secondary structure (Salamov and Solovyev, 1995). For
+simplicity, here we only sub-divide the α-helix class (whereas Salamov and Solovyev, 1995
+go further) given the limited goals of these experiments.
+The (maximum likelihood estimates of the) transition and emission distribution matrices
+as well as the vector of the initial probabilities computed from all of the realizations are
+given in Appendix E.
+The following experiments emulate a typical practical situation by re-estimating these
+parameters from N − 1 sequences and using the re-estimated values to decode a remaining
+sequence. We repeat the process N times in the leave-one(sequence)-out fashion. We do
+not impose stationarity in these experiments as we did not have any prior evidence of
+stationarity. Indeed, the (estimated) initial distribution π
+ˆ appears to be very different from
+the stationary one (ˆ
+πinv , see Appendix E) and many sequences in the data set are quite
+short.
+Figure 1 displays case 877, which is 149 positions long and is split into two pieces at
+position t = 72 (shown in both images). The top (0) row is the ground truth. This case is
+typical in several senses. First, in this case the PMAP decoder (row 2) shows the median gain
+in accuracy (of about 11%) over the Viterbi decoder (row 1); see subsequent subsections for
+a discussion of performance measures. Secondly, the PMAP, or optimal accuracy output, is
+inadmissible in this case, which is evident from, for example, the isolated state five (yellow)
+island (transitions between states three and five are forbidden). Rows 3 through 5 are
+outputs from the PVD, Constrained PMAP, and Rabiner k = 2 decoders, respectively. It is
+typical of the PVD and Constrained PMAP decoders to tie. Outputs from other members of
+the generalized posterior Viterbi (18) and PMAP (26) hybrid decoders are given in rows 618, and 19-31, respectively. Table 1 gives a detailed legend for interpreting the outputs. The
+monotonicity of the generalized PVD hybrid inference (Corollary 15, part 1, and Corollary
+¯ ∞ and R
+¯1
+8, inequalities 36 and 37) is illustrated by following the posterior risk columns R
+across rows 2 (PMAP), then 6 through 17, and finally 1 (Viterbi); PVD (row 3) is attained
+when α ≈ 0 (rows 6-9) and here is also indistinguishable from Constrained PMAP (row
+4). The monotonicity of the generalized PMAP hybrid inference (Corollary 15, part 3) is
+¯ ∞ and R1 columns across rows 2 (PMAP), then 19 through
+illustrated by following the R
+30, and finally 1 (Viterbi); Constrained PMAP (row 4) is attained when α ≈ 0 (rows 19-20)
+and here is also indistinguishable from PVD (row 3).
+Note how the decoder in row 16 (Figure 1) differs from its neighbors, specifically, how
+it completely misses the terminal activity, which is to a variable extent captured by both
+its “more accurate” (row 15) and “more probable” (row 17) neighbors.
+Rows 18 and 31 are the “data blind” maximum a priori and pointwise maximum a priori
+decodings, which are members of both the generalized hybrid families. These decoders tie
+not only in this but in all the other cases as well; see the structure of the (overall) transition
+matrix P in Appendix E also to understand the overwhelming dominance of class 3 (“coil”)
+¯ 1 risk terms in the
+in the absence of the amino-acid information. By adjusting the R1 and R
+generalized decoders, we can easily accommodate unequal classification penalties to begin
+23
+
+Lember and Koloydenko
+
+exploring the topology of the posterior distribution (see also Section 8). Thus, for example,
+we suppress the dominating class 3 to better reveal activity of the remaining classes as
+shown in Figure 2. Specifically, the marginal posterior probabilities pt (s | xT ) are replaced
+by pt (s | xT )/21 and 4pt (s | xT )/21 for s = 3 and s = 3, respectively; the same re-weighting
+is also applied to the prior marginal distributions; the Viterbi, Rabiner k = 2, as well as
+the MAPriori decoder (rows 2, 5, 18, respectively) are not affected by this adjustment.
+Application specific performance measures will usually be of more interest than the
+simple measures used here for illustration of the ideas (Section 8). Thus, for example,
+regarded as β-strand (state 2) detectors, the original decoders (Figure 1) miss four of the
+seven 2-islands. On the other hand, a more dynamic class 2 activity revealed in Figure
+2 correlates very well with the seven objects of class 2. The presence of the adjusted
+PMAPriori decoder (row 31) also helps to better assess the value of the observed data.
+2222
+
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+
+222
+
+222222
+
+4444555555556666
+
+222222
+222222
+222222
+2222222
+222222
+222222
+222222
+2222222
+2222222
+2222222
+222222222
+
+555
+
+222
+222
+222
+2222
+2222
+2222
+
+222222
+222222
+2222222
+2222222
+2222222
+222222222
+
+1
+
+4
+
+7
+
+10
+
+13
+
+16
+
+44445556666
+
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+
+19
+
+22
+
+25
+
+22222
+
+28
+
+31
+
+34
+
+37
+
+40
+
+111111
+
+43
+
+222222
+222
+222
+222
+
+222
+222
+222
+2222
+2222
+
+46
+
+22222
+
+49
+
+52
+
+55
+
+2222222
+
+5555666
+45555666
+45555666
+
+2222
+2222
+2222
+
+45555666
+45555666
+45555666
+45555666
+45555666
+
+2222
+2222
+2222
+2222
+2222
+
+45555666
+45555666
+45555666
+
+2222
+2222
+2222
+2222
+2222
+
+58
+
+61
+
+64
+
+67
+
+70
+
+111111
+4444556666
+1111111111111111111
+4444444445555555
+4444444445555555
+4444444445555555
+44444444445555555
+4444444445555555
+4444444445555555
+4444444445555555
+4444444445555555
+4444444445555555
+4444444445555555
+44444444445555555
+444444444445555555
+444444445555555555
+444444445555555555
+1111111111111111111
+4444444445555555
+4444444445555555
+4444444445555555
+4444444445555555
+4444444445555555
+444444444445555555
+444444445555555555
+444444445555555555
+1111111111111111111
+1111111111111111111
+1111111111111111111
+
+72
+
+75
+
+78
+
+81
+
+84
+
+87
+
+90
+
+93
+
+96
+
+99
+
+102
+
+105
+
+108
+
+111
+
+114
+
+117
+
+120
+
+123
+
+126
+
+129
+
+132
+
+135
+
+138
+
+141
+
+144
+
+147
+
+Figure 1: Performance of the well-known and some of the new decoders on Case 877. The
+dominant class 3 is represented by blank entries. For further legend, see Table 1.
+In addition to using the real data, we simulate synthetic data sets each of which having
+the same number N = 25713 of sequences, in the following way. Let {ˆ
+πsn }s∈S , Pn , {Psn , s ∈
+S} be the estimates of the HMM parameters (initial, transition, and emission distributions,
+respectively) obtained from (xTn (n), y Tn (n)), the n-th actual realization. Then the n-th
+24
+
+Bridging Viterbi and Posterior Decoding
+
+R
+o
+w
+0
+1
+2
+3a
+3b
+4
+
+Generalized
+PVD PMAP
++
++
++
++
+
++
++
+
++
+
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+
++
++
++
++
++
++
++
++
++
++
++
++
++
+
++
+
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31 +
+
++
++
++
++
++
++
++
++
++
++
++
++
++
+
+Output y 149
+Alias
+C1
+C2
+
+Truth
+Viterbi 0
+PMAP 1
+PVD
+≈1
+≈1
+Constr. ≈ 1
+PMAP
+Rabiner n/a
+k=2
+0.999
+0.995
+0.990
+0.950
+0.900
+2/3
+0.500
+1/3
+0.250
+0.200
+0.100
+0.010
+MA0
+Prior
+0.999
+0.995
+0.990
+0.950
+0.900
+2/3
+0.500
+1/3
+0.250
+0.200
+0.100
+0.010
+PMA0
+Prior
+
+C3
+
+C4
+
+Empir.
+error
+rate(%)
+
+posterior
+risks
+
+R∞
+0
+0.4907
+56.3758 0.1604
+45.6376 ∞
+46.9799 0.2486
+
+R1
+1.1311
+0.8296
+0.6905
+0.6961
+
+R1 (%)
+59.2173
+50.3368
+46.7752
+46.9188
+
+1
+0
+≈0
+0
+≈0
+
+0
+0
+0
+0
+0
+
+0
+0
+0
+≈0
+0
+46.9799 0.2468 0.6961 46.9188
+
+n/a
+
+n/a n/a 53.0201 0.1823 0.7118 47.4429
+
+0.001
+0.005
+0.010
+0.050
+0.100
+1/3
+0.500
+2/3
+0.750
+0.800
+0.900
+0.990
+0
+
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+
+46.9799
+46.9799
+46.9799
+46.9799
+46.9799
+53.0201
+54.3624
+56.3758
+57.0470
+57.0470
+57.0470
+56.3758
+57.0470
+
+0.2486
+0.2486
+0.2486
+0.2352
+0.2352
+0.1897
+0.1791
+0.1700
+0.1680
+0.1680
+0.1645
+0.1604
+0.1645
+
+0.6961
+0.6961
+0.6961
+0.6964
+0.6964
+0.7065
+0.7142
+0.7277
+0.7331
+0.7331
+0.7637
+0.8296
+0.7637
+
+46.9188
+46.9188
+46.9188
+46.9322
+46.9322
+47.2499
+47.5372
+48.0356
+48.1738
+48.1738
+48.9620
+50.3368
+48.9620
+
+0.001
+0.005
+0.010
+0.050
+0.100
+1/3
+0.500
+2/3
+0.750
+0.800
+0.900
+0.990
+0
+
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1
+
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+46.9799
+46.9799
+46.3087
+50.3356
+50.3356
+54.3624
+57.0470
+57.0470
+57.0470
+56.3758
+56.3758
+56.3758
+57.0470
+
+0.2486
+0.2486
+0.2417
+0.2009
+0.2009
+0.1776
+0.1680
+0.1680
+0.1645
+0.1604
+0.1604
+0.1604
+0.1645
+
+0.6961
+0.6961
+0.6962
+0.7021
+0.7021
+0.7165
+0.7331
+0.7331
+0.7637
+0.8296
+0.8296
+0.8296
+0.7637
+
+46.9188
+46.9188
+46.9245
+47.0773
+47.0773
+47.6139
+48.1738
+48.1738
+48.9620
+50.3368
+50.3368
+50.3368
+48.9620
+
+Table 1: Case 877. Performance of the well-known and some of the new decoders. Worst,
+second worst, best and second best entries in each category are highlighted in red,
+magenta, blue and cyan respectively. In rows 1, 2, 3a, 6-17, C1 = 1 − α = k1 and
+C2 = α = 1 − k1 .
+25
+
+Lember and Koloydenko
+
+2222
+
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+
+2222
+2222
+2222
+
+222
+222
+222
+222
+222
+
+2222
+2222
+2222
+2222
+2222
+
+222
+222
+222
+
+2222
+2222
+222
+
+222
+
+222222
+
+4444555555556666
+
+222222
+
+222222222
+222222222
+222222222
+
+22222222222 2444455555566662222222
+44
+22222222222 2444455555566662222222
+44
+22222222222 2444455555566662222222
+44
+2222222
+222222222
+22222222222 2444455555566662222222
+44
+222222222
+22222222222 2444455555566662222222
+44
+222222222
+22222222222 2444455555566662222222
+44
+222222222
+22222222222
+444455555566662222222
+44
+222222222
+2222222222
+44445555556666 222222
+4
+2222222222222222222222
+4445555556666 222222
+4
+2222222222222222222222
+4445555556666 222222
+2222222222222222222222
+444555555555555555555555
+2222222222222222222222
+444555555555555555555555
+2222222222222222222222
+455555555555555555555555
+2222222222222222222222222222222
+222222222
+22222222222
+444455555566662222222
+44
+2222222222222222222222
+44445555556666 222222
+4
+2222222222222222222222
+44445555556666 222222
+4
+2222222222222222222222
+444555555555555555555555
+2222222222222222222222
+444555555555555555555555
+2222222222222222222222222222222
+
+2222222222222222222222222222222222222222222222222222222222222222222
+1
+
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+
+222
+222
+222
+
+4
+
+7
+
+10
+
+13
+
+16
+
+44445556666
+
+19
+
+22
+
+25
+
+22222
+
+28
+
+31
+
+34
+
+37
+
+111111
+
+40
+
+43
+
+22222
+222222
+222222
+222222
+
+46
+
+49
+
+52
+
+55
+
+2222222
+
+4445555566666
+4445555566666
+4445555566666
+
+222222
+222222
+222222
+
+2 2222222
+2 2222222
+2 2222222
+
+22222222
+22222222
+22222222
+
+4445555566666
+4445555566666
+4445555566666
+4455555566666
+4455555566666
+4455555566666
+455555556666
+5555555556666
+5555555556666
+5555555556666
+
+222222
+222222
+222222
+222222
+222222
+222222
+
+2 2222222
+222222
+22222222
+2222222
+222222
+22222222
+2222222
+222222
+22222222
+222222
+222222
+22222222
+222222
+22222
+2222222
+222222222222
+222222
+2222222222222222222222
+22222222222222
+22222
+22222
+
+4455555566666
+4455555566666
+4455555566666
+5555555556666
+5555555556666
+
+222222
+222222
+222222
+
+222222
+222222
+22222222
+222222
+22222
+2222222
+222222222222
+222222
+2222222222222222222222
+22222
+
+58
+
+61
+
+64
+
+67
+
+70
+
+111111
+4444556666
+1111111111111111111
+4444444444445555555
+4444444444445555555
+4444444444445555555
+44444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444445555555555
+4444444445555555555
+4444444445555555555
+1111111111111111111
+
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+4444444444445555555
+1111111111111111111
+1111111111111111111
+1111111111111111111
+1111111111111111111
+1111111111111111111
+1111111111111111111
+1111111111111111111
+222222222222222222222222222222222222222222222222222222222222222222222222222222
+72
+
+75
+
+78
+
+81
+
+84
+
+87
+
+90
+
+93
+
+96
+
+99
+
+102 105 108 111 114 117 120 123 126 129 132 135 138 141 144 147
+
+Figure 2: Performance of the selected decoders on Case 877. The dominant class 3 (blank
+¯1
+entries) is suppressed by an asymmetric loss incorporated into the R1 and R
+risks of the generalized hybrid decoders. Subsequently, the remaining classes
+reveal more activity, and in particular all of the seven instances of class 2 can be
+recognized with essentially only two false alarms.
+
+simulated realization is a sample of length Tn from the (first order homogeneous) HMM with
+these parameters (note that the initial distributions {ˆ
+πsn }s∈S are necessarily degenerate).
+The simulations, first of all, help us obtain interval estimates of the performance measures
+(see more below). Also, they are valuable theoretically. Indeed, the analysis based on the
+real data tells us what happens in a typical practical scenario in which the (HMM) model
+is known to be too crude and yet has to be used for its simplicity. The simulations on the
+contrary tell us what happens when the model is correct. By default, the analysis below
+refers to the real data, whereas the use of the synthetic data will be acknowledged explicitly.
+26
+
+Bridging Viterbi and Posterior Decoding
+
+5.1 Performance Measures and Their Estimation
+The performance measures discussed in this subsection will be used in the following two subsections to more completely assess and compare the performance of all the known decoders
+(including PMAP and Viterbi), and several new members of the generalized families.
+Given a decoder v, our principal performance measures are the R1 (v) risk E[R1 (v(X T ) |
+¯ ∞ risk E[R
+¯ ∞ (v(X T ) | X T )] (3); it is not practical to
+X T )] (see Equation 5) and the R
+¯∞
+operate with R∞ (2) since it is virtually 1 for reasonably long realizations. For the R
+results, see Subsection 5.3.
+The R1 risk is simply the point-wise error rate T1 Tt=1 P (Yˆt = Yt ), where Y T is the
+output of v(X T ). This assumes T to be non-random; more generally, T is random and the
+R1 risk is then given by ET T1 Tt=1 P Yˆt = Yt | T . We refer to 1 − R1 as accuracy when
+comparing our decoders (e.g., Section 5.2 below). Note that given a decoder v, R1 (v), is
+simply a parameter of the underlying population of all (T, xT , y T ) that could potentially be
+observed. If the current hidden Markov model were not too crude for this population, we
+would compute such risks if not analytically, then at least by using Monte-Carlo simulations,
+for any g of interest. In reality, however, we need to estimate them from the given data.
+The situation is further complicated by the fact that the classification method v is specified
+only up to the model parameters, which are unknown and also need to be estimated from
+the data.
+All in all, we use the usual cross-validation (CV) estimation. Specifically, to decode
+T
+n
+x (n), we make g use the estimates of the parameters obtained from the remaining N − 1
+sequences. Thus, if v outputs y Tn , then we take the empirical point-wise error rate
+eˆn =
+
+1
+Tn
+
+Tn
+
+I{ˆyt =yt (n)}
+
+(40)
+
+t=1
+
+to be an estimate of R1 (v). Clearly, if v used the same fixed parameters as used in the
+definition of R1 (v), then E[ˆ
+en ] = R1 (v), that is, eˆn would be unbiased for R1 (v), and so
+would be the average
+eˆCV =
+
+1
+N
+
+N
+
+eˆn .
+
+(41)
+
+n=1
+
+Obviously, in reality eˆCV is likely to be biased. For this reason we also look at the modelbased CV estimate of R1 given by
+ˆ1 = 1
+R
+N
+
+N
+
+R1 (y Tn | xTn (n)).
+
+(42)
+
+n=1
+
+ˆ 1 is also likely
+Computation of R1 (· | xT ) indeed relies on the model being correct, hence R
+to be biased. We also report approximate 95% confidence intervals which are based on the
+usual normal approximation disregarding, among others, any effects of the variability in the
+realization length T .
+27
+
+Lember and Koloydenko
+
+If the variation in T were merely an observational artifact, then instead of the above
+cross-validation averages (42), we would focus on the total error rate for the entire data set
+given by (43) below.
+N
+
+eˆ =
+
+Tn
+
+n=1 t=1
+
+I{ˆyt (n)=yt (n)}
+
+N
+
+=
+
+N
+
+Tn
+
+w(n)ˆ
+en ,
+
+where w(n) =
+
+Tn
+N
+
+n=1
+
+n=1
+
+.
+
+(43)
+
+Tn
+n=1
+
+However, to obtain sensible confidence intervals in this setting, we need to estimate the
+variance of eˆ. Bootstrapping is a possibility, but we instead simulate several (specifically,
+15) synthetic data sets as described above in the introduction to this Section, that is, resampling individual realizations (xTn (n), y Tn (n)) from the HMM with parameters {ˆ
+πsn }s∈S ,
+Pn , {Psn , s ∈ S}, n = 1, 2, . . . , N . We then use the t-distribution (on 14 degrees of freedom)
+to obtain the 95% margins of error.
+5.2 Comparison of the Accuracy of the Viterbi and PMAP Decoders
+A histogram of the difference eˆ(Viterbi, n) − eˆ(PMAP, n) between the empirical errors (40)
+of the Viterbi and PMAP decoders is plotted in Figure 3 (black narrow bins). We also
+observe that in 85.35% of the CV rounds the PMAP decoder is more accurate, and in
+10.67%—less accurate, than the Viterbi decoder (in 3.98% of the cases the two methods
+show the same accuracy). To examine sensitivity of these results to the variation in the
+realization length, we superimpose in the same Figure 3 a histogram of the subsample
+consisting of the 1000 longest realizations (blue wide bins). Although the subsample spans
+a less extreme range (−16.75%, 52.62%) than that of the entire sample, the locations of the
+two histograms are very similar, suggesting the average gain of accuracy of about 12% when
+replacing the Viterbi decoder by the PMAP one.
+We also compare the performance of the Viterbi and PMAP decoders by examining their
+ˆ 1 (Viterbi) − R
+ˆ 1 (PMAP)
+R1 (· | xT (n) (n)) risks (5), see Figure 4. Note that the difference R
+is 9% on average, and is largely unchanged (apart from a minor increase) when recomputed
+on the subsample of the 1000 longest realizations (450-2060 positions).
+Finally, eˆ (43) is 59.68% (±0.068%) and 46.10% (±0.047%) for the Viterbi and PMAP
+decoders, respectively, and the PMAP comes out 13.58% ± 0.0463% more accurate than the
+Viterbi decoder. The above confidence intervals are, however, likely to be deflated since
+the model-based simulations show little variation of eˆ(Viterbi), eˆ(PMAP), or the differences
+eˆ(Viterbi)− eˆ(PMAP). In fact, based on the 15 model-based simulations, the PMAP is only
+7.46% ± 0.0463% more accurate than the Viterbi decoder, with the individual error rates of
+47.49% ± 0.047% and 54.95% ± 0.068% for the former and the latter, respectively. Finally,
+replacing the empirical error rates by the R1 (· | xT ) risks (which are now computed exactly
+since the simulations are model-based), we obtain the difference of 8.55% ± 0.0213%.
+In summary, the PMAP decoder can be notably more accurate than the Viterbi decoder
+in scenarios with as few as six hidden states.
+28
+
+Bridging Viterbi and Posterior Decoding
+
+Figure 3: A histogram of the difference between the empirical error rates eˆ(Viterbi, n) −
+eˆ(PMAP, n) obtained from the full data (black narrow bins) and the subsample
+consisting of 1000 longest realizations (blue wide bins). Although in 3.98% of
+the entire data set the two methods show the same accuracy (spike at 0), overall
+their performance appears to be notably different. The Viterbi decoder is more
+accurate in 10.67% of all the cases, and the PMAP decoder is more accurate
+in 85.35% of all the cases. The extreme differences (min = −78.69%,max =
+89.74%) tend to be observed on short sequences (136 positions and shorter), but
+the subsample of the 1000 longest realizations (450-2060 positions) confirms the
+effect of the PMAP decoder being more accurate. In particular, on the longest
+sequences, the PMAP decoder can be 52.62% more accurate than the Viterbi
+decoder, whereas the latter can be at most 16.75% more accurate than the former.
+
+29
+
+Lember and Koloydenko
+
+Figure 4: Histograms of the R1 (y T (n) | xT (n) (n)) risk of the Viterbi (black, more spread)
+and PMAP (blue, more peaked) decoders. Since the first order homogeneous
+HMM is only an approximation to the data source, the cross-validation averages
+of 48.73% (PMAP), 57.73% (Viterbi), and 9% (PMAP’s gain over Viterbi) are
+likely to be biased as estimates of the respective pointwise error rates; see also
+Figure 3 for a model independent analysis.
+
+¯ ∞ Risk of the Viterbi, PMAP and Other Decoders
+5.3 The R
+¯ ∞ (y T | xT ) of
+Next we look at the log-posterior probability rates log(P (y T | xT ))/T = −R
+the PMAP, Viterbi and other decoders. In 74.14% of the cases, the PMAP decoder returns
+an inadmissible path, that is, log(P (y T | xT ))/T = −∞. To avoid dealing with an infinite
+range, we switch to the exponential scale. Thus, Figure 5 below displays histograms of the
+geometric rates
+
+T
+
+P (y T | xT ).
+
+The Rabiner 2-block decoder yˆ(2) returns inadmissible paths in 70.94% of the cases.
+In 7.32% of the cases this decoder gives an inadmissible path even when the PMAP path
+(for the same realization) is admissible. This illustrates the violation of monotonicity (see
+30
+
+Bridging Viterbi and Posterior Decoding
+
+30
+
+True path
+Viterbi
+PMAP
+PVD
+Rabiner k=2
+New Hybrid k=2
+
+25
+
+Density
+
+20
+
+15
+
+10
+
+5
+
+0
+0.5
+
+0.55
+
+0.6
+
+0.65
+0.7
+0.75
+0.8
+0.85
+0.9
+log Posterior Probability rate (exponentiated)
+
+0.95
+
+1
+
+Figure 5: Distributions of the (geometric rates of the) posterior probabilities of selected
+decoders. The Constrained PMAP decoder is virtually indistinguishable from
+PVD, hence omitted. The PMAP and Rabiner 2-block (see Subsection 1.2.1) decoders return inadmissible paths in 74.14% and 70.94% of the cases (not shown),
+respectively (hence only 25.86% and 29.06% of the respective distributions are
+shown). Just like PVD and the Constrained PMAP decoder, the new hybrid
+2-block posterior-Viterbi decoder (33) is guaranteed to produce admissible paths.
+Moreover, those paths would generally have a higher probability than the probabilities of the PVD and Constrained PMAP paths.
+
+Subsection 1.2.1) in the path (posterior) probability when using Rabiner’s suggestion to
+base decoding on the loss (30).
+We also note that the posterior probabilities of the actual hidden paths (blue histogram)
+are notably lower than those of the admissible decodings, especially the Viterbi outputs.
+However, these effects are not out of line with the model-based simulations.
+31
+
+Lember and Koloydenko
+
+5.4 Summary of the Experiments
+Figure 6 compares performance of these and other decoders as measured by the averaged
+error rate and the averaged (exponentiated) path log-posterior rate
+T
+
+P (y T | xT )CV =
+
+1
+N
+
+N
+Tn
+
+P (y Tn | xTn (n)).
+
+(44)
+
+n=1
+
+Recall that the family of k-block posterior-Viterbi decoders is naturally parameterized by
+the block length k (k = 1 and k → ∞ giving the PMAP and Viterbi decoders, respectively).
+1
+We have also included the continuous re-parameterization (38) via k = 1−α
+(and α = k−1
+k )
+which embeds these special cases into the generalized PVD Problem (18) via C1 = α,
+C2 = 1 − α, C3 = C4 = 0.
+Figure 6 displays performance of members of the generalized PVD and generalized
+PMAP (Problem 26) families with C1 = α, C2 = 1 − α, C3 = C4 = 0 for a subset of values
+of α used in Figure 1 and Table 1. The point-wise maximum a priori (C1 = C2 = C4 = 0,
+C3 = 1) and the prior-based Viterbi (C1 = C2 = C3 = 0, C4 = 1) decoders are also included,
+showing identical performance on these data. Remarkably (but not very surprisingly given
+the crudeness of the hidden Markov model for these data), the accuracy of these “datablind” decoders on average is still higher than that of the Viterbi (MAP) decoder. We
+reiterate that the hidden Markov model is rather crude as a model for the given data.
+Furthermore, the estimates of the model parameters used for decoding any given sequence
+are obtained from sequences that can generally have very different characteristics from
+the sequence being decoded. Therefore, the risks optimized under these conditions may
+be misleading, for example, a PMAP path need not have the lowest empirical error rate.
+Nonetheless, the empirical error rates of the generalized decoders are still found to follow
+¯ 1 risks.
+the theoretical order of the posterior R1 and R
+
+6. Algorithmic Approaches
+It is also possible (at least when the Viterbi path is unique) to hybridize MAP and PMAP
+inferences without introduction of risk/loss functions. We discuss such approaches mainly
+because one such approach was taken by Brushe et al. (1998) in what appears to be the
+only publication dedicated to hybridization of the MAP and PMAP inferences in HMMs.
+First note that the hybridization can be achieved by a suitable transformation of the
+forward and backward variables αt (i) and βt (i) defined in (1). To make this concrete,
+consider the recursively applied power transformations with µ > 0 given in (45) below
+α1 (i; µ) := α1 (i);
+
+K
+
+αt (i; µ) := 
+
+(αt−1 (j; µ)pji )
+
+(45)
+1
+
+µ
+
+µ
+
+fi (xt ),
+
+t = 2, 3 . . . , T ;
+
+j=1
+
+βT (i; µ) := βT (i) = 1;
+
+
+1
+
+µ
+
+K
+
+µ
+
+βt (i; µ) := 
+
+(pij fj (xt+1 )βt+1 (j; µ))
+j=1
+
+32
+
+,
+
+t = T − 1, T − 2, . . . , 1,
+
+Bridging Viterbi and Posterior Decoding
+
+Figure 6: Empirical error (41) (top) and probability rates (44) (bottom) of the popular and
+some new members of the generalized PVD (asterisk) and PMAP (circle) families.
+
+for all i ∈ S. Clearly, αt (i; 1) = αt (i) and βt (i; 1) = βt (i), for all i ∈ S and all t = 1, 2, . . . , T .
+Thus, µ = 1 leads to the PMAP decoding, that is, at time t returning
+yˆt (1) = arg max{αt (i; 1)βt (i; 1)},
+i∈S
+
+(46)
+
+provided some tie-breaking rule.
+Using induction on t and continuity of the power transform, it can also be seen that the
+following limits exist and are finite for all i ∈ S and all t = 1, 2, . . . , T : limµ→∞ αt (i; µ) =:
+αt (i, ∞) and limµ→∞ βt (i; µ) =: βt (i; ∞), where
+αt (i; ∞) = max p(xt , st ),
+st :st =i
+
+t = 1, 2, . . . , T,
+
+= max (αt−1 (j; ∞)pji ) fi (xt ),
+j∈S
+
+(47)
+
+t = 2, 3, . . . , T,
+33
+
+Lember and Koloydenko
+
+βt (i; ∞) =
+
+max
+
+T −t
+sT
+t+1 ∈S
+
+p(xTt+1 , sTt+1 | Yt = i),
+
+t = T − 1, T − 2, . . . , 1,
+
+and βT (i; ∞) = 1,
+
+max (pij fj (xt+1 )βt+1 (j; ∞)) .
+j∈S
+
+The above convergence follows from the following trivial observation, which we nonetheless
+prove below for reasons to become clear later on in the context of Equation (50).
+Proposition 9 Let aj (µ), j = 1, 2, . . . , K, be non-negative as functions of µ ∈ (0, ∞).
+Assume that aj (µ) converges to some (finite) limit aj as µ → ∞. Assume further that for
+any µ, at least some of the aj (µ) are positive. Then we have
+
+1
+µ
+
+K
+
+µ
+
+lim 
+
+µ→∞
+
+aj (µ)
+
+= max {aj }.
+
+j=1
+
+1≤j≤K
+
+Proof Let M (µ) = max1≤j≤K {aj (µ)}, and let M = max1≤j≤K {aj }. Write
+K
+j=1
+
+M (µ)
+
+aj (µ) µ
+M (µ)
+
+1
+µ
+
+K
+µ
+j=1 aj (µ)
+
+1
+µ
+
+and note that as µ → ∞, M (µ) converges to M . Also, we have
+
+
+K
+
+1≤
+j=1
+
+aj (µ)
+M (µ)
+
+µ
+
+1
+
+µ
+1
+
+ ≤ Kµ.
+
+1
+
+Since K µ → 1, by the Sandwich Theorem the middle term also converges to 1, yielding the
+proposed result.
+Returning to (47), we note that any Viterbi path y T (∞) satisfies the following property:
+yˆt (∞) = arg max{αt (i; ∞)βt (i; ∞)}.
+
+(48)
+
+i∈S
+
+The above property (48) has already been pointed out by Brushe et al. (1998). The main
+motivation of Brushe et al. (1998), however, seems to be the case of continuous emission
+distributions Ps , which might explain why the authors do not consider the fact that not
+every path that satisfies (48) is necessarily Viterbi, or MAP. Thus, ignoring potential nonuniqueness of the Viterbi paths, Brushe et al. (1998) state, based on (48), that the Viterbi
+path can be found symbol-by-symbol. As the following simple example shows, when the
+Viterbi path is not unique, the attempt to implement the Viterbi decoding in the symbol-bysymbol fashion (based on Equation 48) can produce suboptimal (in the MAP sense), or even
+inadmissible, paths.
+Example 1 Let S = {1, 2, 3} and let {A, B, C, D} be the emission alphabet. Let the initial
+distribution π, transition probability matrix P, and the emission distributions fs , s ∈ S, be
+defined as follows:
+
+
+
+
+
+0.4
+0.6 0.4
+0
+π = 0.54 P = 0.1 0.1 0.8 
+0.06
+0 0.02 0.98
+34
+
+A
+f1 (·) 0.3
+f2 (·) 0.2
+f3 (·) 1/6
+
+B
+0.15
+0.3
+1/6
+
+C
+0.25
+0.3
+1/6
+
+D
+0.3
+.
+0.2
+1/2
+
+=
+
+Bridging Viterbi and Posterior Decoding
+
+Suppose the sequence x2 = (A, B) has been observed. The (posterior) probabilities of all the
+nine paths (i, j) are then summarized in the matrix P P = (P (Y 2 = (i, j) | AB)) below:
+
+
+0.0108 0.0144
+0
+P P = 0.0016 0.0032 0.0144 ,
+0
+0.0001 0.0016
+hence there are two Viterbi paths in this case, namely (1, 2) and (2, 3). Now, α1 (i; ∞) =
+πi fi (A), i ∈ S, and β1 (i; ∞) = maxj∈S P (X2 = B, Y2 = j | Y1 = i) = maxj∈S fj (B)pij , or,
+in the vector form:
+
+ 
+
+
+ 
+
+
+ 
+
+α1 (1; ∞)
+0.12
+β1 (1; ∞)
+0.12
+α1 (1; ∞)β1 (1; ∞)
+0.0144
+α1 (2; ∞) = 0.108 , β1 (2; ∞) =  2/15  , α1 (2; ∞)β1 (2; ∞) =  0.0144  ,
+α1 (3; ∞)
+0.01
+β1 (3; ∞)
+49/300
+α1 (3; ∞)β1 (3; ∞)
+49/30000
+so we have yˆ1 (∞) = 1 or yˆ1 (∞) = 2. On the other hand, α2 (i; ∞) = maxj∈S P (X 2 =
+(A, B), Y 2 = (j, i)), and β2 (i, ∞) = 1 for all i ∈ S. Therefore,
+
+ 
+ 
+ 
+
+0.0108
+max{0.0108, 0.0016, 0}
+α2 (1; ∞)β2 (1; ∞)
+α2 (1; ∞)
+α2 (2; ∞) = α2 (2; ∞)β2 (2; ∞) = max{0.0144, 0.0032, 0.0001} = 0.0144 .
+0.0144
+max{0, 0.0144, 0.0016}
+α2 (3; ∞)β2 (3; ∞)
+α2 (3; ∞)
+Therefore, yˆ2 (∞) = 2 or yˆ2 (∞) = 3. However, the symbol-by-symbol decoding is not aware
+that gluing yˆ1 (∞) = 1 and yˆ2 (∞) = 3 is not only suboptimal, but is actually forbidden, that
+is, results in the inadmissible path (1, 3).
+In contrast to Viterbi, the PMAP inference (in the absence of constraints) is by definition
+point-wise, or symbol-by-symbol, hence violation of admissibility is not surprising there
+regardless of the non-uniqueness issue.
+All in all, the main idea of Brushe et al. (1998) is to consider “hybrid” decoders that
+use intermediate values of the interpolation parameter µ. That is, the hybrid decoder with
+parameter µ is defined as a decoder that at time t returns
+yˆt (µ) = arg max{αt (i; µ)βt (i; µ)},
+
+(49)
+
+i∈S
+
+provided some tie-breaking rule.
+Note also that in their attempt to hybridize PMAP with Viterbi in this manner, Brushe
+et al. (1998) instead of (45) use different transformations that are based on the following
+(0, ∞) → R composite mapping
+
+
+N
+1
+1 + (N − 1) exp(−µ)
+log 
+exp (µdj (µ)) , (50)
+F (µ, d1 (µ), d2 (µ), . . . , dN (µ)) :=
+µ
+N
+j=1
+
+where N = K (in our notation) and functions dj (µ) are continuous on [0, ∞) with finite
+limits dj (∞) as µ → ∞. It is then not hard to verify that as µ → 0, the function (50)
+converges to N
+j=1 dj (0) (based on Brushe et al., 1998, Proposition 1a). At the same time,
+as µ → ∞ the same function converges to max1≤j≤N {dj (∞)} (based on Brushe et al.,
+35
+
+Lember and Koloydenko
+
+1998, Proposition 1b). To establish the latter convergence, Brushe et al. (1998) refer to the
+Varadhan-Laplace Lemma, although the result can also be obtained with basic calculus, for
+example, by using continuity of the logarithmic function, taking the logarithm inside the
+limit in Proposition 9, and identifying aj (µ) with edj (µ) .
+This mapping is then applied recursively to αt (i; µ) and βt (i; µ), the analogs of the
+forward and backward variables (κµt (i) and τtµ (i), respectively, in the notation of Brushe
+et al., 1998), to produce the correct end points/limits, that is, PMAP and Viterbi/MAP
+(when the latter is unique). Specifically, the transformed forward and backward variables
+would be re-defined as follows:
+α1 (i; µ) := α1 (i);
+
+(51)
+
+
+αt (i; µ) :=
+
+1 + (N − 1) e−µ
+1
+log 
+µ
+N
+
+
+
+N
+
+eµαt−1 (j;µ)pji  fi (xt ) , t = 2, 3, . . . , T ;
+j=1
+
+βT (i; µ) := βT (i) = 1;
+βt (i; µ) :=
+
+1 + (N −
+µ
+
+1) e−µ
+
+
+log 
+
+1
+N
+
+
+
+N
+
+eµβt+1 (j;µ)pij fj (xt+1 )  , t = T − 1, T − 2, . . . , 1.
+j=1
+
+Above, we took the liberty to correct κµ1 (i) = π(i) (α1 (i; µ) = πi in our notation), which
+appears in the paper of Brushe et al. (1998) as Equation (22) and also in the proofs of parts
+(a) and (b) of their Lemma 1. Clearly, in order for κµ1 (i) (α1 (i; µ) in our notation) to match
+α1 (i) = P (Y1 = i, X1 = x1 ) (as claimed in their Lemma 1), κµ1 (i) has to equal π(i)bi (O1 )
+(which is πi fi (x1 ) in our notation). Note that Equation (15) of Brushe et al. (1998) leaves
+α1 (i) undefined, but instead introduces α0 (i), which is defined to be π(i). If that was an
+implicit intention to introduce a “silent” state at t = 0, then their Equation (22) and the
+relevant parts of the proof of Lemma 1 would also have to start with t = 0 and not with t = 1.
+If, on the other hand, t = 0 in Equation (15) was simply a typing error and the intention was
+to have t = 1, then the would-be definition of α1 (i) = π(i) contradicts an earlier equation
+just below their Equation (14), which gives α1 (i) = P (O1 , q1 = Si ) = π(i)b1 (O1 ) (that is,
+P (Y1 = i, X1 = x1 ) = π1 f1 (x1 ) in our notation).
+Returning to the essence of the approach, note that the only reason stated by Brushe
+et al. (1998) for choosing (51) as the family of interpolating transformations is the attainment of the required limits (that is, PMAP when µ → 0, and Viterbi when µ → ∞). It is
+therefore not clear if Brushe et al. (1998) realized that besides (51), there are other (single parameter) families of transformations, such as (45), with the same limiting behavior.
+Naturally, the resulting interpolation generally depends on the choice of the transformations used. In the absence of any special reason for using (51), (45) may have an appeal
+for its simplicity, should one really wish to pursue the idea of algorithmic hybridization.
+Moreover, we explain next (Subsection 6.1) why the hybrid decoder defined by (49) and the
+transformations (51) does not work in practice except with trivial examples, and we also
+show (Subsection 6.3) how this decoder can be modified to become operational. In contrast
+to this, we will show (Subsection 6.2) that the hybrid decoder based on the transformations
+(45) becomes operational by modifying just the algorithm used for its computation, and not
+the decoder. This makes the transformations (45) even more attractive as an alternative to
+(51).
+36
+
+Bridging Viterbi and Posterior Decoding
+
+6.1 The Hybrid Decoder Based on the Transformations (51) Does Not Work
+in Practice Except with Trivial Examples
+The key point is that the transform-based algorithmic hybridization attempts to compute
+quantities which, at least for µ ≈ 0, are the same order of magnitude as the forward and
+backward probabilities αt (i) = P (X t = xt , Yt = i) and βt (i) = P (xTt+1 | Yt = i). These are
+well-known to vanish exponentially fast with T , see, for example, Bishop (2006, 13.2.4) who
+also note that “[f]or moderate lengths of chain (say 100 or so), the calculation of the [αt (j)]
+will soon exceed the dynamic range of the computer, even if double precision floating point
+is used.” The situation clearly gets worse as µ increases. Indeed, recall (47), and note that
+maxst :st =i p(xt , st ) = αt (i; ∞) ≤ st :st =i p(xt , st ) = αt (i) (which is also αt (j; 1) in Equation
+45 and αt (j; 0) in Equation 51). This easily leads to a collapse of computations already
+with chains as short as T = 10 (which indeed happens using the data and model from our
+experiments of Section 5 above).
+We disagree with Brushe et al. (1998) in interpreting the nature of the above numerical
+problems when they divert the reader’s attention to the computation of the logsumexp
+function used in their transforms (50), (51). We find this is misleading as the log(ea +
+eb ) = max{a, b} + log 1 + e−|a−b| trick (alluded to by Brushe et al., 1998 in their Remark
+below Equation 25) is relevant to the problem of underflow only of the intermediate values
+(that is, ea + eb when a or b is negative of a large magnitude, such as the logarithm of a
+very small probability). In the case of the transform (50), however, computations of the
+transformed, say, forward variable αt (i; µ) (51), do require µdj (µ) = µαt−1 (j; µ)pji and not
+their logarithm. Thus, at some t underflow in αt (i; µ) occurs for some i, and then eventually
+for all i. In terms of the logsumexp function, this means that both ea and eb become 1
+(and not zero!) but the logarithm of their average (the core of the transform 50) becomes 0,
+transferring the underflow to the next generation, that is, αt+1 (i; µ). Thus, storing αt (i; µ)
+in the log-domain is irrelevant here since the transforms (50), (51) with or without the
+logsumexp trick, do require the actual value of αt (i; µ). One could conceivably introduce
+the loglogsumexpexp function to operate on log(αt (i; µ)) and resolve this problem in that
+way, but it is not clear if the goal is worth the effort.
+Furthermore, insisting that “[t]he computational complexity and numerical implementation issues associated with the hybrid algorithm can be overcome using the Jacobian
+logarithm”, Brushe et al. (1998, p. 3133) repeatedly refer to another paper, which proposes to compute the logsumexp function log( k exp(ak )) via recursive application of
+log(ea + eb ) = max{a, b} + log 1 + e−|a−b| . Although this recursive implementation should
+indeed be generally more accurate (albeit also computationally more expensive) than the
+commonly used single-shift implementation log( k exp(ak )) = M + log (exp(ak − M ))
+(M = maxk {ak }), as we just explained above, it is irrelevant to the real problem of computing the transformed forward and backward variables αt (i; µ), βt (i; µ) (κµt (i), τtµ (i), respectively, of Brushe et al., 1998). Thus, the approach of Brushe et al. (1998) does not
+immediately provide an operational decoding algorithm except for trivially short chains. For
+example, using the two-state HMM from the Example 2 and the 64-bit MATLAB (MATLAB, 2011) (but without The Symbolic Math Toolbox) installation on a (64-bit) Linux
+machine, the hybrid decoder based on (51) with µ = 1 already fails for T = 40 (with or
+37
+
+Lember and Koloydenko
+
+without the logsumexp trick). For comparison, the hybrid decoder based on the power
+transform (45) (µ = 1) survives an order of magnitude longer.
+A natural question is then whether the transform-based algorithmic hybridization approach (using (51) or (45), or the like) can at all work in practice. The fact that no such
+example has been given by Brushe et al. (1998), or anyone else up to date, casts some
+doubt. Below we give reassuring answers, which have been verified to work on several
+realistic examples.
+Indeed, it is well-known that in practice, to decode the t-th symbol the PMAP decoder
+uses the posterior probabilities pt (i | xT ) and not the vanishing joint probabilities pt (i |
+xT )p(X T = xT ) = P (xT , Yt = i) = αt (i)βt (i). The posterior probabilities pt (i | xT )
+are computed as α
+˜ t (i)β˜t (i), where α
+˜ t (i) = P (Yt = i | xt ) and β˜t (i) = P (xTt+1 | Yt =
+T
+t
+i)/p(xt+1 | x ) are the scaled analogs of the forward and backward probabilities αt (i) and
+βt (i) (Bishop, 2006, 13.2.4). This allows PMAP to bypass the aforementioned problem of
+numerical underflow.
+6.2 The Hybrid Decoder (49) is Invariant to Rescaling of the
+Power-Transformed (45) Forward and Backward Variables α(·; µ), β(·; µ).
+Let us apply the same normalization approach to the transformed forward and backward
+variables, first, using the power transform (45) and then (51). First, recall (e.g., Bishop,
+2006, 13.2.4) that α
+˜ t (i) are obtained by replacing the recursive definition
+K
+
+αt (i) = fi (xt )
+
+αt−1 (j)pji ,
+
+i = 1, 2, . . . , K,
+
+j=1
+
+by the two-step self-normalized definition
+K
+
+p(xt | x
+
+t−1
+
+)˜
+αt (i) = fi (xt )
+
+α
+˜ t−1 (j)pji ,
+
+i = 1, 2, . . . , K,
+
+j=1
+
+p(xt | xt−1 )˜
+αt (i)
+
+α
+˜ t (i) =
+
+K
+s=1 p(xt
+
+| xt−1 )˜
+αt (s)
+
+,
+
+for t = 2, . . . , T,
+K
+
+where
+
+α
+˜ 1 (i) = α1 (i)/c1 , and c1 := p(x1 ) =
+
+α1 (s).
+s=1
+
+Thus, for all t = 2, 3 . . . T , and for all i = 1, 2, . . . , K,
+α
+˜ t (i)
+
+=
+
+fi (xt )
+
+K
+˜ t−1 (j)pji
+j=1 α
+
+ct
+
+,
+
+K
+
+ct := p(xt | x
+
+t−1
+
+where, also according to Bishop (2006, Equation 13.56),
+K
+
+)=
+
+fs (xt )
+s=1
+
+α
+˜ t−1 (j)pjs .
+j=1
+
+Similarly, the rescaled backward variables are given by
+β˜T (i) := 1;
+β˜t (i) :=
+
+K
+˜
+j=1 pij fj (xt+1 )βt+1 (j)
+
+ct+1
+38
+
+,
+
+t = T − 1, T − 2, . . . , 1.
+
+Bridging Viterbi and Posterior Decoding
+
+In the same manner, we normalize the αt (i; µ) and βt (i; µ) (defined by equations 45) for
+any µ > 0 as follows:
+α
+˜ 1 (i; µ) := α1 (i)/c1 (µ) = α
+˜ 1 (i),
+α
+˜ t (i; µ) :=
+
+where c1 (µ) := c1 for all µ;
+
+K
+αt−1 (j; µ)pji )µ
+j=1 (˜
+
+1
+µ
+
+(52)
+
+fi (xt )
+,
+
+ct (µ)
+
+t = 2, 3, . . . , T ;
+
+β˜T (i; µ) := βT (i) = 1;
+β˜t (i; µ) :=
+
+K
+j=1
+
+µ
+
+pij fj (xt+1 )β˜t+1 (j; µ)
+
+1
+µ
+
+,
+
+ct+1 (µ)
+
+t = T − 1, T − 2, . . . , 1,
+
+where
+K
+
+ct (µ) :=
+
+
+
+µ
+
+(˜
+αt−1 (j; µ)pjs )
+
+
+s=1
+
+1
+
+K
+
+µ
+
+fs (xt ),
+
+t = 2, 3, . . . , T.
+
+j=1
+
+Thus, ct (1) = ct for all t = 1, 2, . . . , T . Also note that, using induction on t and (47),
+limµ→1 ct (µ) = ct (1), and the limits ct (∞) := limµ→∞ ct (µ) exist and are finite for all
+t = 1, 2, . . . , T .
+Proposition 10 For any i ∈ S, we have
+1) α
+˜ t (i; µ) =
+
+αt (i;µ)
+K
+s=1 αt (s;µ)
+
+=
+
+αt (i;µ)
+t
+m=1 cm (µ)
+
+for all t = 1, 2, . . . , T , and β˜t (i; µ) =
+
+βt (i;µ)
+T
+m=t+1 cm (µ)
+
+for all t = 1, 2, . . . , T − 1 and for all µ > 0;
+2) limµ→1 α
+˜ t (i; µ) = α
+˜ t (i), limµ→1 β˜t (i; µ) = β˜t (i) for all t = 1, 2, . . . , T ;
+3) limµ→∞ α
+˜ t (i; µ) = α
+˜ t (i; ∞) :=
+β˜t (i; ∞) =
+
+βt (i;∞)
+T
+m=t+1 cm (∞)
+
+αt (i;∞)
+K
+s=1 αt (s,∞)
+
+, for all t = 1, 2, . . . , T , and limµ→∞ β˜t (i; µ) =:
+
+, for all t = 1, 2, . . . , T − 1, and, finally, limµ→∞ β˜T (i; µ) =:
+
+β˜T (i; ∞) = 1 trivially;
+4) The hybrid decoder (49) based on the transformations (45) and the hybrid decoder (49)
+based on the transformations (52) are one and the same decoder, provided that both use the
+same tie-breaking rule.
+Proof The first claim concerning the α
+˜ t is trivially true for t = 1 by definition of α1 (i; µ),
+that is (45). Now, using induction on t, assume that the claim is true for t − 1. Write
+−1 so that a
+at−1 (µ) for ( K
+˜ t−1 (j; µ) and at−1 (µ) =
+t−1 (µ)αt−1 (j; µ) = α
+s=1 αt−1 (s; µ))
+t−1
+−1
+( m=1 cm (µ)) . Then, using (52), we get
+K
+µ
+j=1 (at−1 (µ)αt−1 (j; µ)pji )
+
+α
+˜ t (i; µ) =
+K
+s=1
+
+1
+µ
+
+K
+µ
+j=1 (at−1 (µ)αt−1 (j; µ)pjs )
+
+39
+
+fi (xt )
+1
+µ
+
+,
+fs (xt )
+
+Lember and Koloydenko
+
+which, upon cancellation of the at−1 (µ), yields the required result
+µ
+K
+j=1 (αt−1 (j; µ)pji )
+K
+s=1
+
+fi (xt )
+1
+µ
+
+K
+µ
+j=1 (αt−1 (j; µ)pjs )
+αt (i;µ)
+t
+m=1 cm (µ)
+
+To see that α
+˜ t (i; µ) also equals
+
+α
+˜ t (i; µ) =
+
+1
+µ
+
+=
+fs (xt )
+
+αt (i; µ)
+.
+K
+s=1 αt (s; µ)
+
+, write
+
+µ
+K
+j=1 (at−1 (µ)αt−1 (j; µ)pji )
+
+1
+µ
+
+µ
+K
+j=1 (αt−1 (j; µ)pji )
+
+fi (xt )
+=
+
+ct (µ)
+
+1
+µ
+
+fi (xt )
+,
+
+t−1
+m=1 cm (µ))ct (µ)
+
+(
+
+which, recalling the original (unscaled) αt (i; µ) recursion, yields the result.
+The β variables are handled analogously.
+The second claim is then a straightforward consequence of the first claim and the continuity (with respect to µ, and in particular at µ = 1) of the power transform; for example,
+to establish the result for the β˜t (i; µ), observe that Tm=t+1 cm (µ) → Tm=t+1 cm (1) when
+µ → 1. The third claim also immediately follows from the first one and Proposition 9, also
+noticing that Tm=t+1 cm (µ) → Tm=t+1 cm (∞) as µ → ∞. The fourth claim also immediately follows from the first claim as vt maximizes αt (i; µ)βt (i; µ) if and only if it maximizes
+α
+˜ t (i; µ)β˜t (i; µ).
+In particular, we arrive at the following characterization of the Viterbi paths y T (∞), which
+is now possible to compute in practice for a wide range of models and parameters in contrast
+to the condition (48):
+Corollary 11 For any t = 1, 2, . . . , T , yˆt (∞) = arg maxi∈S {˜
+αt (i; ∞)β˜t (i; ∞)}.
+Recall (46), and thus note that the PMAP decoder also maximizes α
+˜ t (i; 1)β˜t (i; 1). As a side
+T
+note, consider also the following decoder v(x ; 0) that extrapolates the normalized powertransformed decoder to µ → 0, that is “beyond” the PMAP decoding. Namely, for any
+t = 1, 2, . . . , T , let vt = arg maxi∈S {˜
+αt (i; 0)β˜t (i; 0)}, where for any i ∈ S,
+α
+˜ 1 (i; 0) := α1 (i)/c1 = α
+˜ 1 (i);
+
+(53)
+1
+Kt (i)
+
+α
+˜ t−1 (j; 0)pji
+α
+˜ t (i; 0) :=
+
+fi (xt )
+
+j∈St (i)
+
+,
+
+1
+Kt (s)
+
+K
+s=1
+
+α
+˜ t−1 (j; 0)pjs
+
+t = 2, 3, . . . , T,
+
+fs (xt )
+
+j∈St (s)
+
+where St (i) := {j ∈ S : α
+˜ t−1 (j; 0)pji > 0} and Kt (i) := |St (i)|, that is size of St (i);
+β˜T (i; 0) := βT (i) = 1;
+pij fj (xt+1 )β˜t+1 (j; 0)
+
+1
+Kt∗ (i)
+
+j∈St∗ (i)
+
+β˜t (i; 0) :=
+K
+s=1
+
+˜ t (j; 0)pjs
+j∈St+1 (s) α
+
+1
+Kt+1 (s)
+
+,
+
+t = T − 1, T − 2, . . . , 1,
+
+fs (xt+1 )
+
+where St∗ (i) := {j ∈ S : pij fj (xt+1 )β˜t+1 (j; 0) > 0} and Kt∗ (i) := |St∗ (i)|.
+40
+
+Bridging Viterbi and Posterior Decoding
+
+Corollary 12 Assume that limµ→0 α
+˜ t (i; µ) > 0 and limµ→0 β˜t (i; µ) > 0 for all i ∈ S and all
+t = 1, 2, . . . , T . Then α
+˜ t (i; 0) = limµ→0 α
+˜ t (i; µ) and limµ→0 β˜t (i; µ) = β˜t (i; 0) for all i ∈ S
+and all t = 1, 2, . . . , T , that is the decoder (49) based on the transformations (52) converges
+(upto the tie-breaking rule) to the decoder defined by (53) above.
+Proof This is a straightforward exercise in calculus, that is, using continuity of the exponential function and invoking Proposition 1a of Brushe et al. (1998), with the positivity
+assumption making all Kt (i) and Kt∗ (i) equal to K.
+Note also that the hybrid decoder (49) based on the original, that is, unnormalized variables
+(45), generally does not have a limit as µ → 0.
+6.3 Rescaling of the Forward and Backward Variables α(·; µ) and β(·; µ)
+Defined by (51) Alters the Hybrid Decoder (49).
+In the same manner as in (52) above, we now normalize the α(·; µ) and β(·; µ) variables
+transformed according to (51). Thus, for any µ > 0 and for any i ∈ S, let
+K
+
+α
+ˇ 1 (i; µ) := α1 (i)/
+
+α1 (s) = α
+˜ 1 (i);
+
+(54)
+
+s=1
+
+log
+α
+ˇ t (i; µ) :=
+
+K
+µα
+ˇ t−1 (j;µ)pji
+j=1 e
+
+1
+K
+
+K
+s=1 log
+
+1
+K
+
+βˇT (i; µ) := βT (i) = 1,
+βˇt (i; µ) :=
+
+log
+
+K
+µα
+ˇ t−1 (j;µ)pjs
+j=1 e
+
+,
+
+t = 2, 3, . . . , T ;
+
+,
+
+t = T − 1, T − 2, . . . , 1.
+
+fs (xt )
+
+t = T − 1, T − 2, . . . , 1;
+K
+µpij fj (xt+1 )βˇt+1 (j;µ)
+j=1 e
+
+1
+K
+
+K
+s=1 log
+
+fi (xt )
+
+1
+K
+
+K
+µα
+ˇ t (j;µ)pjs
+j=1 e
+
+fs (xt+1 )
+
+Proposition 13 For any i ∈ S, we have
+1) limµ→0 α
+ˇ t (i; µ) = α
+˜ t (i), limµ→0 βˇt (i; µ) = β˜t (i) for all t = 1, 2, . . . , T ;
+2) limµ→∞ α
+ˇ t (i; µ) = α
+˜ t (i; ∞) and limµ→∞ βˇt (i; µ) = β˜t (i; ∞), for all t = 1, 2, . . . , T .
+3) The hybrid decoder (49) based on the transformations (51) and the hybrid decoder (49)
+based on the transformations (54) are generally different, even if both use the same tiebreaking rule.
+Proof The first two claims are straightforward extensions of Lemmas 1 and 2 of Brushe
+−µ
+et al. (1998). To see this, first restore the previously reduced factor 1+(K−1)e
+in both
+µ
+the numerator and denominator of the expressions for α
+ˇ t (i; µ) and βˇt (i; µ). Then apply
+induction on t (first in the forward manner for the α variables and then backward for the
+β variables). For example, assume that limµ→∞ βˇt+1 (i; µ) = β˜t+1 (i; ∞). Then, as µ → ∞,
+
+
+K
+−µ
+1 + (K − 1)e
+1
+ˇ
+log 
+eµpij fj (xt+1 )βt+1 (j;µ)  → max pij fj (xt+1 )β˜t+1 (j; ∞) ,
+j∈S
+µ
+K
+j=1
+
+41
+
+Lember and Koloydenko
+
+which is, according to claim 3 of Proposition 10,
+T
+
+T
+
+max pij fj (xt+1 )βt+1 (j; ∞)/
+j∈S
+
+cm (∞)
+
+=
+
+m=t+2
+
+max (pij fj (xt+1 )βt+1 (j; ∞)) /
+j∈S
+
+cm (∞).
+m=t+2
+
+Next, recalling (47), we get that the numerator in the expression for limµ→∞ βˇt (i; µ) is
+given by βt (i; ∞)/ Tm=t+2 cm (∞). Observing that the denominator is given by
+1 + (K − 1)e
+µ→∞
+µ
+
+−µ K
+
+
+log 
+
+lim
+
+s=1
+
+1
+K
+
+K
+
+
+
+K
+
+eµαˇ t (j;µ)pjs  fs (xt+1 )
+
+max (˜
+αt (j; ∞)pjs ) fs (xt+1 ),
+
+=
+s=1
+
+j=1
+
+j∈S
+
+which is just ct+1 (∞), finally gives limµ→∞ βˇt (i; µ) = βt (i; ∞)/ Tm=t+1 cm (∞) = β˜t (i; ∞),
+as required.
+As a counter-example proving the last claim, consider the simple HMM from The MathWorks, Inc. (2012, p. 1840).
+Example 2 Let S = {1, 2} and let {1, 2, . . . , 6} be the emission alphabet. Let the initial
+distribution π, transition probability matrix P, and the emission distributions fs , s ∈ S, be
+defined as follows:
+π=
+
+2/3
+, P=
+1/3
+
+0.95 0.05
+, πtP = πt,
+0.1 0.9
+
+1
+2
+3
+4
+5
+6
+f1 (·) 1/6 1/6 1/6 1/6 1/6 1/6 .
+f2 (·) 0.1 0.1 0.1 0.1 0.1 0.2
+
+Suppose x5 = (2, 6, 6, 4, 1) has been observed. Take µ = 7. Table 2 shows outputs of
+the original (top) and normalized (bottom) transformed decoders, respectively. Clearly, the
+decoders return different paths.
+
+Note that unlike the normalized hybrid decoder based on the power-transform, this normalized hybrid decoder generally does not satisfy the first claim of Proposition 10. (Indeed,
+satisfying these conditions would contradict the third claim of the latter Proposition 13.)
+We have also experimented with these normalized hybrid decoders using a subset of real
+data (and a realistic HMM with K = 6 states) from our experimental Section 5 and can
+indeed confirm convergence of the hybrid decoder based (54) to the PMAP decoder with
+µ = 0.001 and to the Viterbi decoder with µ = 10000 for sequences of length T = 100.
+Naturally, the above range of µ values would generally need to increase significantly with
+T.
+Below, we summarize our views on the idea of purely algorithmic hybridization of MAP
+and PMAP.
+1. The method presented by Brushe et al. (1998) need not work, that is, can fail to converge
+to the Viterbi path, when the Viterbi path is not unique, see Example 1 above.
+2. Since the method depends on the transformation used, more work may be needed to
+understand which (if any) particular transformation/interpolation could be suitable for a
+specific application; the choice of (51) made by Brushe et al. (1998) seems to be rather
+arbitrary.
+42
+
+Bridging Viterbi and Posterior Decoding
+
+t
+1
+2
+3
+4
+5
+
+αt (1; µ)
+
+βt (1; µ)
+
+αt (2; µ)
+
+βt (2; µ)
+
+αt (1; µ)βt (1; µ) αt (2; µ)βt (2; µ)
+10−6
+10−6
+0.11111
+6.6968e-05 0.033333
+0.00019826
+7.4409
+6.6088
+0.010576
+0.00071029 0.0091583
+0.00085352
+7.5121
+7.8168
+0.0009266 0.0083987
+0.0022209
+0.003471
+7.7823
+7.7088
+9.201e-05
+0.10141
+0.00010268 0.058041
+9.3311
+5.9598
+8.1481e-06 1
+4.8559e-06 1
+8.1481
+4.8559
+ˇ
+ˇ
+ˇ
+ˇ
+t α
+ˇ t (1; µ) βt (1; µ) α
+ˇ t (2; µ) βt (2; µ) α
+ˇ t (1; µ)βt (1; µ) α
+ˇ t (2; µ)βt (2; µ)
+1 0.76923 0.30879 0.23077 0.97296
+0.23753
+0.22453
+2 0.58963 0.55137 0.41037 0.55227
+0.32510
+0.22664
+3 0.35383 1.15172 0.64617 0.39942
+0.40751
+0.25809
+4 0.46886 1.03712 0.53114 0.59356
+0.48626
+0.31526
+5 0.60611 1
+0.39389 1
+0.60611
+0.39389
+
+Table 2: µ = 7. Top: Output from the original (unnormalized) transformed decoder based
+on the transformations (51); the optimal path is (1, 2, 1, 1, 1). Bottom: Output
+from the normalized transformed decoder based on the transformations (54); the
+optimal path is (1, 1, 1, 1, 1).
+
+3. Also, the choice of (51) does not work in practice except with trivially short sequences;
+the underlying transformations can be normalized but this alters the decoder (Proposition 13). The choice of (45) is better in several aspects, mainly for its rescaling property
+(subsection 6.2), that is, the decoder is indeed ready to work in practice.
+4. Algorithmically defined estimators are notoriously hard to analyze analytically (Winkler, 2003, pp. 25, 129-131). Indeed, it is not clear if the general members of the above
+interpolating families (regardless of the transformation used) satisfy any explicit optimality
+criteria; this makes it difficult to interpret such decoders. This may also discourage the
+use of such decoders in more complex inference cycles (that is, when any genuine model
+parameters are to be estimated as well, for example, as in Viterbi Training Koski, 2001;
+Lember and Koloydenko, 2008, 2010).
+5. The point-wise hybridization scheme (49) can itself be altered. Indeed, other recursion
+schemes (see, for example, Koski, 2001, pp. 272-273 for Derin’s formula) can also be applied
+for this purpose. However, now more than a decade after Brushe et al. (1998), we are not
+aware of any practical application of the idea of algorithmic hybridization of the MAPPMAP inferences. Besides the plausible reasons already discussed in Subsection 1.2.1 (that
+actually extend to any type of MAP-PMAP hybridization), it is plausible that this particular
+type of hybridization has not yet seen application because of the lack of interpretation of its
+solutions, and possibly also because of the aforementioned difficulties with implementation
+of the original idea of Brushe et al. (1998).3
+3. We recently attempted to contact the authors of that paper, but have not received any response by the
+time of sending this manuscript to the production editor.
+
+43
+
+Lember and Koloydenko
+
+Appendix D gives a pseudo-code to compute a decoded sequence y T (µ) for any µ > 0 using
+the power-transform approach (49) with scaling. Naturally, the decoding process can be
+parallelized over a range of µ values.
+
+7. Asymptotic Risks
+Given an arbitrary decoder g and a risk function R, the quantity R(g(xT ) | xT ) evaluates the
+risk when g is applied to a given sequence xT . Below we will write R(xT ) for the minimum
+risk minsT R(sT | xT ) which is achieved by the Bayes decoder v: R(v(xT ) | xT ) = R(xT ).
+Besides R(X T ), we are also interested in the random variables R(g(X T ) | X T ) (depending
+on R and g). Thus, Kuljus and Lember (2012) have considered convergence of various risks
+of the Viterbi decoder v(·; ∞). Since Viterbi paths v(xT ; ∞) and v(xT +1 ; ∞) may differ significantly, asymptotic analysis of the Viterbi decoding is far from being trivial. Koloydenko
+and Lember (2008); Lember and Koloydenko (2008, 2010) constructed a well-defined process
+v(X ∞ ; ∞), named also after Viterbi, that for a wide class of HMMs extends ad infinitum
+finite Viterbi paths v(xT ; ∞) and possesses useful ergodic properties. Based on the asymptotic theory of Viterbi processes v(X ∞ ; ∞), Kuljus and Lember (2012) have shown that
+under fairly general assumptions on the HMM, the random variables Rk (v(X T ; ∞) | X T ),
+¯ k (v(X T ; ∞) | X T ), where k = 1, 2, . . ., and R
+¯ ∞ (v(X T ; ∞) | X T ), as well as R
+¯ ∞ (v(X T ; ∞))
+R
+T
+T
+¯
+(see Equation 12), R1 (v(X ; ∞)) (see Equation 20), and R1 (v(X ; ∞)) (see Equation 27)
+all converge (as T → ∞) a.s. to constant (that is non-random) limits. Convergence of these
+risks implies a.s. convergence of
+¯ 1 (v(X T ; ∞) | X T ) + C2 R
+¯ ∞ (v(X T ; ∞) | X T ) + C3 R
+¯ 1 (v(X T ; ∞)) + C4 R
+¯ ∞ (v(X T ; ∞)),
+C1 R
+and
+¯ ∞ (v(X T ; ∞) | X T ) + C3 R1 (v(X T ; ∞)) + C4 R
+¯ ∞ (v(X T ; ∞)),
+C1 R1 (v(X T ; ∞) | X T ) + C2 R
+the risks appearing in the generalized problems (18) and (26), respectively. Actually, con¯ ∞ (v(X T ; ∞), X T ) is also proved (and used in the proof of convergence of
+vergence of R
+¯ ∞ (v(X T ; ∞) | X T )). Hence, the minimized risk in (19), evaluated at the Viterbi paths,
+R
+converges as well.
+The limits—asymptotic risks—are (deterministic) constants that depend only on the
+model, and help us assess the Viterbi inference in the following principled way. For example,
+let R1 (k = ∞) be the limit (as T → ∞) of R1 (v(X T ; ∞) | X T ), which is the asymptotic
+misclassification rate of the Viterbi decoding. Thus, for large T , the Viterbi decoding makes
+about T R1 (k = ∞) misclassification errors. The asymptotic risks might be, in principle,
+found theoretically, but in reality this can be rather difficult. However, since all these
+asymptotic results also hold in the L1 sense, which implies convergences of expectations,
+the limiting risks can be estimated by simulations.
+Lember (2011a,b) has also shown that under the same assumptions R1 (X T ) =
+R1 (v(X T ; 1) | X T ) converges to a constant limit, say R1 . Kuljus and Lember (2012)
+¯ 1 (X T ) = R
+¯ 1 (v(X T ; 1) | X T ) to converge. Clearly
+have at the same time also shown R
+R1 (k = ∞) ≥ R1 (1), and even if their difference is small, the total number of errors made
+by the Viterbi decoder in excess of PMAP in the long run can still be significant.
+44
+
+Bridging Viterbi and Posterior Decoding
+
+Presently, we are not aware of a universal method for proving (or improving upon)
+the limit theorems for these risks. Recall that convergence of the risks of the Viterbi
+decoding is possible due to the existence of the Viterbi process which has nice ergodic
+properties. The question whether infinite PMAP processes have similar properties, is still
+open. Therefore, convergence of R1 (X T ) was proven with a completely different method
+based on the smoothing probabilities. In fact, all of the limit theorems obtained thus far
+have been proven with different methods. We conjecture that these different methods can
+be combined so that convergence of the minimized combined risk (18) or (26) could be
+proven as well. In summary, as mentioned before, convergence of the minimized combined
+risks has thus far been obtained for trivial combinations only, that is with three of the four
+constants being zero. Note that while convergence of the intermediate case (38) with its
+minimizer v(xT ; k(α)) is an open question, (39) gives
+
+T
+T
+¯
+¯ ∞ (v(xT ; k(α)) | xT ) − R
+¯ ∞ (v(xT ; ∞) | xT ) ≤ R1 (v(x ; ∞) | x ) .
+0≤R
+k−1
+
+¯ 1 (v(X T ; ∞) | X T ), implies that in the long
+This, together with the a.s. convergence of R
+T
+T
+T
+¯
+¯ ∞ (v(xT ; ∞) | xT ) by more
+run, for most sequences x , R∞ (v(x ; k) | x ) will not exceed R
+1
+T
+T
+¯ 1 (v(X ; ∞) | X ). Since this limit is finite, letting k increase with T ,
+than k−1 limT →∞ R
+¯
+¯ ∞ (v(X T ; ∞)) a.s., that is, as the intuition
+we get that R∞ (v(X T ; kT )) approach limT →∞ R
+T
+predicts, the likelihood of v(X ; kT ) approaches that of v(X T ; ∞).
+Finally, Lember and Koloydenko (2010); Lember et al. (2011) also outline possible applications of the above asymptotic risk theory. For example, if a certain number of the
+true labels y1 , y2 , . . . , yT can be revealed (say, at some cost), the remaining labels would be
+computed by a constrained decoder, for example, the constrained Viterbi decoder. Having observed xT , the user then needs to decide which positions are “most informative”
+and then acquires their labels. Assuming further that the HMM is stationary, the R1 t+m
+like risks P (v(X ∞ ; ∞)t = Yt | Xt−m
+∈ A) (for any m ≥ 1 and any measurable set
+2m+1
+A ∈ X
+), are independent of t (for t = m + 1, m + 2, . . .), and could therefore be
+used in the above active learning protocol for the selection of the most informative pot+m
+sitions. Specifically, if A is such that P (v(X ∞ ; ∞)t = Yt | Xt−m
+∈ A) is high, then
+acquire labels at positions t of occurrence of A. Naturally, there are different ways to make
+this concrete. For one simple example, suppose only a batch of L labels can be acquired.
+Assuming X to be discrete, order all the X words A of length q (that is, A ∈ X q ) by
+t+m
+P (v(X ∞ ; ∞)t = Yt | Xt−m
+∈ A). Finally, from the X of length q that occur in xT , choose L
+t+m
+∞
+with the highest P (v(X ; ∞)t = Yt | Xt−m
+∈ A). The above asymptotic theory is crucial
+t+m
+∞
+also for establishing P (v(X ; ∞)t = Yt | Xt−m
+∈ A) as the a.s. limit of easily computable
+(e.g., via off-line simulations) empirical measures. In practice, these latter measures would
+t+m
+be used as estimates of P (v(X ∞ ; ∞)t = Yt | Xt−m
+∈ A) and first experiments along these
+lines are given by Lember et al. (2011, Section 4.4). It may also be of interest to test these
+ideas with other risks and decoders, such as members of the generalized hybrid families
+presented here.
+45
+
+Lember and Koloydenko
+
+8. Discussion
+The point-wise symmetric zero-one loss l(s, y) = I{s=y} in (4), (5), and consequently in
+the generalized PMAP hybrid decoding (26), can be easily replaced by a general loss
+l(s, y) ≥ 0, s, y ∈ S. In computational terms, this would require multiplying the loss matrix
+(l(s, y))s,y∈S by the (prior or) posterior probability vectors (pt (1 | xT ), pt (2 | xT ), . . . , pt (K |
+xT )) to obtain the (prior or) posterior risk (ρt (1 | xT ), ρt (2 | xT ), . . . , ρt (K | xT )) vectors
+(we use the apostrophe to denote vector transpose). The dynamic programming algorithm
+defined by (23) with (28) still stands provided pt (j | xT ) (or pt (j), or both) is replaced by
+1 − ρt (j | xT ) (or 1 − ρt (j), or both respectively) in the definition of γt (j). If all confusions
+of state y are equally undesirable, that is, l(s, y) is of the form l(y) × I{s=y} , then the above
+adjustment reduces to replacing pt (j | xT ) by l(j)pt (j | xT ) (for all j ∈ S), which we illus¯1
+trated in Figure 2 when suppressing state 3. Similar adjustments can be made to the R
+risks of the generalized PVD family, which was also illustrated in Figure 2.
+Using an asymmetric loss could be particularly valuable in practice when, for example,
+detection of a rare state or transition needs to be encouraged. Similar views have been
+most recently expressed also by Yau and Holmes (2010), who, staying within the additive
+risk framework, have proposed a general asymmetric form of the loss (30) with k = 2.
+Hybridizing this general asymmetric pairwise loss with the other losses considered in this
+work should provide additional flexibility to path inference. A way to incorporate this loss
+into our generalized framework is by vectorizing the chain {Yt }t≥1 as {(Yt , Yt+1 )}t≥1 and
+then following the opening lines of this Section.
+Also, using a range of perturbed versions of a loss function can help assess saliency of
+particular detections (“islands”). In fact, at the stage of data exploration one may more
+generally want to use a collection of outputs produced by using a range of different loss
+functions instead of a single one.
+The logarithmic risks (3), (6), (12), (20) on the one hand, and the ordinary risks (2),
+(5), R∞ (sT ) = 1−p(sT ), (27), on the other hand, can be respectively combined into a single
+parameter family of risks by using, for example, the power transformation as shown below
+with p for the moment standing for any probability distribution on S T :
+T
+
+R1 (s ; β) =
+R∞ (sT ; β) =
+
+− T1
+− T1
+
+pt (st )β −1
+T
+,
+t=1
+β
+T
+t=1 log pt (st ),
+
+p(sT )β −1
+,
+β
+1
+T
+− T log p(s ),
+
+− T1
+
+if β = 0;
+if β = 0;
+
+(55)
+
+if β = 0;
+if β = 0.
+
+Thus, the family of risk minimization problems given in (56) below
+min C1 R1 (sT | xT ; β1 ) + C2 R∞ (sT | xT ; β2 ) + C3 R1 (sT ; β3 ) + C4 R∞ (sT ; β4 ) ,
+sT
+
+(56)
+
+Ci ≥ 0 and 4i=1 Ci > 0 unifies and generalizes problem (18) (β1 = β2 = β3 = β4 = 0) and
+problem (26) (β1 = β3 = 1, β2 = β4 = 0). Clearly, the dynamic programming approach of
+Theorem 4 immediately applies to any member of the above family (56) with β2 = β4 = 0.
+Also, computations of multiple decoders from this family (at least with β2 = β4 = 0) are
+readily parallelizable.
+46
+
+Bridging Viterbi and Posterior Decoding
+
+Next, Theorem 6 and Corollaries 7 and 8 obviously generalize to higher order Markov
+chains as can be seen from the following Proposition.
+Proposition 14 Let p represent a Markov chain of order m, 1 ≤ m ≤ T , on S T . Then
+for any sT ∈ S T and for any k ∈ {m, m + 1, . . .}, we have
+¯ k (sT ) = R
+¯ m (sT ) + (k − m)R
+¯ ∞ (sT ).
+R
+Proof This is a straightforward extension of the proof of Theorem 6.
+The present risk-based discussion of HMM path inference also naturally extends to the
+problem of optimal labeling or annotation (already mentioned in Subsection 1.2). Namely,
+the state space S can be partitioned into subsets S1 , S2 , . . . , SΛ , for some Λ ≤ K, in which
+case λ(s) assigns label λ to every state s ∈ Sλ . The fact that the PMAP problem is as easily
+solved over the label space ΛT as it is over S T has already been used in practice. Indeed,
+K¨all et al. (2005), who also add the constraint of admissibility with respect to the prior
+distribution, in effect average pt (st | xT )’s, for each t, within the label classes and then use
+recursions (15) to obtain the optimal accuracy labeling of a priori admissible state paths.
+This clearly corresponds to using the point loss l(s, s ) = I{λ(s)=λ(s )} in (4) when solving
+minsT :p(sT )>0 R1 (sT | xT ) (14). With our definition of admissibility (that is, positivity of
+the posterior path probability), the same approach (that is, replacing pt (st | xT )’s by their
+within class average p¯t (st | xT )) extends to solve minsT :p(sT |xT )>0 R1 (sT | xT ) (7) under
+the same loss l(s, s ) = I{λ(s)=λ(s )} . Clearly, the generalized problem (56) also immediately
+incorporates the above pointwise label-level loss in either the prior R1 (·; β3 ) or posterior
+risk R1 (·; β1 ), or both. Since computationally these problems are essentially as light as
+recursion (24), (25), and since K¨
+all et al. (2005) report their special case to be successful
+in practice, we believe that the above generalizations offer yet more possibilities that are
+potentially useful in practice.
+Instead of using the same arithmetic averages p¯t (st | xT )’s (or p¯t (st )’s) for the R1 risks
+in (56) regardless of β, we can gain additional flexibility by replacing p¯t (st )β and log p¯t (st )
+in (55) (β = 0 and β = 0 respectively) with
+
+p¯t (s; β) ∝
+
+
+
+pt (s ) β
+
+
+s ∈Sλ(s)
+
+
+
+ ,
+
+
+|Sλ(s) |
+
+
+
+
+
+
+
+
+
+if β = 0;
+
+1
+|Sλ(s) |
+
+pt (s )
+
+,
+
+if β = 0.
+
+s ∈Sλ(s)
+
+Certainly, the choice of the basic loss functions, inflection parameters βi and weights Ci
+of the respective risks is application dependent, and can be tuned with the help of labeled
+data, using, for example, cross-validation.
+Finally, these generalizations are presented for the standard HMM setting, and therefore
+extensions to more complex and practically more useful HMM-based settings (e.g., semiMarkov, autoregressive, coupled, etc.) could also be interesting.
+47
+
+Lember and Koloydenko
+
+Since the transform based approach, especially the newly proposed power-transform
+hybridization, has also generated some interest, it would be interesting to evaluate performance of the power-transform hybrids together with the risk-based families on multiple real
+applications and using various domain specific performance measures.
+
+Acknowledgments
+The first author has been supported by the Estonian Science Foundation Grant nr. 9288
+and by targeted financing project SF0180015s12, which has also supported a research visit
+of the second author to Tartu University. The second author has also been supported by UK
+NIHR Grant i4i II-AR-0209-10012. The authors are also grateful to anonymous reviewers
+as well as to the action editor for their thorough reviews of this work, additional references,
+and comments and suggestions on improving this manuscript. The authors are also very
+thankful to Dr Dario Gasbarra and Dr Kristi Kuljus for reviewing earlier versions of the
+manuscript and pointing out two subtle mistakes, as well as to Ufuk Mat for pointing out
+some typing errors.
+
+Appendix A. An Example of an Inadmissible Path of Positive Prior
+Probability
+
+5
+1
+
+0
+
+1
+
+P =
+0
+1
+
+3
+
+1
+0
+
+π = 1 1 1 1 1 1 1 1 1 /9,
+
+0
+1
+0
+1
+1
+1
+3
+1
+0
+
+0
+1
+4
+1
+0
+1
+0
+1
+3
+
+0
+1
+0
+1
+1
+1
+0
+1
+3
+
+4
+1
+5
+1
+1
+1
+0
+1
+0
+
+0
+1
+0
+1
+1
+1
+3
+1
+0
+
+0
+1
+0
+1
+2
+1
+0
+1
+0
+
+0
+1
+0
+1
+1
+1
+0
+1
+3
+
+
+0
+1
+
+0
+
+1
+
+2
+ /9.
+1
+
+0
+
+1
+0
+
+To simplify the verifications, consider an emission alphabet with only four symbols, although
+the idea of constructing this example readily extends to larger alphabets (in particular, to
+more practically relevant situations where the emission alphabet is larger than the hidden
+state space, or the emission distributions are continuous altogether). Then take the following
+emission distributions:
+
+
+P1
+P2
+P3
+P4
+1/25 1/20 0 91/100
+
+
+ 0
+0
+1/5
+4/5 
+
+
+1/20 1/25 0 91/100
+
+
+
+ 0
+0
+1/5
+4/5
+.
+
+1/10
+0
+1/5 7/10 
+
+
+ 0
+0
+1/5
+4/5 
+
+
+1/15 1/15 0
+13/15 
+
+
+ 0
+0
+1/5
+4/5 
+1/15 1/15
+
+0
+48
+
+13/15
+
+Bridging Viterbi and Posterior Decoding
+
+Suppose now that a sequence x3 = (1, 2, 3) has been observed. It can then be verified that
+the (unconstrained) PMAP decoder returns any of the following paths (5, 1, 5), (5, 3, 5),
+(5, 7, 5), or (5, 9, 5), all of which having zero prior (and posterior) probabilities.
+When the decoder is subject to the positivity constraint on the prior probabilities, it
+would return any of the following paths (5, 2, 5), (5, 4, 5), (5, 5, 5), (5, 6, 5), (5, 8, 5), which,
+despite being of positive prior probabilities, all have zero posterior probabilities.
+Finally, if the decoder is constrained to produce paths of positive posterior probability,
+it would then return any of the following paths (5, 7, 2), (5, 7, 6), (3, 3, 5), (9, 3, 5).
+
+Appendix B. Proof of Remark 3
+Proof Assume C3 = C4 = 0. For each C1 , C2 > 0, let y T C1 ,C2 ∈ S T be a solution to (18),
+and let y T P V D be the output of PVD. Thus, we have
+¯ 1 (y T C ,C | xT ) + C2 R
+¯ ∞ (y T C ,C | xT ) ≤ C1 R
+¯ 1 (y T P V D | xT ) + C2 R
+¯ ∞ (y T P V D | xT ).
+C1 R
+1 2
+1 2
+Then
+¯ 1 (y T C ,C | xT ) − R
+¯ 1 (y T P V D | xT )) ≤ C2 (R
+¯ ∞ (y T P V D | xT ) − R
+¯ ∞ (y T C ,C | xT ))
+0 ≤ C1 ( R
+1 2
+1 2
+¯ ∞ (y T P V D | xT ) − R
+¯ ∞ (y T C ,C | xT ) is clearly bounded
+holds for any C1 , C2 > 0. Since R
+1 2
+T
+T
+T
+T
+¯
+¯
+(and S is finite), we obtain R1 (y C ,C | x ) = R1 (y P V D | xT ) for some sufficiently
+1
+
+2
+
+small C2 . Since C2 > 0, all y T C1 ,C2 are admissible (Remark 1 above), therefore for such
+sufficiently small C2 , y T C1 ,C2 is also a solution to the PVD Problem (9).
+The second statement is proved similarly, recalling Proposition 2 to establish admissibility of y T C1 ,C4 almost surely.
+
+¯ 1 and
+Appendix C. Supplementary Results on the Trade-Off between R
+¯
+¯
+R∞ Risks in Problem (18), and between R1 and R∞ Risks in Problem
+(26).
+Corollary 15
+1. Let yˆ and yˆ be solutions to Problem (18) with C1 ∈ [0, 1] and C2 =
+1 − C1 , C3 = C4 = 0 and C1 ∈ [0, 1] and C2 = 1 − C1 , C3 = C4 = 0, respectively.
+¯ 1 (ˆ
+¯ 1 (ˆ
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+Assume C1 ≤ C1 . Then R
+y | xT ) ≥ R
+y | xT ) and R
+y | xT ) ≤ R
+y | xT ).
+2. Let yˆ and yˆ be solutions to Problem (18) with C3 ∈ [0, 1] and C4 = 1−C3 , C1 = C2 = 0
+and C3 ∈ [0, 1] and C4 = 1 − C3 , C1 = C2 = 0, respectively. Assume C3 ≤ C3 . Then
+¯ 1 (ˆ
+¯ 1 (ˆ
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+R
+y) ≥ R
+y ) and R
+y) ≤ R
+y ).
+3. Let yˆ and yˆ be solutions to Problem (26) with C1 ∈ [0, 1] and C2 = 1−C1 , C3 = C4 = 0
+and C1 ∈ [0, 1] and C2 = 1 − C1 , C3 = C4 = 0, respectively. Assume C1 ≤ C1 . Then
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+R1 (ˆ
+y | xT ) ≥ R1 (ˆ
+y | xT ) and R
+y | xT ) ≤ R
+y | xT ).
+4. Let yˆ and yˆ be solutions to Problem (26) with C3 ∈ [0, 1] and C4 = 1−C3 , C1 = C2 = 0
+and C3 ∈ [0, 1] and C4 = 1−C3 , C1 = C2 = 0. Assume C3 ≤ C3 . Then R1 (ˆ
+y ) ≥ R1 (ˆ
+y)
+¯ ∞ (ˆ
+¯ ∞ (ˆ
+and R
+y) ≤ R
+y ).
+49
+
+Lember and Koloydenko
+
+Proof A straightforward application of Lemma 16 given below.
+
+¯ = R ∪ {±∞}.
+Lemma 16 Let F and G be functions from a set A to the extended reals R
+Let α1 , α2 ∈ [0, 1] be such that α1 ≤ α2 . Suppose a1 , a2 ∈ A are such that
+αi F (ai ) + (1 − αi )G(ai ) ≤ αi F (x) + (1 − αi )G(x),
+
+i = 1, 2, for all x ∈ A.
+
+Then F (a1 ) ≥ F (a2 ) and G(a1 ) ≤ G(a2 ).
+
+Although the result is obvious, below we state its proof for completeness.
+Proof Write a, b, c, and d for F (a1 ), G(a1 ), F (a2 ), and G(a2 ), respectively. Then we have
+α1 (a − c) ≤ (1 − α1 )(d − b),
+α2 (a − c) ≥ (1 − α2 )(d − b),
+and therefore
+α2 α1 (a − c) ≤ α2 (1 − α1 )(d − b),
+α1 α2 (a − c) ≥ α1 (1 − α2 )(d − b),
+which gives α1 (1 − α2 )(d − b) ≤ α2 (1 − α1 )(d − b). Since α1 (1 − α2 ) ≤ α2 (1 − α1 ), it follows
+that d ≥ b, that is, G(a2 ) ≥ G(a1 ). The fact that F (a1 ) ≥ F (a2 ) is obtained similarly.
+
+Appendix D. Pseudo-Code for Computing the Hybrid Decoders (49)
+Using the Power-Transform with Scaling (52), (53).
+Finally, to output the decoded sequence y T (µ), a simple tie-breaking rule may be as follows:
+for t = 1, 2, . . . , T do
+yˆt (µ) ← min arg max{˜
+αt (i; µ)β˜t (i; µ)},
+end for
+whereas more elaborate rules may involve ordering of the entire state space S T , or simply
+outputting all of the winning sequences. (Computations of the transformed and scaled α
+and β variables are summarized in Algorithms 1 and 2 respectively.)
+50
+
+Bridging Viterbi and Posterior Decoding
+
+Algorithm 1 The forward pass to compute α
+˜ t (i; µ) and the scaling constants ct (µ).
+for t = 1, 2, . . . , T do
+ct (µ) ← 0
+end for
+for i = 1, 2, . . . , K do
+α1 (i) ← πi fi (x1 )
+c1 (µ) ← c1 (µ) + πi fi (x1 )
+end for
+for i = 1, 2, . . . , K do
+α
+˜ 1 (i; µ) ← α1 (i)/c1 (µ)
+end for
+if µ = 0 then
+for t = 2, . . . , T do
+for i = 1, 2, . . . , K do
+St (i) ← {j ∈ S : α
+˜ t−1 (j; µ)pji > 0}
+Kt (i) ← |St (i)|
+1
+Kt (i)
+
+α
+˜ t (i; µ) ←
+
+α
+˜ t−1 (j; µ)pji
+
+fi (xt )
+
+j∈St (i)
+
+ct (µ) ← ct (µ) + α
+˜ t (i; µ)
+end for
+for i = 1, 2, . . . , K do
+α
+˜ t (i; µ) ← α
+˜ t (i; µ)/ct (µ)
+end for
+end for
+else
+for t = 2, . . . , T do
+for i = 1, 2, . . . , K do
+K
+
+α
+˜ t (i; µ) ←
+
+1
+µ
+
+(˜
+αt−1 (j; µ)pji )µ
+
+fi (xt )
+
+j=1
+
+ct (µ) ← ct (µ) + α
+˜ t (i; µ)
+end for
+for i = 1, 2, . . . , K do
+α
+˜ t (i; µ) ← α
+˜ t (i; µ)/ct (µ)
+end for
+end for
+end if
+
+51
+
+Lember and Koloydenko
+
+Algorithm 2 The backward pass to compute β˜t (i; µ).
+for i = 1, 2, . . . , K do
+β˜T (i; µ) ← 1
+end for
+if µ = 0 then
+for t = T − 1, T − 2, . . . , 1 do
+for i = 1, 2, . . . , K do
+St∗ (i) ← {j ∈ S : fj (xt+1 )pij β˜t+1 (j; µ) > 0}
+Kt∗ (i) ← |St∗ (i)|
+β˜t (i; µ) ←
+
+fj (xt+1 )pij β˜t+1 (j; µ)
+
+1
+Kt∗ (i)
+
+/ct+1 (µ)
+
+j∈St∗ (i)
+
+end for
+end for
+else
+for t = T − 1, T − 2, . . . , 1 do
+for i = 1, 2, . . . , K do
+β˜t (i; µ) ←
+
+K
+
+fj (xt+1 )pij β˜t+1 (j; µ)
+
+µ
+
+1
+µ
+
+/ct+1 (µ)
+
+j=1
+
+end for
+end for
+end if
+
+Appendix E. Further Details of the Experiments from Section 5
+Below are the estimates of the HMM parameters obtained from the entire data set as
+described in Section 5.
+
+π
+ˆ=
+1
+2
+3
+4
+5
+6
+
+P=
+
+π
+ˆinv =
+
+0.0016
+
+0.8359
+0.0022
+
+0.0175
+
+ 0
+
+ 0
+0
+
+0.0041 0.9929 0.0014 0.0000 0.0000 ,
+
+0.0034 0.1606
+0
+0
+0
+0.8282 0.1668 0.0028
+0
+0 
+
+0.0763 0.8607 0.0455
+0
+0 
+,
+0
+0
+0.7500 0.2271 0.0229
+
+0
+0
+0
+0.8450 0.1550
+0.0018 0.2481
+
+0
+
+0
+
+0.7501
+
+0.0511 0.2029 0.4527 0.0847 0.1240 0.0847 ,
+52
+
+Bridging Viterbi and Posterior Decoding
+
+
+A
+C
+D
+E
+F
+G
+H
+I
+K
+L
+M
+N
+P
+Q
+R
+S
+T
+V
+W
+Y
+
+P1
+0.1059
+
+0.0107
+
+0.0538
+
+0.0973
+
+0.0436
+
+0.0303
+
+0.0203
+
+
+0.0564
+
+0.0672
+
+0.1227
+
+0.0240
+
+0.0299
+
+0.0333
+
+0.0443
+
+0.0594
+
+0.0496
+
+0.0395
+
+0.0591
+
+0.0168
+0.0359
+
+P2
+0.0636
+0.0171
+0.0319
+0.0477
+0.0576
+0.0484
+0.0227
+0.1010
+0.0443
+0.1068
+0.0219
+0.0252
+0.0208
+0.0270
+0.0464
+0.0496
+0.0641
+0.1386
+0.0172
+0.0483
+
+P3
+0.0643
+0.0135
+0.0775
+0.0620
+0.0330
+0.1133
+0.0259
+0.0372
+0.0574
+0.0674
+0.0181
+0.0561
+0.0757
+0.0330
+0.0470
+0.0744
+0.0572
+0.0473
+0.0111
+0.0286
+
+P4
+0.1036
+0.0081
+0.0634
+0.1120
+0.0371
+0.0447
+0.0188
+0.0557
+0.0560
+0.0994
+0.0214
+0.0259
+0.0472
+0.0469
+0.0522
+0.0485
+0.0465
+0.0685
+0.0135
+0.0306
+
+P5
+0.1230
+0.0111
+0.0415
+0.0852
+0.0386
+0.0321
+0.0197
+0.0694
+0.0671
+0.1279
+0.0293
+0.0338
+0.0067
+0.0497
+0.0677
+0.0422
+0.0412
+0.0677
+0.0130
+0.0332
+
+
+P6
+0.1230
+
+0.0128
+
+0.0345
+
+0.0848
+
+0.0399
+
+0.0229
+
+0.0221
+
+
+0.0593
+
+0.0810
+
+0.1477 .
+
+0.0304
+
+0.0336
+
+0.0031
+
+0.0472
+
+0.0697
+
+0.0491
+
+0.0375
+
+0.0545
+
+0.0124
+0.0344
+
+References
+Stephen F. Altschul, Warren Gish, Webb Miller, Eugene W. Myers, and David J. Lipman.
+Basic local alignment search tool. Journal of Molecular Biology, 215(3):403 – 410, 1990.
+Zafer Aydin, Yucel Altunbasak, and Mark Borodovsky. Protein secondary structure prediction for a single-sequence using hidden semi-Markov models. BMC Bioinformatics, 7
+(1):178, 2006.
+Lalit R. Bahl, John Cocke, Frederick Jelinek, and Josef Raviv. Optimal decoding of linear
+codes for minimizing symbol error rate (corresp.). IEEE Transactions on Information
+Theory, 20(2):284–287, 1974.
+Helen M. Berman, John Westbrook, Zukang Feng, Gary Gilliland, T. N. Bhat, Helge Weissig, Ilya N. Shindyalov, and Philip E. Bourne. The Protein Data Bank. Nucleic Acids
+Research, 28(1):235–242, 2000.
+Julian Besag. On the statistical analysis of dirty pictures. Journal of the Royal Statistical
+Society. Series B. Methodological, 48(3):259–302, 1986.
+Julian Besag and Peter J. Green. Spatial statistics and Bayesian computation. Journal of
+the Royal Statistical Society. Series B. Methodological, 55(1):25–37, 1993.
+Christopher M. Bishop. Pattern Recognition and Machine Learning. Information Science
+and Statistics. Springer, New York, 2006.
+53
+
+Lember and Koloydenko
+
+Matthew Brand, Nuria Oliver, and Alex Pentland. Coupled hidden Markov models for
+complex action recognition. In Proceedings of IEEE Conference on Computer Vision and
+Pattern Recognition, pages 994–999, S.Juan, Puerto Rico, 1997.
+Broˇ
+na Brejov´
+a, Daniel G. Brown, and Tom´aˇs Vinaˇr. The most probable annotation problem
+in hmms and its application to bioinformatics. Journal of Computer and System Sciences,
+73(7):1060 – 1077, 2007a.
+Broˇ
+na Brejov´
+a, Daniel G. Brown, and Tom´aˇs Vinaˇr. Advances in hidden Markov models for
+sequence annotation. In Ion I. Mˇ
+andoiu and Alexander Zelikovski, editors, Bioinformatics
+Algorithms: Techniques and Applications, pages 55–92. John Wiley & Sons, Inc., 2007b.
+Gary D. Brushe, Robert E. Mahony, and John B. Moore. A soft output hybrid algorithm
+for ML/MAP sequence estimation. IEEE Transactions on Information Theory, 44(7):
+3129–3140, 1998.
+Chris Burge and Samuel Karlin. Prediction of complete gene structures in human genomic
+DNA. Journal of Molecular Biology, 268(1):78 – 94, 1997.
+Olivier Capp´e, Eric Moulines, and Tobias Ryd´en. Inference in Hidden Markov Models.
+Springer Series in Statistics. Springer, New York, 2005.
+Gunnar Carlsson. Topology and data. Bulletin of the American Mathematical Society, 46
+(2):255–308, 2009.
+Luis E. Carvalho and Charles E. Lawrence. Centroid estimation in discrete high-dimensional
+spaces with applications in biology. Proceedings of the National Academy of Sciences of
+the United States of America, 105(9):3209–3214, 2008.
+Christiane Cocozza-Thivent and Abdelkrim Bekkhoucha. Estimation in Pickard random
+fields and application to image processing. Pattern Recognition, 26(5):747–761, 1993.
+Richard Durbin, Sean Eddy, Anders Krogh, and Graeme Mitchison. Biological Sequence
+Analysis: Probabilistic Models of Proteins and Nucleic Acids. Cambridge University
+Press, 1998.
+Sean Eddy. What is a hidden Markov model? Nature Biotechnology, 22(10):1315 – 1316,
+2004.
+Yariv Ephraim and Neri Merhav. Hidden Markov processes. IEEE Transactions on Information Theory, 48(6):1518–1569, June 2002.
+Piero Fariselli, Pier Martelli, and Rita Casadio. A new decoding algorithm for hidden
+Markov models improves the prediction of the topology of all-beta membrane proteins.
+BMC Bioinformatics, 6(Suppl 4):S12, 2005.
+Kuzman Ganchev, Jo˜
+ao V. Gra¸ca, and Ben Taskar. Better alignments = better translations? In Proceedings of the 46th Annual Meeting of the Association for Computational
+Linguistics: Human Language Technologies, pages 986–993, Columbus, Ohio, 2008.
+54
+
+Bridging Viterbi and Posterior Decoding
+
+Stuart Geman and Donald Geman. Stochastic relaxation, Gibbs distributions, and the
+Bayesian restoration of images. IEEE Transactions on Pattern Analysis and Machine
+Intelligence, 6:721–741, 1984.
+Peter J. Green and Sylvia Richardson. Hidden Markov models and disease mapping. Journal
+of the American Statistical Association, 97(460):1055–1070, 2002.
+Jeremiah F. Hayes, Thomas M. Cover, and Juan B. Riera. Optimal sequence detection
+and optimal symbol-by-symbol detection: similar algorithms. IEEE Transactions on
+Communications, 30(1):152–157, January 1982.
+Ian Holmes and Richard Durbin. Dynamic programming alignment accuracy. Journal of
+Computational Biology, 5(3):493–504, 1998.
+Xuedong Huang, Yasuo. Ariki, and Mervyn Jack. Hidden Markov Models for Speech Recognition. Edinburgh University Press, Edinburgh, UK, 1990.
+Frederick Jelinek. Continuous speech recognition by statistical methods. Proceedings of the
+IEEE, 64:532–556, April 1976.
+Frederick Jelinek. Statistical Methods for Speech Recognition. The MIT Press, Cambridge,
+Massachusetts, 2001.
+Dhiraj Joshi, Jia Li, and James Z. Wang. A computationally efficient approach to the
+estimation of two- and three-dimensional hidden Markov models. IEEE Transactions on
+Image Processing, 15(7):1871–1886, 2006.
+Lukas K¨
+all, Anders Krogh, and Erik L. L. Sonnhammer. An HMM posterior decoder
+for sequence feature prediction that includes homology information. Bioinformatics, 21
+(suppl 1):i251–257, 2005.
+Alexey A. Koloydenko and J¨
+uri Lember. Infinite Viterbi alignments in the two state hidden
+Markov models. Acta et Commentationes Universitatis Tartuensis de Mathematica, (12):
+109–124, 2008.
+Timo Koski. Hidden Markov Models for Bioinformatics, volume 2 of Computational Biology
+Series. Kluwer Academic Publishers, Dordrecht, 2001.
+Anders Krogh. Two methods for improving performance of an HMM and their application
+for gene finding. In Proceedings of the Fifth International Conference on Intelligent
+Systems for Molecular Biology, pages 179–186, Halkidiki, Greece, 1997.
+Anders Krogh. An Introduction to Hidden Markov Models for Biological Sequences. In
+David B.Searls Steven L. Salzberg and Simon Kasif, editors, Computational Methods in
+Molecular Biology. Elsevier Science, first edition, 1998.
+Kristi Kuljus and J¨
+uri Lember. Asymptotic risks of Viterbi segmentation. Stochastic Processes and Their Applications, 122(9):3312–3341, 2012.
+Hans K¨
+unsch, Stuart Geman, and Athanasios Kehagias. Hidden Markov random fields. The
+Annals of Applied Probability, 5(3):577–602, 1995.
+55
+
+Lember and Koloydenko
+
+Steffen L. Lauritzen. Graphical models, volume 17 of Oxford Statistical Science Series.
+Oxford University Press, New York, 1996.
+J¨
+uri Lember. On approximation of smoothing probabilities for hidden Markov models.
+Statistics and Probability Letters, 81(2):310–316, 2011a.
+J¨
+uri Lember. A correction on approximation of smoothing probabilities for hidden Markov
+models. Statistics and Probability Letters, 81(9):1463–1464, September 2011b.
+J¨
+uri Lember and Alexey A. Koloydenko. The Adjusted Viterbi training for hidden Markov
+models. Bernoulli, 14(1):180–206, 2008.
+J¨
+uri Lember and Alexey A. Koloydenko. A constructive proof of the existence of Viterbi
+processes. IEEE Transactions on Information Theory, 56(4):2017–2033, 2010.
+J¨
+uri Lember, Kristi Kuljus, and Alexey A. Koloydenko. Theory of segmentation. In Przemyslaw Dymarski, editor, Hidden Markov Models, Theory and Applications, Bioinformatics, pages 51–84. InTech, 2011.
+Jia Li, Robert M. Gray, and Richard A. Olshen. Multiresolution image classification by
+hierarchical modeling with two-dimensional hidden Markov models. IEEE Transactions
+on Information Theory, 46(5):1826–1841, 2000.
+Shu Lin and Daniel J. Costello Jr. Error Control Coding: Fundamental and Applications.
+Computer Applications in Electrical Engineering. Prentice-Hall, Inc., Englewood Cliffs,
+New Jersey, 1983.
+William H. Majoros and Uwe Ohler. Advancing the state of the art in computational gene
+prediction. In Sorin Istrail, Pavel Pevzner, and Michael Waterman, editors, Knowledge
+Discovery and Emergent Complexity in Bioinformatics, volume 4366 of Lecture Notes in
+Computer Science, pages 81–106. Springer Berlin / Heidelberg, 2007.
+Christopher D. Manning and Hinrich Sch¨
+utze. Foundations of Statistical Natural Language
+Processing. MIT Press, Cambridge, Massachusetts, 1999.
+Jose L. Marroquin, Edgar Arce Santana, and Salvador Botello. Hidden markov measure field
+models for image segmentation. IEEE Transactions on Pattern Analysis and Machine
+Intelligence, 25(11):1380–1387, 2003.
+Joshua Mason, Kathryn Watkins, Jason Eisner, and Adam Stubblefield. A natural language
+approach to automated cryptanalysis of two-time pads. In Proceedings of the 13th ACM
+Conference on Computer and Communications Security, pages 235–244, Alexandria, Virginia, 2006.
+MATLAB. Version 7.13.0.564 (R2011b). The MathWorks, Inc., Natick, Massachusetts,
+2011.
+Erik McDermott and Timothy J. Hazen. Minimum classification error training of landmark
+models for real-time continuous speech recognition. In Proceedings of IEEE International
+Conference on Acoustics, Speech, and Signal Processing, Montreal, Quebec, 2004.
+56
+
+Bridging Viterbi and Posterior Decoding
+
+Clare A. McGrory, D. Michael Titterington, Robert W. Reeves, and Anthony N. Pettitt.
+Variational Bayes for estimating the parameters of a hidden Potts model. Statistics and
+Computing, 19(3):329–340, 2009.
+Hermann Ney, Volker Steinbiss, Reinhold Haeb-Umbach, B.-H. Tran, and Ute Essen. An
+overview of the Philips research system for large vocabulary continuous speech recognition. International Journal of Pattern Recognition and Artificial Intelligence, 8(1):33–70,
+1994.
+Mukund Padmanabhan and Michael A. Picheny. Large-vocabulary speech recognition algorithms. Computer, 35(4):42 – 50, 2002.
+Lawrence Rabiner. A tutorial on hidden Markov models and selected applications in speech
+recognition. Proceedings of the IEEE, 77(2):257–286, 1989.
+Lawrence Rabiner and Biing-Hwang Juang. Fundamentals of Speech Recognition. PrenticeHall, Inc., Upper Saddle River, New Jersey, 1993.
+Lawrence R. Rabiner, Jay G. Wilpon, and Biing-Hwang Juang. A segmental k-means
+training procedure for connected word recognition. AT&T Technical Journal, 65(3):21–
+31, 1986.
+Patrick Robertson, Emmanuelle Villebrun, and Peter Hoeher. A comparison of optimal and
+sub-optimal MAP decoding algorithms operating in the log domain. In Proceedings of
+IEEE International Conference on Communications, volume 2, pages 1009–1013, Seattle,
+Washington, 1995.
+Havard Rue. New loss functions in Bayesian imaging. Journal of the American Statistical
+Association, 90(431):900–908, 1995.
+Asaf A. Salamov and Victor V. Solovyev. Prediction of protein secondary structure by
+combining nearest-neighbor algorithms and multiple sequence alignments. Journal of
+Molecular Biology, 247(1):11 – 15, 1995.
+Kengo Sato, Michiaki Hamada, Kiyoshi Asai, and Toutai Mituyama. Centroidfold: a web
+server for RNA secondary structure prediction. Nucleic Acids Research, 37(suppl 2):
+W277–W280, 2009.
+Han Shu, I. Lee Hetherington, and James Glass. Baum-Welch training for segment-based
+speech recognition. In Proceedings of IEEE Workshop on Automatic Speech Recognition
+and Understanding, pages 43–48, St. Thomas, U. S. Virgin Islands, 2003.
+Softberry, Inc.
+SSENVID: Protein secondary structure and environment assignment from atomic coordinates. http://linux1.softberry.com/berry.phtml?topic=
+ssenvid&group=help&subgroup=propt, 2001. Accessed: 15.10.2011.
+Volker Steinbiss, Herman Ney, Xavier L. Aubert, Stefan Besling, Christian Dugast, Ute Essen, Daryl Geller, Reinhold Haeb-Umbach, Reinhard Kneser, Humberto G. Meier, Martin
+Oerder, and B.-H. Tran. The Philips research system for continuous-speech recognition.
+Philips Journal of Research, 49:317–352, 1995.
+57
+
+Lember and Koloydenko
+
+Nikko Str¨
+om, I. Lee Hetherington, Timothy J. Hazen, Eric Sandness, and James Glass.
+Acoustic modeling improvements in a segment-based speech recognizer. In Proceedings
+of IEEE Workshop on Automatic Speech Recognition and Understanding, pages 139–142,
+Keystone, Colorado, 1999.
+The MathWorks, Inc. Statistics ToolboxTM User’s Guide. Natick, Massachusetts, R2012a
+edition, 2012.
+Andrew Viterbi. Error bounds for convolutional codes and an asymptotically optimum
+decoding algorithm. IEEE Transactions on Information Theory, 13(2):260–269, 1967.
+Stephan Vogel, Hermann Ney, and Christoph Tillmann. HMM-based word alignment in statistical translation. In Proceedings of the 16th Conference on Computational Linguistics,
+volume 2, pages 836–841, Copenhagen, Denmark, 1996.
+Gerhard Winkler. Image Analysis, Random Fields and Markov chain Monte Carlo Methods,
+volume 27 of Applications of Mathematics (New York). Springer-Verlag, Berlin, second
+edition, 2003.
+Christopher Yau and Chris C. Holmes. A decision theoretic approach for segmental classification using Hidden Markov models. ArXiv e-prints, 2010. URL http://arxiv.org/
+abs/1007.4532.
+
+58
+
+

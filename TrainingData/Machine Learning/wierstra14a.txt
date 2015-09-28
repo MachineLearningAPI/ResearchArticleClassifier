@@ -1,0 +1,3236 @@
+Journal of Machine Learning Research 15 (2014) 949-980
+
+Submitted 4/11; Revised 5/13; Published 3/14
+
+Natural Evolution Strategies
+Daan Wierstra
+Tom Schaul
+
+daan@deepmind.com
+tom@deepmind.com
+
+DeepMind Technologies Ltd.
+Fountain House, 130 Fenchurch Street
+London, United Kingdom
+
+Tobias Glasmachers
+
+tobias.glasmachers@ini.rub.de
+
+Institute for Neural Computation
+Universit¨
+atsstrasse 150
+Ruhr-University Bochum, Germany
+
+Yi Sun
+
+yi@idsia.ch
+
+Google Inc.
+1600 Amphitheatre Pkwy
+Mountain View, United States
+
+Jan Peters
+
+mail@jan-peters.net
+
+Intelligent Autonomous Systems Institute
+Hochschulstrasse 10
+Technische Universit¨
+at Darmstadt, Germany
+
+J¨
+urgen Schmidhuber
+
+juergen@idsia.ch
+
+Istituto Dalle Molle di Studi sull’Intelligenza Artificiale (IDSIA)
+University of Lugano (USI)/SUPSI
+Galleria 2
+Manno-Lugano, Switzerland
+
+Editor: Una-May O’Reilly
+
+Abstract
+This paper presents Natural Evolution Strategies (NES), a recent family of black-box optimization algorithms that use the natural gradient to update a parameterized search distribution in the direction of higher expected fitness. We introduce a collection of techniques
+that address issues of convergence, robustness, sample complexity, computational complexity and sensitivity to hyperparameters. This paper explores a number of implementations
+of the NES family, such as general-purpose multi-variate normal distributions and separable distributions tailored towards search in high dimensional spaces. Experimental results
+show best published performance on various standard benchmarks, as well as competitive
+performance on others.
+Keywords: natural gradient, stochastic search, evolution strategies, black-box optimization, sampling
+
+1. Introduction
+Many real world optimization problems are too difficult or complex to model directly. Therefore, they might best be solved in a ‘black-box’ manner, requiring no additional information
+c 2014 Daan Wierstra, Tom Schaul, Tobias Glasmachers, Yi Sun, Jan Peters and J¨
+urgen Schmidhuber.
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+on the objective function (i.e., the ‘fitness’ or ‘cost’) to be optimized besides fitness evaluations at certain points in parameter space. Problems that fall within this category are
+numerous, ranging from applications in health and science (Winter et al., 2005; Shir and
+B¨ack, 2007; Jebalia et al., 2007) to aeronautic design (Hasenj¨ager et al., 2005; Klockgether
+and Schwefel, 1970) and control (Hansen et al., 2009).
+Numerous algorithms in this vein have been developed and applied in the past fifty
+years, in many cases providing good and even near-optimal solutions to hard tasks, which
+otherwise would have required domain experts to hand-craft solutions at substantial cost
+and often with worse results. The near-infeasibility of finding globally optimal solutions
+resulted in a fair amount of heuristics in black-box optimization algorithms, leading to a
+proliferation of complicated yet frequently highly performant methods.
+In this paper, we introduce Natural Evolution Strategies (NES), a novel black-box optimization framework which boasts a relatively clean derivation, yet achieves state-of-the-art
+performance (with the help of well-chosen heuristic methods). The core idea, similar to the
+framework of estimation of distribution algorithms (EDAs) (M¨
+uhlenbein and Paass, 1996;
+Larra˜
+naga, 2002; Pelikan et al., 2000) and many evolution strategies approaches (e.g., Ostermeier et al. 1994), is to maintain and iteratively update a search distribution from which
+search points are drawn and subsequently evaluated. However, NES updates the search
+distribution in the direction of higher expected fitness using the natural gradient (whereas
+EDAs, for example, typically use maximum likelihood methods to fit the distribution of
+search points).
+1.1 Continuous Black-Box Optimization
+The problem of black-box optimization has spawned a wide variety of approaches. A first
+class of methods was inspired by classic optimization methods, including simplex methods
+such as Nelder-Mead (Nelder and Mead, 1965), as well as members of the quasi-Newton
+family of algorithms. Simulated annealing (Kirkpatrick et al., 1983), a popular method
+introduced in 1983, was inspired by thermodynamics, and is in fact an adaptation of the
+Metropolis-Hastings algorithm. Other methods, such as those inspired by evolution, have
+been developed from the early 1950s on. These include the broad class of genetic algorithms
+(Holland, 1975; Goldberg, 1989), differential evolution (Storn and Price, 1997), estimation
+of distribution algorithms (Larra˜
+naga, 2002; Pelikan et al., 2000; Bosman and Thierens,
+2000; Bosman et al., 2007; Pelikan et al., 2006), particle swarm optimization (Kennedy and
+Eberhart, 2001), and the cross-entropy method (Rubinstein and Kroese, 2004).
+Evolution strategies (ES), introduced by Ingo Rechenberg and Hans-Paul Schwefel in the
+1960s and 1970s (Rechenberg and Eigen, 1973; Schwefel, 1977), were designed to cope with
+high-dimensional continuous-valued domains and have remained an active field of research
+for more than four decades (Beyer and Schwefel, 2002). ESs involve evaluating the fitness of
+real-valued genotypes in batch (‘generation’), after which the best genotypes are kept, while
+the others are discarded. Survivors then procreate (by slightly mutating all of their genes)
+in order to produce the next batch of offspring. This process, after several generations, was
+shown to lead to reasonable to excellent results for many difficult optimization problems.
+The algorithm framework has been developed extensively over the years to include the
+representation of correlated mutations by the use of a full covariance matrix. This allowed
+950
+
+Natural Evolution Strategies
+
+the framework to capture interrelated dependencies by exploiting the covariances while
+‘mutating’ individuals for the next generation. The culminating algorithm, the covariance
+matrix adaptation evolution strategy (CMA-ES; Hansen and Ostermeier, 2001), has proven
+successful in numerous studies (e.g., Friedrichs and Igel, 2005; Muller et al., 2002; Shepherd
+et al., 2006). While evolution strategies have shown to be effective at black-box optimization,
+analyzing the actual dynamics of the procedure turns out to be difficult, the considerable
+efforts of various researchers notwithstanding (Beyer, 2001; J¨agersk¨
+upper, 2007; Jebalia
+et al., 2010; Auger, 2005; Schaul, 2012f).
+1.2 The NES Family
+Natural Evolution Strategies (NES) are a family of evolution strategies which iteratively
+update a search distribution by using an estimated gradient on its distribution parameters.
+The general procedure is as follows: the parameterized search distribution is used to
+produce a batch of search points, and the fitness function is evaluated at each such point.
+The distribution’s parameters (which include strategy parameters) allow the algorithm to
+adaptively capture the (local) structure of the fitness function. For example, in the case
+of a Gaussian distribution, this comprises the mean and the covariance matrix. From
+the samples, NES estimates a search gradient on the parameters towards higher expected
+fitness. NES then performs a gradient ascent step along the natural gradient, a second-order
+method which, unlike the plain gradient, renormalizes the update w.r.t. uncertainty. This
+step is crucial, since it prevents oscillations, premature convergence, and undesired effects
+stemming from a given parameterization (see Section 2.3 and Figure 2 for an overview
+on how the natural gradient addresses those issues). The entire process reiterates until a
+stopping criterion is met.
+All members of the ‘NES family’ operate based on the same principles. They differ in the
+type of distribution and the gradient approximation method used. Different search spaces
+require different search distributions; for example, in low dimensionality it can be highly
+beneficial to model the full covariance matrix. In high dimensions, on the other hand,
+a more scalable alternative is to limit the covariance to the diagonal only. In addition,
+highly multi-modal search spaces may benefit from more heavy-tailed distributions (such as
+Cauchy, as opposed to the Gaussian). A last distinction arises between distributions where
+we can analytically compute the natural gradient, and more general distributions where we
+need to estimate it from samples.
+1.3 Paper Outline
+This paper builds upon and extends our previous work on Natural Evolution Strategies
+(Wierstra et al., 2008; Sun et al., 2009a,b; Glasmachers et al., 2010a,b; Schaul et al., 2011),
+and is structured as follows: Section 2 presents the general idea of search gradients as
+described in Wierstra et al. (2008), explaining stochastic search using parameterized distributions while doing gradient ascent towards higher expected fitness. The limitations of the
+plain gradient are exposed in Section 2.2, and subsequently addressed by the introduction
+of the natural gradient (Section 2.3), resulting in the canonical NES algorithm.
+Section 3 then regroups a collection of techniques that enhance NES’s performance and
+robustness. This includes fitness shaping (designed to render the algorithm invariant w.r.t.
+951
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+order-preserving fitness transformations (Wierstra et al., 2008), Section 3.1), and adaptation sampling which is a novel technique for adjusting learning rates online (Section 3.2).
+We provide a novel formulation of NES for the whole class of multi-variate versions of distributions with rotation symmetries (Section 3.3). As special cases we summarize techniques
+for multivariate Gaussian search distributions, constituting the most common case (Section 3.4). Finally, in Section 3.5, we develop the breadth of the framework, motivating its
+usefulness and deriving a number of NES variants with different search distributions.
+The ensuing experimental investigations show the competitiveness of the approach on a
+broad range of benchmarks (Section 5). The paper ends with a discussion on the effectiveness of the different techniques and types of distributions and an outlook towards future
+developments (Section 6).
+
+2. Search Gradients
+The core idea of Natural Evolution Strategies is to use search gradients (first introduced
+in Berny, 2000, 2001) to update the parameters of the search distribution. We define the
+search gradient as the sampled gradient of expected fitness. The search distribution can
+be taken to be a multinormal distribution, but could in principle be any distribution for
+which we can find derivatives of its log-density w.r.t. its parameters. For example, useful
+distributions include Gaussian mixture models and the Cauchy distribution with its heavy
+tail.
+If we use θ to denote the parameters of density π(z | θ) and f (z) to denote the fitness
+function for samples z, we can write the expected fitness under the search distribution as
+J(θ) = Eθ [f (z)] =
+
+f (z) π(z | θ) dz.
+
+(1)
+
+The so-called ‘log-likelihood trick’ enables us to write
+∇θ J(θ) = ∇θ
+
+f (z) π(z | θ) dz
+
+=
+
+f (z) ∇θ π(z | θ) dz
+
+=
+
+f (z) ∇θ π(z | θ)
+
+=
+
+π(z | θ)
+dz
+π(z | θ)
+
+f (z) ∇θ log π(z | θ) π(z | θ) dz
+
+= Eθ [f (z) ∇θ log π(z | θ)] .
+From this form we obtain the estimate of the search gradient from samples z1 . . . zλ as
+∇θ J(θ) ≈
+
+1
+λ
+
+λ
+
+f (zk ) ∇θ log π(zk | θ),
+
+(2)
+
+k=1
+
+where λ is the population size. This gradient on expected fitness provides a search direction
+in the space of search distributions. A straightforward gradient ascent scheme can thus
+952
+
+Natural Evolution Strategies
+
+iteratively update the search distribution
+θ ← θ + η∇θ J(θ),
+where η is a learning rate parameter. Algorithm 1 provides the pseudocode for this very
+general approach to black-box optimization by using a search gradient on search distributions.
+Algorithm 1: Canonical Search Gradient algorithm
+input: f , θinit
+repeat
+for k = 1 . . . λ do
+draw sample zk ∼ π(·|θ)
+evaluate the fitness f (zk )
+calculate log-derivatives ∇θ log π(zk |θ)
+end
+∇θ J ←
+
+1
+λ
+
+λ
+
+∇θ log π(zk |θ) · f (zk )
+k=1
+
+θ ← θ + η · ∇θ J
+until stopping criterion is met
+Using the search gradient in this framework is similar to evolution strategies in that it
+iteratively generates the fitnesses of batches of vector-valued samples—the ES’s so-called
+candidate solutions. It is different however, in that it represents this ‘population’ as a
+parameterized distribution, and in the fact that it uses a search gradient to update the
+parameters of this distribution, which is computed using the fitnesses.
+2.1 Search Gradient for Gaussian Distributions
+In the case of the ‘default’ d-dimensional multi-variate normal distribution, the parameters
+of the Gaussian are the mean µ ∈ Rd (candidate solution center) and the covariance matrix Σ ∈ Rd×d (mutation matrix). Let θ denote these parameters: θ = µ, Σ . To sample
+efficiently from this distribution we need a square root of the covariance matrix, that is, a
+matrix A ∈ Rd×d fulfilling A A = Σ. Then z = µ + A s transforms a standard normal
+vector s ∼ N (0, I) into a sample z ∼ N (µ, Σ). Here, I = diag(1, . . . , 1) ∈ Rd×d denotes the
+identity matrix. Let
+2
+1
+1
+π(z | θ) = √
+· exp − A−1 · (z − µ)
+2
+( 2π)d | det(A)|
+1
+1
+=
+· exp − (z − µ) Σ−1 (z − µ)
+2
+(2π)d det(Σ)
+
+denote the density of the multinormal search distribution N (µ, Σ).
+In order to calculate the derivatives of the log-likelihood with respect to individual
+elements of θ for this multinormal distribution, first note that
+d
+1
+1
+log π (z|θ) = − log(2π) − log det Σ − (z − µ) Σ−1 (z − µ) .
+2
+2
+2
+953
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+We will need its derivatives, that is, ∇µ log π (z|θ) and ∇Σ log π (z|θ). The first is trivially
+∇µ log π (z|θ) = Σ−1 (z − µ) ,
+
+(3)
+
+while the latter is
+1
+1
+∇Σ log π (z|θ) = Σ−1 (z − µ) (z − µ) Σ−1 − Σ−1 .
+(4)
+2
+2
+Using these derivatives to calculate ∇θ J, we can then update parameters θ = µ, Σ as θ ←
+θ+η∇θ J using learning rate η. This produces a new center µ for the search distribution, and
+simultaneously adapts its associated covariance matrix Σ. To summarize, we provide the
+pseudocode for following the search gradient in the case of a multinormal search distribution
+in Algorithm 2.
+Algorithm 2: Search Gradient algorithm: Multinormal distribution
+input: f , µinit ,Σinit
+repeat
+for k = 1 . . . λ do
+draw sample zk ∼ N (µ, Σ)
+evaluate the fitness f (zk )
+calculate log-derivatives:
+∇µ log π (zk |θ) = Σ−1 (zk − µ)
+−1
+∇Σ log π (zk |θ) = − 12 Σ−1 + 21 Σ (zk − µ) (zk − µ) Σ−1
+end
+∇µ J ← λ1 λk=1 ∇µ log π(zk |θ) · f (zk )
+∇Σ J ←
+
+1
+λ
+
+λ
+k=1 ∇Σ log π(zk |θ)
+
+· f (zk )
+
+µ ← µ + η · ∇µ J
+Σ ← Σ + η · ∇Σ J
+until stopping criterion is met
+
+2.2 Limitations of Plain Search Gradients
+As the attentive reader will have realized, there exists at least one major issue with applying
+the search gradient as-is in practice: It is impossible to precisely locate a (quadratic) optimum, even in the one-dimensional case. Let d = 1, θ = µ, σ , and samples z ∼ N (µ, σ).
+Equations (3) and (4), the gradients on µ and σ, become
+z−µ
+,
+σ2
+(z − µ)2 − σ 2
+∇σ J =
+,
+σ3
+and the updates, assuming simple hill-climbing (i.e., a population size λ = 1) read:
+∇µ J
+
+=
+
+z−µ
+,
+σ2
+(z − µ)2 − σ 2
+σ ← σ+η
+.
+σ3
+µ ← µ+η
+
+954
+
+Natural Evolution Strategies
+
+10
+
+3
+
+10
+
+0
+
+µ
+σ
+
+-1
+
+opt
+
+1
+
+10
+
+-2
+
+opt
+
+2
+10
+
+opt
+
+-3
+
+200
+
+400
+
+600
+
+800
+
+1000
+
+Generation
+
+Figure 1: Left: Schematic illustration of how the search distribution adapts in the onedimensional case: from (1) to (2), µ is adjusted to make the distribution cover
+the optimum. From (2) to (3), σ is reduced to allow for a precise localization
+of the optimum. The step from (3) to (1) then is the problematic case, where
+a small σ induces a largely overshooting update, making the search start over
+again. Right: Progression of µ (black) and σ (red, dashed) when following the
+search gradient towards minimizing f (z) = z2 , executing Algorithm 2. Plotted
+are median values over 1000 runs, with a small learning rate η = 0.01 and λ = 10,
+both of which mitigate the instability somewhat, but still show the failure to
+precisely locate the optimum (for which both µ and σ need to approach 0).
+
+For any objective function f that requires locating an (approximately) quadratic optimum
+with some degree of precision (e.g., f (z) = z2 ), σ must decrease, which in turn increases the
+variance of the updates, as ∆µ ∝ σ1 and ∆σ ∝ σ1 for a typical sample z. In fact, the updates
+become increasingly unstable, the smaller σ becomes, an effect which a reduced learning
+rate or an increased population size can only delay but not avoid. Figure 1 illustrates this
+effect. Conversely, whenever σ
+1 is large, the magnitude of a typical update is severely
+reduced.
+Clearly, this update is not at all scale-invariant: Starting with σ
+1 makes all updates
+minuscule, whereas starting with σ
+1 makes the first update huge and therefore unstable.
+This effect need not occur in gradient-based search in general. Here it is rather a
+consequence of the special situation that the gradient controls both position and variance
+of a distribution over the same search space dimension. Note that this situation is generic for
+all translation and scale-invariant families of search distributions. We conjecture that this
+limitation constitutes one of the main reasons why search gradients have not been developed
+before: typically, with a naive parameterization, the plain search gradient’s performance
+can be both unstable and unsatisfying; however, the natural gradient extension (introduced
+in Section 2.3) tackles these issues, and renders search gradients into a viable optimization
+method by making updates invariant with respect to the particular parameterization used.
+955
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+2.3 Using the Natural Gradient
+Instead of using the plain stochastic gradient for updates, NES follows the natural gradient.
+The natural gradient was first introduced into the field of machine learning by Amari in
+1998, and has been shown to possess numerous advantages over the plain gradient (Amari,
+1998; Amari and Douglas, 1998). Natural gradients help mitigate the slow convergence of
+plain gradient ascent in optimization landscapes with ridges and plateaus.
+The plain gradient ∇J simply follows the steepest ascent in the space of the actual
+parameters θ of the distribution. This means that for a given small step-size ε, following
+it will yield a new distribution with parameters chosen from the hypersphere of radius
+and center θ that maximizes J. In other words, the Euclidean distance in parameter space
+is used to measure the distance between subsequent distributions. Clearly, this makes the
+update dependent on the particular parameterization of the distribution, therefore a change
+of parameterization leads to different gradients and different updates. See also Figure 2 for
+an illustration of how this effectively renormalizes updates w.r.t. uncertainty.
+The key idea of the natural gradient is to remove this dependence on the parameterization by relying on a more ‘natural’ measure of distance D(θ ||θ) between probability
+distributions π (z|θ) and π (z|θ ). One such natural distance measure between two probability distributions is the Kullback-Leibler divergence (Kullback and Leibler, 1951). The
+natural gradient can then be formalized as the solution to the constrained optimization
+problem
+max J (θ + δθ) ≈ J (θ) + δθ ∇θ J,
+δθ
+
+s.t. D (θ + δθ||θ) = ε,
+
+(5)
+
+where J (θ) is the expected fitness of Equation (1), and ε is a small increment size. Now,
+we have for lim δθ → 0,
+1
+D (θ + δθ||θ) = δθ F (θ) δθ,
+2
+where
+F=
+
+π (z|θ) ∇θ log π (z|θ) ∇θ log π (z|θ) dz
+
+= E ∇θ log π (z|θ) ∇θ log π (z|θ)
+is the Fisher information matrix of the given parametric family of search distributions.
+The solution to the constrained optimization problem in Equation (5) can be found using
+a Lagrangian multiplier (Peters, 2007), yielding the necessary condition
+Fδθ = β∇θ J,
+for some constant β > 0. The direction of the natural gradient ∇θ J is given by δθ thus
+defined. If F is invertible,1 the natural gradient amounts to
+∇θ J = F−1 ∇θ J(θ).
+1. Care has to be taken because the Fisher matrix estimate may not be (numerically) invertible even if the
+exact Fisher matrix is.
+
+956
+
+Natural Evolution Strategies
+
+sigma
+
+sigma
+
+mu
+
+mu
+
+Figure 2: Illustration of plain versus natural gradient in parameter space. Consider two
+parameters, for example, θ = (µ, σ), of the search distribution. In the plot on the
+left, the solid (black) arrows indicate the gradient samples ∇θ log π(z | θ), while
+the dotted (blue) arrows correspond to f (z) · ∇θ log π(z | θ), that is, the same
+gradient estimates, but scaled with fitness. Combining these, the bold (green)
+arrow indicates the (sampled) fitness gradient ∇θ J, while the bold dashed (red)
+˜ θ J.
+arrow indicates the corresponding natural gradient ∇
+Being random variables with expectation zero, the distribution of the black arrows
+is governed by their covariance, indicated by the gray ellipse. Notice that this
+covariance is a quantity in parameter space (where the θ reside), which is not to
+be confused with the covariance of the distribution in the search space (where the
+samples z reside).
+˜ θ log π(z | θ), and dotted
+In contrast, solid (black) arrows on the right represent ∇
+˜ θ log π(z | θ), resulting
+(blue) arrows indicate the natural gradient samples f (z) · ∇
+in the natural gradient (dashed red).
+The covariance of the solid arrows on the right hand side turns out to be the
+inverse of the covariance of the solid arrows on the left. This has the effect that
+when computing the natural gradient, directions with high variance (uncertainty)
+are penalized and thus shrunken, while components with low variance (high certainty) are boosted, since these components of the gradient samples deserve more
+trust. This makes the (dashed red) natural gradient a much more trustworthy
+update direction than the (green) plain gradient.
+
+957
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+The Fisher matrix can be estimated from samples, reusing the log-derivatives ∇θ log π(z|θ)
+that we already computed for the gradient ∇θ J. Then, updating the parameters following
+the natural gradient instead of the steepest gradient leads us to the general formulation of
+NES, as shown in Algorithm 3.
+Algorithm 3: Canonical Natural Evolution Strategies
+input: f , θinit
+repeat
+for k = 1 . . . λ do
+draw sample zk ∼ π(·|θ)
+evaluate the fitness f (zk )
+calculate log-derivatives ∇θ log π(zk |θ)
+end
+∇θ J ← λ1 λk=1 ∇θ log π(zk |θ) · f (zk )
+F←
+
+1
+λ
+
+λ
+
+∇θ log π (zk |θ) ∇θ log π (zk |θ)
+k=1
+
+θ ← θ + η · F−1 ∇θ J
+until stopping criterion is met
+
+3. Performance and Robustness Techniques
+In the following we will present and introduce crucial heuristics to improves NES’s performance and robustness. Fitness shaping (Wierstra et al., 2008) is designed to make the algorithm invariant w.r.t. arbitrary yet order-preserving fitness transformations (Section 3.1).
+Adaptation sampling, a novel technique for adjusting learning rates online, is introduced in
+Section 3.2.
+In sections 3.3 and 3.4 we describe two crucial techniques to enhance performance of
+the NES algorithm as applied to multinormal distributions: Exponential parameterization
+guarantees that the covariance matrix stays positive-definite, and second, a novel method for
+changing the coordinate system into a “natural” one is laid out, which makes the algorithm
+computationally efficient.
+3.1 Fitness Shaping
+NES uses rank-based fitness shaping in order to render the algorithm invariant under monotonically increasing (i.e., rank preserving) transformations of the fitness function. For this
+purpose, the fitness of the population is transformed into a set of utility values u1 ≥ · · · ≥ uλ .
+Let zi denote the ith best individual (the ith individual in the population, sorted by fitness,
+such that z1 is the best and zλ the worst individual). Replacing fitness with utility, the
+gradient estimate of Equation (2) becomes, with slight abuse of notation,
+λ
+
+∇θ J(θ) =
+
+uk ∇θ log π(zk | θ).
+k=1
+
+958
+
+Natural Evolution Strategies
+
+The choice of utility function can in fact be seen as a free parameter of the algorithm.
+Throughout this paper we will use the following
+uk =
+
+max 0, log( λ2 + 1) − log(k)
+λ
+j=1 max
+
+0, log( λ2
+
++ 1) − log(j)
+
+−
+
+1
+,
+λ
+
+which is directly related to the one employed by CMA-ES (Hansen and Ostermeier, 2001),
+for ease of comparison. In our experience, however, this choice has not been crucial to
+performance, as long as it is monotonous and based on ranks instead of raw fitness (e.g., a
+function which simply increases linearly with rank).
+3.2 Adaptation Sampling
+To reduce the burden of determining appropriate hyper-parameters such as the learning rate,
+we develop a new online adaptation or meta-learning technique (Schaul and Schmidhuber,
+2010), called adaptation sampling, that can automatically adapt the settings.
+We model this situation as follows: Let πθ be a distribution with hyper-parameter θ and
+ψ(z) a quality measure for each sample z ∼ πθ . Our goal is to adapt θ such as to maximize
+the quality ψ. A straightforward method to achieve this, henceforth dubbed adaptation
+sampling, is to evaluate the quality of the samples z drawn from πθ , where θ = θ is a
+slight variation of θ, and then perform hill-climbing: Continue with the new θ if the quality
+of its samples is significantly better (according, for example, to a Mann-Whitney U-test),
+and revert to θ otherwise. Note that this proceeding is similar to the NES algorithm itself,
+but applied at a meta-level to algorithm parameters instead of the search distribution. The
+goal of this adaptation is to maximize the pace of progress over time, which is slightly
+different from maximizing the fitness function itself.
+Virtual adaptation sampling is a lightweight alternative to adaptation sampling that is
+particularly useful whenever evaluating ψ is expensive :
+• do importance sampling on the existing samples zi , according to πθ :
+wi =
+
+π(z|θ )
+π(z|θ)
+
+(this is always well-defined, because z ∼ πθ ⇒ π(z|θ) > 0).
+• compare {ψ(zi )} with weights {wi = 1, ∀i} and {ψ = ψ(zi ), ∀i} with weights {wi },
+using a weighted generalization of the Mann-Whitney test.
+Beyond determining whether θ or θ is better, choosing a non-trivial confidence level ρ
+allows us to avoid parameter drift, as θ is only updated if the improvement is significant
+enough. There is one caveat, however: the rate of parameter change needs to be adjusted
+such that the two resulting distributions are not too similar (otherwise the difference won’t
+be statistically significant), but also not too different, (otherwise the weights w will be
+too small and again the test will be inconclusive). If, however, we explicitly desire large
+adaptation steps on θ, we have the possibility of interpolating between adaptation sampling
+and virtual adaptation sampling by drawing a few new samples from the distribution πθ
+(each assigned weight 1), where it is overlapping least with πθ .
+959
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+Sphere-10
+
+0
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+6000
+
+7000
+
+8000
+
+10
+2
+10
+1
+10
+0
+10
+-1
+10
+-2
+10
+-3
+10
+-4
+10
+-5
+10
+-6
+10
+-7
+10
+-8
+10
+-9
+10
+-10
+10
+
+1.0
+
+xNES(0.1)
+xNES(0.5)
+xNES-as
+
+0
+
+0.8
+0.6
+
+0.4
+0.2
+0.0
+0
+
+5000
+
+10000
+
+15000
+
+20000
+
+10000
+
+15000
+
+20000
+
+1.0
+
+0.8
+0.6
+
+η
+
+η
+
+Rosenbrock-10
+
+3
+
+xNES(0.1)
+xNES(0.5)
+xNES-as
+
+−f
+
+−f
+
+3
+
+10
+2
+10
+1
+10
+0
+10
+-1
+10
+-2
+10
+-3
+10
+-4
+10
+-5
+10
+-6
+10
+-7
+10
+-8
+10
+-9
+10
+-10
+10
+
+0.4
+0.2
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+6000
+
+7000
+
+0.0
+0
+
+8000
+
+Evaluations
+
+5000
+
+Evaluations
+
+Figure 3: Illustration of the effect of adaptation sampling. We show the increase in fitness
+during a NES run (above) and the corresponding learning rates (below) on two
+setups: 10-dimensional sphere function (left), and 10-dimensional Rosenbrock
+function (right). Plotted are three variants of xNES (Algorithm 5): fixed default
+learning rate of η = 0.1 (dashed, red) fixed large learning rate of η = 0.5 (dotted,
+yellow), and an adaptive learning rate starting at η = 0.1 (green). We see that
+for the (simple) Sphere function, it is advantageous to use a large learning rate,
+and adaptation sampling automatically finds that one. However, using the overly
+greedy updates of a large learning rate fails on harder problems (right). Here
+adaptation sampling really shines: it boosts the learning rate in the initial phase
+(entering the Rosenbrock valley), then quickly reduces it while the search needs
+to carefully navigate the bottom of the valley, and boosts it again at the end
+when it has located the optimum and merely needs to zoom in precisely.
+
+For NES algorithms, the
+pling is the learning rate η,
+into the search, after a local
+the learning rate in order to
+
+most important parameter to be adapted by adaptation samstarting with a conservative guess. This is because half-way
+attractor has been singled out, it may well pay off to increase
+more quickly converge to it.
+
+In order to produce variations η which can be judged using the above-mentioned Utest, we propose a procedure similar in spirit to Rprop-updates (Riedmiller and Braun,
+1993; Igel and H¨
+usken, 2003), where the learning rates are either increased or decreased by
+a multiplicative constant whenever there is evidence that such a change will lead to better
+samples.
+More concretely, when using adaptation sampling for NES we test for an improvement
+with the hypothetical distribution θ generated with η = 1.5η. Each time the statistical
+1
+test is successful with a confidence of at least ρ = 12 − 3(d+1)
+(this value was determined
+empirically) we increase the learning rate by a factor of 1+c , up to at most η = 1. Otherwise
+1
+we bring it closer to its initial value: η ← (1 − c )η + c ηinit . We use c = 10
+(again, an
+empirically robust choice). The final procedure is summarized in algorithm 4. We append
+the ending “-as” to denote algorithm variants using adaptation sampling.
+960
+
+Natural Evolution Strategies
+
+Figure 3 illustrates the effect of the virtual adaptation sampling strategy on two different
+10-dimensional unimodal benchmark functions, the Sphere function f1 and the Rosenbrock
+function f8 (see Section 5.2 for details). We find that, indeed, adaptation sampling boosts
+the learning rates to the appropriate high values when quick progress can be made (in the
+presence of an approximately quadratic optimum), but keeps them at carefully low values
+otherwise.
+Algorithm 4: Adaptation sampling
+input : ησ,t ,ησ,init , θt , θt−1 , {(zk , f (zk ))}, c , ρ
+output: ησ,t+1
+compute hypothetical θ , given θt−1 and using 3/2ησ,t
+for k = 1 . . . λ do
+π(zk |θ )
+wk =
+π(zk |θ)
+end
+S ← {rank(zk )}
+S ← {wk · rank(zk )}
+if weighted-Mann-Whitney(S, S ) < ρ then
+return (1 − c ) · ησ + c · ησ,init
+else
+return min((1 + c ) · ησ , 1)
+end
+
+3.3 Rotationally Symmetric Distributions
+In this section we derive the computation of the natural gradient for a rather general
+class of distributions, namely multi-variate distributions arising from linear transformations
+of rotationally symmetric distributions. For many important cases, such as multi-variate
+Gaussians, this allows us to obtain the Fisher matrix in closed form. The resulting strategy
+updates are computationally efficient.
+For a sample z ∈ Rd let r = z denote its radial component. Let Qτ (z) be a family
+of rotationally symmetric distributions with parameter vector τ . From this invariance
+property we deduce that the density can be written as Qτ (z) = qτ (r2 ) for some family of
+functions qτ : R≥0 → R≥0 . In the following we consider classes of search distributions with
+densities
+π z µ, A, τ =
+=
+
+1
+· qτ
+| det(A)|
+1
+
+A−1
+
+det(A A)
+
+(z − µ)
+
+2
+
+· qτ (z − µ) (A A)−1 (z − µ)
+
+(6)
+
+with additional transformation parameters µ ∈ Rd and invertible A ∈ Rd×d . If needed,
+A can be restricted to any continuous sub-group of the invertible matrices like, for example, diagonal matrices. The function qτ is the accordingly transformed density of the
+random variable s = A−1 (z − µ). This setting is rather general. It covers many impor961
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+tant families of distributions and their multi-variate forms, most prominently multi-variate
+Gaussians. In addition, properties of the radial distribution such as its tail (controlling
+whether large mutations are common or rare) can be controlled with the parameter τ .
+3.3.1 Local “Natural” Coordinates
+In principle the computation of the natural gradient, involving the computation of gradient
+and Fisher matrix, is straight-forward. However, the parameters µ and A have d and
+d(d + 1)/2 dimensions, which makes a total of d(d + 3)/2 ∈ O(d2 ). Let d denote the
+dimensionality of the radial parameters τ , and for simplicity we assume that d is fixed and
+does not grow with the dimensionality of the search space. Then the Fisher matrix has
+O(d4 ) entries, and its inversion costs O(d6 ) operations. It turns out that we can do much
+better. The following derivation is a generalization of the proceeding found in Glasmachers
+et al. (2010b).
+The above encoding by means of transformations of a rotation invariant normal form of
+the distribution hints at the introduction of a canonical local coordinate system in which
+the normal form becomes the current search distribution. It turns out from Equation (6)
+that the dependency of the distribution on A is only in terms of the symmetric positive
+definite matrix A A. In the Gaussian case this matrix coincides with the covariance matrix. Instead of performing natural gradient steps on the manifolds of invertible or positive
+definite symmetric matrices we introduce a one-to-one encoding with a vector space representation. The matrix exponential, restricted to the vector space of symmetric matrices,
+is a global map for the manifold of symmetric positive definite matrices. Thus, we introduce “exponential” local coordinates (δ, M) → (µnew , Anew ) = µ + A δ, A exp 21 M .
+These coordinates are local in the sense that the current search distribution is encoded by
+(δ, M) = (0, 0). It turns out that in these coordinates the Fisher matrix takes the rather
+simple form
+F=
+
+I
+v
+
+v
+c
+
+with
+
+v=
+
+∂ 2 log π(z)
+∈ R(m−d )×d
+∂(δ, M)∂τ
+
+and c =
+
+∂ 2 log π(z)
+∈ Rd ×d . (7)
+∂τ 2
+
+Note that for distributions without radial parameters τ , such as Gaussians, we obtain
+F = I. Thus, in local coordinates the otherwise computationally intensive operations of
+computing and inverting the Fisher matrix are trivial, and the vanilla gradient coincides
+with the natural gradient. For this reason we call the above local coordinates also natural
+exponential coordinates. For non-trivial parameters τ we use the Woodbury identity to
+compute the inverse of the Fisher matrix as
+F−1 =
+
+I
+v
+
+v
+c
+
+−1
+
+=
+
+I + Hvv
+−Hv
+
+−Hv
+H
+
+with H = (c − v v)−1 , and exploiting H = H. It remains to compute the gradient. We
+obtain the three components of derivatives of log-probabilities
+∇δ,M,τ |δ=0,M=0 log π (z | µ, A, τ , δ, M) = g = (gδ , gM , gτ ) ,
+962
+
+Natural Evolution Strategies
+
+qτ ( s 2 )
+· s,
+qτ ( s 2 )
+1
+q ( s 2)
+gM = − I − τ
+· ss ,
+2
+qτ ( s 2 )
+1
+gτ =
+· ∇τ qτ ( s 2 ),
+qτ ( s 2 )
+gδ = − 2 ·
+
+where qτ = ∂(r∂ 2 ) qτ denotes the derivative of qτ with respect to r2 , and ∇τ qτ denotes the
+gradient w.r.t. τ . The sample-wise natural gradient becomes
+(gδ , gM ) − Hv(v (gδ , gM ) − gτ )
+,
+H(v (gδ , gM ) − gτ )
+
+F−1 · g =
+
+which can be computed efficiently in only O(d2 ) operations (assuming fixed d ). This is in
+contrast to O(d6 ) operations required for a na¨ıve inversion of the full Fisher matrix.
+3.3.2 Sampling from Radial Distributions
+In order to use this class of distributions for search we need to be able to draw samples
+from it. The central idea is to first draw a sample s from the ‘standard’ density π(s | µ =
+0, A = I, τ ), which is then transformed into the sample z = A s + µ, corresponding to
+the density π(z | A, µ, τ ). In general, sampling s can be decomposed into sampling the
+(squared) radius component r2 = z 2 and a unit vector v ∈ Rd , v = 1. The squared
+radius has the density
+
+q˜τ (r2 ) =
+z
+
+Qτ (z) dz =
+
+2π d/2
+· (r2 )(d−1)/2 · qτ (r2 ),
+Γ(d/2)
+
+2 =r 2
+
+where Γ(·) denotes the gamma function. In the following we assume that we have an efficient
+method of drawing samples from this one-dimensional density. Besides the radius we draw
+a unit vector u ∈ Rd uniformly at random, for example by normalizing a standard normally
+distributed vector. Then s = r · u is effectively sampled from π(s | µ = 0, A = I, τ ), and
+the composition z = rA u + µ follows the density π(z | µ, A, τ ). In many special cases,
+however, there are more efficient ways of sampling s = r · u directly.
+3.4 Techniques for Multinormal Distributions
+Multi-variate Gaussians are the most prominent class of search distributions for evolution
+strategies. An advantageous property of Gaussians is that the Fisher information matrix
+is known analytically. A large share of the previous work on NES has dealt with the
+development of efficient techniques for this important special case.
+963
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+Here we deal with this prominent case in the above introduced framework. The natural
+gradient is
+λ
+
+∇δ J =
+
+f (zk ) · sk ,
+k=1
+λ
+
+∇M J =
+
+f (zk ) · (sk sk − I),
+k=1
+
+where sk is the k-th best sample in the batch in local coordinates, and zk is the same
+sample in task coordinates. The resulting algorithm, outlined in Algorithm 5 is known as
+exponential NES (xNES). It is demonstrated in the algorithm how the covariance factor
+A can be decomposed into a scalar step size σ > 0 and a normalized covariance factor B
+fulfilling det(B) = 1. This decoupling of shape (B) from scale (σ) information allows for
+adaptation of the two orthogonal components with independent learning rates. All NES
+variants for multi-variate Gaussians have a complexity of O(d3 ) computations per covariance
+matrix update. This complexity can be reduced to O(d2 ) by computing the updates in local
+non-exponential coordinates.
+It was shown that the NES principle is also compatible with elitist selection (Glasmachers
+et al., 2010a), resulting in the natural gradient hillclimber (1+1)-xNES. We refer to the
+papers by Sun et al. (2009a,b) and Glasmachers et al. (2010b,a) for further technical details
+on these algorithms.
+Algorithm 5: Exponential Natural Evolution Strategies (xNES) (multinormal case)
+input: f , µinit , Σinit = A A
+initialize
+
+σ ← d | det(A)|
+B ← A/σ
+
+repeat
+for k = 1 . . . λ do
+draw sample sk ∼ N (0, I)
+zk ← µ + σB sk
+evaluate the fitness f (zk )
+end
+sort {(sk , zk )} with respect to f (zk ) and compute utilities uk
+compute gradients
+
+∇δ J ← λk=1 uk · sk
+∇σ J ← tr(∇M J)/d
+
+∇M J ← λk=1 uk · (sk sk − I)
+∇B J ← ∇M J − ∇σ J · I
+
+µ ← µ + ηδ · σB · ∇δ J
+update parameters σ ← σ · exp(ησ /2 · ∇σ J)
+B ← B · exp(ηB /2 · ∇B J)
+until stopping criterion is met
+
+964
+
+Natural Evolution Strategies
+
+3.5 Beyond Multinormal Distributions
+The large share of literature on the multinormal case does not properly reflect the generality
+of the NES algorithm. It was shown by Schaul et al. (2011) that certain classes of problems
+can profit from tailored search distributions.
+One simple yet important variant, inspired by Ros and Hansen (2008), is to use separable
+search distributions to improve the update complexity from cubic or quadratic to linear.
+This is compatible with the exponential parameterization of xNES. Cheap updates are a
+prerequisite for search in high-dimensional spaces, for example, for training recurrent neural
+networks. The resulting algorithm is called separable NES (SNES). Within our framework of
+linearly transformed rotationally symmetric distributions we obtain this case by restricting
+A to the group of (invertible) diagonal transformation matrices.
+Another direction is the extension of NES to multivariate Cauchy distributions. These
+heavy-tailed distributions have undefined expectation and infinite variance. In this case
+the natural gradient is not defined. Still, the NES principle can be generalized by means
+of invariance properties. This is because three seemingly unrelated properties coincide for
+local natural coordinates. Let us assume the absence of radial parameters τ , then (i) due to
+Equation (7) the Fisher matrix is the identity, (ii) plain and natural gradient coincide, and
+(iii) by construction the current search distribution is invariant under orthogonal transformations. We obtain the following alternative characterization of NES: The NES algorithm
+performs its gradient updates based on a local coordinate system in which the orthogonal
+group (induced by the standard inner product) leaves the search distribution invariant.
+This characterization for multi-variate distributions turns out to be robust. The argument stays valid while we iteratively grow the distribution’s tail. In the limit of infinite
+variance the natural gradient interpretation breaks down, while the characterization by
+invariance is unaffected.
+NES with heavy-tailed distributions are most useful as (1+1) hillclimbers: Assume
+a lucky exploratory sample from the distribution’s heavy tail has managed to escape a
+bad local optimum. In a population-based algorithm this effect would be “corrupted” by
+weighted averaging and the better attractor may be missed, while a hillclimber can jump
+to the new position. It has been demonstrated in Schaul et al. (2011) that heavy-tailed
+distributions can improve the performance of NES on highly multi-modal problems.
+
+4. Connection to CMA-ES
+It turns out that xNES is closely related to the seminal Covariance Matrix Adaptation
+Evolution Strategy (CMA-ES; Hansen and Ostermeier, 2001) algorithm. It has been noticed
+by Glasmachers et al. (2010b) that in first order Taylor approximation the exponential xNES
+update coincides with the so-called rank-µ update of CMA-ES. Akimoto et al. (2010) have
+show rigorously that CMA-ES is in fact following an approximate natural gradient, and
+thus, arguably, can be seen as a member of the NES family. In the remainder of this
+section, we will point out similarities and differences between it and xNES.
+The relation between CMA-ES and xNES is clearest when considering the CMA-ES
+variant with rank-µ update (in the terminology of this study, rank-λ-update), since this
+one does not feature evolution paths. Both xNES and CMA-ES parameterize the search
+distribution with three functionally different parameters for mean, scale, and shape of the
+965
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+Algorithm 6: Separable NES (SNES)
+input: f , µinit , σ init
+repeat
+for k = 1 . . . λ do
+draw sample sk ∼ N (0, I)
+zk ← µ + σsk
+evaluate the fitness f (zk )
+end
+sort {(sk , zk )} with respect to f (zk ) and compute utilities uk
+compute gradients
+
+∇µ J ←
+∇σ J ←
+
+λ
+k=1 uk
+λ
+k=1 uk
+
+· sk
+· (s2k − 1)
+
+µ ← µ + ηµ · σ · ∇ µ J
+σ ← σ · exp(ησ /2 · ∇σ J)
+until stopping criterion is met;
+update parameters
+
+distribution. xNES uses the parameters µ, σ, and B, while the covariance matrix is represented as σ 2 · C in CMA-ES, where C can be any positive definite symmetric matrix.
+Thus, the representation of the scale of the search distribution is shared among σ and C
+in CMA-ES, and the role of the additional parameter σ is to allow for an adaptation of
+the step size on a faster time scale than the full covariance update. In contrast, the NES
+updates of scale and shape parameters σ and B are decoupled.
+The update of the center parameter µ is very similar to the update of the center of the
+search distribution in CMA-ES, see Hansen and Ostermeier (2001). The utility function
+exactly takes the role of the weights in CMA-ES, which assumes a fixed learning rate of
+one.
+For the covariance matrix, the situation is more complicated. We deduce the update
+rule
+Σnew =(Anew ) · Anew
+λ
+
+=A · exp ηΣ ·
+
+uk sk sk − I
+
+·A
+
+k=1
+
+for the covariance matrix, with learning rate ηΣ = ηA . This term is closely connected
+to the exponential parameterization of the natural coordinates in xNES, while CMA-ES
+is formulated in global linear coordinates. The connection of these updates can be shown
+either by applying the xNES update directly to the natural coordinates without the exponential parameterization (Akimoto et al., 2010), or by approximating the exponential map
+by its first order Taylor expansion. Akimoto et al. (2010) established the same connection
+directly in coordinates based on the Cholesky decomposition of Σ, see Sun et al. (2009a,b).
+The arguably simplest derivation of the equivalence relies on the invariance of the natural
+gradient under coordinate transformations, which allows us to perform the computation,
+w.l.o.g., in natural coordinates. We use the first order Taylor approximation of the matrix
+966
+
+Natural Evolution Strategies
+
+exponential to obtain
+λ
+
+exp ηΣ ·
+
+λ
+
+≈ I + ηΣ ·
+
+uk sk sk − I
+k=1
+
+uk sk sk − I ,
+k=1
+
+so the first order approximate update yields
+λ
+
+Σnew =A ·
+
+I + ηΣ ·
+
+uk sk sk − I
+
+·A
+
+k=1
+λ
+
+= (1 − U · ηΣ ) · A A + ηΣ ·
+
+uk A sk
+
+A sk
+
+k=1
+λ
+
+= (1 − U · ηΣ ) · Σ + ηΣ ·
+
+uk (zk − µ) (zk − µ)
+k=1
+
+with U = λk=1 uk , from which the connection to the CMA-ES rank-µ-update is obvious
+(see Hansen and Ostermeier, 2001, and note that U = 1 for CMA-ES.).
+It is interesting to note that both xNES and CMA-ES use different learning rates for the
+mean and covariance components of the search distribution. Thus, in a strict sense they do
+not follow the natural gradient. Instead they follow a systematically transformed direction
+with altered (typically reduced) covariance component. This makes intuitive sense since the
+d components of the mean can be estimated more robustly from a fixed size sample than
+the O(d2 ) covariance parameters. The theoretical implications of using differently scaled
+updates for the two components are yet to be explored.
+CMA-ES uses the well-established technique of evolution paths to smooth out random
+effects over multiple generations. This technique is particularly valuable when working with
+minimal population sizes, which is the default for both algorithms. Thus, evolution paths
+are expected to improve stability; further interpretations have been provided by Hansen
+and Ostermeier (2001). However, the presence of evolution paths complicates matters since
+the state of the CMA-ES algorithms is not completely described by its search distribution.
+Another difference between xNES and CMA-ES is the exponential parameterization of
+the updates in xNES, which results in a multiplicative update equation for the covariance
+matrix, in contrast to the additive update of CMA-ES. The multiplicative covariance update
+is coherent with the multiplicative (and also exponential) update of the step size σ.
+A valuable perspective offered by the natural gradient updates in xNES is the derivation
+of the updates of the center µ, the step size σ, and the normalized transformation matrix B,
+all from the same principle of natural gradient ascent. In contrast, the updates applied in
+CMA-ES result from different heuristics for each parameter. This connection might provide
+an interesting perspective on some of the methods employed by CMA-ES.
+
+5. Experiments
+In this section, we empirically validate the new algorithms, to determine how NES algorithms perform compared to state-of-the-art evolution strategies, identifying specific strengths
+and limitations of the different variants.
+967
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+We conduct a broad series of experiments on standard benchmarks, as well as more specific experiments testing special capabilities. In total, four different algorithm variants are
+tested and their behaviors compared qualitatively as well as quantitatively, w.r.t. different
+modalities.
+We start by detailing and justifying the choices of hyperparameters, then we proceed
+to evaluate the performance of a number of different variants of NES (with and without
+adaptation sampling) on a broad collection of benchmarks. We also conduct experiments
+using the separable variant on high-dimensional problems.
+5.1 Experimental Setup and Hyperparameters
+Across all NES variants, we distinguish three hyperparameters: the population size λ, the
+learning rates η and the utility function u (because we always use fitness shaping, see
+Section 3.1). In particular, for the multivariate Gaussian case (xNES) we have the three
+learning rates ηµ , ησ , and ηB .
+It is highly desirable to have good default settings that scale with the problem dimension
+and lead to robust performance on a broad class of benchmark functions. Table 1 provides
+such default values as functions of the problem dimension d for xNES. We borrowed several
+of the settings from CMA-ES (Hansen and Ostermeier, 2001), which seems natural due to
+the apparent similarity. Both the population size λ and the learning rate ηµ are the same as
+for CMA-ES, even if this learning rate never explicitly appears in CMA-ES. For the utility
+function we copied the weighting scheme of CMA-ES, but we shifted the values such that
+they sum to zero, which is the simplest form of implementing a fitness baseline; Jastrebski
+and Arnold (2006) proposed a similar approach for CMA-ES. The remaining parameters
+were determined via an empirical investigation, aiming for robust performance. In addition,
+in the separable case (SNES) the number of parameters in the covariance matrix is reduced
+from d(d + 1)/2 ∈ O(d2 ) to d ∈ O(d), which allows us to increase the learning rate ησ by a
+factor of d/3 ∈ O(d), a choice which has proven robust in practice (Ros and Hansen, 2008).
+The algorithm variants that we will be evaluating below are xNES (Algorithm 5),
+“xNES-as”, that is xNES using adaptation sampling (Section 3.2), and the separable SNES
+(Algorithm 6). A Python implementation of all these is available within the open-source
+machine learning library PyBrain (Schaul et al., 2010), and implementations in different
+languages can be found at http://www.idsia.ch/~tom/nes.html.
+5.2 Black-box Optimization Benchmarks
+For a practitioner it is important to understand how NES algorithms compare to other
+methods on a wide range black-box optimization scenarios. Thus, we evaluate our algorithm
+on all the benchmark functions of the ‘Black-Box Optimization Benchmarking’ collection
+(BBOB) from the GECCO Workshop for Real-Parameter Optimization. The collection
+consists of 24 noise-free functions (12 unimodal, 12 multimodal; Hansen et al., 2010a) and
+30 noisy functions (Hansen et al., 2010b). In order to make our results fully comparable, we
+also use the identical setup (Hansen and Auger, 2010), which transforms the pure benchmark
+functions to make the parameters non-separable (for some) and avoid trivial optima at the
+origin. The framework permits restarts until the budget of function evaluations (105 d) is
+968
+
+Natural Evolution Strategies
+
+parameter
+
+default value
+
+λ
+
+4 + 3 log(d)
+
+ηµ
+
+1
+(9 + 3 log(d))
+√
+5d d
+
+ησ = ηB
+
+(3 + log(d))
+√
+5 d
+
+ησ
+
+uk
+
+max 0, log( λ2 + 1) − log(i)
+λ
+j=1 max
+
+0, log( λ2
+
++ 1) − log(j)
+
+−
+
+1
+λ
+
+1
+10
+
+c
+
+Table 1: Default parameter values for xNES, xNES-as and SNES (including the utility
+function) as a function of problem dimension d.
+
+used up, which
+we trigger whenever the variance of the distribution becomes too small, that
+√
+is, when d det Σ < 10−20 .
+The results in this subsection are very similar2 to those published in the 2012 edition
+of the BBOB Workshop at GECCO, we refer the interested reader to Schaul (2012b,c,e,d)
+for additional results and analysis. Figure 4 provides a compounded overview of the results
+on dimensions 5 and 20, on noisy or noiseless functions, and a direct comparison to all
+algorithms benchmarked in the 2009 edition of BBOB, which shows that xNES is among the
+best algorithms, assuming that the budget of function evaluations surpasses 100 times the
+dimension. We find (Schaul, 2012c) that xNES-as significantly outperforms all algorithms
+from the BBOB 2009 competition on function f115 and for limited budgets on f18 , f118 and
+f119 , while underperforming compared to the winners on a set of other functions.
+Figures 5 (noise-free functions) and Figure 6 (noisy functions) show how performance
+scales with dimension, on a detailed function-by-function level, for both xNES and xNES-as.
+Using adaptation sampling improves performance most significantly on simple benchmarks
+like the sphere function or its noisy siblings (f1 , f101 , f102 , f103 , f107 ) and only hurts
+significantly on f13 , in high dimensions (see Schaul, 2012e for the full comparison, and result
+tables with statistical significance tests). While the presented default settings are weak for
+highly multi-modal functions like f3 , f4 or f15 , larger population sizes and sophisticated
+restart strategies may alleviate this issue.
+Figure 7 compares the loss ratios (in terms of expected running time) given fixed budgets
+of evaluations, for xNES, xNES-as, and BIPOP-CMA-ES (Hansen, 2009a,b), the winner of
+the 2009 BBOB edition as reference point. BIPOP-CMA-ES is significantly better on most
+noisy functions, but the differences are much more subtle on the noiseless ones. In fact, a
+2. The difference lies with the stopping criterion used for restarts, which was not compliant in the 2012
+results.
+
+969
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+0.00
+
+proportion of trials
+
+proportion of trials
+
++1
+-1
+-4
+-8
+
+1.0
+
+f1-24
+
+0.5
+
+1.0
+all noisy functions
+
+5-D
+
+1
+
+4
+2
+3
+log10 of FEvals / DIM
+
++1
+-1
+-4
+-8
+
+f101-130
+
+1.0
+
+0.5
+
+0.00
+
+1
+
+4
+2
+3
+log10 of FEvals / DIM
+
++1
+-1
+-4
+-8
+
+f1-24
+
+1
+
+4
+2
+3
+log10 of FEvals / DIM
+
++1
+-1
+-4
+-8
+
+f101-130
+
+1
+
+4
+2
+3
+log10 of FEvals / DIM
+
+5
+
+0.5
+
+0.00
+
+5
+
+20-D
+
+0.5
+
+0.00
+
+5
+
+proportion of trials
+
+proportion of trials
+
+all noiseless functions
+
+1.0
+
+5
+
+Figure 4: Empirical cumulative distributions (ECDF) of run lengths and speed-up ratios
+in 5-D (left) and 20-D (right), over all noiseless functions (top row) and all
+noisy functions (bottom row). The ECDF is taken of the number of function
+evaluations divided by dimension d to reach a target value fopt + 10k , where
+k ∈ {1, −1, −4, −8} is given by the first value in the legend, for xNES (◦) and
+xNES as ( ). Light beige lines show the ECDF for target precision 10−8 of all
+algorithms benchmarked during BBOB-2009. From this high-level perspective,
+both xNES variants appear among the best tested algorithms, with a small advantage for using adaptation sampling.
+
+direct comparison (Schaul, 2012d) found that xNES-as is close in performance to BIPOPCMA-ES across a large fraction of the benchmark functions; but there is some diversity as
+well, with xNES-as being significantly better on 6 of the functions and significantly worse
+on 18 of them.
+5.3 Separable NES for Neuroevolution
+The SNES algorithm is expected to perform at least as well as xNES on separable problems,
+while it should show considerably worse performance in the presence of highly dependent
+variables. These are indeed the the findings in Schaul (2012a), where SNES was bench970
+
+Natural Evolution Strategies
+
+1 Sphere
+
+4
+
+4
+
+3
+
+2 Ellipsoid separable
+
+xNES
+xNES_as
+
+4
+
+2
+
+3
+2
+
+1
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+40
+
+5 Linear slope
+
+4
+
+1
+10
+
+20
+
+40
+
+6 Attractive sector
+
+2
+
+1
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+5
+
+10
+
+20
+
+40
+
+9 Rosenbrock rotated
+
+3
+2
+1
+
+5
+
+10
+
+20
+
+40
+
+13 Sharp ridge
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+40
+
+17 Schaffer F7, condition 10
+
+20
+
+40
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+22 Gallagher 21 peaks
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+10
+
+20
+
+21 Gallagher 101 peaks
+
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+10
+
+20
+
+40
+
+8 Rosenbrock original
+
+0 ftarget=1e-08
+5
+2 3
+5
+
+10
+
+20
+
+40
+
+20
+
+40
+
+20
+
+40
+
+12 Bent cigar
+
+4
+3
+2
+1
+10
+
+20
+
+40
+
+15 Rastrigin
+
+0 ftarget=1e-08
+5
+2 3
+6
+
+40
+
+40
+
+23 Katsuuras
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+2
+1
+
+20
+
+7 19 Griewank-Rosenbrock F8F2
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+40
+
+3
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+11 Discus
+
+40
+
+18 Schaffer F7, condition 1000
+
+5
+
+2
+
+0 ftarget=1e-08
+5
+2 3
+
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+
+4
+
+3
+
+1
+
+1
+
+6
+
+4
+
+2
+
+1
+
+1
+
+1
+
+1
+
+3
+
+2
+
+10
+
+5
+
+2
+
+2
+
+14 Sum of different powers
+
+40
+
+3
+
+3
+
+0 ftarget=1e-08
+5
+2 3
+
+20
+
+4
+
+4
+
+2
+
+2
+
+6
+
+40
+
+3
+
+3
+
+5
+
+20
+
+10
+
+7 Step-ellipsoid
+
+7 4 Skew Rastrigin-Bueche separ
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+40
+
+4
+
+3
+
+4
+
+4
+
+10
+
+10 Ellipsoid
+
+4
+
+4
+
+0 ftarget=1e-08
+5
+2 3
+
+0 ftarget=1e-08
+5
+2 3
+
+0 ftarget=1e-08
+5
+2 3
+5
+
+3
+
+2
+
+3 Rastrigin separable
+
+5
+
+3
+
+2
+
+3
+
+6
+
+10
+
+16 Weierstrass
+
+5
+4
+3
+2
+1
+10
+
+20
+
+40
+
+40
+
+0 ftarget=1e-08
+5
+2 3
+6
+
+10
+
+20 Schwefel x*sin(x)
+
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+40
+
+24 Lunacek bi-Rastrigin
+7
+xNES
+6
+xNES_as
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+40
+
+Figure 5: Expected running time (ERT, as log10 value of the number of f -evaluations divided by dimension) on all noise-free functions (f1 and f24 ) for target precision
+10−8 , versus dimension on the horizontal axis. Blue circles ◦ refer to xNES, red
+triangles refer to xNES as, and the light beige lines show the performance of
+the best-performing algorithm from the BBOB-2009 entrants (the best, individually for each dimension-function pair). Light symbols give the maximum number
+of function evaluations from the longest trial divided by dimension. Black stars
+indicate statistically better result compared to all other algorithms with p < 0.01.
+971
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+4
+
+101 Sphere moderate Gauss
+
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+4
+
+10
+
+xNES
+xNES_as
+20
+40
+
+102 Sphere moderate unif
+
+5
+
+4
+
+4
+
+3
+
+3
+
+2
+
+2
+
+1
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+1
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+40
+
+103 Sphere moderate Cauchy
+
+3
+
+10
+
+20
+
+40
+
+116 Ellipsoid Gauss
+
+4
+
+3
+
+3
+
+2
+
+2
+
+1
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+40
+
+4
+
+4
+
+3
+
+5
+
+5
+4
+
+3
+
+3
+
+2
+
+2
+
+10
+
+20
+
+10
+
+20
+
+2
+1
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+20
+
+118 Ellipsoid Cauchy
+
+5
+
+121 Sum of diff powers Cauchy
+
+3
+
+2
+
+2
+
+1
+10
+
+20
+
+40
+
+6
+
+4
+3
+2
+1
+40
+
+20
+
+0 ftarget=1e-08
+5
+2 3
+6
+
+2
+1
+40
+
+112 Rosenbrock Cauchy
+
+0 ftarget=1e-08
+5
+2 3
+5
+
+40
+
+4
+3
+2
+1
+
+40
+
+0 ftarget=1e-08
+5
+2 3
+
+0 ftarget=1e-08
+5
+2 3
+
+20
+
+40
+
+40
+
+7 125 Griewank-Rosenbrock Gauss
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+40
+
+128 Gallagher Gauss
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+40
+
+40
+
+7 126 Griewank-Rosenbrock unif
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+40
+
+129 Gallagher unif
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+40
+
+6 127 Griewank-Rosenbrock Cauchy
+
+6
+
+10
+
+20
+
+40
+
+5
+
+5
+
+5
+
+4
+
+4
+
+4
+
+3
+
+3
+
+3
+
+2
+
+2
+
+2
+
+1
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+10
+
+20
+
+40
+
+10
+
+130 Gallagher Cauchy
+
+1
+20
+
+20
+
+1
+
+124 Schaffer F7 Cauchy
+
+10
+
+10
+
+115 Step-ellipsoid Cauchy
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+40
+
+3
+
+1
+20
+
+20
+
+5
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+10
+
+114 Step-ellipsoid unif
+
+4
+
+2
+
+10
+
+113 Step-ellipsoid Gauss
+
+5
+
+3
+
+123 Schaffer F7 unif
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+6
+
+4
+
+3
+
+0 ftarget=1e-08
+5
+2 3
+
+20
+
+111 Rosenbrock unif
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+6
+
+5
+
+40
+
+40
+
+3
+
+10
+
+110 Rosenbrock Gauss
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+4
+
+122 Schaffer F7 Gauss
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+
+120 Sum of diff powers unif
+7
+6
+5
+4
+3
+2
+1
+0 ftarget=1e-08
+5
+2 3
+10
+20
+40
+
+5
+
+40
+
+109 Sphere Cauchy
+
+40
+
+119 Sum of diff powers Gauss
+
+0 ftarget=1e-08
+5
+2 3
+
+4
+
+20
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+117 Ellipsoid unif
+
+10
+
+1
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+2
+
+0 ftarget=1e-08
+5
+2 3
+
+4
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+5 106 Rosenbrock moderate Cauchy
+
+6
+
+20
+
+5
+
+4
+
+1
+
+0 ftarget=1e-08
+5
+2 3
+
+10
+
+108 Sphere unif
+
+6
+
+105 Rosenbrock moderate unif
+
+107 Sphere Gauss
+
+0 ftarget=1e-08
+5
+2 3
+
+40
+
+2
+
+1
+
+4
+
+20
+
+3
+
+2
+
+6
+
+10
+
+5
+
+2
+
+6
+
+6
+
+5
+
+6
+
+3
+
+4
+
+6 104 Rosenbrock moderate Gauss
+
+xNES
+xNES_as
+
+10
+
+20
+
+40
+
+Figure 6: Expected running time (ERT in number of f -evaluations, divided by dimension)
+on all noisy functions (f101 and f130 ) for target precision 10−8 , versus dimension (see Figure 5 for details). We observe that, despite using small population
+sizes and the same parameter settings than on the noise-free benchmarks, xNES
+achieves state-of-the art performance on a subset of the functions.
+
+972
+
+0
+-1
+
+log10 of ERT loss ratio
+
+1
+0
+-1
+
+4 CrE = 0
+3
+
+f101-130
+
+1
+0
+-1
+
+log10 of ERT loss ratio
+
+4 CrE = 0
+3
+
+f101-130
+
+1
+0
+-1
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+4 CrE = 0
+3
+
+f1-24
+
+1
+0
+-1
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+5
+
+4 CrE = 0
+3
+
+0
+-1
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+4 CrE = 0
+3
+
+f101-130
+
+1
+0
+-1
+-2
+
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+5
+
+0
+-1
+1
+4
+5
+2
+3
+log10 of FEvals / dimension
+
+4 CrE = 0
+3
+
+6
+
+f1-24
+
+2
+1
+0
+-1
+1
+4
+5
+2
+3
+log10 of FEvals / dimension
+
+4 CrE = 0
+3
+
+6
+
+f101-130
+
+2
+1
+0
+-1
+-2
+
+5
+
+2
+
+1
+
+BIPOP-CMA-ES
+
+f101-130
+
+1
+
+f1-24
+
+2
+
+-2
+
+5
+
+2
+
+4 CrE = 0
+3
+
+-2
+
+5
+
+2
+
+-2
+
+5
+
+2
+
+-2
+
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+noisy functions f101 –f130
+xNES-as
+
+xNES
+
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+-1
+
+-2
+
+5
+
+2
+
+-2
+
+0
+
+log10 of ERT loss ratio
+
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+1
+
+log10 of ERT loss ratio
+
+log10 of ERT loss ratio
+
+f1-24
+
+2
+
+2
+
+-2
+
+5
+
+log10 of ERT loss ratio
+
+log10 of ERT loss ratio
+
+d = 20
+
+4 CrE = 0
+3
+
+-2
+
+d=5
+
+1
+4
+2
+3
+log10 of FEvals / dimension
+
+BIPOP-CMA-ES
+
+f1-24
+log10 of ERT loss ratio
+
+1
+
+4 CrE = 0
+3
+
+log10 of ERT loss ratio
+
+2
+
+-2
+
+d = 20
+
+f1-24
+log10 of ERT loss ratio
+
+4 CrE = 0
+3
+
+noiseless functions f1 –f24
+xNES-as
+
+xNES
+
+log10 of ERT loss ratio
+
+log10 of ERT loss ratio
+
+d=5
+
+Natural Evolution Strategies
+
+1
+4
+5
+2
+3
+log10 of FEvals / dimension
+
+4 CrE = 0
+3
+
+6
+
+f101-130
+
+2
+1
+0
+-1
+-2
+
+1
+4
+5
+2
+3
+log10 of FEvals / dimension
+
+6
+
+Figure 7: Loss ratio of expected running time (ERT), given a budget of function evaluations
+(here, smaller is better), for xNES (left column), xNES-as (middle column) and
+BIPOP-CMA-ES (right column). The target value ft used for a given budget is
+the smallest (best) recorded function value such that ERT(ft ) ≤ FEvals for the
+presented algorithm. Shown is FEvals divided by the respective best ERT(ft )
+from BBOB-2009 for all functions (noiseless f1 –f24 , top rows, and noisy f101 –
+f130 , bottom rows) in 5-D and 20-D. Black line: geometric mean. Box-Whisker
+error bar: 25-75%-ile (box) with median (red), 10-90%-ile (caps), and minimum
+and maximum ERT loss ratio (black points).
+973
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+marked on the entire BBOB suite. In contrast to the BBOB setups, which are based on
+tricky fitness functions in small problem dimensions, this section illustrates how SNES
+scales with dimension, on a classical neuro-evolutionary controller design problem.
+
+105
+
+SNES
+xNES
+xNES-im-as
+
+Cumulative success rate
+
+0.8
+
+Number of weights: 4
+
+Median number of evaluations
+
+1.0
+
+2
+
+Number of hidden neurons
+8
+4
+
+101
+
+102
+Number of weights
+
+CoSyNE
+SNES
+xNES
+xNES-im-as
+
+16
+
+32
+
+104
+
+0.6
+
+0.4
+
+103
+
+0.2
+0.0
+
+1
+
+102
+Number of evaluations
+
+102
+
+103
+
+103
+
+Figure 8: Left: Plotted are the cumulative success rates on the non-Markovian double-pole
+balancing task after a certain number of evaluations, empirically determined over
+100 runs for each algorithm, using a single tanh-unit (n = 1) (i.e., optimizing
+4 weights). We find that all three algorithm variants give state-of-the-art results,
+with a slightly faster but less robust performance for xNES-as. Right: Median
+number of evaluations required to solve the same task, but with increasing number
+of neurons (and corresponding number of weights). We limited the runtime to
+one hour per run, which explains why no results are available for xNES on higher
+dimensions (cubic time complexity). The fact that SNES quickly outperforms
+xNES, also in number of function evaluations, indicates that the benchmark is
+(sufficiently close to) separable, and it is unnecessary to use the full covariance
+matrix. For reference we also plot the corresponding results of the previously
+best performing algorithm CoSyNE (Gomez et al., 2008).
+
+SNES is well-suited for neuroevolution problems because they tend to be high-dimensional,
+multi-modal, but with highly redundant global optima (there is not a unique set of weights
+that defines the optimal behavior). We use it to find a controller for non-Markovian double pole balancing, a task which involves balancing two differently sized poles hinged on
+a cart that moves on a finite track. The single control consists of the force F applied to
+the cart, and observations include the cart’s position and the poles’ angles, but no velocity
+information, which makes this task partially observable. It provides a perfect testbed for
+algorithms focusing on learning fine control with memory in continuous state and action
+spaces (Wieland, 1991). The controller is represented by a simple recurrent neural network,
+with three inputs, (position x and the two poles’ angles β1 and β2 ), and a variable number
+n of tanh units in the output layer, which are fully connected (recurrently), resulting in
+a total of n(n + 3) weights to be optimized. The activation of the first of these recurrent
+974
+
+Natural Evolution Strategies
+
+neurons directly determines the force to be applied. We use the implementation found in
+PyBrain (Schaul et al., 2010).
+An evaluation is considered a success if the poles do not fall over for 100, 000 time
+steps. We experimented with recurrent layers of sizes n = 1 to n = 32 (corresponding to
+between 4 and 1120 weights). It turns out that a single recurrent neuron is sufficient to
+solve the task (Figure 8, left). In fact, both the xNES and SNES results are state-of-the-art,
+outperforming the previously best algorithm (CoSyNE; Gomez et al., 2008, with a median
+of 410 evaluations) by a factor two.
+In practical scenarios however, we cannot know the best network size a priori, and
+thus the prudent choice consists in overestimating the required size. An algorithm that
+graciously scales with problem dimension is therefore highly desirable, and we find (Figure 8,
+right) that SNES is exhibiting precisely that behavior. The fact that SNES outperforms
+xNES with increasing dimension, also in number of function evaluations, indicates that the
+benchmark is not ill-conditioned, and it is unnecessary to use the full covariance matrix.
+We conjecture that this is a property shared with the majority of neuroevolution problems
+that have enough weights to exhibit redundant global optima (some of which can be found
+without considering all parameter covariances).
+Additional SNES results, for example, on the Lennard-Jones benchmark for atom clusters (with dimension d > 200) can be found in Schaul et al. (2011).
+
+6. Discussion and Conclusion
+Our results on the BBOB benchmarks show that NES algorithms perform well across a
+wide variety of black-box optimization problems. We have demonstrated advantages and
+limitations of specific variants, and as such established the generality and flexibility of the
+NES framework. Experiments with heavy-tailed and separable distributions demonstrate
+the viability of the approach on high-dimensional domains. We obtained best reported
+results on the difficult task of training a neural controller for double pole-balancing.
+Technique
+
+Issue addressed
+
+Natural gradient
+Fitness shaping
+Adaptation sampling
+Exponential parameterization
+Natural coordinate system
+
+Scale-invariance, many more
+Robustness
+Performance, sensitivity
+Covariance constraints
+Computational efficiency
+
+Applicability
+limited to
+Multivariate
+Multivariate
+
+Relevant
+section
+2.3
+3.1
+3.2
+3.4
+3.4
+
+Table 2: Summary of enhancing techniques
+Table 2 summarizes the various techniques we introduced. The plain search gradient
+suffers from premature convergence and lack of scale invariance (see Section 2.2). Therefore,
+we use the natural gradient instead, which turns NES into a viable optimization method.
+To improve performance and robustness, we introduced several novel techniques. Fitness
+shaping makes the NES algorithm invariant to order-preserving transformations of the fitness function, thus increasing robustness. Adaptation sampling adjusts the learning rates
+online, which yields highly performant results on standard benchmarks. Finally, the ex975
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+ponential parameterization is crucial for maintaining positive-definite covariance matrices,
+and the use of the natural coordinate system guarantees computational feasibility.
+NES applies to general parameterizable distributions. In this paper, we have experimentally investigated two variants, adjusted to the particular properties of different problem
+classes. We demonstrated the power of the xNES variant using a full multinormal distribution, which is invariant under arbitrary translations and rotations, on the canonical suite of
+standard benchmarks. Additionally, we showed that the restriction of the covariance matrix
+to a diagonal parameterization (SNES) allows for scaling to very high dimensions, on the
+difficult non-Markovian double pole balancing task.
+
+Acknowledgments
+This research was funded through the 7th framework program of the European Union, under
+grant number 231576 (STIFF project) and ICT-270327 CompLACS, SNF grants 200020116674/1, 200021-111968/1 and 200020-122124/1, and SSN grant Sinergia CRSIK0-122697.
+We thank Faustino Gomez for helpful suggestions and his CoSyNE data, as well as Andreas
+Krause for insightful discussions. We particularly thank the anonymous reviewers for their
+many constructive remarks.
+
+References
+Y. Akimoto, Y. Nagata, I. Ono, and S. Kobayashi. Bidirectional relation between CMA
+evolution strategies and natural evolution strategies. In Parallel Problem Solving from
+Nature (PPSN), 2010.
+S. Amari. Natural gradient works efficiently in learning. Neural Computation, 10(2):251–
+276, 1998.
+S. Amari and S. C. Douglas. Why natural gradient? In Proceedings of the 1998 IEEE
+International Conference on Acoustics, Speech, and Signal Processing (ICASSP ’98),
+volume 2, pages 1213–1216, 1998.
+A. Auger. Convergence results for the (1,λ)-SA-ES using the theory of φ-irreducible Markov
+chains. Theoretical Computer Science, 334(1-3):35 – 69, 2005.
+A. Berny. Selection and reinforcement learning for combinatorial optimization. In Parallel
+Problem Solving from Nature PPSN VI, volume 1917, pages 601–610. Springer Berlin /
+Heidelberg, 2000.
+A. Berny. Statistical machine learning and combinatorial optimization, pages 287–306.
+Springer-Verlag, London, UK, 2001.
+H.-G. Beyer. The Theory of Evolution Strategies. Springer-Verlag, New York, USA, 2001.
+H.-G. Beyer and H.-P. Schwefel. Evolution strategies: a comprehensive introduction. Natural
+Computing, 1:3–52, 2002.
+976
+
+Natural Evolution Strategies
+
+P. A. N. Bosman and D. Thierens. Expanding from discrete to continuous estimation of
+distribution algorithms: the IDEA. In Proceedings of the 6th International Conference
+on Parallel Problem Solving from Nature, pages 767–776, London, UK, 2000. SpringerVerlag.
+P. A. N. Bosman, J. Grahl, and D. Thierens. Adapted maximum-likelihood Gaussian models
+for numerical optimization with continuous EDAs. Technical report, 2007.
+F. Friedrichs and C. Igel. Evolutionary tuning of multiple svm parameters. Neurocomputing,
+64:107–117, 2005.
+T. Glasmachers, T. Schaul, and J. Schmidhuber. A natural evolution strategy for multiobjective optimization. In Parallel Problem Solving from Nature (PPSN), 2010a.
+T. Glasmachers, T. Schaul, Y. Sun, D. Wierstra, and J. Schmidhuber. Exponential natural
+evolution strategies. In Genetic and Evolutionary Computation Conference (GECCO),
+Portland, USA, 2010b.
+D. E. Goldberg. Genetic Algorithms in Search, Optimization and Machine Learning.
+Addison-Wesley Longman Publishing Co., Inc., Boston, MA, USA, 1st edition, 1989.
+ISBN 0201157675.
+F. Gomez, J. Schmidhuber, and R. Miikkulainen. Accelerated neural evolution through
+cooperatively coevolved synapses. Journal of Machine Learning Research, 2008.
+N. Hansen. Benchmarking a BI-population CMA-ES on the BBOB-2009 function testbed.
+In GECCO (Companion), pages 2389–2396, 2009a.
+N. Hansen. Benchmarking a BI-population CMA-ES on the BBOB-2009 noisy testbed. In
+GECCO (Companion), pages 2397–2402, 2009b.
+N. Hansen and A. Auger. Real-parameter black-box optimization benchmarking 2010: Experimental setup. Technical report, INRIA, 2010.
+N. Hansen and A. Ostermeier. Completely derandomized self-adaptation in evolution strategies. Evolutionary Computation, 9(2):159–195, 2001.
+N. Hansen, A. S. P. Niederberger, L. Guzzella, and P. Koumoutsakos. A method for handling uncertainty in evolutionary optimization with an application to feedback control of
+combustion. Transactions on Evolutionary Computation, 13:180–197, 2009.
+N. Hansen, S. Finck, R. Ros, and A. Auger. Real-parameter black-box optimization benchmarking 2010: Noiseless function definitions. Technical report, INRIA, 2010a.
+N. Hansen, S. Finck, R. Ros, and A. Auger. Real-parameter black-box optimization benchmarking 2010: Noisy functions definitions. Technical report, INRIA, 2010b.
+M. Hasenj¨
+ager, B. Sendhoff, T. Sonoda, and T. Arima. Three dimensional evolutionary
+aerodynamic design optimization with CMA-ES. In Proceedings of the 2005 Conference
+on Genetic and Evolutionary Computation, pages 2173–2180, New York, NY, USA, 2005.
+ACM.
+977
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+J. H. Holland. Adaptation in Natural and Artificial Systems. The University of Michigan
+Press, Ann Arbor, 1975.
+C. Igel and M. H¨
+usken. Empirical evaluation of the improved Rprop learning algorithm.
+Neurocomputing, 50:2003, 2003.
+J. J¨agersk¨
+upper. Analysis of a simple evolutionary algorithm for minimization in Euclidean
+spaces. Theoretical Computer Science, 379(3):329–347, 2007.
+G. A. Jastrebski and D. V. Arnold. Improving evolution strategies through active covariance
+matrix adaptation. In IEEE Congress on Evolutionary Computation, 2006.
+M. Jebalia, A. Auger, M. Schoenauer, F. James, and M. Postel. Identification of the
+isotherm function in chromatography using CMA-ES. In IEEE Congress on Evolutionary
+Computation, pages 4289–4296, 2007.
+M. Jebalia, A. Auger, and N. Hansen. Log-linear convergence and divergence of the scaleinvariant (1+1)-ES in noisy environments. Algorithmica, pages 1–36, 2010.
+J. Kennedy and R. Eberhart. Swarm Intelligence. Morgan Kaufmann, San Francisco, CA,
+2001.
+S. Kirkpatrick, C. D. Gelatt, Jr, and M. P. Vecchi. Optimization by simulated annealing.
+Science, 220:671–680, 1983.
+J. Klockgether and H. P. Schwefel. Two-phase nozzle and hollow core jet experiments. In
+Proc. 11th Symp. Engineering Aspects of Magnetohydrodynamics, pages 141–148, 1970.
+S. Kullback and R. A. Leibler. On information and sufficiency. The Annals of Mathematical
+Statistics, 22(1):79–86, 1951. ISSN 00034851.
+P. Larra˜
+naga. Estimation of Distribution Algorithms. A New Tool for Evolutionary Computation. Kluwer Academic Publishers, 2002.
+H. M¨
+uhlenbein and G. Paass. From recombination of genes to the estimation of distributions
+I. binary parameters. In Proceedings of the 4th International Conference on Parallel
+Problem Solving from Nature, PPSN IV, pages 178–187, London, UK, 1996. SpringerVerlag.
+S. D. Muller, J. Marchetto, S. Airaghi, and P. Koumoutsakos. Optimization based on
+bacterial chemotaxis. IEEE Transactions on Evolutionary Computation, 6:6–16, 2002.
+J. A. Nelder and R. Mead. A simplex method for function minimization. The Computer
+Journal, 7(4):308–313, 1965.
+A. Ostermeier, A. Gawelczyk, and N. Hansen. Step-size adaption based on non-local use of
+selection information. In The Third Conference on Parallel Problem Solving from Nature,
+pages 189–198, London, UK, 1994. Springer-Verlag.
+978
+
+Natural Evolution Strategies
+
+M. Pelikan, D. Goldberg, and F. Lobo. A survey of optimization by building and using
+probabilistic models. In American Control Conference, volume 5, pages 3289 –3293 vol.5,
+2000.
+M. Pelikan, K. Sastry, and E. C. Paz. Scalable Optimization via Probabilistic Modeling: From
+Algorithms to Applications (Studies in Computational Intelligence). Springer-Verlag New
+York, Inc., 2006.
+J. Peters. Machine Learning of Motor Skills for Robotics. PhD thesis, Department of
+Computer Science, University of Southern California, 2007.
+I. Rechenberg and M. Eigen. Evolutionsstrategie: Optimierung Technischer Systeme nach
+Prinzipien der Biologischen Evolution. Frommann-Holzboog Stuttgart, 1973.
+M. Riedmiller and H. Braun. A direct adaptive method for faster backpropagation learning:
+The RPROP algorithm. In IEEE International Conference on Neural Networks, pages
+586–591. IEEE Press, 1993.
+R. Ros and N. Hansen. A simple modification in CMA-ES achieving linear time and space
+complexity. In R. et al., editor, Parallel Problem Solving from Nature, PPSN X, pages
+296–305. Springer, 2008.
+R. Y. Rubinstein and D. P. Kroese. The Cross-Entropy Method: A Unified Approach to
+Combinatorial Optimization, Monte-Carlo Simulation and Machine Learning (Information Science and Statistics). Springer, 2004.
+T. Schaul. Benchmarking separable natural evolution strategies on the noiseless and noisy
+black-box optimization testbeds. In Black-box Optimization Benchmarking Workshop,
+Genetic and Evolutionary Computation Conference, Philadelphia, PA, 2012a.
+T. Schaul. Benchmarking exponential natural evolution strategies on the noiseless and noisy
+black-box optimization testbeds. In Black-box Optimization Benchmarking Workshop,
+Genetic and Evolutionary Computation Conference, Philadelphia, PA, 2012b.
+T. Schaul. Benchmarking natural evolution strategies with adaptation sampling on the
+noiseless and noisy black-box optimization testbeds. In Black-box Optimization Benchmarking Workshop, Genetic and Evolutionary Computation Conference, Philadelphia,
+PA, 2012c.
+T. Schaul. Comparing natural evolution strategies to BIPOP-CMA-ES on noiseless and
+noisy black-box optimization testbeds. In Black-box Optimization Benchmarking Workshop, Genetic and Evolutionary Computation Conference, Philadelphia, PA, 2012d.
+T. Schaul. Investigating the impact of adaptation sampling in natural evolution strategies
+on black-box optimization testbeds. In Black-box Optimization Benchmarking Workshop,
+Genetic and Evolutionary Computation Conference, Philadelphia, PA, 2012e.
+T. Schaul. Natural evolution strategies converge on sphere functions. In Genetic and
+Evolutionary Computation Conference, Philadelphia, PA, 2012f.
+979
+
+Wierstra, Schaul, Glasmachers, Sun, Peters and Schmidhuber
+
+T. Schaul and J. Schmidhuber. Metalearning. Scholarpedia, 5(6):4650, 2010.
+T. Schaul, J. Bayer, D. Wierstra, Y. Sun, M. Felder, F. Sehnke, T. R¨
+uckstieß, and J. Schmidhuber. PyBrain. Journal of Machine Learning Research, 11:743–746, 2010.
+T. Schaul, T. Glasmachers, and J. Schmidhuber. High dimensions and heavy tails for natural
+evolution strategies. In Genetic and Evolutionary Computation Conference, 2011.
+H.-P. Schwefel. Numerische optimierung von computer-modellen mittels der evolutionsstrategie, 1977.
+J. Shepherd, D. McDowell, and K. Jacob. Modeling morphology evolution and mechanical
+behavior during thermo-mechanical processing of semi-crystalline polymers. Journal of
+the Mechanics and Physics of Solids, 54(3):467 – 489, 2006.
+O. M. Shir and T. B¨
+ack. The second harmonic generation case-study as a gateway for ES
+to quantum control problems. In Proceedings of the 9th annual conference on Genetic
+and evolutionary computation, GECCO ’07, pages 713–721, New York, NY, USA, 2007.
+ACM.
+R. Storn and K. Price. Differential evolution - a simple and efficient heuristic for global
+optimization over continuous spaces. J. of Global Optimization, 11:341–359, December
+1997. ISSN 0925-5001.
+Y. Sun, D. Wierstra, T. Schaul, and J. Schmidhuber. Stochastic search using the natural
+gradient. In International Conference on Machine Learning (ICML), 2009a.
+Y. Sun, D. Wierstra, T. Schaul, and J. Schmidhuber. Efficient natural evolution strategies.
+In Genetic and Evolutionary Computation Conference (GECCO), 2009b.
+A. Wieland. Evolving neural network controllers for unstable systems. In Proceedings of the
+International Joint Conference on Neural Networks (Seattle, WA), pages 667–673, 1991.
+D. Wierstra, T. Schaul, J. Peters, and J. Schmidhuber. Natural evolution strategies. In
+Proceedings of the Congress on Evolutionary Computation (CEC08), Hongkong. IEEE
+Press, 2008.
+S. Winter, B. Brendel, and C. Igel. Registration of bone structures in 3D ultrasound and
+CT data: Comparison of different optimization strategies. International Congress Series,
+1281:242 – 247, 2005.
+
+980
+
+

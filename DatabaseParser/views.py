@@ -2,12 +2,12 @@
 Created On: 20th Sept 2015
 @author: Amitayush Thakur,Jaiwant Rawat,Ashish Tilokani
 """
-
-from DatabaseParser.models import WordTable, DocFreqTable, DocClass
 import os
+from DatabaseParser.models import WordTable, DocFreqTable, DocClass
+
 
 FREQ_THRESHOLD_PERCENT = 0.3
-
+STOP_WORD_LIST_FILENAME = 'DatabaseParser/stopwordsList.txt'
 # Create your views here.
 PATH_TO_DATASET = '../TrainingData/'
 MAX_NUM_OF_WORDS_READ = 300
@@ -26,7 +26,17 @@ def get_my_string(file_path):
     s = s.lower()
     return s
 
+def loadStopWords(filename):
+    fp = open(filename,'r');
+    words  = fp.read().split('\n');
+    stopWordDict = {}
+    for word in words:
+        stopWordDict[word] = True
+    return stopWordDict
+
 def parseTextToDb(fileList):
+    #load all stop words in main memory
+    stopWordDict = loadStopWords(STOP_WORD_LIST_FILENAME)
     #logic for counting and reading the text file
     for file in fileList:
         fileToken = file.split('/')
@@ -34,11 +44,15 @@ def parseTextToDb(fileList):
             continue
         DocClass.objects.create(className = fileToken[1],docName=fileToken[2])
         fp = open(file,encoding="latin-1")
+        print('Opening the file '+file+'..... \n\n')
         wordList = fp.read().split()
         cnt = 0
+        print('Removing stop words:')
         for word in wordList:
             word = get_my_string(word)
-            print(word)
+            if word in stopWordDict.keys():
+                print(word)
+                continue
             if len(WordTable.objects.filter(word=word,docName = fileToken[2]))== 0 :
                 WordTable.objects.create(word = word,docName = fileToken[2],freq = 1)
                 if len(DocFreqTable.objects.filter(word=word))==0:
@@ -54,6 +68,7 @@ def parseTextToDb(fileList):
             cnt += 1
             if cnt==MAX_NUM_OF_WORDS_READ:
                 break
+        print('\n\n Words from file '+file+'added successfully to DB!! \n\n')
                 
 def __main__():
     dirList = [x for x in os.listdir(PATH_TO_DATASET)]
@@ -65,4 +80,6 @@ def __main__():
                 files.append(pathName)
     parseTextToDb(files)
 
-#__main__()
+def getStopWords():
+    return str(loadStopWords(STOP_WORD_LIST_FILENAME))
+#__main__1()

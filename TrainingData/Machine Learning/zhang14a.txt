@@ -1,0 +1,5117 @@
+Journal of Machine Learning Research 15 (2014) 749-808
+
+Submitted 12/11; Revised 6/13; Published 2/14
+
+A Novel M-Estimator for Robust PCA
+Teng Zhang
+
+zhang620@umn.edu
+
+Institute for Mathematics and its Applications
+University of Minnesota
+Minneapolis, MN 55455, USA
+
+Gilad Lerman∗
+
+lerman@umn.edu
+
+School of Mathematics
+University of Minnesota
+Minneapolis, MN 55455, USA
+
+Editor: Martin Wainwright
+
+Abstract
+We study the basic problem of robust subspace recovery. That is, we assume a data set that
+some of its points are sampled around a fixed subspace and the rest of them are spread in the
+whole ambient space, and we aim to recover the fixed underlying subspace. We first estimate
+“robust inverse sample covariance” by solving a convex minimization procedure; we then
+recover the subspace by the bottom eigenvectors of this matrix (their number correspond to
+the number of eigenvalues close to 0). We guarantee exact subspace recovery under some
+conditions on the underlying data. Furthermore, we propose a fast iterative algorithm,
+which linearly converges to the matrix minimizing the convex problem. We also quantify
+the effect of noise and regularization and discuss many other practical and theoretical issues
+for improving the subspace recovery in various settings. When replacing the sum of terms in
+the convex energy function (that we minimize) with the sum of squares of terms, we obtain
+that the new minimizer is a scaled version of the inverse sample covariance (when exists).
+We thus interpret our minimizer and its subspace (spanned by its bottom eigenvectors) as
+robust versions of the empirical inverse covariance and the PCA subspace respectively. We
+compare our method with many other algorithms for robust PCA on synthetic and real
+data sets and demonstrate state-of-the-art speed and accuracy.
+Keywords: principal components analysis, robust statistics, M-estimator, iteratively
+re-weighted least squares, convex relaxation
+
+1. Introduction
+The most useful paradigm in data analysis and machine learning is arguably the modeling of
+data by a low-dimensional subspace. The well-known total least squares solves this modeling
+problem by finding the subspace minimizing the sum of squared errors of data points. This is
+practically done via principal components analysis (PCA) of the data matrix. Nevertheless,
+this procedure is highly sensitive to outliers. Many heuristics have been proposed for robust
+recovery of the underlying subspace. Recent progress in the rigorous study of sparsity and
+low-rank of data has resulted in provable convex algorithms for this purpose. Here, we
+propose a different rigorous and convex approach, which is a special M-estimator.
+∗. Gilad Lerman is the corresponding author.
+c 2014 Zhang and Lerman.
+
+Teng Zhang and Gilad Lerman
+
+Robustness of statistical estimators has been carefully studied for several decades (Huber
+and Ronchetti, 2009; Maronna et al., 2006). A classical example is the robustness of the
+D
+geometric median (Lopuha¨
+a and Rousseeuw, 1991). For a data set X = {xi }N
+i=1 ⊂ R , the
+D
+geometric median is the minimizer of the following function of y ∈ R :
+N
+
+y − xi ,
+
+(1)
+
+i=1
+
+where · denotes the Euclidean norm. This is a typical example of an M-estimator, that
+is, a minimizer of a function of the form N
+i=1 ρ(ri ), where ri is a residual of the ith data
+point, xi , from the parametrized object we want to estimate. Here, ri = y −xi , ρ(x) = |x|
+and we estimate y ∈ RD , which is parametrized by its D coordinates.
+There are several obstacles in developing robust and effective estimators for subspaces.
+For simplicity, we discuss here estimators of linear subspaces and thus assume that the data
+is centered at the origin.1 A main obstacle is due to the fact that the set of d-dimensional
+linear subspaces in RD , that is, the Grassmannian G(D, d), is not convex. Therefore, a
+direct optimization on G(D, d) (or a union of G(D, d) over different d’s) will not be convex
+(even not geodesically convex) and may result in several (or many) local minima. Another
+problem is that extensions of simple robust estimators of vectors to subspaces (e.g., using
+l1 -type averages) can fail by a single far away outlier. For example, one may extend the
+d-dimensional geometric median minimizing (1) to the minimizer over L ∈ G(D, d) of the
+function
+N
+
+N
+
+xi − P L xi ≡
+i=1
+
+P L⊥ x i ,
+
+(2)
+
+i=1
+
+where L⊥ is the orthogonal complement of L and PL and PL⊥ are the orthogonal projections
+on L and L⊥ respectively (see, e.g., Ding et al., 2006; Lerman and Zhang, 2010). However,
+a single outlier with arbitrarily large magnitude will enforce the minimizer of (2) to contain
+it.
+The first obstacle can be resolved by applying a convex relaxation of the minimization
+of (2) so that subspaces are mapped into a convex set of matrices (the objective function
+may be adapted respectively). Indeed, the subspace recovery proposed by Xu et al. (2010b)
+can be interpreted in this way. Their objective function has one component which is similar
+to (2), though translated to matrices. They avoid the second obstacle by introducing a
+second component, which penalizes inliers of large magnitude (so that outliers of large
+magnitude may not be easily identified as inliers). However, the combination of the two
+components involves a parameter that needs to be carefully estimated.
+Here, we suggest a different convex relaxation that does not introduce arbitrary parameters and its implementation is significantly faster. However, it introduces some restrictions
+on the distributions of inliers and outliers. Some of these restrictions have analogs in other
+1. This is a common assumption to reduce the complexity of the subspace recovery problem (Cand`es
+et al., 2011; Xu et al., 2010b, 2012; McCoy and Tropp, 2011), where McCoy and Tropp (2011) suggest
+centering by the geometric median. Nevertheless, our methods easily adapt to affine subspace fitting by
+simultaneously estimating both the offset and the shifted linear component, but the justification is a bit
+more complicated then.
+
+750
+
+A Novel M-Estimator for Robust PCA
+
+works (see, e.g., §2.2), while others are unique to this framework (see §2.3 and the nontechnical description of all of our restrictions in §1.2).
+1.1 Previous Work
+Many algorithms (or pure estimators) have been proposed for robust subspace estimation
+or equivalently robust low rank approximation of matrices. Maronna (1976), Huber and
+Ronchetti (2009, §8), Devlin et al. (1981), Davies (1987), Xu and Yuille (1995), Croux
+and Haesbroeck (2000) and Maronna et al. (2006, §6) estimate a robust covariance matrix.
+Some of these methods use M-estimators (Maronna et al., 2006, §6) and compute them via
+iteratively re-weighted least squares (IRLS) algorithms, which linearly converge (Arslan,
+2004). The convergence of algorithms based on other estimators or strategies is not as
+satisfying. The objective functions of the MCD (Minimum Covariance Determinant) and
+S-estimators converge (Maronna et al., 2006, §6), but no convergence rates are specified.
+Moreover, there are no guarantees for the actual convergence to the global optimum of these
+objective functions. There is no good algorithm for the MVE (Minimum Volume Ellipsoid)
+or Stahel-Donoho estimators (Maronna et al., 2006, §6). Furthermore, convergence analysis
+is problematic for the online algorithm of Xu and Yuille (1995).
+Li and Chen (1985), Ammann (1993), Croux et al. (2007), Kwak (2008) and McCoy
+and Tropp (2011, §2) find low-dimensional projections by “Projection Pursuit” (PP), now
+commonly referred to as PP-PCA (the initial proposal is due to Huber, see, e.g., Huber and
+Ronchetti, 2009, p. 204 of first edition). The PP-PCA procedure is based on the observation that PCA maximizes the projective variance and can be implemented incrementally
+by computing the residual principal component or vector each time. Consequently, PPPCA replaces this variance by a more robust function in this incremental implementation.
+Most PP-based methods are based on non-convex optimization and consequently lack satisfying guarantees. In particular, Croux et al. (2007) do not analyze convergence of their
+non-convex PP-PCA and Kwak (2008) only establishes convergence to a local maximum.
+McCoy and Tropp (2011, §2) suggest a convex relaxation for PP-PCA. However, they do not
+guarantee that the output of their algorithm coincides with the exact maximizer of their
+energy (though they show that the energies of the two are sufficiently close). Ammann
+(1993) applies a minimization on the sphere, which is clearly not convex. It iteratively tries
+to locate vectors spanning the orthogonal complement of the underlying subspace, that is,
+D − d vectors for a subspace in G(D, d). We remark that our method also suggests an optimization revealing the orthogonal complement, but it requires a single convex optimization,
+which is completely different from the method of Ammann (1993).
+Torre and Black (2001, 2003), Brubaker (2009) and Xu et al. (2010a) remove possible
+outliers, followed by estimation of the underlying subspace by PCA. These methods are
+highly non-convex. Nevertheless, Xu et al. (2010a) provide a probabilistic analysis for their
+near recovery of the underlying subspace.
+The non-convex minimization of (2) as a robust alternative for principal component analysis was suggested earlier by various authors for hyperplane modeling (Osborne and Watson,
+1985; Sp¨
+ath and Watson, 1987; Nyquist, 1988; Bargiela and Hartley, 1993), surface modeling (Watson, 2001, 2002), subspace modeling (Ding et al., 2006) and multiple subspaces
+modeling (Zhang et al., 2009). This minimization also appeared in a pure geometric-analytic
+751
+
+Teng Zhang and Gilad Lerman
+
+context of general surface modeling without outliers (David and Semmes, 1991). Lerman
+and Zhang (2010, 2011) have shown that this minimization can be robust to outliers under
+some conditions on the sampling of the data.
+Ke and Kanade (2003) tried to minimize (over all low-rank approximations) the elementwise l1 norm of the difference of a given matrix and its low-rank approximation. Chandrasekaran et al. (2011) and Cand`es et al. (2011) have proposed to minimize a linear combination of such an l1 norm and the nuclear norm of the low-rank approximation in order
+to find the optimal low-rank estimator. Cand`es et al. (2011) considered the setting where
+uniformly sampled elements of the low-rank matrix are corrupted, which does not apply
+to our outlier model (where only some of the rows are totally corrupted). Chandrasekaran
+et al. (2011) consider a general setting, though their underlying condition is too restrictive; weaker condition was suggested by Hsu et al. (2011), though it is still not sufficiently
+general. Nevertheless, Chandrasekaran et al. (2011) and Cand`es et al. (2011) are groundbreaking to the whole area, since they provide rigorous analysis of exact low-rank recovery
+with unspecified rank.
+Xu et al. (2010b) and McCoy and Tropp (2011) have suggested a strategy analogous to
+Chandrasekaran et al. (2011) and Cand`es et al. (2011) to solve the outlier problem. They
+divide the matrix X whose rows are the data points as follows: X = L + O, where L is lowrank and O represents outliers (so that only some of its rows are non-zero). They minimize
+L ∗ + λ O (2,1) , where · ∗ and · (2,1) denote the nuclear norm and sum of l2 norms of
+rows respectively and λ is a parameter that needs to be carefully chosen. We note that the
+term O (2,1) is analogous to (2). Xu et al. (2012) have established an impressive theory
+showing that under some incoherency conditions, a bound on the fraction of outliers and
+correct choice of the parameter λ, they can exactly recover the low-rank approximation.
+Hsu et al. (2011) and Agarwal et al. (2012a) improved error bounds for this estimator as
+well as for the ones of Chandrasekaran et al. (2011) and Cand`es et al. (2011).
+In practice, the implementations by Chandrasekaran et al. (2011), Cand`es et al. (2011),
+Xu et al. (2010b) and McCoy and Tropp (2011) use the iterative procedure described by
+Lin et al. (2009). The difference between the objective functions of the minimizer and its
+estimator obtained at the kth iteration is of order O(k −2 ) (Lin et al., 2009, Theorem 2.1).
+On the other hand, for our algorithm the convergence rate is of order O(exp(−ck)) for some
+constant c (i.e., it r-linearly converges). This rate is the order of the Frobenius norm of the
+difference between the minimizer sought by our algorithm (formulated in (4) below) and its
+estimator obtained at the kth iteration (it is also the order of the difference of the regularized
+objective functions of these two matrices). Recently, Agarwal et al. (2012b) showed that
+projected gradient descent algorithms for these estimators obtain linear convergence rates,
+though with an additional statistical error.
+Our numerical algorithm can be categorized as IRLS. Weiszfeld (1937) used a procedure
+similar to ours to find the geometric median. Lawson (1961) later used it to solve uniform
+approximation problems by the limits of weighted lp -norm solutions. This procedure was
+generalized to various minimization problems, in particular, it is native to M-estimators
+(Huber and Ronchetti, 2009; Maronna et al., 2006), and its linear convergence was proved
+for special instances (see, e.g., Cline, 1972; Voss and Eckhardt, 1980; Chan and Mulet, 1999).
+Recently, IRLS algorithms were also applied to sparse recovery and matrix completion
+(Daubechies et al., 2010; Fornasier et al., 2011).
+752
+
+A Novel M-Estimator for Robust PCA
+
+1.2 This Work
+We suggest another convex relaxation of the minimization of (2). We note that the original
+minimization is over all subspaces L or equivalently all orthogonal projectors P ≡ PL⊥ . We
+can identify P with a D × D matrix satisfying P2 = P and PT = P (where ·T denotes the
+transpose). Since the latter set is not convex, we relax it to include all symmetric matrices,
+but avoid singularities by enforcing unit trace. That is, we minimize over the set:
+H := {Q ∈ RD×D : Q = QT , tr(Q) = 1}
+as follows
+
+(3)
+
+N
+
+ˆ = arg min F (Q), where F (Q) :=
+Q
+Q∈H
+
+Qxi .
+
+(4)
+
+i=1
+
+For the noiseless case (i.e., inliers lie exactly on
+
+L∗ ),
+
+we estimate the subspace L∗ by
+
+ˆ
+ˆ := ker(Q).
+L
+
+(5)
+
+If the intrinsic dimension d is known (or can be estimate from the data), we estimate
+ˆ (or equivalently, the top d
+the subspace by the span of the bottom d eigenvectors of Q
+ˆ This procedure is robust to sufficiently small levels of noise. We refer
+eigenvectors of −Q).
+to it as the Geometric Median Subspace (GMS) algorithm and summarize it in Algorithm 1.
+We elaborate on this scheme throughout the paper,
+Algorithm 1 The Geometric Median Subspace Algorithm
+D
+∗
+Input: X = {xi }N
+i=1 ⊆ R : data, d: dimension of L , an algorithm for minimizing (4)
+ˆ a d-dimensional linear subspace in RD .
+Output: L:
+Steps:
+ˆ (see (4))
+• {vi }di=1 = the bottom d eigenvectors of Q
+d
+ˆ
+• L = Sp({vi }i=1 )
+ˆ is semi-definite positive (we verify this later in Lemma 14). We can
+We remark that Q
+thus restrict H to contain only semi-definite positive matrices and thus make it even closer
+to a set of orthogonal projectors. Theoretically, it makes sense to require that the trace of
+the matrices in H is D − d (since they are relaxed versions of projectors onto the orthogonal
+complement of a d-dimensional subspace). However, scaling of the trace in (3) results in
+scaling the minimizer of (4) by a constant, which does not effect the subspace recovery
+procedure.
+We note that (4) is an M-estimator with residuals ri = Qxi , 1 ≤ i ≤ N , and ρ(x) = |x|.
+ˆ is unique under
+Unlike (2), which can also be seen as a formal M-estimator, the estimator Q
+a weak condition that we will state later.
+We are unaware of similar formulations for the problem of robust PCA. Nevertheless,
+the Low-Rank Representation (LRR) framework of Liu et al. (2010, 2013) for modeling
+data by multiple subspaces (and not a single subspace as in here) is formally similar. LRR
+tries to assign to a data matrix X, which is viewed as a dictionary of N column vectors in
+RD , dictionary coefficients Z by minimizing λ Z ∗ + (X(I − Z))T (2,1) over all Z ∈ RN ×N ,
+where λ is a free parameter. Our formulation can be obtained by their formulation with
+753
+
+Teng Zhang and Gilad Lerman
+
+λ = 0, Q = (I − Z)T and the additional constraint tr(Z) = D − 1 (which is equivalent
+with the scaling tr(Q) = 1), where {xi }N
+i=1 are the row vectors of X (and not the column
+vectors that represent the original data points). In fact, our work provides some intuition
+for LRR as robust recovery of the low rank row space of the data matrix and its use (via
+Z) in partitioning the column space into multiple subspaces. We also remark that a trace 1
+constraint is quite natural in convex relaxation problems and was applied, for example, in
+the convex relaxation of sparse PCA (d’Aspremont et al., 2007), though the optimization
+problem there is completely different.
+Our formulation is rather simple and intuitive, but results in the following fundamental
+contributions to robust recovery of subspaces:
+1. We prove that our proposed minimization can achieve exact recovery under some
+assumptions on the underlying data (which we clarify below) and without introducing
+an additional parameter.
+2. We propose a fast iterative algorithm for achieving this minimization and prove its
+linear convergence.
+3. We demonstrate the state-of-the-art accuracy and speed of our algorithm when compared with other methods on both synthetic and real data sets.
+4. We establish the robustness of our method to noise and to a common regularization
+of IRLS algorithms.
+5. We explain how to incorporate knowledge of the intrinsic dimension and also how to
+estimate it empirically.
+6. We show that when replacing the sum of norms in (4) by the sum of squares of
+ˆ is a scaled version of the empirical inverse
+norms, then the modified minimizer Q
+covariance. The subspace spanned by the bottom d eigenvectors is clearly the ddimensional subspace obtained by PCA. The original minimizer of (4) can thus be
+interpreted as a robust version of the inverse covariance matrix.
+7. We show that previous and well-known M-estimators (Maronna, 1976; Huber and
+Ronchetti, 2009; Maronna et al., 2006) do not solve the subspace recovery problem
+under a common assumption.
+1.3 Exact Recovery and Conditions for Exact Recovery by GMS
+In order to study the robustness to outliers of our estimator for the underlying subspace,
+we formulate the exact subspace recovery problem (see also Xu et al. 2012). This problem
+assumes a fixed d-dimensional linear subspace L∗ , inliers sampled from L∗ and outliers
+sampled from its complement; it asks to recover L∗ as well as identify correctly inliers and
+outliers.
+In the case of point estimators, like the geometric median minimizing (1), robustness is
+commonly measured by the breakdown point of the estimator (Huber and Ronchetti, 2009;
+Maronna et al., 2006). Roughly speaking, the breakdown point measures the proportion of
+754
+
+A Novel M-Estimator for Robust PCA
+
+arbitrarily large observations (that is, the proportion of “outliers”) an estimator can handle
+before giving an arbitrarily large result.
+In the case of estimating subspaces, we cannot directly extend this definition, since the
+set of subspaces, that is, the Grassmannian (or unions of it), is compact, so we cannot
+talk about “an arbitrarily large result”, that is, a subspace with arbitrarily large distance
+from all other subspaces. Furthermore, given an arbitrarily large data point, we can always
+form a subspace containing it; that is, this point is not arbitrarily large with respect to
+this subspace. Instead, we identify the outliers as the ones in the compliment of L∗ and we
+are interested in the largest fraction of outliers (or smallest fraction of inliers per outliers)
+allowing exact recovery of L∗ . Whenever an estimator can exactly recover a subspace under
+a given sampling scenario we view it as robust and measure its effectiveness by the largest
+fraction of outliers it can tolerate. However, when an estimator cannot exactly recover
+a subspace, one needs to bound from below the distance between the recovered subspace
+and the underlying subspace of the model. Alternatively, one would need to point out at
+interesting scenarios where exact recovery cannot even occur in the limit when the number
+of points approaches infinity. We are unaware of other notions of robustness of subspace
+estimation (but of robustness of covariance estimation, which does not apply here; see, for
+example, §6.2.1 of Maronna et al. 2006).
+In order to guarantee exact recovery of our estimator we basically require three kinds of
+restrictions on the underlying data, which we explain here on a non-technical level (technical
+discussion appears in §2). First of all, the inliers need to permeate through the whole
+underlying subspace L∗ , in particular, they cannot concentrate on a lower dimensional
+subspace of L∗ . Second of all, outliers need to permeate throughout the whole complement
+of L∗ . This assumption is rather restrictive and its violation is a failure mode of the
+algorithm. We thus show that this failure mode does not occur when the knowledge of
+d is used appropriately. We also suggest some practical methods to avoid this failure
+mode when d is unknown (see §5.1). Third of all, the “magnitude’ of outliers needs to be
+restricted. We may initially scale all points to the unit sphere in order to avoid extremely
+large outliers. However, we still need to avoid outliers concentrating along lines, which may
+have an equivalent effect of a single arbitrarily large outlier. Figure 1 (which appears later
+in §2) demonstrates cases where these assumptions are not satisfied.
+The failure mode discussed above occurs in particular when the number of outliers is
+rather small and the dimension d is unknown. While we suggest some practical methods to
+avoid it (see §5.1), we also note that there are many modern applications with high percentages of outliers, where this failure mode may not occur. In particular, computer vision data
+often contain high percentages of outliers (Stewart, 1999; Chin et al., 2012). However, such
+data usually involve multiple geometric models, in particular, multiple underlying linear
+subspaces. We believe that the robust subspace modeling is still relevant to these kinds
+of data. First of all, robust single subspace strategies can be well-integrated into common schemes of modeling data by multiple subspaces. For example, the K-flats algorithm
+is based on repetitive clustering and single subspace modeling per cluster (Tipping and
+Bishop, 1999; Bradley and Mangasarian, 2000; Tseng, 2000; Ho et al., 2003; Zhang et al.,
+2009, 2012) and the LBF and SLBF algorithms use local subspace modeling (Zhang et al.,
+2010, 2012). Second of all, some of the important preprocessing tasks in computer vision
+require single subspace modeling. For example, in face recognition, a preprocessing step
+755
+
+Teng Zhang and Gilad Lerman
+
+requires efficient subspace modeling of images of the same face under different illuminating
+conditions (Basri and Jacobs, 2003; Basri et al., 2011). There are also problems in computer
+vision with more complicated geometric models and large percentage of corruption, where
+our strategies can be carefully adapted. One important example is the synchronization
+problem, which finds an important application in Cryo-EM. The goal of this problem is to
+recover rotation matrices R1 , . . ., RN ∈ S0(3) from noisy and mostly corrupted measurements of Ri−1 Rj for some values of 1 ≤ i, j ≤ N . Wang and Singer (2013) adapted ideas of
+both this work and Lerman et al. (2012) to justify and implement a robust solution for the
+synchronization problem.
+1.4 Recent Subsequent Work
+In the case where d is known, Lerman et al. (2012) followed this work and suggested a
+tight convex relaxation of the minimization of (31) over all projectors PL⊥ of rank d. Their
+optimizer, which they refer to as the REAPER (of the needle-in-haystack problem) minimize
+the same function F (Q) (see (4)) over the set
+1
+H = {Q ∈ RD×D : Q = QT , tr(Q) = 1, Q ≤
+}.
+D−d
+They estimate the underlying subspace by the bottom d eigenvectors of the REAPER.
+The new constraints in H result in more elegant conditions for exact recovery and tighter
+probabilistic theory (due to the tighter relaxation). Since d is known the failure mode of
+GMS mentioned above is avoided. Their REAPER algorithm for computing the REAPER
+is based on the IRLS procedure of this paper with additional constraints, which complicate
+its analysis. The algorithmic and theoretical developments of Lerman et al. (2012) are based
+on the ones here.
+While the REAPER framework applies a tighter relaxation, the GMS framework still
+has several advantages over the REAPER framework. First of all, in various practical situations the dimension of the data is unknown and thus REAPER is inapplicable. On the other
+hand, GMS can be used for dimension estimation, as we demonstrate in §6.3. Second of all,
+the GMS algorithm is faster than REAPER (the REAPER requires additional eigenvalue
+decomposition of a D × D matrix at each iteration of the IRLS algorithm). Furthermore,
+we present here a complete theory for the linear convergence of the GMS algorithm, where
+the convergence theory for the REAPER algorithm is currently incomplete. Third of all,
+when the failure mode mentioned above is avoided, the empirical performances of REAPER
+and GMS are usually comparable (while GMS is faster). At last, GMS and REAPER have
+different objectives with different consequences. REAPER aims to find a projector onto the
+underlying subspace. On the other hand, GMS aims to find a “generalized inverse covariance” (see §3.3) and is formally similar to other M-estimators (see §3.1 and §3.2). Therefore,
+the eigenvalues and eigenvectors of the GMS estimator (i.e., the “generalized inverse covariance”) can be interpreted as robust eigenvalues and eigenvectors of the empirical covariance
+(see §6.3 and §6.5).
+1.5 Structure of This Paper
+In §2 we establish exact and near subspace recovery via the GMS algorithm. We also
+carefully explain the common obstacles for robust subspace recovery and the way they are
+756
+
+A Novel M-Estimator for Robust PCA
+
+handled by previous rigorous solutions (Cand`es et al., 2011; Chandrasekaran et al., 2011;
+Xu et al., 2012) as well as our solution. Section 3 aims to interpret our M-estimator in two
+different ways. First of all, it shows a formal similarity to a well-known class of M-estimators
+(Maronna, 1976; Huber and Ronchetti, 2009; Maronna et al., 2006), though clarifies the
+difference. Those estimators aims to robustly estimate the sample covariance. However, we
+show there that unlike our M-estimator, they cannot solve the subspace recovery problem
+(under a common assumption). Second of all, it shows that non-robust adaptation of our
+M-estimator provides both direct estimation of the inverse covariance matrix as well as
+convex minimization equivalent to the non-convex total least squares (this part requires
+full rank data and thus a possible initial dimensionality reduction but without any loss of
+information). We thus interpret (4) as a robust estimation of the inverse covariance. In §4 we
+propose an IRLS algorithm for minimizing (4) and establish its linear convergence. Section
+5 discusses practical versions of the GMS procedure that allow more general distributions
+than the ones guaranteed by the theory. One of these versions, the Extended GMS (EGMS)
+even provides robust alternative to principal components. In §6 we demonstrate the stateof-the-art accuracy and speed of our algorithm when compared with other methods on both
+synthetic and real data sets and also numerically clarify some earlier claims. Section 7
+provides all details of the proofs and §8 concludes with brief discussion.
+
+2. Exact and Near Subspace Recovery by GMS
+We establish exact and near subspace recovery by the GMS algorithm. In §2.1 we formulate
+the problems of exact and near subspace recovery. In §2.2 we describe common obstacles for
+solving these problems and how they were handled in previous works; in §2.3 we formulate
+some conditions that the data may satisfy; whereas in §2.4 we claim that these conditions
+are sufficient to avoid the former obstacles, that is, they guarantee exact recovery (see
+Theorem 1); We also propose weaker conditions for exact recovery and demonstrate their
+near-tightness in §2.4.1. Section 2.5 describes a simple general condition for uniqueness of
+GMS (beyond the setting of exact recovery). Section 2.6 establishes (with some specified
+limitations) unique exact recovery with high probability under basic probabilistic models
+(see Theorems 4 and 5); it also covers cases with asymmetric outliers. At last, §2.7 and §2.8
+establish results for near recovery under noise and under regularization respectively.
+2.1 Problem Formulation
+Let us repeat the formulation of the exact subspace recovery problem, which we motivated
+in §1.2 as a robust measure for the performance of our estimator. We assume a linear
+subspace L∗ ∈ G(D, d) and a data set X = {xi }N
+i=1 , which contains inliers sampled from
+L∗ and outliers sampled from RD \ L∗ . Given the data set X and no other information,
+the objective of the exact subspace recovery problem is to exactly recover the underlying
+subspace L∗ .
+In order to make the problem well-defined, one needs to assume some conditions on the
+sampled data set, which may vary with the proposed solution. We emphasize that this is a
+formal mathematical problem, which excludes some ambiguous scenarios and allows us to
+determine admissible distributions of inliers and outliers.
+757
+
+Teng Zhang and Gilad Lerman
+
+In the noisy case (where inliers do not lie on L∗ , but perturbed by noise), we ask about
+near subspace recovery, that is, recovery up to an error depending on the underlying noise
+level. We argue below that in this case additional information on the model is needed. Here
+we assume the knowledge of d, though under some assumptions we can estimate d from
+the data (as we demonstrate later). We remark that exact asymptotic recovery under some
+conditions on the noise distribution is way more complicated and is discussed in another
+work (Coudron and Lerman, 2012).
+2.2 Common Difficulties with Subspace Recovery
+We introduce here three typical enemies of subspace recovery and exemplify them in Figure 1. We also explain how they are handled by the previous convex solutions for exact
+recovery of subspaces as well as low-rank matrices (Chandrasekaran et al., 2011; Cand`es
+et al., 2011; Xu et al., 2012).
+A type 1 enemy occurs when the inliers are mainly sampled from a subspace L ⊂ L∗ .
+In this case, it seems impossible to recover L∗ . We would expect a good algorithm to
+recover L (instead of L∗ ) or a subspace containing it with slightly higher dimension (see
+for example Figure 1(a)). Chandrasekaran et al. (2011), Cand`es et al. (2011) and Xu et al.
+(2012) have addressed this issue by requiring incoherence conditions for the inliers. For
+example, if m and N − m points are sampled from L and L∗ \ L respectively, then the
+incoherency condition of Xu et al. (2012) requires that µ ≥ N/(dim(L∗ ) · (N − m)), where µ
+is their incoherency parameter. That is, their theory holds only when the fraction of points
+sampled from L∗ \ L is sufficiently large.
+˜ such
+A type 2 enemy occurs when the outliers are mainly sampled from a subspace L
+∗
+∗
+˜
+˜
+that dim(L ⊕ L ) < D. In this case L ⊕ L can be mistakenly identified as the low-rank
+subspace (see for example Figure 1(b)). This is a main issue when the intrinsic dimension
+is unknown; if on the other hand the intrinsic dimension is known, then one can often
+overcome this enemy. Cand`es et al. (2011) handle it by assuming that the distribution
+of corrupted elements is uniform. Chandrasekaran et al. (2011) address it by restricting
+their parameter µ (see their main condition, which is used in Theorem 2 of their work, and
+their definition of µ in (1.2) of their work) and consequently limit the values of the mixture
+parameter (denoted here by λ). On the other hand, Xu et al. (2012) use the true percentage
+of outliers to infer the right choice of the mixture parameter λ. That is, they practically
+˜ ⊕ L∗ and choose
+invoke model selection (for estimating this percentage) in order to reject L
+the true model, which is L∗ .
+A type 3 enemy occurs due to large magnitudes of outliers. For example, a single outlier
+with arbitrarily large magnitude will be contained in the minimizer of (2), which will thus
+be different than the underlying subspace (see for example Figure 1(c)). Also, many outliers
+with not-so-small magnitudes that lie around a fixed line may have the effect of a single
+large outlier (see for example Figure 1(d)). This enemy is avoided by Chandrasekaran et al.
+(2011), Cand`es et al. (2011) and Xu et al. (2012) by the additional mixture component
+of nuclear norm, which penalizes the magnitude (or combined magnitude) of the supposed
+inliers (so that outliers of large magnitude may not be easily identified as inliers). It is
+interesting to note that if the rank is used instead of the nuclear norm (as sometimes
+advocated), then it will not resolve this issue.
+758
+
+A Novel M-Estimator for Robust PCA
+
+2
+1.5
+
+1.5
+1
+
+1
+
+0.5
+
+L∗
+0
+
+0.5
+
+−0.5
+
+0
+
+−1
+
+−0.5
+
+−1.5
+5
+
+L∗
+
+−1
+2
+
+0
+−5
+
+−1
+
+−2
+
+−3
+
+0
+
+3
+
+2
+
+1
+
+0
+−2
+−3
+
+(a) Example of a type 1 enemy: L∗ is a plane
+represented by a rectangle, “inliers” (in L∗ ) are
+colored blue and “outliers” (in R3 \ L∗ ) red. Most
+inliers lie on a line inside L∗ . It seems unlikely to
+distinguish between inliers, which are not on “the
+main line”, and the outliers. It is thus likely to
+recover the main line instead of L∗ .
+
+3
+
+2
+
+1
+
+0
+
+−1
+
+−2
+
+(b) Example of a type 2 enemy: L∗ is a line represented by a black line segment, “inliers” (in L∗ )
+are colored blue and “outliers” (in R3 \L∗ ) red. All
+outliers but one lie within a plane containing L∗ ,
+which is represented by a dashed rectangle. There
+seems to be stronger distinction between the points
+on this plane and the isolated outlier than the original inliers and outliers. Therefore, an exact recovery algorithm may output this plane instead of L∗ .
+
+4.5
+
+0.8
+
+4
+
+0.6
+
+˜
+L
+
+3.5
+
+0.4
+
+3
+
+0.2
+
+2.5
+
+L∗
+0
+
+2
+1.5
+
+−0.2
+
+1
+
+−0.4
+0.5
+
+L∗
+
+0
+−0.5
+−0.5
+
+˜
+L
+
+−0.6
+−0.8
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+3
+
+3.5
+
+4
+
+−1
+
+4.5
+
+(c) Example 1 of a type 3 enemy: The inliers (in
+blue) lie on the line L∗ and there is a single outlier
+(in red) with relatively large magnitude. An exact
+˜ (deterrecovery algorithm can output the line L
+mined by the outlier) instead of L∗ . If the data
+is normalized to the unit circle, then any reasonable robust subspace recovery algorithm can still
+recover L∗ .
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+(d) Example 2 of a type 3 enemy: Points are normalized to lie on the unit circle, inliers (in blue)
+lie around the line L∗ and outliers (in red) concen˜ A subspace recovery
+trate around another line, L.
+˜ instead of L∗ .
+algorithm can output L
+
+Figure 1: Enemies of the mathematical formulation of exact subspace recovery.
+
+759
+
+Teng Zhang and Gilad Lerman
+
+Another issue for our mathematical problem of exact subspace recovery is whether the
+subspace obtained by a proposed algorithm is unique. Many of the convex algorithms depend on convex l1 -type methods that may not be strictly convex. But it may still happen
+that in the setting of pure inliers and outliers and under some conditions avoiding the three
+types of enemies, the recovered subspace is unique (even though it may be obtained by
+several non-unique minimizers). This is indeed the case in Chandrasekaran et al. (2011),
+Cand`es et al. (2011), Xu et al. (2012) and our own work. Nevertheless, uniqueness of our
+minimizer (and not the recovered subspace) is important for analyzing the numerical algorithm approximating it and for perturbation analysis (e.g., when considering near recovery
+with noisy data). It is also helpful for practically verifying the conditions we will propose
+for exact recovery. Uniqueness of the minimizer (and not just the subspace) is also important in Chandrasekaran et al. (2011) and Cand`es et al. (2011) and they thus established
+conditions for it.
+At last, we comment that subspace recovery with unknown intrinsic dimension may
+require a model selection procedure (possibly implicitly). That is, even though one can
+provide a theory for exact subspace recovery (under some conditions), which might be stable
+to perturbations, in practice, some form of model selection will be necessary in noisy cases.
+For example, the impressive theories by Chandrasekaran et al. (2011) and Xu et al. (2012)
+require the estimation of the mixture parameter λ. Xu et al. (2012) propose such an estimate
+for λ, which is based on knowledge of the data set (e.g., the distribution of corruptions and
+the fraction of outliers). However, we noticed that in practice this proposal did not work
+well (even for simple synthetic examples), partly due to the fact that the deduced conditions
+are only sufficient, not necessary and there is much room left for improvement. The theory
+by Cand`es et al. (2011) specified a choice for λ that is independent of the model parameters,
+but it applies only for the special case of uniform corruption without noise; moreover, they
+noticed that other values of λ could achieve better results.
+2.3 Conditions for Handling the Three Enemies
+We introduce additional assumptions on the data to address the three types of enemies. We
+denote the sets of exact inliers and outliers by X1 and X0 respectively, that is, X1 = X ∩ L∗
+and X0 = X \ L∗ . The following two conditions simultaneously address both type 1 and
+type 3 enemies:
+min
+
+Q∈H,QPL∗⊥ =0
+
+Qx >
+
+√
+
+2
+
+x∈X1
+
+min
+
+Q∈H,QPL∗⊥ =0
+
+Qx >
+
+√
+
+x∈X1
+
+2
+
+|vT x|,
+
+(6)
+
+|vT x|.
+
+(7)
+
+min
+
+v∈L∗⊥ , v =1
+
+x∈X0
+
+max
+
+v∈L∗ , v =1
+
+x∈X0
+
+A lower bound on the common LHS of both (6) and (7) is designed to avoid type
+1 enemies. This common LHS is a weak version of the permeance statistics, which was
+defined in (3.1) of Lerman et al. (2012) as follows:
+P(L∗ ) := min∗
+
+u∈L
+u =1
+
+760
+
+|uT x|.
+x∈X1
+
+A Novel M-Estimator for Robust PCA
+
+Similarly to the permeance statistics, it is zero if and only if all inliers are contained in a
+proper subspace of L∗ . Indeed, if all inliers lie in a subspace L ⊂ L∗ , then this common
+LHS is zero with the minimizer Q = PL ⊥ ∩L∗ / tr(PL ⊥ ∩L∗ ). Similarly, if it is zero, then
+Qx = 0 for any x ∈ X1 and for some Q with kernel containing L∗⊥ . This is only possible
+when X1 is contained in a proper subspace of L∗ . Similarly to the permeance statistics, if
+the inliers nicely permeate through L∗ , then this common LHS clearly obtain large values.
+The upper bounds on the RHS’s of (6) and (7) address two complementing type 3
+enemies. If X0 contains few data points of large magnitude, which are orthogonal to L∗ ,
+then the RHS of (6) may be too large and (6) may not hold. If on the other hand X0
+contains few data points with large magnitude and a small angle with L∗ , then the RHS
+of (7) will be large so that (7) may not hold. Conditions (6) and (7) thus complete each
+other.
+The RHS of condition (7) is similar to the linear structure statistics (for L∗ ), which was
+defined in (3.3) of Lerman et al. (2012). The linear structure statistics uses an l2 average
+of dot products instead of the l1 average used here and was applied in this context to RD
+(instead of L∗ ) in Lerman et al. (2012). Similarly to the linear structure statistics, the
+RHS of (7) is large when outliers either have large magnitude or they lie close to a line
+(so that their combined contribution is similar to an outlier with a very large magnitude as
+exemplified in Figure 1(d)). The RHS of condition (7) is a very weak analog of the linear
+structure statics of L∗ ⊥ since it uses a minimum instead of a maximum. There are some
+significant outliers within L∗ ⊥ that will not be avoided by requiring (7). For example, if
+the codimension of L∗ is larger than 1 and there is a single outlier with an arbitrary large
+magnitude orthogonal to L∗ , then the RHS of (7) is zero.
+The next condition avoids type 2 enemies and also significant outliers within L∗ ⊥ (i.e.,
+type 3 enemies) that were not avoided by condition (7). This condition requires that any
+minimizer of the following oracle problem
+ˆ 0 :=
+Q
+
+arg min
+
+F (Q)
+
+(8)
+
+Q∈H,QPL∗ =0
+
+satisfies
+
+ˆ 0 ) = D − d.
+rank(Q
+
+(9)
+
+We note that the requirement QPL∗ = 0 is equivalent to the condition ker(Q) ⊇ L∗ and
+therefore the rank of the minimizer is at most D − d. Enforcing the rank of the minimizer
+to be exactly D − d restricts the distribution of the projection of X onto L∗ ⊥ . In particular,
+it avoids its concentration on lower dimensional subspaces and is thus suitable to avoid
+˜ ⊂ L∗⊥ , then any Q ∈ H with
+type 2 enemies. Indeed, if all outliers are sampled from L
+∗
+˜
+ker(Q) ⊃ L+L satisfies F (Q) = 0 and therefore it is a minimizer of the oracle problem (4),
+but it contradicts (9).
+We note that this condition also avoids some type 3 enemies, which were not handled by
+conditions (6) and (7). For example, any D −d−1 outliers with large magnitude orthogonal
+to L∗ will not be excluded by requiring (6) or (7), but will be avoided by (9).
+This condition is restrictive though, especially in very high ambient dimensions. Indeed,
+it does not hold when the number of outliers is smaller than D − d (since then the outliers
+˜ with dim(L
+˜ ⊕ L∗ ) < D). We thus explain in §5.2 and §5.2.1 how
+are sampled from some L
+to avoid this condition when knowing the dimension. We also suggest in §5.1 some practical
+761
+
+Teng Zhang and Gilad Lerman
+
+solutions to overcome the corresponding restrictive lower bound on the number of outliers
+when the dimension is unknown.
+Example 1 We demonstrate the violation of the conditions above for the examples depicted
+in Figure 1. The actual calculations rely on ideas explained in §2.4.1.
+For the example in Figure 1(a), which represents a type 1 enemy, both conditions (6)
+and (7) are violated. Indeed, the common LHS of (6) and (7) is 5.69, whereas the RHS
+of (6) is 8.57 and the RHS of (7) is larger than 10.02 (this lower bound is obtained by
+substituting v = [0, 1, 0] in the RHS of (7); note that v is a unit vector in L∗ ).
+For the example in Figure 1(b), which represents a type 2 enemy, condition (9) is vioˆ 0 with rank(Q
+ˆ 0 ) = 1 = D − d = 2 (one
+lated. Indeed, we obtained numerically a solution Q
+ˆ
+can actually prove in this case that Q0 is the projector onto the orthogonal complement of
+the plane represented by the dashed rectangle).
+For the example in Figure 1(c), which represents a type 3 enemy, both conditions (6)
+and (7) are violated. Indeed, the common LHS of (6) and (7) is 1.56 and the RHS’s of
+(6) and (7) are 5.66 and 4.24 respectively. However, if we normalize all points to lie on the
+unit circle, then this enemy can be overcome. Indeed, for the normalized data, the common
+LHS of (6) and (7) is 6 and the RHS’s of (6) and (7) are 1.13 and 0.85 respectively.
+For the example in Figure 1(d), which also represents a type 3 enemy, both conditions
+(6) and (7) are violated. Indeed, the LHS of (6) and (7) are 5.99 and the RHS’s of (6) and
+(7) are 6.91 and 7.02 respectively.
+2.4 Exact Recovery Under Combinatorial Conditions
+We show that the minimizer of (4) solves the exact recovery problem under the above
+combinatorial conditions.
+Theorem 1 Assume that d, D ∈ N, d < D, X is a data set in RD and L∗ ∈ G(D, d).
+ˆ
+If conditions (6), (7) and (9) hold (w.r.t. X and L∗ ), then any minimizer of (4), Q,
+∗
+∗
+ˆ = L . If only (6) and (7) hold, then
+recovers the subspace L in the following way: ker(Q)
+∗
+ˆ
+ker(Q) ⊇ L .
+2.4.1 Weaker Alternatives of Conditions (6) and (7)
+It is sufficient to guarantee exact recovery by requiring (9) and that for an arbitrarily chosen
+ˆ 0 , the following two conditions are satisfied:
+solution of (8), Q
+Qx >
+
+min
+
+Q∈H,QPL∗⊥ =0
+
+√
+
+ˆ 0 xxT PL∗⊥ / Q
+ˆ 0x
+Q
+
+2
+
+x∈X1
+
+(10)
+
+x∈X0
+
+and
+min
+
+Q∈H,QPL∗⊥ =0
+
+Qx >
+
+√
+
+ˆ 0 xxT PL∗ / Q
+ˆ 0x
+Q
+
+2
+
+x∈X1
+
+.
+
+(11)
+
+x∈X0
+
+ˆ 0 x = 0 for all x ∈ X0 and thus the RHS’s
+We note that condition (9) guarantees that Q
+of (10) and (11) are well-defined. We prove this statement in (7.3).
+762
+
+A Novel M-Estimator for Robust PCA
+
+We note that conditions (10) and (11) can be verified when X0 , X1 and L∗ are known
+ˆ 0 can be found by Algorithm 2. Furthermore, (10) and (11) are
+(unlike (6) and (7)), where Q
+weaker than (6) and (7), though they are more technically involved and harder to motivate.
+In order to demonstrate the near-tightness of (10) and (11), we formulate the following
+ˆ (see the idea of their justification at
+necessary conditions for the recovery of L∗ as ker(Q)
+ˆ 0:
+the end of §7.3): For an arbitrarily chosen solution of (8), Q
+min
+
+Q∈H,QPL∗⊥ =0
+
+ˆ 0 xxT PL∗⊥ / Q
+ˆ 0x
+Q
+
+Qx ≥
+x∈X1
+
+(12)
+
+x∈X1
+
+and
+˜ L∗ x) ≥
+Q(P
+x∈X1
+
+˜ T ∗⊥ Q
+ˆ 0 xxT P
+˜ L∗ / Q
+ˆ 0x
+Q, P
+L
+x∈X0
+
+F
+
+for any Q ∈ R(D−d)×d ,
+
+(13)
+
+where for matrices A, B ∈ Rk×l : A, B F = tr(A B T ) is the Frobenius dot product. Indeed,
+conditions (12) and (13) are close to conditions
+(10) and (11). In particular, (12) and (10)
+√
+are only different by the constant factor 2, that is, (10) is practically tight.
+2.5 Uniqueness of the Minimizer
+ˆ is unique.
+We recall that Theorem 1 implies that if (6), (7) and (9) hold, then ker(Q)
+ˆ
+Here we guarantee the uniqueness of Q (which is required in §2.4.1, §2.7, §2.8 and §4.2)
+independently of the exact subspace recovery problem.
+Theorem 2 If the following condition holds:
+{X ∩ L1 } ∪ {X ∩ L2 } = X for all (D − 1)-dimensional subspaces L1 , L2 ⊂ RD ,
+
+(14)
+
+then F (Q) is a strictly convex function on H.
+2.6 Exact Recovery under Probabilistic Models
+We show that our conditions for exact recovery (or the main two of them) and our condition
+ˆ hold with high probability under basic probabilistic modfor uniqueness of the minimizer Q
+els. Such a probabilistic theory is cleaner when the outliers are sampled from a spherically
+symmetric distribution as we carefully demonstrate in §2.6.1 (with two different models).
+The problem is that when the outliers are spherically symmetric then various non-robust
+algorithms (such as PCA) can asymptotically approach exact recovery and nearly recover
+the underlying subspace with sufficiently large sample. We thus also show in §2.6.2 how the
+theory in §2.6.1 can be slightly modified to establish exact recovery of the GMS algorithm
+in an asymmetric case, where PCA cannot even nearly recover the underlying subspace.
+2.6.1 Cases with Spherically Symmetric Distributions of Outliers
+First we assume a more general probabilistic model. We say that µ on RD is an OutliersInliers Mixture (OIM) measure (w.r.t. the fixed subspace L∗ ∈ G(D, d)) if µ = α0 µ0 + α1 µ1 ,
+where α0 , α1 > 0, α0 + α1 = 1, µ1 is a sub-Gaussian probability measure and µ0 is a
+sub-Gaussian probability measure on RD (representing outliers) that can be decomposed to
+763
+
+Teng Zhang and Gilad Lerman
+
+a product of two independent measures µ0 = µ0,L∗ × µ0,L∗⊥ such that the supports of µ0,L∗
+and µ0,L∗⊥ are L∗ and L∗⊥ respectively, and µ0,L∗⊥ is spherically symmetric with respect to
+rotations within L∗⊥ .
+To provide cleaner probabilistic estimates, we also invoke the needle-haystack model
+of Lerman et al. (2012). It assumes that both µ0 and µ1 are the Gaussian distributions:
+µ0 = N (0, σ02 I/D) and µ1 = N (0, σ12 PL∗ PTL∗ /d) (the factors 1/D and 1/d normalize the
+magnitude of outliers and inliers respectively so that their norms are comparable). While
+Lerman et al. (2012) assume a fixed number of outliers and inliers independently sampled
+from µ0 and µ1 respectively, here we independently sample from the mixture measure µ =
+α0 µ0 + α1 µ1 ; we refer to µ as a needle-haystack mixture measure.
+In order to prove exact recovery under any of these models, one needs to restrict the
+fraction of inliers per outliers (or equivalently, the ratio α1 /α0 ). We refer to this ratio as
+SNR (signal to noise ratio) since we may view the inliers as the pure signal and the outliers
+as some sort of “noise”. For the needle-haystack model we require the following SNR, which
+is similar to the one of Lerman et al. (2012):
+α1
+σ0
+>4
+α0
+σ1
+
+d
+(D − d)D
+
+.
+
+(15)
+
+We later explain how to get rid of the term σ1 /σ0 . For the OIM model we assume the
+following more general condition:
+α1
+
+min
+
+Q∈H,QP
+
+⊥ =0
+L∗
+
+√ α0
+Qx dµ1 (x) > 2 2
+D−d
+
+PL∗⊥ x dµ0 (x).
+
+(16)
+
+Under the needle-haystack model, this condition is a weaker version of (15). That is,
+Lemma 3 If µ is a needle-haystack mixture measure, then (15) implies (16).
+For i.i.d. samples from an OIM measure satisfying (16), we can establish our modified
+conditions of unique exact recovery (i.e., (10), (11) and (9)) with overwhelming probability
+ˆ
+in the following way (we also guarantee the uniqueness of the minimizer Q).
+Theorem 4 If X is an i.i.d. sample from an OIM measure µ satisfying (16), then conditions (10), (11), and (9) hold with probability 1 − C exp(−N/C), where C is a constant
+depending on µ and its parameters. Moreover, (14) holds with probability 1 if there are at
+least 2D − 1 outliers (i.e., the number of points in X \ L∗ is at least 2D − 1).
+Under the needle-haystack model, the SNR established by Theorem 4 is comparable
+to the best SNR among other convex exact recovery algorithms (this is later clarified in
+Table 1). However, the probabilistic estimate under which this SNR holds is rather loose
+and thus its underlying constant C is not specified. Indeed, the proof of Theorem 4 uses nets and union-bounds arguments, which are often not useful for deriving tight probabilistic
+estimates (see, e.g., Mendelson 2003, page 18). One may thus view Theorem 4 as a nearasymptotic statement.
+The statement of Theorem 4 does not contradict our previous observation that the
+number of outliers should be larger than at least D−d. Indeed, the constant C is sufficiently
+764
+
+A Novel M-Estimator for Robust PCA
+
+large so that the corresponding probability is negative when the number of outliers is smaller
+than D − d.
+In the next theorem we assume only a needle-haystack model and thus we can provide
+a stronger probabilistic estimate based on the concentration of measure phenomenon (our
+proof follows directly Lerman et √
+al., 2012). However, the SNR is worse than the one in
+ˆ0
+Theorem 4 by a factor of order D − d. This is because we are unable to estimate Q
+of (8) by concentration of measure. Similarly, in this theorem we do not estimate the
+ˆ 0 ). Nevertheless, we observed in experiments that
+probability of (9) (which also involves Q
+(9) holds with high probability for N0 = 2(D − d) and the probability seems to go to 1 as
+N0 = 2(D − d) and D − d → ∞. Moreover, one of the algorithms proposed below (EGMS)
+does not require condition (9).
+Theorem 5 If X is an i.i.d. sample of size N from a needle-haystack mixture measure µ
+and if
+α1
+σ0 2/π − 1/4 − 1/10 d2
+>
+(17)
+α0
+σ1 2/π + 1/4 + 1/10 D
+and
+N > 64 max(2d/α1 , 2d/α0 , 2(D − d)/α0 ),
+−α21 N/2
+
+then (6) and (7) hold with probability 1 − e
+
+−α20 N/2
+
+− 2e
+
+(18)
+
+− e−α1 N/800 − e−α0 N/800 .
+
+In Table 1 we present the theoretical asymptotic SNRs for exact recovery of some recent
+algorithms. We assume the needle-haystack model with fixed d, D, α0 , α1 , σ0 and σ1 and
+N → ∞. Let us clarify these results. We first remark that the pure SNR of the Highdimensional Robust PCA (HR-PCA) algorithm of Xu et al. (2010a) approaches infinity
+(see Remark 3 of Xu et al. 2010a). However, as we explained earlier the violation of exact
+recovery does not necessarily imply non-robustness of the estimator as it may nearly recover
+the subspace. Indeed, Xu et al. (2010a) show that if (for simplicity) σ0 = σ1 and the SNR
+is greater than 1, then the subspace estimated by HR-PCA is a good approximation in
+the following sense: there exists a constant c > 0 such that for the inliers set X0 and
+2
+2
+the estimated subspace L:
+x∈X0 PL x 2 > c
+x∈X0 x 2 (see Remark 4 of Xu et al.
+(2010a)). We thus use the notation: SNR(HR-PCA) “ ” 1 (see Table 1 with appropriate
+scales of σ0 and σ1 ). Xu et al. (2012) established the SNR for their Outlier Pursuit (OP)
+algorithm (equivalently the Low-Leverage Decomposition (LLD) of McCoy and Tropp 2011)
+in Theorem 1 of their work. Their analysis assumes a deterministic condition, but it is
+possible to show that this condition is asymptotically valid under the needle-haystack model.
+Lerman et al. (2012) established w.h.p. the SNR of the REAPER algorithm in Theorem 1
+of their work (for simplicity of their expressions they assumed that d ≤ (D − 1)/2). Zhang
+(2012) established the SNR for Tyler’s M-Estimator (TME) in Theorem 1 of his work.
+His result is deterministic, but it is easy to show that the deterministic condition holds
+with probability 1 under the needle-haystack model. Hardt and Moitra (2013) proposed
+randomized and deterministic robust recovery algorithms, RF (or RandomizedFind) and
+DRF (or DERandomizedFind) respectively, and proved that they obtained the same SNR
+as in Zhang (2012) under a similar (slightly weaker) combinatorial condition (they only
+guarantee polynomial time, where Zhang, 2012 specifies a complexity similar to that of
+765
+
+Teng Zhang and Gilad Lerman
+
+HR-PCA LLD (OP)
+σ1 α1
+σ0 α0
+
+“ ”1
+
+α1
+α0
+
+≥
+
+121d
+9
+
+α1
+α0
+
+ˆ REAPER (d ≤ (D − 1)/2) TME & D/RF
+ˆ := ker(Q)
+L
+σ0
+α1
+α1
+d
+d
+d
+> 4 σσ10 √ d
+α0 > σ 1 C 1 D − C2 α1
+α0 > D−d
+(D−d)D
+
+Table 1: Theoretical SNR (lowest bound on α1 /α0 ) for exact recovery when N → ∞
+
+GMS). We remark that both Zhang (2012) and Hardt and Moitra (2013) appeared after
+the submission of this manuscript.
+The asymptotic SNR of the minimization proposed in this paper is of the same order
+as that of the REAPER algorithm (which was established for d ≤ (D − 1)/2) and both of
+them are better than that of the HR-PCA algorithm. The asymptotic SNRs of OP, TME,
+RF and DRF are independent of σ1 and σ0 . However, by normalizing all data points to the
+unit sphere, we may assume that σ1 = σ0 in all other algorithms and treat them equally
+(see Lerman et al., 2012). In this case, the SNR of OP is significantly worse than that of
+the minimization proposed in here, especially when d
+D (it is also worse than the weaker
+SNR specified in (17)). When d
+D, the SNR of TME, RF and DRF is of the same order
+as the asymptotic SNR of our formulation. However, when d is very
+√ close to D, the SNR of
+our formulation is better than the SNR of TME by a factor of D. We question whether
+a better asymptotic rate than the one of GMS and REAPER can be obtained by a convex
+algorithm for robust subspace recovery for the needle-haystack model. Hardt and Moitra
+(2013) showed that it is small set expansion hard for any algorithm to obtain better SNR
+than theirs for all scenarios satisfying their combinatorial condition.
+We note though that there are non-convex methods for removing outliers with asymptotically zero SNRs. Such SNRs are valid only for the noiseless case and may be differently
+formulated for detecting the hidden low-dimensional structure among uniform outliers. For
+example, Arias-Castro et al. (2005) proved that the scan statistics may detect points sampled uniformly from a d-dimensional graph in RD of an m-differentiable function among
+uniform outliers in a cube in RD with SNR of order O(N −m(D−d)/(d+m(D−d)) ). Arias-Castro
+et al. (2011) used higher order spectral clustering affinities to remove outliers and thus detect
+differentiable surfaces (or certain unions of such surfaces) among uniform outliers with similar SNR to that of the scan statistics. Soltanolkotabi and Cand`es (2012) removed outliers
+with “large dictionary coefficients” and showed that this detection works well for outliers
+cD
+d
+uniform in S D−1 , inliers uniform in S D−1 ∩ L∗ and SNR at least D
+· (( α1 Nd −1 ) d −1 − 1)−1
+√
+(where α1 is the fraction of inliers) as long as N < ec D /D. For fixed D and d and sufficiently large N , this SNR, which depends on N , can be arbitrarily small. Furthermore,
+Lerman and Zhang (2010) showed that the global minimizer of (2) (that we relax in this
+paper so that the minimization is convex) can in theory recover the subspace with asymptotically zero SNR. They also
+√ showed that the underlying subspace is a local minimum of (2)
+with SNR of order ω(1/ N ). However, these non-convex procedures do not have efficient
+or sufficiently fast implementations for subspace recovery. Furthermore, their impressive
+theoretical estimates often break down in the presence of noise. Indeed, in the noisy case
+their near-recovery is not better than the one stated for GMS in Theorem 6 (see, e.g., (16)
+and (17) of Arias-Castro et al. (2011) or Theorem 1.2 of Lerman and Zhang (2010)). On
+the other hand, in view of Coudron and Lerman (2012) we may obtain significantly better
+766
+
+A Novel M-Estimator for Robust PCA
+
+asymptotic SNR for GMS when the noise is symmetrically distributed with respect to the
+underlying subspace.
+2.6.2 A Special Case with Asymmetric Outliers
+In the case of spherically symmetric outliers, PCA cannot exactly recover the underlying
+subspace, but it can asymptotically recover it (see, e.g., Lerman and Zhang, 2010). In
+particular, with sufficiently large sample with spherically symmetric outliers, PCA nearly
+recovers the underlying subspace. We thus slightly modify the two models of §2.6.1 so that
+the distribution of outliers is asymmetric and show that our combinatorial conditions for
+exact recovery still hold (with overwhelming probability). On the other hand, the subspace
+recovered by PCA, when sampling data from these models, is sufficiently far from the
+underlying subspace for any given sample size.
+We first generalize Theorem 5 under a generalized needle-haystack model: Let µ =
+α0 µ0 + α1 µ1 , µ0 = N (0, Σ0 /D), where Σ0 is an arbitrary positive definite matrix (not
+necessarily a scalar matrix as before), and as before µ1 = N (0, σ12 PL∗ PTL∗ /d). We claim
+that Theorem 5 still holds in this case if we replace σ0 in the RHS of (17) with λmax (Σ0 ),
+where λmax (Σ0 ) denotes the largest eigenvalue of Σ0 (see justification in §7.6.1).
+In order to generalize Theorem 4 for asymmetric outliers, we assume that the outlier
+component µ0 of the OIM measure µ is a sub-Gaussian distribution with an arbitrary
+positive definite covariance matrix Σ0 . Following Coudron and Lerman (2012), we define
+ˆ I , which is analogous to (8) (the
+the expected version of F , FI , and its oracle minimizer, Q
+subscript I indicates integral):
+FI (Q) =
+and
+
+ˆI =
+Q
+
+Qx dµ(x)
+
+arg min
+
+FI (Q).
+
+(19)
+
+(20)
+
+Q∈H,QPL∗ =0
+
+ˆ I is the unique minimizer in (20) (we remark that the two-subspaces
+We assume that Q
+criterion in (25) for the projection of µ onto L∗⊥ implies this assumption). Under these
+assumptions Theorem 4 still holds if we multiply the RHS of (16) by the ratio between
+ˆ I PL∗⊥ and the (D − d)th eigenvalue of PL∗⊥ Q
+ˆ I PL∗⊥ (see
+the largest eigenvalue of PL∗⊥ Q
+justification in §7.5.1).
+2.7 Near Subspace Recovery for Noisy Samples
+We show that in the case of sufficiently small additive noise (i.e., the inliers do not lie exactly
+on the subspace L∗ but close to it), the GMS algorithm nearly recovers the underlying
+subspace.
+We use the following notation: A F and A denote the Frobenius and spectral norms
+of A ∈ Rk×l respectively. Furthermore, H1 denotes the set of all positive semidefinite
+matrices in H, that is, H1 = {Q ∈ H : Q 0}. We also define the following two constants
+γ0 =
+
+1
+N
+
+N
+
+min
+
+Q∈H1 , ∆
+
+F =1,tr(∆)=0
+
+i=1
+
+767
+
+∆xi
+
+2
+
+Qxi 2 − (xTi ∆Qxi )2
+,
+Qxi 3
+
+(21)
+
+Teng Zhang and Gilad Lerman
+
+and
+γ0 =
+
+1
+N
+
+N
+
+∆xi
+
+min
+
+Q∈H1 , ∆ =1,tr(∆)=0
+
+i=1
+
+2
+
+Qxi 2 − (xTi ∆Qxi )2
+.
+Qxi 3
+
+(22)
+
+The sum in the RHS’s of (21) and (22) is the following second directional derivative:
+d2
+F (Q + t∆); when Qxi = 0, its ith term can be set to 0. It is interesting to note
+dt2
+that both (21) and (22) express the Restricted Strong Convexity (RSC) parameter γl of
+Agarwal et al. (2012b, Definition 1), where their notation translates into ours as follows:
+Ln (Q) := F (Q)/N , τl := 0, Ω := H1 and θ − θ := ∆. The difference between γ0 and γ0 of
+(21) and (22) is due to the choice of either the Frobenius or the spectral norms respectively
+for measuring the size of θ − θ .
+Using this notation, we formulate our noise perturbation result as follows.
+N
+˜
+Theorem 6 Assume that { i }N
+i=1 is a set of positive numbers, X = {xi }i=1 and X =
+N
+˜ i − xi ≤ i ∀1 ≤ i ≤ N and X satisfies (14). Let
+{˜
+xi }i=1 are two data sets such that x
+FX (Q) and FX˜ (Q) denote the corresponding versions of F (Q) w.r.t. the sets X and X˜ and
+ˆ and Q
+˜ denote their respective minimizers. Then we have
+let Q
+N
+
+˜ −Q
+ˆ
+Q
+
+F
+
+<
+
+2
+
+N
+i /(N γ0 )
+
+and
+
+˜ −Q
+ˆ <
+Q
+
+2
+
+i=1
+
+i /(N γ0 ).
+
+(23)
+
+i=1
+
+˜ and Q
+ˆ
+˜ and L
+ˆ are the subspaces spanned by the bottom d eigenvectors of Q
+Moreover, if L
+ˆ then
+respectively and νD−d is the (D − d)th eigengap of Q,
+
+PLˆ − PL˜
+
+F
+
+≤
+
+2 2
+
+N
+i=1 i /(N γ0 )
+
+νD−d
+
+and
+
+PLˆ − PL˜ ≤
+
+2
+
+2
+
+N
+i=1 i /(N γ0 )
+
+νD−d
+
+.
+
+(24)
+
+We note that if X and X˜ satisfy the conditions of Theorem 6, then given the perturbed
+data set X˜ and the dimension d, Theorem 6 guarantees that GMS nearly recovers L∗ . More
+interestingly, the theorem also implies that we may properly estimate the dimension of
+the underlying subspace in this case (we explain this in details in §7.7.1). Such dimension
+estimation is demonstrated later in Figure 2.
+Theorem 6 is a perturbation result in the spirit of the stability analysis by Cand`es et al.
+(2006) and Xu et al. (2012, Theorem 2). In order to observe that the statement of Theorem 6
+is comparable to that of Theorem 2 of Xu et al. (2012), we note that asymptotically the
+bounds on the recovery errors in (23) and (24) depend only on the empirical mean of { i }N
+i=1
+and do not grow with N . To clarify this point we formulate the following proposition.
+Proposition 7 If X is i.i.d. sampled from a bounded distribution µ and
+µ(L1 ) + µ(L2 ) < 1 for any two D − 1-dimensional subspaces L1 and L2 ,
+
+(25)
+
+then there exist constants c0 (µ) > 0 and c0 (µ) > 0 depending on µ such that
+lim inf γ0 (X ) ≥ c0 (µ) and lim inf γ0 (X ) ≥ c0 (µ) almost surely.
+N →∞
+
+N →∞
+
+768
+
+(26)
+
+A Novel M-Estimator for Robust PCA
+
+If (25) is strengthened so that µ(L1 ) + µ(L2 ) is sufficiently smaller than 1, then it can be
+noticed empirically that c0 (µ) and c0 (µ) are sufficiently larger than zero.
+Nevertheless, the stability theory of Cand`es et al. (2006), Xu et al. (2012) and this
+section is not optimal. Stronger stability results require nontrivial analysis and we leave it
+to a possible future work. We comment though on some of the deficiencies of our stability
+theory and their possible improvements.
+We first note that the bounds in Theorem 6 are generally not optimal. Indeed, if
+√
+=
+O( ) for all 1 ≤ i ≤ N , then the error bounds in Theorem 6 are O( ), whereas we
+i
+empirically noticed that these error bounds are O( ). In §7.7.2 we sketch a proof for this
+ˆ = D.
+empirical observation when is sufficiently small and rank(Q)
+The dependence of the error on D, which follows from the dependence of γ0 and γ0 on
+D, is a difficult problem and strongly depends on the underlying distribution of X and of
+the noise. For example, in the very special case where the set X is sampled from a subspace
+L0 ⊂ RD of dimension D0 < D, and the noise distribution is such that X˜ also lies in L0 ,
+then practically we are performing GMS over PL0 (X ) and PL0 (X˜ ), and the bound in (23)
+would depend on D0 instead of D.
+Coudron and Lerman (2012) suggested a stronger perturbation analysis and also remarked on the dependence of the error on D in a very special scenario.
+2.8 Near Subspace Recovery for Regularized Minimization
+For our practical algorithm it is advantageous to regularize the function F as follows (see
+Theorems 11 and 12 below):
+N
+
+N
+
+Fδ (Q) :=
+
+Qxi
+2δ
+
+Qxi +
+i=1, Qxi ≥δ
+
+i=1, Qxi <δ
+
+2
+
++
+
+δ
+2
+
+.
+
+We remark that other convex algorithms (Cand`es et al., 2011; Xu et al., 2012; McCoy and
+Tropp, 2011) also regularize their objective function by adding the term δ X − L − O 2F .
+However, their proofs are not formulated for this regularization.
+In order to address the regularization in our case and conclude that the GMS algorithm
+nearly recovers L∗ for the regularized objective function, we adopt a similar perturbation
+ˆ δ and Q
+ˆ the minimizers of Fδ (Q) and F (Q) in H
+procedure as in §2.7. We denote by Q
+ˆ δ and L
+ˆ denote the subspaces recovered by the bottom d
+respectively. Furthermore, let L
+ˆ
+ˆ
+eigenvectors of Qδ and Q respectively. Using the constants νD−d and γ0 of Theorem 6, the
+difference between the two minimizers and subspaces can be controlled as follows.
+Theorem 8 If X is a data set satisfying (14), then
+ˆδ −Q
+ˆ
+Q
+
+F
+
+<
+
+PLˆ δ − PLˆ
+
+F
+
+≤
+
+δ/2γ0
+
+and
+
+769
+
+2
+
+δ/2γ0
+νD−d
+
+.
+
+(27)
+
+Teng Zhang and Gilad Lerman
+
+3. Understanding Our M Estimator: Interpretation and Formal
+Similarities with Other M Estimators
+We highlight the formal similarity of our M-estimator with a common M-estimator and
+with Tyler’s M-estimator in §3.1 and §3.2 respectively. We also show that in view of the
+standard assumptions on the algorithm for computing the common M-estimator, it may fail
+in exactly recovering the underlying subspace (see §3.1.1). At last, in §3.3 we interpret our
+M-estimator as a robust inverse covariance estimator.
+3.1 Formal Similarity with the Common M-estimator for Robust Covariance
+Estimation
+A well-known robust M-estimator for the 0-centered covariance matrix (Maronna, 1976;
+Huber and Ronchetti, 2009; Maronna et al., 2006) minimizes the following function over all
+D × D positive definite matrices (for some choices of a function ρ)
+N
+
+ρ(xTi A−1 xi ) −
+
+L(A) =
+i=1
+
+N
+log(det(A−1 )).
+2
+
+(28)
+
+The image of the estimated covariance is clearly an estimator to the underlying subspace
+L∗ .
+√
+If we set ρ(x) = x and A−1 = Q2 then the objective function L(A) in (28) is
+N
+i=1 Qxi − N log(det(Q)). This energy function is formally similar to our energy funcˆ in (4) is also the minimizer
+tion. Indeed, using Lagrangian formulation, the minimizer Q
+N
+of i=1 Qxi − λ tr(Q) among all D × D symmetric matrices (or equivalently nonnegative symmetric matrices) for some λ > 0 (the parameter λ only scales the minimizer and
+does not effect the recovered subspace). Therefore, the two objective functions differ by
+√
+their second terms. In the common M-estimator (with ρ(x) = x and A−1 = Q2 ) it is
+log(det(Q)), or equivalently, tr(log(Q)), where in our M-estimator, it is tr(Q).
+3.1.1 Problems with Exact Recovery by the Common M-estimator
+The common M-estimator is designed for robust covariance estimation, however, we show
+here that in general it cannot exactly recover the underlying subspace. To make this statement more precise we recall the following uniqueness and existence conditions for the minimizer of (28), which were established by Kent and Tyler (1991): 1) u = 2ρ is positive,
+continuous and non-increasing. 2) Condition M: u(x)x is strictly increasing. 3) Condition
+D0 : For any linear subspace L: |X ∩L|/N < 1−(D −dim(L))/ limx→∞ xu(x). The following
+Theorem 9 shows that the uniqueness and existence conditions of the common M-estimator
+are incompatible with exact recovery.
+Theorem 9 Assume that d, D ∈ N, d < D, X is a data set in RD and L∗ ∈ G(D, d) and
+ˆ be the minimizer of (28). If conditions M and D0 hold, then Im(A)
+ˆ = L∗ .
+let A
+For symmetric outliers (as the ones of §2.6.1) the common M-estimator can still asymptotically achieve exact recovery (similarly to PCA). However, for many scenarios of asymmetric outliers, in particular, the one of §2.6.2, the subspace recovered by the common
+M-estimator is sufficiently far from the underlying subspace for any given sample size.
+770
+
+A Novel M-Estimator for Robust PCA
+
+We remark that Tyler’s M-estimator (Tyler, 1987) can still recover the subspace exactly.
+This estimator uses ρ(x) = D log(x)/2 in (28) and adds an additional assumption tr(A) = 1.
+ˆ = L∗ . However, it does
+Zhang (2012) recently showed that this M-estimator satisfies Im(A)
+not belong to the class of estimators of Kent and Tyler (1991) addressed by Theorem 9
+(it requires that tr(A) = 1, otherwise it has multiple minimizers; it also does not satisfy
+condition M).
+3.2 Formal Similarity with Tyler’s M-Estimator
+We show here that the algorithms for our estimator and Tyler’s M-estimator (Tyler, 1987)
+are formally similar. Following Tyler (1987), we write the iterative algorithm for the Tyler’s
+M-estimator for robust covariance estimation as follows:
+N
+
+Σn+1 =
+i=1
+
+N
+
+xi xTi
+xTi Σ−1
+n xi
+
+tr
+i=1
+
+xi xTi
+xTi Σ−1
+n xi
+
+.
+
+(29)
+
+The unregularized iterative algorithm for GMS is later described in (38). Let us formally
+substitute Σ = Q−1 / tr(Q−1 ) in (38); in view of the later discussion of 3.3, Σ (if exists) can
+be interpreted as a robust estimator for the covariance matrix (whose top d eigenvectors
+span the estimated subspace). Then an unregularized version for GMS can be formally
+written as
+N
+N
+xi xTi
+xi xTi
+Σn+1 =
+tr
+.
+(30)
+Σ−1
+Σ−1
+n xi
+n xi
+i=1
+i=1
+−1
+Clearly, (30) is obtained from (29) by replacing xTi Σ−1
+n xi with Σn xi ≡
+
+xTi Σ−2
+n xi .
+
+ˆ as Robust Inverse Covariance Estimator
+3.3 Interpretation of Q
+The total least squares subspace approximation is practically the minimization over L ∈
+G(D, d) of the function
+N
+
+N
+
+x i − P L xi
+
+2
+
+≡
+
+i=1
+
+PL⊥ xi
+
+2
+
+.
+
+(31)
+
+i=1
+
+Its solution is obtained by the span of the top d right vectors of the data matrix X (whose
+rows are the data points in X ), or equivalently, the top d eigenvectors of the covariance
+matrix XT X. The convex relaxation used in (31) can be also applied to (31) to obtain the
+following convex minimization problem:
+N
+
+ˆ 2 := arg min
+Q
+Q∈H
+
+Qxi 2 .
+
+(32)
+
+i=1
+
+The “relaxed” total least squares subspace is then obtained by the span of the bottom d
+ˆ
+eigenvectors of Q.
+ˆ 2 coincides with a scaled version of the empirical inverse covariance
+We show here that Q
+matrix. This clearly imply that the “relaxed” total least squared subspace coincides with
+the original one (as the bottom eigenvectors of the inverse empirical covariance are the
+771
+
+Teng Zhang and Gilad Lerman
+
+top eigenvectors of the empirical covariance). We require though that the data is of full
+rank so that the empirical inverse covariance is well-defined. This requirement does not
+hold if the data points are contained within a lower-dimensional subspace, in particular, if
+their number is smaller than the dimension. We can easily avoid this restriction by initial
+projection of the data points onto the span of eigenvectors of the covariance matrix with
+nonzero eigenvalues. That is, by projecting the data onto the lowest-dimensional subspace
+containing it without losing any information.
+ˆ 2 is the minimizer of (32) and rank(X) = D
+Theorem 10 If X is the data matrix, Q
+D
+(equivalently the data points span R ), then
+ˆ 2 = (XT X)−1 / tr((XT X)−1 ).
+Q
+
+(33)
+
+We view (4) as a robust version of (32). Since we verified robustness of the subspace
+recovered by (4) and also showed that (32) yields the inverse covariance matrix, we sometimes refer to the solution of (4) as a robust inverse covariance matrix (though we have
+only verified robustness to subspace recovery). This idea helps us interpret our numerical
+procedure for minimizing (4), which we present in §4.
+
+4. IRLS Algorithms for Minimizing (4)
+We propose a fast algorithm for computing our M-estimator by using a straightforward
+iterative re-weighted least squares (IRLS) strategy. We first motivate this strategy in §4.1
+(in particular, see (38) and (40)). We then establish its linear convergence in §4.2. At last,
+we describe its practical choices in §4.3 and summarize its complexity in §4.4.
+4.1 Heuristic Proposal for Two IRLS Algorithms
+The procedure for minimizing (4) formally follows from the simple fact that the directional
+ˆ in any direction Q
+˜ − Q,
+ˆ where Q
+˜ ∈ H, is 0, that is,
+derivative of F at Q
+ˆ
+F (Q)
+
+ˆ
+Q=Q
+
+˜ −Q
+ˆ
+,Q
+
+˜ ∈ H.
+= 0 for any Q
+
+(34)
+
+F
+
+We remark that since H is an affine subspace of matrices, (34) holds globally in H and not
+ˆ
+just locally around Q.
+ˆ as follows (see more details in (44), which appears
+We formally differentiate (4) at Q
+later):
+N ˆ
+ˆ
+Qxi xTi + xi xTi Q
+F (Q)
+=
+.
+(35)
+ˆ
+ˆ i
+Q=Q
+2 Qx
+i=1
+Throughout the formal derivation we ignore the possibility of zero denominator in (35),
+ˆ i = 0 ∀ 1 ≤ i ≤ N ; we later address this issue.
+that is, we assume that Qx
+ˆ is symmetric and Q
+˜ −Q
+ˆ can be any symmetric matrix with trace 0, it is
+Since F (Q)
+ˆ
+easy to note that (34) implies that F (Q) is a scalar matrix (e.g., multiply it by a basis of
+symmetric matrices with trace 0 whose members have exactly 2 nonzero matrix elements).
+772
+
+A Novel M-Estimator for Robust PCA
+
+That is,
+N
+i=1
+
+ˆ i xT + xi xT Q
+ˆ
+Qx
+i
+i
+= cI
+ˆ i
+2 Qx
+
+(36)
+
+for some c ∈ R. This implies that
+N
+
+ˆ =c
+Q
+i=1
+
+−1
+
+xi xTi
+ˆ i
+Qx
+
+.
+
+(37)
+
+Indeed, we can easily verify that (37) solves (36), furthermore, (36) is a Lyapunov equation
+ˆ = 1,
+whose solution is unique (see, e.g., page 1 of Bhatia and Drissi (2005)). Since tr(Q)
+we obtain that
+
+
+−1
+−1
+N
+N
+T
+T
+x
+x
+x
+x
+i i
+i i
+ˆ =
+,
+Q
+/ tr 
+ˆ
+ˆ
+Qxi
+Qxi
+i=1
+
+i=1
+
+ˆ
+which suggests the following iterative estimate of Q:
+
+−1
+N
+T
+xi xi
+/ tr 
+Qk+1 =
+Qk xi
+i=1
+
+N
+i=1
+
+xi xTi
+Qk xi
+
+−1
+
+
+.
+
+(38)
+
+Formula (38) is undefined whenever Qk xi = 0 for some k ∈ N and 1 ≤ i ≤ N . In theory,
+we address it as follows. Let I(Q) = {1 ≤ i ≤ N : Qxi = 0}, L(Q) = Sp{xi }i∈I(Q) and
+
+T (Q) = PL(Q)⊥
+i∈I(Q)
+/
+
+xi xTi
+Qxi
+
+−1
+
+
+
+
+
+ PL(Q)⊥ / trPL(Q)⊥
+i∈I(Q)
+/
+
+xi xTi
+Qxi
+
+−1
+
+
+
+ PL(Q)⊥.
+
+Using this notation, the iterative formula can be corrected as follows
+Qk+1 = T (Qk ).
+
+(39)
+
+In practice, we can avoid data points satisfying Qk xi ≤ δ for a sufficiently small parameter
+δ (instead of Qk xi = 0). We follow a similar idea by replacing F with the regularized
+function Fδ for a regularized parameter δ. In this case, (39) obtains the following form:
+
+
+−1
+−1
+N
+N
+T
+xi xTi
+x
+x
+i i
+.
+Qk+1 =
+/ tr 
+(40)
+max( Qk xi , δ)
+max( Qk xi , δ)
+i=1
+
+i=1
+
+We note that the RHS of (39) is obtained as the limit of the RHS of (40) when δ approaches
+0.
+The two iterative formulas, that is, (39) and (40), give rise to IRLS algorithms. For simplicity of notation, we exemplify this idea with the formal expression in (38). It iteratively
+finds the solution to the following weighted (with weight 1/ Qk xi ) least squares problem:
+N
+
+arg min
+Q∈H
+
+i=1
+
+1
+Qk xi
+773
+
+Qxi 2 .
+
+(41)
+
+Teng Zhang and Gilad Lerman
+
+To show this, we note that (41) is a quadratic function and any formal directional derivative
+at Qk+1 is 0. Indeed,
+d
+dQ
+
+N
+i=1
+
+1
+Qk xi
+
+N
+
+Qxi
+
+2
+
+= Qk+1
+
+Q=Qk+1
+
+˜ − Qk+1
+for some c ∈ R, and I, Q
+
+i=1
+
+F
+
+xi xTi
+Qk x i
+
+N
+
++
+i=1
+
+xi xTi
+Qk xi
+
+Qk+1 = cI
+
+˜ ∈ H. Consequently, Qk+1 of (38) is
+= 0 for any Q
+
+the minimizer of (41).
+ˆ as robust inverse
+Formula (40) (as well as (39)) provides another interpretation for Q
+covariance (in addition to the one discussed in §3.3). Indeed, we note for example that the
+RHS of (40) is the scaled inverse of a weighted covariance matrix; the scaling enforces the
+trace of the inverse to be 1 and the weights of xi xTi are significantly larger when xi is an
+inlier. In other words, the weights apply a shrinkage procedure for outliers. Indeed, since
+ˆ i and the underlying subspace, which contain the inliers, is recovered
+Qk xi approaches Qx
+ˆ for an inlier xi the coefficient of xi xT approaches 1/δ, which is a very large
+by ker(Q),
+i
+number (in practice we use δ = 10−20 ). On the other hand, when xi is sufficiently far from
+the underlying subspace, the coefficient of xi xTi is significantly smaller.
+4.2 Theory: Convergence Analysis of the IRLS Algorithms
+The following theorem analyzes the convergence of the sequence proposed by (39) to the
+minimizer of (4).
+D
+ˆ
+Theorem 11 Let X = {xi }N
+i=1 be a data set in R satisfying (14), Q the minimizer of (4),
+Q0 an arbitrary symmetric matrix with tr(Q0 ) = 1 and {Qi }i∈N the sequence obtained by
+iteratively applying (39) (while initializing it with Q0 ), then {Qi }i∈N converges to a matrix
+˜ ∈ H. If Qx
+˜ i = 0 for all 1 ≤ i ≤ N , then Q
+˜ =Q
+ˆ and furthermore, {F (Qi )}i∈N converges
+Q
+˜
+˜
+linearly to F (Q) and {Qi }i∈N converges r-linearly to Q.
+
+ˆ in Theorem 11 (i.e., Qx
+ˆ i = 0 for all 1 ≤ i ≤
+The condition for the linear convergence to Q
+N ) usually does not occur for noiseless data. This condition is common in IRLS algorithms
+whose objective functions are l1 -type and are not twice differentiable at 0. For example,
+Weiszfeld’s Algorithm (Weiszfeld, 1937) may not converge to the geometric median but to
+one of the data points (Kuhn, 1973, §3.4). On the other hand, regularized IRLS algorithms
+often converge linearly to the minimizer of the regularized function. We demonstrate this
+principle in our case as follows.
+D
+Theorem 12 Let X = {xi }N
+i=1 be a data set in R satisfying (14), Q0 an arbitrary symmetric matrix with tr(Q0 ) = 1 and {Qi }i∈N the sequence obtained by iteratively applying (40)
+(while initializing it with Q0 ). Then, the sequence {Fδ (Qi )}i∈N converges linearly to the
+unique minimum of Fδ (Q), and {Qi }i∈N converges r-linearly to the unique minimizer of
+Fδ (Q).
+
+774
+
+A Novel M-Estimator for Robust PCA
+
+The convergence rate of the iterative application of (40) depends on δ. Following Theorem 6.1 of Chan and Mulet (1999), this rate is at most
+
+r(δ) =
+
+max
+
+∆=∆T ,tr(∆)=0
+
+2
+(xT
+N
+i ∆Q∗ xi )
+3
+i=1, Q∗ xi >δ
+Q ∗ xi
+∆xi 2
+N
+i=1 max( Q∗ xi ,δ )
+
+.
+
+ˆ < C · r(δ)k for some constant C > 0. If (14) holds, then r(δ) < 1 for all
+That is, Qk − Q
+ˆ i = 0} satisfies
+δ > 0 and r(δ) is a non-increasing function. Furthermore, if {xi ∈ X : Qx
+assumption (14), then limδ→0 r(δ) < 1.
+4.3 The Practical Choices for the IRLS Algorithm
+Following the theoretical discussion in §4.2 we prefer using the regularized version of the
+IRLS algorithm. We fix the regularization parameter to be smaller than the rounding error,
+that is, δ = 10−20 , so that the regularization is very close to the original problem (even without regularization the iterative process is stable, but may have few warnings on badly scaled
+or close to singular matrices). The idea of the algorithm is to iteratively apply (40) with
+an arbitrary initialization (symmetric with trace 1). We note that in theory {Fδ (Qk )}k∈N
+is non-increasing (see, e.g., the proof of Theorem 12). However, empirically the sequence
+decreases when it is within the rounding error to the minimizer. Therefore, we check Fδ (Qk )
+every four iterations and stop our algorithm when we detect an increase (we noticed empirically that checking every four iterations, instead of every iteration, improves the accuracy
+of the algorithm). Algorithm 2 summarizes our practical procedure for minimizing (4).
+Algorithm 2 Practical and Regularized Minimization of (4)
+Input: X = {x1 , x2 , · · · , xN } ⊆ RD : data
+ˆ a symmetric matrix in RD×D with tr(Q)
+ˆ = 1.
+Output: Q:
+Steps:
+• δ = 10−20
+• Arbitrarily initialize Q0 to be a symmetric matrix with tr(Q0 ) = 1
+• k = −1
+repeat
+• k=k+1
+• Qk+1 =
+
+−1
+xi xT
+N
+i
+/ tr
+i=1 max( Qk xi ,δ)
+
+−1
+xi xT
+N
+i
+i=1 max( Qk xi ,δ)
+
+.
+
+until F (Qk+1 ) > F (Qk−3 ) and mod (k + 1, 4) = 0
+ˆ := Qk
+• Output Q
+
+4.4 Complexity of Algorithm 2
+Each update of Algorithm 2 requires a complexity of order O(N · D2 ), due to the sum of
+N D × D matrices. Therefore, for ns iterations the total running time of Algorithm 2 is
+of order O(ns · N · D2 ). In most of our numerical experiments ns was less than 40. The
+storage of this algorithm is O(N × D), which amounts to storing X . Thus, Algorithm 2 has
+775
+
+Teng Zhang and Gilad Lerman
+
+the same order of storage and complexity as PCA. In practice, it might be a bit slower due
+to a larger constant for the actual complexity.
+
+5. Subspace Recovery in Practice
+We view the GMS algorithm as a prototype for various subspace recovery algorithms. We
+discuss here modifications and extensions of this procedure in order to make it even more
+practical. Sections 5.1 and 5.2 discuss the cases where d is unknown and known respectively;
+in particular, §5.2.1 proposes the EGMS algorithm when d is known. At last, §5.3 concludes
+with the computational complexity of the GMS and EGMS algorithms.
+5.1 Subspace Recovery without Knowledge of d
+In theory, the subspace recovery described here can work without knowing the dimension d.
+In the noiseless case, one may use (5) to estimate the subspace as guaranteed by Theorem 1.
+ˆ and then apply the
+In the case of small noise one can estimate d from the eigenvalues of Q
+GMS algorithm. This strategy is theoretically justified by Theorems 1 and 6 as well as
+the discussion following (81). The problem is that condition (9) for guaranteeing exact
+recovery by GMS is restrictive; in particular, it requires the number of outliers to be larger
+than at least D − d (according to our numerical experiments it is safe to use the lower
+bound 1.5 (D − d)). For practitioners, this is a failure mode of GMS, especially when the
+dimension of the data set is large (for example, D > N ).
+While this seems to be a strong restriction, we remark that the problem of exact subspace
+recovery without knowledge of the intrinsic dimension is rather hard and some assumptions
+on data sets or some knowledge of data parameters would be expected. Other algorithms for
+this problem, such as Chandrasekaran et al. (2011), Cand`es et al. (2011), Xu et al. (2010b)
+and McCoy and Tropp (2011), require estimates of unknown regularization parameters
+(which often depend on various properties of the data, in particular, the unknown intrinsic
+dimension) or strong assumptions on the underlying distribution of the outliers or corrupted
+elements.
+We first note that if only conditions (6) and (7) hold, then Theorem 1 still guarantees
+that the GMS algorithm outputs a subspace containing the underlying subspace. Using
+some information on the data one may recover the underlying subspace from the outputted
+subspace containing it, even when dealing with the failure mode.
+In the rest of this section we describe several practical solutions for dealing with the
+failure mode, in particular, with small number of outliers. We later demonstrate them
+numerically in §6.2 for artificial data and in §6.7 and §6.8 for real data.
+Our first practical solution is to reduce the ambient dimension of the data. When the
+reduction is not too aggressive, it can be performed via PCA. In §5.2.1 we also propose a
+robust dimensionality reduction which can be used instead. There are two problems with
+this strategy. First of all, the reduced dimension is another parameter that requires tuning.
+Second of all, some information may be lost by the dimensionality reduction and thus exact
+recovery of the underlying subspace is generally impossible.
+A second practical solution is to add artificial outliers. The number of added outliers
+should not be too large (otherwise (6) and (7) will be violated), but they should sufficiently
+permeate through RD so that (9) holds. In practice, the number of outliers can be 2D,
+776
+
+A Novel M-Estimator for Robust PCA
+
+since empirically (9) holds with high probability when N0 = 2(D − d). To overcome the
+possible impact of outliers with arbitrarily large magnitude, we project the data with artificial outliers onto the sphere (following Lerman et al. 2012). Furthermore, if the original
+data matrix does not have full rank (in particular if N < D) we reduce the dimension of
+the data (by PCA) to be the rank of the data matrix. This dimensionality reduction clearly
+does not result in any loss of information. We refer to the whole process of initial “lossless
+dimensionality reduction” (if necessary), addition of 2D artificial Gaussian outliers, normalization onto the sphere and application of GMS (with optional estimation of d by the
+ˆ as the GMS2 algorithm. We believe that it is the best practical solution
+eigenvalues of Q)
+to avoid condition (9) when d is unknown.
+A third solution is to regularize our M estimator, that is, to minimize the following
+objective function with the regularization parameter λ:
+N
+
+ˆ =
+Q
+
+arg min
+
+Qxi + λ Q
+
+tr(Q)=1,Q=QT
+
+2
+F.
+
+(42)
+
+i=1
+
+The IRLS algorithm then becomes
+N
+
+Qk+1 =
+i=1
+
+xi xTi
+max( Qk xi , δ)
+
+−1
+
++ 2λI
+
+
+
+N
+
+/ tr 
+i=1
+
+xi xTi
+max( Qk xi , δ)
+
+−1
+
+
++ 2λI .
+
+ˆ >
+We note that if λ = 0 and there are only few outliers, then in the noiseless case dim(ker(Q))
+d and in the small noise case the number of significantly small eigenvalues is bigger than
+ˆ → I/D, whose kernel is degenerate (similarly, it
+d. On the other hand when λ → ∞, Q
+has no significantly small eigenvalues). Therefore, there exists an appropriate λ for which
+ˆ (or the number of significantly small eigenvalues of Q)
+ˆ is d. This formulation
+dim(ker(Q))
+transforms the estimation of d into estimation of λ. This strategy is in line with other common regularized solutions to this problem (see, e.g., Chandrasekaran et al. 2011; Cand`es
+et al. 2011; Xu et al. 2010b; McCoy and Tropp 2011), however, we find it undesirable to
+estimate a regularization parameter that is hard to interpret in terms of the data.
+5.2 Subspace Recovery with Knowledge of d
+Knowledge of the intrinsic dimension d can help improve the performance of GMS or suggest completely new variants (especially as GMS always finds a subspace containing the
+underlying subspace). For example, knowledge of d can be used to carefully estimate the
+parameter λ of (42), for example, by finding λ yielding exactly a d-dimensional subspace
+via a bisection procedure.
+Lerman et al. (2012) modified the strategy described in here by requiring an additional
+1
+constraint on the maximal eigenvalue of Q in (28): λmax (Q) ≤ D−d
+(where λmax (Q) is
+the largest eigenvalue of Q). This approach has theoretical guarantees, but it comes with
+the price of additional SVD in each iteration, which makes the algorithm slightly more
+expensive. Besides, in practice (i.e., noisy setting) this approach requires tuning the upper
+bound on λmax (Q). Indeed, the solution Q to their minimization problem (with λmax (Q ) ≤
+1/(D − d) and tr(Q ) = 1) satisfies that dim(ker(Q ) is at most d and equals d when Q is a
+777
+
+Teng Zhang and Gilad Lerman
+
+scaled projector operator. They proved that dim(ker(Q ) = d for the setting of pure inliers
+(lying exactly on a subspace) under some conditions avoiding the three types of enemies.
+However, in practice (especially in noisy cases) the actual subspace often has dimension
+smaller than d and thus the bound on λmax (Q) has to be tuned as an additional parameter.
+1
+In some cases, one may take λmax (Q) > D−d
+and find the subspace according to the bottom
+d eigenvectors. In other cases, a bisection method on the bound of λmax (Q) provide more
+accurate results (see related discussion in Lerman et al. (2012, §6.1.6)).
+5.2.1 The EGMS Algorithm
+We formulate in Algorithm 3 the Extended Geometric Median Subspace (EGMS) algorithm
+for subspace recovery with known intrinsic dimension.
+Algorithm 3 The Extended Geometric Median Subspace Algorithm
+D
+∗
+Input: X = {xi }N
+i=1 ⊆ R : data, d: dimension of L , an algorithm for minimizing (4)
+ˆ a d-dimensional linear subspace in RD .
+Output: L:
+Steps:
+ˆ = RD
+•L
+repeat
+ˆ = arg minQ∈H,QP =0 F (Q)
+•Q
+ˆ⊥
+L
+ˆ
+• u = the top eigenvector of Q
+⊥
+ˆ
+ˆ
+• L = L ∩ Sp(u )
+ˆ =d
+until dim(L)
+We justify this basic procedure in the noiseless case without requiring (9) as follows.
+Theorem 13 Assume that d, D ∈ N, d < D, X is a data set in RD and L∗ ∈ G(D, d). If
+only conditions (6) and (7) hold, then the EGMS Algorithm exactly recovers L∗ .
+In §6.5 we show how the vectors obtained by EGMS at each iteration can be used to
+ˆ is degenerate.
+form robust principal components (in reverse order), even when Q
+5.3 Computational Complexity of GMS and EGMS
+The computational complexity of GMS is of the same order as that of Algorithm 2, that
+is, O(ns · N · D2 ) (where ns is the number of required iterations for Algorithm 2). Indeed,
+ˆ computing L∗ by its smallest d eigenvectors takes an order of O(d · D2 )
+after obtaining Q,
+operations.
+EGMS on the other hand repeats Algorithm 2 D − d times; therefore it adds an order
+of O((D − d) · ns · N · D2 ) operations, where ns denotes the total number of iterations
+for Algorithm 2. In implementation, we can speed up the EGMS algorithm by excluding
+ˆ from L
+ˆ (instead of excluding only the top
+the span of some of the top eigenvectors of Q
+eigenvector in the third step of Algorithm 3). We demonstrate this modified procedure on
+artificial setting in §6.2.
+778
+
+A Novel M-Estimator for Robust PCA
+
+6. Numerical Experiments
+We compare our proposed estimator to other algorithms, while using both synthetic and
+real data. We also demonstrate the effectiveness of some of our practical proposals. In
+§6.1 we describe a model for generating synthetic data. Using this model, we respectively
+demonstrate in §6.2-§6.4 the effectiveness of the following strategies: the practical solutions
+of §5.1 and §5.2, our estimation of the subspace dimension, and our regularization (more
+precisely, its effect on the recovery error). In §6.5 we demonstrate the use of our M estimator
+for robust estimation of eigenvectors of the covariance (or the inverse covariance) matrix.
+At last, actual comparisons are demonstrated in §6.6-§6.8 for synthetic data, face data and
+video surveillance data respectively.
+6.1 Model for Synthetic Data
+In §6.2-§6.4 and §6.6 we generate data from the following model. We randomly choose
+L∗ ∈ G(D, d), sample N1 inliers from the d-dimensional Multivariate Normal distribution N (0, Id×d ) on L∗ and add N0 outliers sampled from a uniform distribution on [0, 1]D .
+The outliers are strongly asymmetric around the subspace to make the subspace recovery
+problem more difficult (Lerman and Zhang, 2010). In some experiments below additional
+Gaussian noise is considered. When referring to this synthetic data we only need to specify
+its parameters N1 , N0 , D, d and possibly the standard deviation for the additive noise.
+˜ its output (i.e., the
+For any subspace recovery algorithm (or heuristics), we denote by L
+∗
+estimator for L ) and measure the corresponding recovery error by eL˜ = PL˜ − PL∗ F .
+6.2 Demonstration of Practical Solutions of §5.1 and §5.2
+We present two different artificial cases, where in one of them condition (9) holds and in
+the other one it does not hold and test the practical solutions of §5.1 and §5.2 in the second
+case.
+The two cases are the following instances of the synthetic model of §6.1: (a) (N1 , N0 , D, d)
+= (100 , 100, 100, 20) and (b) (N1 , N0 , D, d) = (100, 20, 100, 20). The GMS algorithm estimates the underlying subspace L∗ given d = 20 with recovery errors 2.1 × 10−10 and
+3.4 in cases (a) and (b) respectively. In case (a) there are sufficiently many outliers (with
+respect to D − d) and the GMS algorithm is successful. We later show in §6.3 that the
+ˆ In case (b)
+underlying dimension (d = 20) can be easily estimated by the eigenvalues of Q.
+N0 = 0.25 ∗ (D − d), therefore, condition (9) is violated and the GMS algorithm completely
+fails.
+We demonstrate the success of the practical solutions of §5.1 and §5.2 in case (b). We
+assume that the dimension d is known, though in §6.3 we estimate d correctly for the nonregularized solutions of §5.1. Therefore, these solutions can be also applied without knowing
+the dimension. If we reduce the dimension of the data set in case (b) from D = 100 to
+D = 35 (via PCA; though one can also use EGMS), then GMS (with d = 20) achieves a
+recovery error of 0.23, which indicates that GMS almost recovers the subspace correctly.
+We remark though that if we reduce the dimension to, for example, D = 55, then the GMS
+algorithm will still fail. We also note that the recovery error is not as attractive as the
+779
+
+Teng Zhang and Gilad Lerman
+
+ones below; this observation probably indicates that some information was lost during the
+dimension reduction.
+The GMS2 algorithm with d = 20 recovers the underlying subspace in case (b) with
+error 1.2 × 10−10 . This is the method we advocated for when possibly not knowing the
+intrinsic dimension.
+The regularized minimization of (42) with λ = 100 works well for case (b). In fact, it
+ˆ (without using its underlying dimension) with error 3.3 ×
+recovers the subspace as ker Q
+−13
+10 . The only issue is how to determine the value of λ. We claimed in §5.2 that if d is
+known, then λ can be carefully estimated by the bisection method. This is true for this
+example, in fact, we initially chose λ this way.
+We remark that the REAPER algorithm of Lerman et al. (2012) did not perform well
+for this particular data, though in general it is a very successful solution. The recovery
+error of the direct REAPER algorithm was 3.725 (and 3.394 for S-REAPER) and the error
+for its modified version via bisection (relaxing the bound on the largest eigenvalue so that
+ˆ = 20) was 3.734 (and 3.175 for S-REAPER).
+dim(ker(Q))
+At last we demonstrate the performance of EGMS and its faster heuristic with d = 20.
+The recovery error of the original EGMS for case (b) is only 0.095. We suggested in §5.3
+a faster heuristic for EGMS, which can be reformulated as follows: In the third step of
+ˆ with U, the subspace spanned by
+Algorithm 3, we replace u (the top eigenvector of Q)
+several top eigenvectors. In the noiseless case, we could let U be the span of the nonzero
+ˆ This modification of EGMS (for the noiseless case) required only two
+eigenvectors of Q.
+repetitions of Algorithm 2 and its recovery error was 2.2 × 10−13 . In real data sets with
+noise we need to determine the number of top eigenvectors spanning U, which makes this
+modification of EGMS less automatic.
+6.3 Demonstration of Dimension Estimation
+ˆ for cases (a) and (b) of §6.2. The
+We test dimension estimation by eigenvalues of Q
+ˆ
+eigenvalues of Q obtained by Algorithm 2 for the two cases are shown in Figure 2. In
+case (a), the largest logarithmic eigengap (i.e., the largest gap in logarithms of eigenvalues)
+occurs at 80, so we can correctly estimate that d = D − 80 = 20 (the eigenvalues are not
+zero since Algorithm 2 uses the δ-regularized objective function). However, in case (b) the
+largest eigengap occurs at 60 and thus mistakenly predicts d = 40.
+As we discussed in §6.2, the dimension estimation fails here since condition (9) is not
+satisfied. However, we have verified that if we try any of the solutions proposed in §5.1
+then we can correctly recover that d = 20 by the logarithmic eigengap. For example, in
+ˆ in case (b) after dimensionality
+Figure 2 we demonstrate the logarithms of eigenvalues of Q
+reduction (via PCA) onto dimension D = 35 and it is clear that the largest gap is at
+d = 20 (or D − d = 80). We obtained similar graphs when using 2D artificial outliers (more
+precisely, the GMS2 algorithm without the final application of the GMS algorithm) or the
+regularization of (42) with λ = 100.
+6.4 The Effect of the Regularization Parameter δ
+We assume a synthetic data set sampled according to the model of §6.1 with (N1 , N0 , D, d) =
+(250, 250, 100, 10). We use the GMS algorithm with d = 10 and different values of the
+780
+
+A Novel M-Estimator for Robust PCA
+
+0
+0
+−5
+−5
+−10
+
+ˆ
+log(σi (Q))
+
+ˆ
+log(σi (Q))
+
+−10
+−15
+−20
+−25
+
+−15
+−20
+−25
+−30
+
+−30
+
+−35
+
+−35
+
+−40
+
+−40
+
+−45
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+90
+
+100
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+35
+
+index of singular values
+
+index of singular values
+
+Figure 2: Dimension estimation: In the left figure, the starred points and the dotted point
+represent log-scaled eigenvalues of the output of Algorithm 2 for cases (a) and (b)
+respectively (see §6.3). The right figure corresponds to case (b) with dimension
+reduced to 35.
+
+regularization parameter δ and record the recovery error in Figure 3. For 10−14 ≤ δ ≤ 10−2 ,
+log(error) − log(δ) is constant. We thus empirically obtain that the error
+√ is of order O(δ)
+in this range. On the other hand, (27) only obtained an order of O( δ). It is possible
+that methods similar to those of Coudron and Lerman (2012) can obtain sharper error
+bounds. We also expect that for δ sufficiently small (here smaller than 10−14 ), the rounding
+error becomes dominant. On the other hand, perturbation results are often not valid for
+sufficiently large δ (here this is the case for δ > 10−2 ).
+0
+
+log10 (error)
+
+−2
+
+−4
+
+−6
+
+−8
+
+−10
+
+−12
+−16
+
+−14
+
+−12
+
+−10
+
+−8
+
+−6
+
+−4
+
+−2
+
+0
+
+2
+
+log10 (δ)
+
+Figure 3: The recovery errors and the regularization parameters δ
+
+6.5 Information Obtained from Eigenvectors
+Throughout the paper we emphasized the subspace recovery problem, but did not discuss
+at all the information that can be inferred from the eigenvectors of our robust PCA strategy. Since in standard PCA these vectors have significant importance, we exemplify the
+information obtained from our robust PCA and compare it to that obtained from PCA and
+some other robust PCA algorithms.
+781
+
+Teng Zhang and Gilad Lerman
+
+We create a sample from a mixture of two Gaussian distributions with the same mean
+and same eigenvalues of the covariance matrices, but different eigenvectors of the covariance
+matrices. The mixture percentages are 25% and 75%. We expect the eigenvectors of any
+good robust PCA algorithm (robust to outliers as perceived in this paper) to be close to
+that of the covariance of the main component (with 75%).
+More precisely, we sample 300 points from N (0, Σ1 ), where Σ1 is a 10 × 10 diagonal matrix with elements 1, 2−1 , 2−2 , · · · , 2−9 and 100 points from N (0, Σ2 ), where Σ2 = UΣ1 UT ,
+where U is randomly chosen from the set of all orthogonal matrices in R10×10 . The goal is
+to estimate the eigenvectors of Σ1 (i.e., the standard basis vectors in R10 ) in the presence of
+25% “outliers”. Unlike the subspace recovery problem, where we can expect to exactly recover a linear structure among many outliers, here the covariance structure is more complex
+and we cannot exactly recover it with 25% outliers.
+ˆ of Algorithm 2 in
+We estimated the eigenvectors of Σ1 by the the eigenvectors of Q
+ˆ
+reverse order (recall that Q is a scaled and robust version of the inverse covariance). We
+ˆ −1 ”. We also estimated these eigenvectors
+refer to this procedure as “EVs (eigenvectors) of Q
+by standard PCA, LLD (McCoy and Tropp, 2011) with λ = 0.8 D/N and PCP (Cand`es
+et al., 2011) with λ = 1/ max(D, N ). We repeated the random simulation (with different
+samples for the random orthogonal matrix U) 100 times and reported in Table 2 the average
+angles between the estimated and actual top two eigenvectors of Σ1 according to the different
+ˆ −1 ” outperforms PCA, LLD (or OP) and PCP in
+methods. We note that the “EVs of Q
+terms of estimation of the top two eigenvectors of Σ1 . We remark though that PCP does
+not suit for robust estimation of the empirical covariance and thus the comparison is unfair
+for PCP.
+
+Eigenvector 1
+Eigenvector 2
+
+ˆ −1
+EVs of Q
+◦
+3.0
+3.0◦
+
+LLD
+5.5◦
+5.5◦
+
+PCP
+45.7◦
+47.4◦
+
+PCA
+14.8◦
+40.3◦
+
+Table 2: Angles (in degrees) between the estimated and actual top two eigenvectors of Σ1 .
+
+ˆ might
+When the covariance matrix Σ1 (and consequently also Σ2 ) is degenerate, Q
+ˆ
+be singular and therefore Q cannot be directly used to robustly estimate eigenvectors of
+the covariance matrix. For this case, EGMS (Algorithm 3) can be used, where the vector
+u obtained in the ith iteration of Algorithm 3 can be considered as the (D − i + 1)st
+robust eigenvector (that is, we reverse the order again). To test the performance of this
+method, we modify Σ1 in the above model as follows: Σ1 =diag(1, 0.5, 0.25, 0, 0, · · · , 0).
+We repeated the random simulations of this modified model 100 times and reported in
+Table 2 the average angles between the estimated and actual top two eigenvectors of Σ1
+according to the different methods. Here LLD did slightly better than EGMS and they
+both outperformed PCA (and PCP).
+782
+
+A Novel M-Estimator for Robust PCA
+
+Eigenvector 1
+Eigenvector 2
+
+EGMS
+5.2◦
+5.2◦
+
+LLD
+3.4◦
+3.4◦
+
+PCP
+42.6◦
+47.3◦
+
+PCA
+8.2◦
+16.1◦
+
+Table 3: Angles (in degrees) between the estimated and actual top two eigenvectors of Σ1 .
+
+6.6 Detailed Comparison with Other Algorithms for Synthetic Data
+Using the synthetic data of §6.1, we compared the GMS algorithm with the following algorithms: MDR (Mean Absolute Deviation Rounding) of McCoy and Tropp (2011), LLD
+(Low-Leverage Decomposition) of McCoy and Tropp (2011), OP (Outlier Pursuit) of Xu
+et al. (2010b), PCP (Principal Component Pursuit) of Cand`es et al. (2011), MKF (Median K-flats with K = 1) of Zhang et al. (2009), HR-PCA (High-dimensional Robust
+PCA) of Xu et al. (2010a), a common M-estimator (Huber and Ronchetti, 2009, see,
+e.g.,) and R1 -PCA of Ding et al. (2006). The codes of OP and HR-PCA were obtained
+from http://guppy.mpe.nus.edu.sg/~mpexuh, the code of MKF from http://www.math.
+umn.edu/~zhang620/mkf, the code of PCP from http://perception.csl.illinois.edu/
+matrix-rank/sample_code.html with the Accelerated Proximal Gradient and full SVD
+version, the codes of MDR and LLD from http://www.acm.caltech.edu/~mccoy/code/
+and the codes of the common M-estimator, R1 -PCA and GMS will appear in a supplemental
+webpage. We also record the output of standard PCA, where we recover the subspace by
+the span of the top d eigenvectors. We ran the experiments on a computer with Intel Core
+2 CPU at 2.66GHz and 2 GB memory.
+We remark that since the basic GMS algorithm already performed very well on these
+artificial instances, we did not test its extensions and modifications described in §5 (e.g.,
+GMS2 and EGMS).
+For all of our experiments with synthetic data, we could correctly estimate d by the
+largest logarithmic eigengap of the output of Algorithm 2. Nevertheless, we used the knowledge of d for all algorithms for the sake of fair comparison.
+For LLD, OP and PCP we estimated L∗ by the span of the top d eigenvectors of the
+low-rank matrix. Similarly, for the common M-estimator we used the span of the top d
+eigenvectors of the estimated covariance A. For the HR-PCA algorithm we also used the
+true percentage of outliers (50% in our experiments). For LLD, OP and PCP we set the
+mixture parameter λ as 0.8 D/N , 0.8 D/N , 1/ max(D, N ) respectively (following the
+suggestions of McCoy and Tropp (2011) for LLD/OP and Cand`es et al. (2011) for PCP).
+These choices of parameters are also used in experiments with real data sets in §6.7 and
+§6.8.
+For the common M-estimator, we used u(x) = 2 max(ln(x)/x, 1030 ) and the algorithm
+discussed by Kent and Tyler (1991). Considering the conditions in §3.1.1, we also tried other
+functions: u(x) = max(x−0.5 , 1030 ) had a significantly larger recovery error and u(x) =
+max(x−0.9 , 1030 ) resulted in a similar recovery error as max(ln(x)/x, 1030 ) but a double
+running time.
+783
+
+Teng Zhang and Gilad Lerman
+
+We used the syntectic data with different values of (N1 , N0 , D, d). In some instances we
+also add noise from the Gaussian distribution N (0, η 2 I) with η = 0.1 or 0.01. We repeated
+each experiment 20 times (due to the random generation of data). We record in Table 4
+the mean running time, the mean recovery error and their standard deviations.
+We remark that PCP is designed for uniformly corrupted coordinates of data, instead
+of corrupted data points (i.e., outliers), therefore, the comparison with PCP is somewhat
+unfair for this kind of data. On the other hand, the applications in §6.7 and §6.8 are tailored
+for the PCP model (though the other algorithms still apply successfully to them).
+From Table 4 we can see that GMS is the fastest robust algorithm. Indeed, its running
+time is comparable to that of PCA. We note that this is due to its linear convergence rate
+(usually it converges in less than 40 iterations). The common M-estimator is the closest
+algorithm in terms of running time to GMS, since it also has the linear convergence rate.
+In contrast, PCP, OP and LLD need a longer running time since their convergence rates
+are much slower. Overall, GMS performs best in terms of exact recovery. The PCP, OP
+and LLD algorithms cannot approach exact recovery even by tuning the parameter λ. For
+example, in the case where (N1 , N0 , D, d) = (125, 125, 10, 5) with η = 0, we checked a geometric sequence of 101 λ values from 0.01 to 1, and the smallest recovery errors for LLD,
+OP and PCP are 0.17, 0.16 and 0.22 respectively. The common M-estimator performed
+very well for many cases (sometimes slightly better than GMS), but its performance deteriorates as the density of outliers increases (e.g., poor performance for the case where
+(N1 , N0 , D, d) = (125, 125, 10, 5)). Indeed, Theorem 9 indicates problems with the exact
+recovery of the common M-estimator.
+At last, we note that the empirical recovery error of the GMS algorithm for noisy data
+√
+sets is in the order of η, where η is the size of noise.
+6.7 Yale Face data
+Following Cand`es et al. (2011), we apply our algorithm to face images. It has been shown
+that face images from the same person lie in a low-dimensional linear subspace of dimension at most 9 (Basri and Jacobs, 2003). However, cast shadows, specular reflections and
+saturations could possibly distort this low-rank modeling. Therefore, one can use a good
+robust PCA algorithm to remove these errors if one has many images from the same face.
+We used the images of the first two persons in the extended Yale face database B (Lee
+et al., 2005), where each of them has 65 images of size 192 × 168 under different illumination
+conditions. Therefore we represent each person by 65 vectors of length 32256. Following
+Basri and Jacobs (2003) we applied GMS, GMS2 and EGMS with d = 9 and we also
+reduced the 65 × 32256 matrix to 65 × 65 (in fact, we only reduced the representation of the
+column space) by rejecting left vectors with zero singular values. We also applied the GMS
+algorithm after initial dimensionality reduction (via PCA) to D = 20. The running times of
+EGMS and GMS (without dimensionality reduction) are 13 and 0.16 seconds respectively
+on average for each face (we used the same computer as in §6.6). On the other hand, the
+running times of PCP and LLD are 193 and 2.7 seconds respectively. Moreover, OP ran
+out of memory. The recovered images are shown in Figure 4, where the shadow of the nose
+and the parallel lines were removed best by EGMS. The GMS algorithm without dimension
+reduction did not perform well, due to the difficulty explained in §5 and demonstrated in
+784
+
+A Novel M-Estimator for Robust PCA
+
+(N1 , N0 , D, d)
+e
+(125, 125, 10, 5) std.e
+η=0
+t(s)
+std.t
+e
+(125, 125, 10, 5) std.e
+η = 0.01
+t(s)
+std.t
+e
+(125, 125, 10, 5) std.e
+η = 0.1
+t(s)
+std.t
+e
+(125, 125, 50, 5) std.e
+η=0
+t(s)
+std.t
+e
+(125, 125, 50, 5) std.e
+η = 0.01
+t(s)
+std.t
+e
+(125, 125, 50, 5) std.e
+η = 0.1
+t(s)
+std.t
+e
+(250, 250, 100, 10)std.e
+η=0
+t(s)
+std.t
+e
+(250, 250, 100, 10)std.e
+η = 0.01
+t(s)
+std.t
+e
+(250, 250, 100, 10)std.e
+η = 0.1
+t(s)
+std.t
+e
+(500, 500, 200, 20)std.e
+η=0
+t(s)
+std.t
+e
+(500, 500, 200, 20)std.e
+η = 0.01
+t(s)
+std.t
+e
+(500, 500, 200, 20)std.e
+η = 0.1
+t(s)
+std.t
+
+GMS
+6e-11
+4e-11
+0.008
+0.002
+0.011
+0.004
+0.008
+0.001
+0.076
+0.023
+0.007
+0.001
+2e-11
+3e-11
+0.015
+0.001
+0.061
+0.009
+0.023
+0.002
+0.252
+0.027
+0.021
+0.001
+3e-12
+2e-12
+0.062
+0.006
+0.077
+0.006
+0.084
+0.010
+0.225
+0.016
+0.076
+0.007
+4e-11
+1e-10
+0.464
+0.024
+0.082
+0.003
+0.592
+0.060
+0.203
+0.007
+0.563
+0.061
+
+MDR LLD OP PCP HR-PCA
+0.275 1.277 0.880 0.605 0.210
+0.052 0.344 0.561 0.106 0.049
+0.371 0.052 0.300 0.056 0.378
+0.120 0.005 0.054 0.002 0.001
+0.292 1.260 1.061 0.567 0.233
+0.063 0.316 0.491 0.127 0.075
+0.340 0.053 0.287 0.056 0.380
+0.075 0.007 0.033 0.001 0.009
+0.264 1.352 0.719 0.549 0.200
+0.035 0.161 0.522 0.102 0.051
+0.332 0.055 0.301 0.056 0.378
+0.083 0.004 0.044 0.001 0.001
+0.652 0.258 0.256 0.261 0.350
+0.042 0.030 0.032 0.033 0.023
+0.420 0.780 1.180 3.164 0.503
+0.128 0.978 0.047 0.008 0.055
+0.655 0.274 0.271 0.273 0.355
+0.027 0.039 0.038 0.040 0.038
+0.401 4.155 1.506 0.499 0.653
+0.079 0.065 0.197 0.006 0.044
+0.658 0.292 0.290 0.296 0.358
+0.033 0.032 0.032 0.033 0.027
+0.363 0.923 1.726 0.501 0.638
+0.063 0.033 0.470 0.009 0.051
+0.880 0.214 0.214 0.215 0.332
+0.018 0.019 0.019 0.019 0.014
+1.902 3.143 7.740 2.882 1.780
+0.354 4.300 0.038 0.014 0.041
+0.885 0.217 0.216 0.219 0.334
+0.031 0.019 0.018 0.020 0.019
+1.907 21.76811.319 2.923 1.785
+0.266 0.261 0.291 0.014 0.041
+0.888 0.238 0.237 0.262 0.342
+0.020 0.019 0.019 0.019 0.019
+1.917 4.430 16.649 2.876 1.781
+0.299 0.069 1.184 0.014 0.025
+1.246 0.162 0.164 0.167 0.381
+0.018 0.011 0.011 0.011 0.010
+23.33216.77889.09016.604 8.602
+2.991 0.878 1.836 0.100 0.216
+1.247 0.160 0.162 0.166 0.374
+0.018 0.007 0.007 0.008 0.011
+23.214128.51122.6116.823 8.541
+3.679 1.155 6.500 0.036 0.219
+1.262 0.204 0.204 0.250 0.391
+0.012 0.007 0.007 0.007 0.012
+24.11224.312202.2216.473 8.552
+2.362 0.226 8.362 0.050 0.155
+
+MKF
+0.054
+0.030
+0.514
+0.262
+0.069
+0.036
+0.722
+0.364
+0.099
+0.033
+0.614
+0.349
+0.175
+0.028
+0.719
+0.356
+0.196
+0.038
+0.656
+0.377
+0.264
+0.031
+0.641
+0.240
+0.161
+0.024
+1.509
+1.041
+0.164
+0.019
+1.412
+0.988
+0.231
+0.018
+1.555
+0.756
+0.136
+0.009
+5.557
+4.810
+0.139
+0.010
+6.134
+4.318
+0.275
+0.272
+8.745
+3.408
+
+PCA
+0.193
+0.050
+0.001
+8e-06
+0.213
+0.073
+0.001
+1e-05
+0.185
+0.048
+0.001
+7e-06
+0.350
+0.025
+0.006
+9e-05
+0.359
+0.033
+0.006
+8e-05
+0.363
+0.032
+0.006
+1e-04
+0.330
+0.012
+0.039
+3e-04
+0.335
+0.017
+0.039
+3e-04
+0.345
+0.015
+0.039
+4e-04
+0.381
+0.008
+0.347
+0.009
+0.378
+0.006
+0.354
+0.019
+0.398
+0.009
+0.348
+0.010
+
+M-est. R1 -PCA
+0.102 0.121
+0.037 0.048
+0.035 0.020
+4e-04 0.014
+0.115 0.139
+0.054 0.073
+0.035 0.052
+4e-04 0.069
+0.122 0.128
+0.041 0.050
+0.035 0.032
+4e-04 0.037
+1e-12 0.307
+5e-12 0.029
+0.204 0.020
+0.001 0.011
+0.007 0.321
+0.001 0.038
+0.191 0.028
+0.001 0.022
+0.106 0.326
+0.014 0.032
+0.191 0.025
+0.001 0.012
+2e-12 0.259
+9e-12 0.016
+0.819 1.344
+0.023 0.708
+0.009 0.263
+3e-04 0.018
+0.400 1.086
+0.002 0.738
+0.136 0.276
+0.010 0.019
+0.413 1.135
+0.011 0.817
+3e-13 0.239
+6e-14 0.009
+6.517 15.300
+0.126 3.509
+0.012 0.236
+2e-04 0.007
+2.361 15.165
+0.064 3.485
+0.166 0.270
+0.005 0.008
+2.192 15.150
+0.064 3.420
+
+Table 4: Mean running times, recovery errors and their standard deviations for synthetic
+data.
+
+785
+
+Teng Zhang and Gilad Lerman
+
+§6.2. The GMS2 algorithm turns out to work well, except for the second image of face
+2. However, other algorithms such as PCP and GMS with dimension reduction (D = 20)
+performed even worse on this image and LLD did not remove any shadow at all; the only
+good algorithm for this image is EGMS.
+
+Figure 4: Recovering faces: (a) given images, (b)-(f) the recovered images by EGMS, GMS
+without dimension reduction, GMS2, GMS with dimension reduced to 20, PCP
+and LLD respectively
+
+6.8 Video Surveillance
+For background subtraction in surveillance videos (Li et al., 2004), we consider the following two videos used by Cand`es et al. (2011): “Lobby in an office building with switching
+on / off lights” and “Shopping center” from http://perception.i2r.a-star.edu.sg/bk_
+model/bk_index.html. In the first video, the resolution is 160 × 128 and we used 1546
+frames from ‘SwitchLight1000.bmp’ to ‘SwitchLight2545.bmp’. In the second video, the
+resolution is 320 × 256 and we use 1000 frames from ‘ShoppingMall1001.bmp’ to ‘ShoppingMall2000.bmp’. Therefore, the data matrices are of size 1546 × 20480 and 1001 × 81920.
+We used a computer with Intel Core 2 Quad Q6600 2.4GHz and 8 GB memory due to the
+large size of these data.
+786
+
+A Novel M-Estimator for Robust PCA
+
+We applied GMS, GMS2 and EGMS with d = 3 and with initial dimensionality reduction
+to 200 to reduce running time. For this data we are unaware of a standard choice of d; though
+we noticed empirically that the outputs of our algorithms as well as other algorithms are
+very stable to changes in d within the range 2 ≤ d ≤ 5. We obtain the foreground by
+the orthogonal projection to the recovered 3-dimensional subspace. Figure 5 demonstrates
+foregrounds detected by EGMS, GMS, GMS2, PCP and LLD, where PCP and LLD used
+λ = 1/ max(D, N ), 0.8 D/N . We remark that OP ran out of memory. Using truth
+labels provided in the data, we also form ROC curves for GMS, GMS2, EGMS and PCP in
+Figure 6 (LLD is not included since it performed poorly for any value of λ we tried). We note
+that PCP performs better than both GMS and EGMS in the ‘Shoppingmall’ video, whereas
+the latter algorithms perform better than PCP in the ‘SwitchLight’ video. Furthermore,
+GMS is significantly faster than EGMS and PCP. Indeed, the running times (on average)
+of GMS, EGMS and PCP are 91.2, 1018.8 and 1209.4 seconds respectively.
+
+Figure 5: Video surveillance: (a) the given frames (b)-(e) the detected foreground by
+EGMS, GMS, GMS2, PCP, LLD respectively
+
+787
+
+1
+
+1
+
+0.9
+
+0.9
+
+0.8
+
+0.8
+
+0.7
+
+0.7
+
+True positive rate
+
+True positive rate
+
+Teng Zhang and Gilad Lerman
+
+0.6
+0.5
+0.4
+0.3
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+PCP
+GMS
+GMS2
+EGMS
+
+0.1
+0
+
+0.6
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+PCP
+GMS
+GMS2
+EGMS
+
+0.1
+
+1
+
+0
+
+0
+
+0.1
+
+0.2
+
+False positive rate
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+False positive rate
+
+Figure 6: ROC curves for EGMS, GMS, GMS2 and PCP in the ’SwitchLight’ video (the
+left figure) and the ’Shoppingmall’ video (the right figure)
+
+7. Proofs of Theorems
+We present the technical proofs of the theoretical statements of this paper according to
+their order of appearance.
+7.1 Proof of Theorem 1
+We will prove that if conditions (6) and (7) hold, then the set of all minimizers satisfying (4)
+coincides with the set of all minimizers satisfying (8). This clearly implies that if conditions
+ˆ of (4) satisfies ker(Q)
+ˆ ⊇ L∗ (indeed, this condition
+(6) and (7) hold, then any minimizer Q
+is equivalent with the condition QPL∗ = 0, which appears in the formulation of (8)). If
+ˆ = L∗ and the theorem is concluded.
+condition (9) also holds, then ker(Q)
+ˆ 0 of the
+We assume that conditions (6) and (7) hold and arbitrarily fix a minimizer Q
+oracle problem (8). We claim that in order to establish the equivalence of the sets of
+solutions of (4) and (8), it is sufficient to prove that
+ˆ 0 + ∆) − F (Q
+ˆ 0 ) > 0 for any symmetric ∆ with tr(∆) = 0 and ∆PL∗ = 0.
+F (Q
+
+(43)
+
+ˆ 0 is also a minimizer of (4). This observation
+Indeed, we first note that (43) implies that Q
+follows from combining (43) with the following equation:
+ˆ 0 + ∆) − F (Q
+ˆ 0 ) ≥ 0 for any symmetric ∆ with tr(∆) = 0 and ∆PL∗ = 0,
+F (Q
+which is an immediate consequence of the definition of (8). To conclude the equivalence,
+ˆ 0 , which is a minimizer of (8) but not a
+we assume on the contrary that there exists Q
+ˆ
+minimizer of (4). We denote by Q0 a minimizer of (8), which is also a minimizer of (4) and
+ˆ −Q
+ˆ 0 . Then by the definitions of Q
+ˆ 0, Q
+ˆ and ∆: tr(∆) = 0, ∆PL∗ = 0 and
+let ∆ := Q
+0
+0
+ˆ
+ˆ
+F (Q0 ) = F (Q0 ). This contradicts (43) and thus concludes the proof.
+In order to conclude (43) (and thus the theorem) we first differentiate Qx at Q = Q0
+when x ∈ ker(Q0 )⊥ as follows:
+d
+Qx
+dQ
+
+Q=Q0
+
+=
+
+d
+dQ
+
+Qx
+
+2
+Q=Q0
+
+=
+
+d QxxT QT
+dQ 2 Q0 x
+788
+
+Q=Q0
+
+=
+
+Q0 xxT + xxT Q0
+. (44)
+2 Q0 x
+
+A Novel M-Estimator for Robust PCA
+
+ˆ 0 x = 0 and ∆ ∈ RD×D symmetric:
+We note that for any x ∈ RD \ {0} satisfying Q
+ˆ 0 + ∆)x − Q
+ˆ 0 x ≥ ∆, (Q
+ˆ 0 xxT + xxT Q
+ˆ 0 )/2 Q
+ˆ 0x
+(Q
+
+F
+
+ˆ 0 xxT / Q
+ˆ 0x
+= ∆, Q
+
+F
+
+.
+
+(45)
+Indeed, the first equality follows from (44) and the convexity of Qx in Q and the second
+ˆ 0 as well as the definition of the Frobenius
+equality follows from the symmetry of ∆ and Q
+dot product.
+ˆ 0 x = 0, then clearly
+If on the other hand Q
+ˆ 0 + ∆)x − Q
+ˆ 0 x = ∆x .
+(Q
+
+(46)
+
+ˆ 0x = 0
+For simplicity of our presentation, we use (46) only for x ∈ X1 (where obviously Q
+ˆ
+since Q0 PL∗ = 0). On the other hand, we use (45) for all x ∈ X0 . One can easily check
+ˆ 0 x = 0, then replacing (45) with (46) does not change the analysis
+that if x ∈ X0 and Q
+below. Using these observations we note that
+ˆ 0 + ∆) − F (Q
+ˆ 0) ≥
+F (Q
+
+ˆ 0 xxT / Q
+ˆ 0x
+∆, Q
+
+∆x +
+x∈X1
+
+x∈X0
+
+F
+
+.
+
+(47)
+
+ˆ 0 + ∆ ∈ H and (Q
+ˆ 0 + ∆)PL∗ = 0. Since
+We assume first that ∆PL∗ = 0. In this case, Q
+ˆ
+Q0 is the minimizer of (8), we obtain the following identity (which is analogous to (34)):
+∆,
+x∈X0
+
+ˆ 0 xxT
+Q
+ˆ 0x
+Q
+
+≥ 0 ∀ ∆ ∈ RD×D s.t. tr(∆) = 0 , ∆PL∗ = 0.
+
+(48)
+
+F
+
+We will prove (43) by showing that the RHS of (47) is positive for any symmetric ∆
+ˆ 0 = PL∗⊥ Q
+ˆ0
+with tr(∆) = 0 and ∆PL∗ = 0. Using (47) and the facts that X1 ⊂ L∗ and Q
+ˆ
+ˆ
+∗
+∗
+(since PL Q0 = Q0 PL = 0), we establish the following inequality:
+ˆ 0 + ∆) − F (Q
+ˆ 0) ≥
+F (Q
+x∈X1
+
+=
+≥
+
+x∈X0
+
+ˆ 0 xxT / Q
+ˆ 0x
+(∆PL∗ + ∆PL∗⊥ ), PL∗⊥ Q
+
+∆PL∗ x +
+x∈X1
+
+ˆ 0 xxT / Q
+ˆ 0x
+∆, Q
+
+∆x +
+
+x∈X0
+
+F
+
+F
+
+√
+( PL∗ ∆PL∗ x + PL∗⊥ ∆PL∗ x ) / 2
+
+x∈X1
+
+ˆ 0 xxT / Q
+ˆ 0x
+(PL∗⊥ ∆PL∗ + PL∗⊥ ∆PL∗⊥ ), Q
+
++
+
+F
+
+x∈X0
+
+.
+
+(49)
+
+For ease of notation we denote ∆0 = tr(PL∗ ∆PL∗ )v0 v0T , where v0 is the minimizer
+of the RHS of (6). Combining the following two facts: tr(∆0 ) − tr(PL∗ ∆PL∗ ) = 0 and
+tr(PL∗ ∆PL∗ ) + tr(PL∗⊥ ∆PL∗⊥ ) = tr(∆) = 0, we obtain that
+tr(∆0 + PL∗⊥ ∆PL∗⊥ ) = 0.
+Further application of (48) implies that
+ˆ 0 xxT / Q
+ˆ 0x
+∆0 + PL∗⊥ ∆PL∗⊥ , Q
+x∈X0
+
+789
+
+F
+
+≥ 0.
+
+(50)
+
+Teng Zhang and Gilad Lerman
+
+We note that
+ˆ 0 xxT / Q
+ˆ 0x
+PL∗⊥ ∆PL∗⊥ , Q
+
+F
+
+ˆ 0 xxT / Q
+ˆ 0x
+= PL∗⊥ ∆PL∗⊥ PL∗⊥ , Q
+
+ˆ 0 xx PL∗⊥ / Q
+ˆ 0x
+= PL∗⊥ ∆PL∗⊥ , Q
+T
+
+F
+
+.
+
+F
+
+(51)
+
+Combining (50) and (51) we conclude that
+ˆ 0 xxT / Q
+ˆ 0x
+PL∗⊥ ∆PL∗⊥ , Q
+
+−
+x∈X0
+
+ˆ 0 xxT PL∗⊥ / Q
+ˆ 0x
+∆0 , Q
+
+≤
+
+F
+
+x∈X0
+
+ˆ 0 x/ Q
+ˆ 0 x )(vT PL∗⊥ x) ≤ | tr(PL∗ ∆PL∗ )|
+tr(PL∗ ∆PL∗ )(v0T Q
+0
+
+=
+x∈X0
+
+F
+
+|v0T x|.
+
+(52)
+
+x∈X0
+
+We apply (52) and then use (6) with Q = PL∗ ∆PL∗ / tr(PL∗ ∆PL∗ ) to obtain the inequality:
+√
+PL∗ ∆PL∗ x / 2 +
+x∈X1
+
+≥
+
+ˆ 0 xxT / Q
+ˆ 0x
+PL∗⊥ ∆PL∗⊥ , Q
+x∈X0
+
+√
+PL∗ ∆PL∗ x / 2 − | tr(PL∗ ∆PL∗ )|
+
+F
+
+|v0T x| > 0.
+
+(53)
+
+x∈X0
+
+x∈X1
+
+We define H1 = {Q ∈ H : QPL∗⊥ = 0} and claim that (7) leads to the following
+inequality:
+√
+Q(PL∗ x) ∀Q ∈ H1 .
+(54)
+Q(PL∗ x) > 2
+x∈X1
+
+x∈X0
+
+Indeed, since the RHS of (54) is a convex function of Q, its maximum is achieved at the
+set of all extreme points of H1 , which is {Q ∈ RD×D : Q = vvT , where v ∈ L∗ , v = 1}.
+Therefore the maximum of the RHS of (54) is the RHS of (7). Since the minimum of the
+LHS of (54) is also the LHS of (7), (54) is proved.
+We also claim that (54) can be extended from H1 to all Q ∈ RD×D such that QPL∗⊥ = 0.
+Indeed, for any Q ∈ RD×D satisfying QPL∗⊥ = 0 and having the SVD decomposition Q =
+UΣVT , we can assign the following matrix Q = Q (Q) ∈ H1 : Q := VΣVT / tr(VΣVT ).
+It is not hard to note that the inequality in (54) holds for Q if and only if it holds for Q .
+By first applying Cauchy’s inequality, then using the defining property of projections
+and at last applying (54) with Q = PL∗⊥ ∆PL∗ (while using its latter extension beyond
+H1 ), we obtain the inequality:
+√
+PL∗⊥ ∆PL∗ x / 2 +
+x∈X1
+
+≥
+x∈X1
+
+=
+
+√
+PL∗⊥ ∆PL∗ x / 2 −
+
+ˆ 0 xxT / Q
+ˆ 0x
+PL∗⊥ ∆PL∗ , Q
+x∈X0
+
+F
+
+PL∗⊥ ∆PL∗ x
+x∈X0
+
+√
+PL∗⊥ ∆PL∗ (PL∗ x) / 2 −
+
+x∈X1
+
+PL∗⊥ ∆PL∗ (PL∗ x) > 0.
+
+(55)
+
+x∈X0
+
+Finally, we combine (53) and (55) and conclude that the RHS of (49) is nonnegative and
+consequently (43) holds.
+790
+
+A Novel M-Estimator for Robust PCA
+
+7.2 Proof of Theorem 2
+Assume on the contrary that F is not strictly convex, in particular, there exists 0 < t0 < 1
+such that
+t0 · F (Q1 ) + (1 − t0 ) · F (Q2 ) = F (t0 · Q1 + (1 − t0 ) · Q2 ) for Q1 = Q2 ,
+or equivalently,
+N
+
+t0 ·
+
+N
+
+Q1 xi + (1 − t0 ) ·
+i=1
+
+N
+
+Q2 xi =
+i=1
+
+(t0 · Q1 + (1 − t0 ) · Q2 )xi .
+
+(56)
+
+i=1
+
+Combining (56) with the fact that Q1 xi + Q2 xi ≥ (Q1 + Q2 )xi , we obtain that
+t0 · Q1 xi + (1 − t0 ) · Q2 xi = (t0 · Q1 + (1 − t0 ) · Q2 )xi for any 1 ≤ i ≤ N and therefore
+there exists a sequence {ci }N
+i=1 ⊂ R such that
+Q2 xi = 0 or Q1 xi = ci Q2 xi for all 1 ≤ i ≤ N .
+We conclude Theorem 2 by considering two different cases.
+ker(Q1 ) = ker(Q2 ). We denote
+
+(57)
+
+We first assume that
+
+˜ 1 = Pker(Q )⊥ Q1 Pker(Q )⊥ and Q
+˜ 2 = Pker(Q )⊥ Q2 Pker(Q )⊥ .
+Q
+1
+1
+1
+1
+It follows from (57) that
+˜ 1 (Pker(Q )⊥ xi ) = ci Q
+˜ 2 (Pker(Q )⊥ xi )
+Q
+1
+1
+˜ −1 Q
+˜ 2 . We claim
+and consequently that Pker(Q1 )⊥ xi lies in one of the eigenspaces of Q
+1
+−1
+−1
+˜ Q
+˜ 2 is a scalar matrix. Indeed, if on the contrary Q
+˜ Q
+˜ 2 is not a scalar matrix,
+that Q
+1
+1
+N
+then {Pker(Q1 )⊥ xi }i=1 lies in a union of several eigenspaces with dimensions summing to
+˜ −1 Q
+˜ 2 and the fact
+dim(Pker(Q1 )⊥ ) and this contradicts (14). In view of this property of Q
+1
+˜ 1 ) = tr(Q
+ˆ 1 ) = 1 we have that Q
+˜1 = Q
+˜ 2 and Q1 = Q2 , which contradicts our
+that tr(Q
+current assumption.
+Next, assume that ker(Q1 ) = ker(Q2 ). We will first show that if 1 ≤ i ≤ N is arbitrarily
+fixed, then xi ∈ ker(Q2 ) ∪ ker(Pker(Q1 ) Q2 ). Indeed, if xi ∈
+/ ker(Q2 ), then using (57) we
+have Q1 xi = ci Q2 xi . This implies that ci Pker(Q1 ) Q2 xi = Pker(Q1 ) Q1 xi = 0 and thus
+xi ∈ ker(Pker(Q1 ) Q2 ). That is, X is contained in the union of the 2 subspaces ker(Q2 ) and
+ker(Pker(Q1 ) Q2 ). The dimensions of both spaces are less than D. This obvious for ker(Q2 ),
+since tr(Q2 ) = 1. For ker(Pker(Q1 ) Q2 ) it follows from the fact that ker(Q1 ) = ker(Q2 ) and
+thus Pker(Q1 ) Q2 = 0. We thus obtained a contradiction to (14).
+7.3 Verification of (10) and (11) as Sufficient Conditions and (12) and (13) as
+Necessary Ones
+We revisit the proof of Theorem 1 and first show that (10) and (11) can replace (6) and
+(7) in the first part of Theorem 1. We only deal with the first part of Theorem 1, which
+assumes that (9) holds, since (9) guarantees that (10) and (11) are well-defined (see the
+discussion in §2.4.1).
+791
+
+Teng Zhang and Gilad Lerman
+
+To show that (11) can replace (7), we prove the inequality in (55) using (11) as follows. Assuming that the SVD of PL∗⊥ ∆PL∗ is UΣVT , then Q := VΣVT / tr(Σ) satisfies
+Q ∈ H, Q PL∗⊥ = 0 and Q x = PL∗⊥ ∆PL∗ x / tr(Σ) = PL∗⊥ ∆PL∗ x / PL∗⊥ ∆PL∗ ∗ .
+Using this fact, we obtain that
+PL∗⊥ ∆PL∗ x ≥ PL∗⊥ ∆PL∗
+
+∗
+
+x∈X1
+
+min
+
+Q ∈H,Q PL∗⊥ =0
+
+Qx .
+
+(58)
+
+x∈X1
+
+We also note that
+ˆ 0 xxT / Q
+ˆ 0x
+PL∗⊥ ∆PL∗ , Q
+x∈X0
+
+≥ − PL∗⊥ ∆PL∗
+
+F
+
+ˆ 0 xxT PL∗ / Q
+ˆ 0x
+PL∗⊥ ∆PL∗ , Q
+
+=
+x∈X0
+
+ˆ 0 xxT PL∗ / Q
+ˆ 0x
+Q
+
+∗
+
+.
+
+F
+
+(59)
+
+x∈X0
+
+Therefore (55) follows from (11), (58) and (59). Similarly, one can show that (10) may
+replace (6).
+One can also verify that (12) and (13) are necessary conditions for exact recovery by
+revisiting the proof of Theorem 1 and reversing inequalities.
+7.4 Proof of Lemma 3
+We first note by symmetry that the minimizer of the LHS of (16) for the √
+needle-haystack
+∗
+model is Q = PL /d. We can thus rewrite (16) in this case as α1 E r1 /d > 2 2α0 E r0 /(D −
+d), where the “radii” r1 and r0 are the norms of the normal distributions with covariances
+σ12 d−1 PL∗ and σ02 D−1 PL∗⊥ respectively. Let r˜1 and r˜2 be the χ-distributed random variables
+with d and D − d degrees of freedoms, then (16) obtains the form
+√
+α1 σ1
+2 2α0 σ0
+√ E r˜1 >
+√ E r˜0 .
+(D − d) D
+d d
+√
+Applying (B.7) of Lerman et al. (2012), E r˜1 ≥ d/2 and E r˜0 ≤ D − d. Therefore (16)
+follows from (15).
+7.5 Proof of Theorem 4
+For simplicity of the proof we first assume that the supports of µ0 and µ1 are contained in
+a ball centered at the origin of radius M .
+We start with the proof of (9) “in expectation” and then extend it to hold with high
+ˆ I defined in (19) and (20) respectively. The
+probability. We use the notation FI (Q) and Q
+spherical symmetry of µ0,L∗⊥ implies that
+ˆI =
+Q
+
+1
+P ∗⊥ PTL∗⊥
+D−d L
+
+(60)
+
+is the unique minimizer of (20). To see this formally, we first note that µ0,L∗⊥ satisfies the
+two-subspaces criterion of Coudron and Lerman (2012) for any 0 < γ ≤ 1 (this criterion
+792
+
+A Novel M-Estimator for Robust PCA
+
+generalizes (14) of this paper to continuous measures) and thus by Theorem 2.1 of Coudron
+and Lerman (2012) (whose proof follows directly the one of Theorem 2 here) the solution
+of this minimization must be unique. On the other hand, any application of an arbitrary
+rotation of L∗ (within RD ) to the minimizer expressed in the RHS of (20) should also be
+1
+a minimizer of the RHS of (20). We note that D−d
+PL∗⊥ PTL∗⊥ is the only element in the
+domain of this minimization that is preserved under any rotation of L∗ . Therefore, due to
+uniqueness, this can be the only solution of this minimization problem.
+Let
+H2 = {Q ∈ H : QPL∗ = 0, Q 0 and cond(PL∗⊥ QPL∗⊥ ) ≥ 2},
+(61)
+where Q
+0 denotes the positive semidefiniteness of Q and cond(PL∗⊥ QPL∗⊥ ) denotes
+the condition number of this matrix, that is, the ratio between the largest and lowest
+eigenvalues of PL∗⊥ QPL∗⊥ , or equivalently, the ratio between the top eigenvalue and the
+ˆ I is the unique minimizer of (20) and Q
+ˆI ∈
+(D − d)th eigenvalue of Q. Since Q
+/ H2 , then
+ˆ I )) > 0.
+c1 := min (FI (Q) − FI (Q
+Q∈H2
+
+(62)
+
+We note that if x is a random variable sampled from µ and Q ∈ H (so that Q ≤ Q ∗ = 1),
+then Qx ≤ M . Applying this fact, (62) and Hoeffding’s inequality, we conclude that for
+any fixed Q ∈ H2
+ˆ I ) > c1 N/2 w.p. 1 − exp(−c2 N/2M 2 ).
+F (Q) − F (Q
+1
+
+(63)
+
+We also observe that
+N
+
+F (Q1 ) − F (Q2 ) ≤ Q1 − Q2
+
+x ≤ Q1 − Q2 N M .
+
+(64)
+
+i=1
+
+Combining (63) and (64), we obtain that for all Q in a ball of radius r1 := c1 /2M centered
+ˆ I ) > 0 w.p. 1 − exp(−c2 N/2M 2 ).
+around a fixed element in H2 : F (Q) − F (Q
+1
+We thus cover the compact space H2 by an r1 -net. Denoting the corresponding covering
+number by N (H2 , r1 ) and using the above observation we note that w.p.
+1 − N (H2 , r1 ) exp(−c21 N/2M 2 )
+ˆ I) > 0
+F (Q) − F (Q
+
+for all Q ∈ H2 .
+
+(65)
+
+ˆ 0 (that is, (8)) implies that F (Q
+ˆ 0 ) ≤ F (Q
+ˆ I ). Combining this obserThe definition of Q
+ˆ
+ˆ 0 0 (see, e.g.,
+vation with (65), we conclude that w.h.p. Q0 ∈
+/ H2 . We also claim that Q
+ˆ0 ∈
+ˆ 0 0, Q
+ˆ 0 satisfies the
+the proof of Lemma 14, which appears later). Since Q
+/ H2 and Q
+following property w.h.p.:
+ˆ 0 PT ∗⊥ ) < 2.
+cond(PTL∗⊥ Q
+(66)
+L
+Consequently, (9) holds w.h.p. (more precisely, w.p. 1 − N (H2 , c1 /2M ) exp(−c21 N/2M 2 )).
+ˆ 0 is symmetric and Q
+ˆ 0 PL∗ = 0 (see (8)),
+Next, we verify (10) w.h.p. as follows. Since Q
+then
+ˆ 0 = PL∗⊥ Q
+ˆ 0 PL∗⊥ .
+Q
+(67)
+793
+
+Teng Zhang and Gilad Lerman
+
+Applying (67), basic inequalities of operators’ norms and (66), we bound the RHS of (10)
+from above as follows:
+√
+
+ˆ 0 xxT PL∗⊥ / Q
+ˆ 0x
+Q
+
+2
+
+=
+
+√
+
+ˆ 0 PL∗⊥ ·
+2 PL∗⊥ Q
+
+ˆ 0x
+PL∗⊥ xxT PL∗⊥ / Q
+x∈X0
+
+x∈X0
+
+√
+ˆ 0 PL∗⊥ ·
+≤ 2 · PL∗⊥ Q
+
+ˆ 0x
+PL∗⊥ xxT PL∗⊥ / Q
+
+(68)
+
+x∈X0
+
+√
+ˆ 0 PL∗⊥ ) ·
+≤ 2 · λmax (PL∗⊥ Q
+
+ˆ 0 PL∗⊥ )PL∗⊥ x
+PL∗⊥ xxT PL∗⊥ / λmin (PL∗⊥ Q
+x∈X0
+
+√
+< 8
+
+T
+
+PL∗⊥ xx PL∗⊥ / PL∗⊥ x
+x∈X0
+
+=
+
+max
+
+√
+
+u∈S D−1 ∩L∗⊥
+
+8uT (
+
+PL∗⊥ xxT PL∗⊥ / PL∗⊥ x )u.
+
+x∈X0
+
+Therefore to prove (10), we only need to prove that with high probability
+√ T
+8u (
+PL∗⊥ xxT PL∗⊥ / PL∗⊥ x )u.
+min
+Qx >
+max
+Q∈H,QPL∗⊥ =0
+
+x∈X1
+
+u∈S D−1 ∩L∗⊥
+
+(69)
+
+x∈X0
+
+We will prove that the LHS and RHS of (69) concentrates w.h.p. around the LHS
+and RHS of (16) respectively and consequently verify (69) w.h.p. Let 1 be the difference
+between the RHS and LHS of (69). Theorem 1 of Coudron and Lerman (2012) implies that
+the LHS of (69) is within distance 1 /4 to the RHS of (16) with probability 1−C exp(−N/C)
+(where C is a constant depending on 1 , µ and its parameters).
+The concentration of the RHS of (16) can be concluded as follows. The spherical symmetry of µ0,L∗⊥ implies that the expectation (w.r.t. µ0 ) of x∈X0 PL∗⊥ xxT PL∗⊥ / PL∗⊥ x
+is a scalar matrix within L∗⊥ , that is, it equals ρµ PL∗⊥ xxT PL∗⊥ / PL∗⊥ x for some ρµ ∈ R.
+We observe that
+Eµ0 tr(PL∗⊥ xxT PL∗⊥ / PL∗⊥ x ) = Eµ0 PL∗⊥ x
+and thus conclude that ρµ = Eµ0 PL∗⊥ x /(D − d). Therefore, for any u ∈ S D−1 ∩ L∗⊥
+Eµ0 uT (PL∗⊥ xxT PL∗⊥ / PL∗⊥ x )u = Eµ0 PL∗⊥ x /(D − d) =
+
+PL∗⊥ x dµ0 (x)/(D − d).
+
+(70)
+D−1 ∩L∗⊥
+We thus conclude
+from
+(70)
+and
+Hoeffding’s
+inequality
+that
+for
+any
+fixed
+u
+∈
+S
+√
+the function 8uT ( x∈X0 PL∗⊥ xxT PL∗⊥ / PL∗⊥ x )u is within distance 1 /4 to the RHS of
+(16) with probability 1 − C exp(−N/C) (where C is a constant depending on 1 , µ and its
+parameters). Furthermore, applying -nets and covering (i.e., union bounds) arguments with
+regards
+to S D−1 ∩ L∗⊥ , we obtain that for all u
+∈
+S D−1 ∩ L∗⊥ ,
+√ T
+T
+8u ( x∈X0 PL∗⊥ xx PL∗⊥ / PL∗⊥ x )u is within distance 1 /2 to the RHS of (16) with
+probability 1 − C exp(−N/C) (where C is a constant depending on 1 , µ and its parameters). In particular, the RHS of (69) is within distance 1 /2 to the RHS of (16) with the
+same probability. We thus conclude (69) with probability 1 − C exp(−N/C ).
+Similarly we can also prove (11), noting that the expectation (w.r.t. µ0 ) of
+ˆ
+ˆ 0 x is 0, since Q
+ˆ 0 x/ Q
+ˆ 0 x and xT PL∗ are independent when x is restricted
+Q0 xxT PL∗ / Q
+∗
+to lie in the complement of L (that is, x ∈ X0 ).
+794
+
+A Novel M-Estimator for Robust PCA
+
+If we remove the assumption of bounded supports (with radius M ), then we need to
+replace Hoeffding’s inequality with the Hoeffding-type inequality for sub-Gaussian measures
+of Proposition 5.10 of Vershynin (2012), where in this proposition ai = 1 for all 1 ≤ i ≤ n.
+We emphasize that our probabilistic estimates are rather loose and can be interpreted
+as near-asymptotic; we thus did not fully specify their constants. We clarify this point for
+the probability estimate we have for (9), that is, 1 − N (H2 , c1 /2M ) exp(−c21 N/2M 2 ). Its
+constant N (H2 , r1 ) can be bounded from above by the covering number N (H0 , r1 ) of the
+larger set H0 = {Q ∈ RD×D : |Qi,i | ≤ 1}, which is bounded from above by (8/r1 )D(D−1)/2
+(see, e.g., Lemma 5.2 of Vershynin, 2012). This is clearly a very loose estimate that cannot
+reveal interesting information, such as, the right dependence of N on D and d in order to
+obtain a sufficiently small probability.
+At last, we explain why (14) holds with probability 1 if there are at least 2D − 1
+outliers. We denote the set of outliers by {y1 , y2 , · · · , yN0 }, where N0 ≥ 2D − 1, and
+assume on the contrary that (14) holds with probability smaller than 1. Then, there exists
+a sequence {ij }D−1
+j=1 ⊂ {1, 2, 3, · · · , N0 } such that the subspace spanned by the D − 1 points
+yi1 , yi2 , · · · , yiD−1 contains another outlier with positive probability. However, this is not
+true for haystack model and thus our claim is proved.
+7.5.1 Proof of the Extension of Theorem 4 to the Asymmetric Case
+We recall our assumptions that µ0 is a sub-Gaussian distribution with covariance Σ0 and
+ˆ I is unique. We follow the proof of Theorem 4 in §7.5 with the following changes.
+that Q
+First of all, we replace the requirement
+cond(PL∗⊥ QPL∗⊥ ) ≥ 2.
+
+(71)
+
+ˆ I PL∗⊥ ).
+cond(PL∗⊥ QPL∗⊥ ) ≥ 2 · cond(PL∗⊥ Q
+
+(72)
+
+in (61) with the following one:
+
+We note that (71) follows from (72) in the symmetric case. Indeed, in this case the expression
+ˆ I in (60) implies that the RHS of (72) is 2. Similarly, instead of (66) we prove that
+of Q
+ˆ 0 PT ∗⊥ ) < 2 · cond(PL∗⊥ Q
+ˆ I PL∗⊥ ).
+cond(PTL∗⊥ Q
+L
+Second of all, in the third inequality of (68) the term
+√
+ˆ 0 PL∗⊥ )/λmax (PL∗⊥ Q
+ˆ 0 PL∗⊥ )
+2 λmax (PL∗⊥ Q
+√
+√
+ˆ I PL∗⊥ ), instead of 8. We can thus conclude
+needs to be bounded above by 8 cond(PL∗⊥ Q
+the revised theorem, in particular, the last modification in the proof clarifies why we need
+ˆ I PL∗⊥ ), which is the ratio between the largest
+to multiply the RHS of (16) by cond(PL∗⊥ Q
+ˆ I PL∗⊥ and the (D − d)th eigenvalue of PL∗⊥ Q
+ˆ I PL∗⊥ .
+eigenvalue of PL∗⊥ Q
+7.6 Proof of Theorem 5
+This proof follows ideas of Lerman et al. (2012). We bound from below the LHS of (7) by
+applying (A.15) of Lerman et al. (2012) as follows
+min
+
+Q∈H,QPL∗⊥ =0
+
+x∈X1
+
+1
+Qx ≥ √
+min
+d v∈L∗ , v
+795
+
+=1
+
+|vT x|.
+x∈X1
+
+(73)
+
+Teng Zhang and Gilad Lerman
+
+We denote the number of inliers sampled from µ1 by N1 and the number of outliers sampled
+from µ0 by N0 (= N −N1 ). We bound from below w.h.p. the RHS of (73) by applying Lemma
+B.2 of Lerman et al. (2012) in the following way:
+1
+√
+min
+d v∈L∗ , v
+
+=1
+
+|vT x| ≥
+x∈X1
+
+σ1
+d
+
+2/πN1 − 2
+
+N1 d − t
+
+2 /2
+
+N1 w.p. 1 − e−t
+
+.
+
+(74)
+
+By following the proof of Lemma B.2 of Lerman et al. (2012) we bound from above w.h.p. the
+RHS of (7) as follows
+max
+
+v∈L∗ , v =1
+
+x∈X0
+
+σ0
+|vT x| ≤ √
+D
+
+2/πN0 + 2
+
+N0 d + t
+
+2 /2
+
+N0 w.p. 1 − e−t
+
+.
+
+(75)
+
+We need to show w.h.p. that the RHS of (75) is strictly less than the RHS of (74). We
+note that Hoeffding’s inequality implies that
+2
+
+2
+
+N1 > α1 N/2 w.p. 1 − e−α1 N/2 and |N0 − α0 N | < α0 N/2 w.p. 1 − 2e−α0 N/2 .
+
+(76)
+
+Furthermore, (18) and (76) imply that
+2
+
+2
+
+d < N1 /4 w.p. 1 − e−α1 N/2 and d < N0 /4 w.p. 1 − e−α0 N/2 .
+(77)
+√
+√
+√
+2
+Substituting t = N1 /10 (> α1 N /20 w.p. 1 − e−α1 N/2 ) in (74) and t = N0 /10
+√
+2
+(> α0 N /20 w.p. 1 − 2e−α0 N/2 ) in (75) and combining (17) and (73)-(77), we obtain that
+2
+2
+(7) holds w.p. 1 − e−α1 N/2 − 2e−α0 N/2 − e−α1 N/800 − e−α0 N/800 . We can similarly obtain
+that (6) holds with the same probability.
+7.6.1 Proof of the Extension of Theorem 5 to the Asymmetric Case
+We assume the generalized needle-haystack model of §2.6.2. The proof of Theorem 5 in
+§7.6 immediately extends to this model, where σ0 in the RHS of (75) needs to be replaced
+with λmax (Σ0 ) (recall that λmax (Σ0 ) denotes the largest eigenvalue of Σ0 ). Consequently,
+Theorem 5 still holds in this case when replacing σ0 in the RHS of (17) with λmax (Σ0 ).
+7.7 Proof of Theorem 6
+We first establish the following lemma.
+ˆ is a semi-definite positive matrix.
+Lemma 14 The minimizer of F (Q), Q,
+ˆ has some negative eigenvalues and show that this assumption
+Proof We assume that Q
+ˆ that is, being the minimizer of F (Q). We denote
+contradicts the defining property of Q,
+ˆ
+ˆ = V ˆ Σ ˆ VT and define Σ+ = max(Σ ˆ , 0) and
+the eigenvalue decomposition of Q by Q
+ˆ
+ˆ
+Q Q Q
+Q
+Q
+ˆ + = V ˆ Σ+ VT / tr(Σ+ ) ∈ H. Then tr(Σ+ ) > tr(Σ ˆ ) = tr(Q)
+ˆ = 1 and for any x ∈ RD
+Q
+Q
+
+ˆ
+Q
+
+ˆ
+Q
+
+ˆ
+Q
+
+ˆ
+Q
+
+Q
+
+we have
+ˆ .
+ˆ + x < tr(Σ+ ) Q
+ˆ + x = Σ+ (VT x) ≤ Σ ˆ (VT x) = Qx
+Q
+ˆ
+ˆ
+ˆ
+ˆ
+Q
+Q
+Q
+Q
+
+Q
+
+ˆ + ) < F (Q).
+ˆ
+Summing it over all x ∈ X , we conclude the contradiction F (Q
+796
+
+A Novel M-Estimator for Robust PCA
+
+In order to prove Theorem 6 we first notice that by definition and the connection of γ0 ,
+γ0 with second derivative of F (Q)
+˜ − FX (Q)
+˜ ≥ N γ0 Q
+˜ −Q
+ˆ
+FX (Q)
+
+2
+F,
+
+(78)
+
+˜ − FX (Q)
+˜ ≥ Nγ Q
+˜ −Q
+ˆ 2.
+FX (Q)
+0
+
+(79)
+
+and
+Next, we observe that
+N
+
+ˆ − F ˜ (Q)|
+ˆ ≤
+|FX (Q)
+X
+
+N
+
+ˆ xi − Qx
+ˆ i ≤
+Q˜
+i=1
+
+N
+
+ˆ x i − xi ) ≤
+Q(˜
+i=1
+
+˜ − F ˜ (Q)|
+˜ ≤
+and similarly |FX (Q)
+X
+
+N
+i=1 i .
+
+N
+
+˜ i − xi ≤
+x
+i=1
+
+i
+i=1
+
+Therefore,
+
+˜ − FX (Q)
+ˆ = (F ˜ (Q)
+˜ − F ˜ (Q))
+ˆ + (FX (Q)
+˜ − F ˜ (Q))
+˜ + (F ˜ (Q)
+ˆ
+FX (Q)
+X
+X
+X
+X
+N
+
+ˆ ≤ 0 + |FX (Q)
+˜ − F ˜ (Q)|
+˜ + |F ˜ (Q)
+ˆ − FX (Q)|
+ˆ ≤2
+−FX (Q))
+X
+X
+
+i.
+
+(80)
+
+i=1
+
+Therefore (23) follows from (78), (79) and (80). Applying the Davis-Kahan perturbation
+Theorem (Davis and Kahan, 1970) to (23), we conclude (24).
+7.7.1 Implication of Theorem 6 to Dimension Estimation
+Theorem 6 implies that we may properly estimate the dimension of the underlying subspace
+for low-dimensional data with sufficiently small perturbation. We make this statement more
+ˆ is a low-rank
+precise by assuming the setting of Theorem 6 and further assuming that Q
+∗
+ˆ = L . We note that the (D − d + 1)st eigenvalue of Q
+ˆ is 0. Thus
+matrix with ker(Q)
+applying the following eigenvalue stability inequality (Tao, 2012, (1.63)):
+|λi (A + B) − λi (A)| ≤ B ,
+˜ is smaller than
+we obtain that the (D − d + 1)st eigenvalue of Q
+
+(81)
+2
+
+N
+i=1 i /γ0 ,
+
+and the
+
+˜ is larger than νD−d − 2 2 N i /γ0 (recall that νD−d is the
+(D − d)th eigengap of Q
+i=1
+ˆ This means that when the noise is small and the conditions of
+(D − d)th eigengap of Q).
+Theorem 1 hold, then we can estimate the dimension of the underlying subspace for X˜ from
+the number of small eigenvalues.
+7.7.2 Improved Bounds in a Restricted Setting
+We assume that i = O( ) for all 1 ≤ i ≤ N , where is sufficiently small, and further
+ˆ = D. We show that in this special case the norm of Q
+ˆ −Q
+˜ is of order
+assume that rank(Q)
+√
+O( ) instead of order O( ) that is specified in Theorem 6.
+797
+
+Teng Zhang and Gilad Lerman
+
+ˆ is of full rank, then the first and second directional derivative of
+We note that since Q
+ˆ Therefore, if ∆ ∈ RD×D
+F are well-defined in a sufficiently small neighborhood around Q.
+and ∆ is sufficiently small then
+ˆ − F (Q
+ˆ + ∆) = O( ∆ ).
+FX (Q)
+X
+
+(82)
+
+Furthermore, we note by basic calculations that
+FX (Q) − FX˜ (Q) = O( ).
+
+(83)
+
+ˆ = 0 and F (Q)
+˜ = 0, we obtain that
+Combining (83) with the following facts: FX (Q)
+X˜
+ˆ − F (Q)
+˜ = F ˜ (Q)
+˜ − F (Q)
+˜ = O( ).
+FX (Q)
+X
+X
+X
+
+(84)
+
+ˆ Q
+˜ = O( ). Clearly, the spectral
+At last, the combination of (82) and (84) implies that Q−
+ˆ
+˜
+norm of Q − Q can be replaced with any other norm, in particular, the Frobenius norm.
+7.8 Proof of Proposition 7
+We recall the function FI , which was defined in (19), and the notation FI,1 (Q, ∆) should
+be clear, where now FI replaces F .
+The law of large numbers implies that F1 (Q, ∆)/N → FI (Q, ∆) almost surely for
+any ∆ and Q (see also related bounds in Coudron and Lerman 2012). Since Q and ∆ lie
+in compact space, we conclude (26) for γ0 and c0 ; the proof is identical for γ0 and c0 .
+7.9 Proof of Theorem 8
+The theorem follows from the observation that 0 ≤ F (Q) − Fδ (Q) ≤ N δ/2 for all Q ∈ H
+and the proof of Theorem 6.
+7.10 Proof of Theorem 9
+It is sufficient to verify that
+˜ ∈ RD×D with Im(A)
+˜ = L∗ , then L(A
+˜ + ηI) → ∞ as η → 0.
+If A
+
+(85)
+
+˜ is undefined (or infinite)
+Indeed, since L(A) is a continuous function, (85) implies that L(A)
+˜
+and therefore A is not the minimizer of (28) as stated in Theorem 9.
+We fix a1 < limx→∞ xu(x) and note that Condition D0 (w.r.t. L∗ ) implies that
+|X0 |/N > (D − d)/a1 .
+
+(86)
+
+Condition M implies that there exists x1 such that for any x > x1 : xu(x) ≥ a1 and therefore
+(recalling that u = ρ ) ρ(x) ≥ a1 ln(x − x1 )/2 + u(x1 )/2. Thus for any xi ∈ X0 , we have
+˜ + ηI)−1 xi ) ≥ a1 ln(1/η − x1 )/2 + Ci for some constant Ci ≡ Ci (xi , A)
+˜
+ρ(xTi (A
+
+(87)
+
+and
+
+N
+˜
+log(det(A)) ≤ N C0 + (D − d)/2 ln(η) for some C0 ≡ C0 (A).
+2
+Equation (85) thus follows from (86)-(88) and the theorem is concluded.
+798
+
+(88)
+
+A Novel M-Estimator for Robust PCA
+
+7.11 Proof of Theorem 10
+The derivative of the energy function in the RHS of (32) is QXT X + XT XQ. Using the
+ˆ 2 is the minimizer of (32), we conclude
+argument establishing (36) and the fact that Q
+T
+T
+that QX X + X XQ is a scalar matrix. We then conclude (33) by using the argument
+ˆ 2 ) = 1 and X is full rank (so the
+establishing (37) as well as the following two facts: tr(Q
+T
+inverse of X X exists).
+7.12 Proof of Theorem 11
+We frequently use here some of the notation introduced in §4.1, in particular, I(Q), L(Q)
+and T (Q). We will first prove that F (Qk ) ≥ F (Qk+1 ) for all k ≥ 1. For this purpose, we
+use the convex quadratic function:
+1
+G(Q, Q ) =
+2
+
+N
+
+∗
+
+Qxi 2 / Q∗ xi + Q∗ xi
+
+.
+
+i=1
+∗)
+i∈I(Q
+/
+
+Following the same derivation of (44) and (36), we obtain that
+
+d
+G(Q, Qk )
+dQ
+
+
+
+N
+
+xi xTi
+
+
+
+= Qk+1 
+i=1
+i∈I(Q
+/
+k)
+
+Qk xi
+
+
+
+
+
+N
+
+xi xTi
+
+ 
++
+i=1
+i∈I(Q
+/
+k)
+
+Qk xi
+
+
+
+
+
+ Qk+1  /2.
+
+xi xT
+N
+i
+i=1, i∈I(Q
+/
+k ) Q k xi
+
+, ck = PL(Qk )⊥ A−1
+k PL(Qk )⊥ and for any symmetric ∆ ∈
+˜T
+˜ L(Q )⊥ . We note that
+with tr(∆) = 0 and PL(Qk ) ∆ = 0 we let ∆0 = P
+∆P
+k
+L(Q )⊥
+
+We let Ak =
+RD×D
+
+Q=Qk+1
+
+
+
+k
+
+tr(∆0 ) = ∆0 , I
+= ∆, I − PL(Qk )
+
+F
+F
+
+˜T
+˜
+= P
+L(Qk )⊥ ∆PL(Qk )⊥ , I
+= ∆, I
+
+F
+
+− ∆, PL(Qk )
+
+F
+
+F
+
+˜ L(Q )⊥ P
+˜T
+= ∆, P
+L(Qk )⊥
+k
+
+= ∆, I
+
+F
+
+F
+
+= tr(∆) = 0.
+
+Consequently, we establish that the derivative of G(Q, Qk ) at Qk+1 in the direction ∆ is
+zero as follows.
+(Qk+1 Ak + Ak Qk+1 )/2, ∆
+
+F
+
+= Qk+1 Ak , ∆
+
+F
+
+= ck PL(Qk )⊥ A−1
+k PL(Qk )⊥ Ak , ∆
+
+=ck
+
+˜
+˜T
+PL(Qk )⊥ A−1
+k PL(Qk )⊥ Ak , PL(Qk )⊥ ∆0 PL(Qk )⊥
+
+=ck
+
+−1 ˜
+˜T
+˜T
+˜
+(P
+L(Qk )⊥ Ak PL(Qk )⊥ )(PL(Qk )⊥ Ak PL(Qk )⊥ ), ∆0
+
+F
+
+F
+F
+
+= ck I, ∆0
+
+F
+
+= 0.
+
+This and the strict convexity of G(Q, Qk ) (which follows from Sp({xi }i∈I(Q
+) = RD using
+/
+k)
+(14)) imply that Qk+1 is the unique minimizer of G(Q, Qk ) among all Q ∈ H such that
+PL(Qk ) Q = 0.
+799
+
+Teng Zhang and Gilad Lerman
+
+Combining this with the following two facts: Qk+1 xi = 0 for any i ∈ I(Qk ) and
+G(Qk , Qk ) = F (Qk ), we conclude that
+Qk+1 xi =
+
+F (Qk+1 ) =
+
+i∈I(Q
+/
+k)
+
+i∈I(Q
+/
+k)
+2
+
+≤
+i∈I(Q
+/
+k)
+
+Qk+1 xi + Qk xi
+2 Qk xi
+
+Qk+1 xi Qk xi
+Qk xi
+
+2
+
+= G(Qk+1 , Qk ) ≤ G(Qk , Qk ) = F (Qk ).
+
+(89)
+
+Since F is positive, F (Qk ) converges and
+F (Qk ) − F (Qk+1 ) → 0 as k → ∞.
+
+(90)
+
+Applying (89) we also have that
+F (Qk)−F (Qk+1) ≥ G(Qk ,Qk ) − G(Qk+1 ,Qk ) =
+
+1
+2
+
+(Qk − Qk+1 )xi 2 / Qk xi . (91)
+i∈I(Q
+/
+k)
+
+We note that if Qk = Qk+1 , then Sp({xi }i∈I(Q
+) = RD ⊃ ker(Qk − Qk+1 ) and
+/
+k)
+1/ Qk xi ≥ 1/ maxi xi . Combining this observation with (90) and (91) we obtain that
+Qk − Qk+1
+
+2
+
+→ 0 as k → ∞.
+
+(92)
+
+Since for all k ∈ N, Qk is nonnegative (this follows from its defining formula (39)) and
+tr(Qk ) = 1, the sequence {Qk }k∈N lies in a compact space (of nonnegative matrices) and it
+thus has a converging subsequence. Assume a subsequence of {Qk }k∈N , which converges to
+˜ We claim the following property of Q:
+˜
+Q.
+˜ = arg min F (Q), where H0 := {Q ∈ H : ker Q ⊇ L(Q)}.
+˜
+Q
+
+(93)
+
+Q∈H0
+
+In order to prove (93), we note that (89) and the convergence of the subsequence imply
+˜ = F (T (Q)).
+˜
+that F (Q)
+Combining this with (89) (though replacing Qk and Qk+1 in (89)
+˜
+˜
+˜ Q)
+˜ = G(Q,
+˜ Q).
+˜
+with Q and T (Q) respectively) we get that G(T (Q),
+We conclude that
+˜ = Q
+˜ from this observation and the following three facts: 1) Q = Q
+˜ is the unique
+T (Q)
+˜
+˜
+˜
+minimizer of G(Q, Q) among all Q ∈ H, 2) PL(Q)
+˜ Q = 0, 3) Q = T (Q) is the unique
+˜
+minimizer of G(Q, Q) among all Q ∈ H such that P ˜ Q = 0 (we remark that F (Q)
+L(Q)
+
+is strictly convex in H and consequently also in H0 by Theorem 2). Therefore, for any
+˜
+symmetric ∆ ∈ RD×D with tr(∆) = 0 and PL(Q)
+˜ ∆ = 0, the directional derivative at Q is
+0:
+d
+xi xTi
+˜
+˜
+0 = ∆,
+G(Q, Q)
+=
+∆,
+Q
+.
+(94)
+˜
+Q=Q
+˜ i
+dQ
+Qx
+F
+˜
+i∈I(
+/ Q)
+
+F
+
+We note that (94) is the corresponding directional derivative of F (Q) when restricted to
+Q ∈ H0 and we thus conclude (93).
+˜ by proving that there are only finite
+Next, we will prove that {Qk }k∈N converge to Q
+˜ In view of (93) and the strict convexity of F (Q) in H0 , any limit Q
+˜ (of
+choices for Q.
+800
+
+A Novel M-Estimator for Robust PCA
+
+˜
+a subsequence as above) is uniquely determined by I(Q).
+Since the number of choices
+˜ is finite (independently of Q),
+˜ the number of choices for Q
+˜ is finite. That is,
+for I(Q)
+Y := {Q ∈ H : F (Q) = F (T (Q))} is a finite set. Combining this with (92) and the
+convergence analysis of the sequence {Qk }k∈N (see Ostrowski, 1966, Theorem 28.1), we
+˜
+conclude that {Qk }k∈N converges to Q.
+˜
+˜ = ∅ and thus
+At last, we assume that Qxi = 0 for all 1 ≤ i ≤ N . We note that I(Q)
+˜ =Q
+ˆ by (93). The proof for the rate of convergence follows the analysis of generalized
+Q
+Weiszfeld’s method by Chan and Mulet (1999) (in particular see §6 of that work). We
+practically need to verify Hypotheses 4.1 and 4.2 (see §4 of that work) and replace the
+functions F and G in that work by F (Q) and
+N
+
+˜
+G(Q,
+Q∗ ) =
+
+Qxi 2 / Q∗ xi + Q∗ xi
+i=1
+
+˜ and G (defined earlier in this work) coincide
+respectively. We note that the functions G
+˜
+in the following way: G(Q, Qk ) = G(Q, Qk ) for any k ∈ N (this follows from the fact
+that Qk xi = 0 for all k ∈ N and 1 ≤ i ≤ N ; indeed, otherwise for some i, Qj xi = 0
+ˆ i = 0). We remark that even
+for j ≥ k by (39) and this leads to the contradiction Qx
+though Chan and Mulet (1999) consider vector-valued functions, their proof generalizes
+to matrix-valued functions as here. Furthermore, we can replace the global properties
+ˆ δ0 )
+of Hypotheses 4.1 and 4.2 of Chan and Mulet (1999) by the local properties in B(Q,
+for any δ0 > 0, since the convergence of Qk implies the existence of K0 > 0 such that
+ˆ δ0 ) for all k > K0 . In particular, there is no need to check condition 2 in
+Qk ∈ B(Q,
+Hypothesis 4.1. Condition 1 in Hypothesis 4.1 holds since F (Q) is twice differentiable in
+ˆ δ0 ) (which follows from the assumption on the limit Q
+˜ ≡Q
+ˆ and the continuity of the
+B(Q,
+derivative). Conditions 1-3 in Hypothesis 4.2 are verified by the fact that C of Hypothesis
+T
+∗
+∗
+∗
+ˆ
+4.2 satisfies C(Q∗ ) = N
+i=1 xi xi / Q xi and Q xi = 0 when Q ∈ B(Q, δ0 ). Condition 3
+in Hypothesis 3.1 and condition 4 in Hypothesis 4.2 are easy to check.
+7.13 Proof of Theorem 12
+The proof follows from the second part of the proof of Theorem 11, while using instead of
+˜
+G(Q,
+Q∗ ) the function
+Gδ (Q, Q∗ ) =
+
+1
+2
+
+N
+
+N
+
+Qxi 2 / Q∗ xi + Q∗ xi
+
+i=1, Q∗ xi ≥δ
+
++
+
+( Qxi 2 /2δ + δ/2).
+
+i=1, Q∗ xi <δ
+
+7.14 Proof of Theorem 13
+We note that the minimization of F (Q) over all Q ∈ H such that QPLˆ ⊥ = 0 in Algo˜ ˆ (X ) =
+rithm 3 can be performed at each iteration with respect to the projected data: P
+L
+˜ ˆ x1 , P
+˜ ˆ x2 , · · · , P
+˜ ˆ xN }.
+{P
+L
+L
+L
+˜ ˆ (X ) with any L
+ˆ ⊇ L∗ . Therefore,
+We note that conditions (6) and (7) hold for P
+L
+ˆ ⊇ L∗ in each iteration. Since dim(L)
+ˆ decreases by
+Theorem 1 implies that u ⊥ L∗ and L
+∗
+ˆ = d in D − d iterations and thus L
+ˆ=L .
+one in each iteration, dim(L)
+801
+
+Teng Zhang and Gilad Lerman
+
+8. Conclusion
+We proposed an M-estimator for the problems of exact and near subspace recovery. Substantial theory has been developed to quantify the recovery obtained by this estimator as
+well as its numerical approximation. Numerical experiments demonstrated state-of-the-art
+speed and accuracy for our corresponding implementation on both synthetic and real data
+sets.
+This work broadens the perspective of two recent ground-breaking theoretical works
+for subspace recovery by Cand`es et al. (2011) and Xu et al. (2012). We hope that it will
+motivate additional approaches to this problem.
+There are many interesting open problems that stem from our work. We believe that by
+modifying or extending the framework described in here, one can even yield better results
+in various scenarios. For example, we have discussed in §1.2 the modification by Lerman
+et al. (2012) suggesting tighter convex relaxation of orthogonal projectors when d is known.
+We also discussed in §1.2 adaptation by Wang and Singer (2013) of the basic ideas in here
+to the different synchronization problem. Another direction was recently followed up by
+Coudron and Lerman (2012), where they established exact asymptotic subspace recovery
+under specific sampling assumptions, which may allow relatively large magnitude of noise.
+It is interesting to follow this direction and establish exact recovery when using in theory
+a sequence of IRLS regularization parameters {δi }i∈N approaching zero (in analogy to the
+work of Daubechies et al. 2010).
+An interesting generalization that was not pursued so far is robust data modeling by
+multiple subspaces or by locally-linear structures. It is also interesting to know whether
+one can adapt the current framework so that it can detect linear structure in the presence
+of both sparse elementwise corruption (as in Cand`es et al. 2011) and the type of outliers
+addressed in here.
+
+Acknowledgments
+This work was supported by NSF grants DMS-09-15064 and DMS-09-56072, GL was also
+partially supported by the IMA (during 2010-2012). Arthur Szlam has inspired our extended
+research on robust l1 -type subspace recovery. We thank John Wright for referring us to Xu
+et al. (2010b) shortly after it appeared online and for some guidance with the real data sets.
+GL thanks Emmanuel Cand`es for inviting him to visit Stanford university in May 2010 and
+for his constructive criticism on the lack of a theoretically guaranteed algorithm for the l1
+subspace recovery of Lerman and Zhang (2010).
+Supp. webpage: http://www.math.umn.edu/~lerman/gms.
+
+References
+A. Agarwal, S. Negahban, and M. J. Wainwright. Noisy matrix decomposition via convex
+relaxation: optimal rates in high dimensions. Ann. Statist., 40(2):1171–1197, 2012a. ISSN
+0090-5364. doi: 10.1214/12-AOS1000.
+802
+
+A Novel M-Estimator for Robust PCA
+
+A. Agarwal, S. Negahban, and M. J. Wainwright. Fast global convergence of gradient
+methods for high-dimensional statistical recovery. The Annals of Statistics, 40(5):2452–
+2482, 2012b.
+L. P. Ammann. Robust singular value decompositions: A new approach to projection
+pursuit. Journal of the American Statistical Association, 88(422):pp. 505–514, 1993.
+ISSN 01621459.
+E. Arias-Castro, D. L. Donoho, X. Huo, and C. A. Tovey. Connect the dots: how many
+random points can a regular curve pass through? Adv. in Appl. Probab., 37(3):571–603,
+2005.
+E. Arias-Castro, G. Chen, and G. Lerman. Spectral clustering based on local linear approximations. Electron. J. Statist., 5:1537–1587, 2011.
+O. Arslan. Convergence behavior of an iterative reweighting algorithm to compute multivariate M-estimates for location and scatter. Journal of Statistical Planning and Inference,
+118(1-2):115 – 128, 2004. ISSN 0378-3758. doi: 10.1016/S0378-3758(02)00402-0.
+A. Bargiela and J. K. Hartley. Orthogonal linear regression algorithm based on augmented
+matrix formulation. Comput. Oper. Res., 20:829–836, October 1993. ISSN 0305-0548.
+doi: 10.1016/0305-0548(93)90104-Q.
+R. Basri and D. Jacobs. Lambertian reflectance and linear subspaces. IEEE Transactions
+on Pattern Analysis and Machine Intelligence, 25(2):218–233, February 2003.
+R. Basri, T. Hassner, and L. Zelnik-Manor. Approximate nearest subspace search. IEEE
+Transactions on Pattern Analysis and Machine Intelligence, 33(2):266–278, 2011. ISSN
+0162-8828. doi: http://doi.ieeecomputersociety.org/10.1109/TPAMI.2010.110.
+R. Bhatia and D. Drissi. Generalized Lyapunov equations and positive definite functions.
+SIAM J. Matrix Anal. Appl., 27(1):103–114, May 2005. ISSN 0895-4798. doi: 10.1137/
+040608970.
+P. Bradley and O. Mangasarian. k-plane clustering. J. Global optim., 16(1):23–32, 2000.
+S. C. Brubaker. Robust PCA and clustering in noisy mixtures. In Proceedings of the
+Twentieth Annual ACM-SIAM Symposium on Discrete Algorithms, SODA ’09, pages
+1078–1087, Philadelphia, PA, USA, 2009. Society for Industrial and Applied Mathematics.
+E. J. Cand`es, J. Romberg, and T. Tao. Stable signal recovery from incomplete and inaccurate measurements. Communications on Pure and Applied Mathematics, 59(8):1207–1223,
+2006. doi: 10.1002/cpa.20124.
+E. J. Cand`es, X. Li, Y. Ma, and J. Wright. Robust principal component analysis? Journal
+of the ACM (JACM), 58(3):11, 2011.
+T. F. Chan and P. Mulet. On the convergence of the lagged diffusivity fixed point method
+in total variation image restoration. SIAM J. Numer. Anal., 36:354–367, 1999. ISSN
+0036-1429. doi: 10.1137/S0036142997327075.
+803
+
+Teng Zhang and Gilad Lerman
+
+V. Chandrasekaran, S. Sanghavi, P. A. Parrilo, and A. S. Willsky. Rank-sparsity incoherence
+for matrix decomposition. SIAM J. Optim., 21(2):572–596, 2011. ISSN 1052-6234. doi:
+10.1137/090761793.
+T.-J. Chin, J. Yu, and D. Suter. Accelerated hypothesis generation for multistructure data
+via preference analysis. IEEE Trans. Pattern Anal. Mach. Intell., 34(4):625–638, April
+2012. ISSN 0162-8828. doi: 10.1109/TPAMI.2011.169.
+A. K. Cline. Rate of convergence of Lawson’s algorithm. Mathematics of Computation, 26
+(117):pp. 167–176, 1972. ISSN 00255718.
+M. Coudron and G. Lerman. On the sample complexity of robust PCA. In NIPS, pages
+3230–3238, 2012.
+C. Croux and G. Haesbroeck. Principal component analysis based on robust estimators of
+the covariance or correlation matrix: Influence functions and efficiencies. Biometrika, 87:
+603–618, 2000.
+C. Croux, P. Filzmoser, and M. Oliveira. Algorithms for projectionc pursuit robust principal
+component analysis. Chemometrics and Intelligent Laboratory Systems, 87(2):218–225,
+2007.
+A. d’Aspremont, L. El Ghaoui, M. Jordan, and G. Lanckriet. A direct formulation for
+sparse PCA using semidefinite programming. SIAM Review, 49(3):434–448, 2007. doi:
+10.1137/050645506.
+I. Daubechies, R. DeVore, M. Fornasier, and C. S. Gunturk. Iteratively reweighted least
+squares minimization for sparse recovery. Communications on Pure and Applied Mathematics, 63:1–38, 2010. doi: 10.1002/cpa.20303.
+G. David and S. Semmes. Singular integrals and rectifiable sets in Rn : au-del`a des graphes
+Lipschitziens. Ast´erisque, 193:1–145, 1991.
+P. L. Davies. Asymptotic behaviour of s-estimates of multivariate location parameters and
+dispersion matrices. The Annals of Statistics, 15(3):pp. 1269–1292, 1987. ISSN 00905364.
+C. Davis and W. M. Kahan. The rotation of eigenvectors by a perturbation. iii. SIAM J.
+on Numerical Analysis, 7:1–46, 1970.
+S. J. Devlin, R. Gnandesikan, and J. R. Kettenring. Robust estimation of dispersion matrices
+and principal components. Journal of the American Statistical Association, 76(374):pp.
+354–362, 1981. ISSN 01621459.
+C. Ding, D. Zhou, X. He, and H. Zha. R1-PCA: rotational invariant L1 -norm principal
+component analysis for robust subspace factorization. In ICML ’06: Proceedings of the
+23rd International Conference on Machine Learning, pages 281–288, New York, NY,
+USA, 2006. ACM. ISBN 1-59593-383-2. doi: 10.1145/1143844.1143880.
+M. Fornasier, H. Rauhut, and R. Ward. Low-rank matrix recovery via iteratively reweighted
+least squares minimization. SIAM J. Optim., 21(4):1614–1640, 2011. ISSN 1052-6234.
+doi: 10.1137/100811404.
+804
+
+A Novel M-Estimator for Robust PCA
+
+M. Hardt and A. Moitra. Algorithms and hardness for robust subspace recovery. In COLT,
+pages 354–375, 2013.
+J. Ho, M. Yang, J. Lim, K. Lee, and D. Kriegman. Clustering appearances of objects under
+varying illumination conditions. In Proceedings of International Conference on Computer
+Vision and Pattern Recognition, volume 1, pages 11–18, 2003.
+D. Hsu, S.M. Kakade, and Tong Zhang. Robust matrix decomposition with sparse corruptions. Information Theory, IEEE Transactions on, 57(11):7221 –7234, nov. 2011. ISSN
+0018-9448. doi: 10.1109/TIT.2011.2158250.
+P. J. Huber and E. M. Ronchetti. Robust Statistics. Wiley Series in Probability and
+Statistics. Wiley, Hoboken, NJ, 2nd edition, 2009. ISBN 978-0-470-12990-6. doi: 10.
+1002/9780470434697.
+Q. Ke and T. Kanade. Robust subspace computation using L1 norm. Technical report,
+Carnegie Mellon, 2003.
+J. T. Kent and D. E. Tyler. Redescending M-estimates of multivariate location and scatter.
+The Annals of Statistics, 19(4):pp. 2102–2119, 1991. ISSN 00905364.
+H. W. Kuhn. A note on Fermat’s problem. Mathematical Programming, 4:98–107, 1973.
+ISSN 0025-5610. 10.1007/BF01584648.
+N. Kwak. Principal component analysis based on L1 -norm maximization. Pattern Analysis
+and Machine Intelligence, IEEE Transactions on, 30(9):1672–1680, 2008. doi: 10.1109/
+TPAMI.2008.114.
+C. L. Lawson. Contributions to the Theory of Linear Least Maximum Approximation. PhD
+thesis, University of California, Los Angeles, 1961.
+K.-C. Lee, J. Ho, and D. Kriegman. Acquiring linear subspaces for face recognition under
+variable lighting. Pattern Analysis and Machine Intelligence, IEEE Transactions on, 27
+(5):684–698, 2005. ISSN 0162-8828. doi: 10.1109/TPAMI.2005.92.
+G. Lerman and T. Zhang. lp -Recovery of the most significant subspace among multiple
+subspaces with outliers. ArXiv e-prints, December 2010. To Appear in Constructive
+Approximation.
+G. Lerman and T. Zhang. Robust recovery of multiple subspaces by geometric lp minimization. Ann. Statist., 39(5):2686–2715, 2011. ISSN 0090-5364. doi: 10.1214/11-AOS914.
+G. Lerman, M. McCoy, J. A. Tropp, and T. Zhang. Robust computation of linear models,
+or how to find a needle in a haystack. ArXiv e-prints, February 2012.
+G. Li and Z. Chen. Projection-pursuit approach to robust dispersion matrices and principal components: Primary theory and monte carlo. Journal of the American Statistical
+Association, 80(391):759–766, 1985. ISSN 01621459. doi: 10.2307/2288497.
+805
+
+Teng Zhang and Gilad Lerman
+
+L. Li, W. Huang, I. Gu, and Q. Tian. Statistical modeling of complex backgrounds for
+foreground object detection. Image Processing, IEEE Transactions on, 13(11):1459 –
+1472, nov. 2004. ISSN 1057-7149. doi: 10.1109/TIP.2004.836169.
+Z. Lin, A. Ganesh, J. Wright, L. Wu, M. Chen, and Y. Ma. Fast convex optimization
+algorithms for exact recovery of a corrupted low-rank matrix. In In Intl. Workshop on
+Comp. Adv. in Multi-Sensor Adapt. Processing, Aruba, Dutch Antilles, 2009.
+G. Liu, Z. Lin, and Y. Yu. Robust subspace segmentation by low-rank representation. In
+ICML, 2010.
+G. Liu, Z. Lin, S. Yan, J. Sun, Y. Yu, and Y. Ma. Robust recovery of subspace structures by
+low-rank representation. Pattern Analysis and Machine Intelligence, IEEE Transactions
+on, 35(1):171 –184, 2013. ISSN 0162-8828. doi: 10.1109/TPAMI.2012.88.
+H. P. Lopuha¨
+a and P. J. Rousseeuw. Breakdown points of affine equivariant estimators of
+multivariate location and covariance matrices. Ann. Statist., 19(1):229–248, 1991. ISSN
+0090-5364.
+R. A. Maronna. Robust M-estimators of multivariate location and scatter. The Annals of
+Statistics, 4(1):pp. 51–67, 1976. ISSN 00905364.
+R. A. Maronna, R. D. Martin, and V. J. Yohai. Robust Statistics: Theory and methods.
+Wiley Series in Probability and Statistics. John Wiley & Sons Ltd., Chichester, 2006.
+ISBN 978-0-470-01092-1; 0-470-01092-4.
+M. McCoy and J. Tropp. Two proposals for robust PCA using semidefinite programming.
+Elec. J. Stat., 5:1123–1160, 2011.
+S. Mendelson. A few notes on statistical learning theory. In Lecture Notes in Computer
+Science, volume 2600, pages 1–40. Springer-Verlag, 2003.
+H. Nyquist. Least orthogonal absolute deviations. Computational Statistics & Data Analysis, 6(4):361 – 367, 1988. ISSN 0167-9473. doi: 10.1016/0167-9473(88)90076-X.
+M. R. Osborne and G. A. Watson. An analysis of the total approximation problem in
+separable norms, and an algorithm for the total l1 problem. SIAM Journal on Scientific
+and Statistical Computing, 6(2):410–424, 1985. doi: 10.1137/0906029.
+A. M. Ostrowski. Solution of Equations and Systems of Equations. Academic Press, Second
+edition, September 1966. ISBN 0471889873.
+M. Soltanolkotabi and E. J. Cand`es. A geometric analysis of subspace clustering with
+outliers. Ann. Stat., 40(4):2195–2238, 2012. doi: 10.1214/12-AOS1034.
+H. Sp¨ath and G. A. Watson. On orthogonal linear approximation. Numer. Math., 51:
+531–543, October 1987. ISSN 0029-599X. doi: 10.1007/BF01400354.
+C. V. Stewart. Robust parameter estimation in computer vision. SIAM Reviews, 41:513–
+537, 1999.
+806
+
+A Novel M-Estimator for Robust PCA
+
+T. Tao. Topics in Random Matrix Theory, volume 132 of Graduate Studies in Mathematics.
+American Mathematical Society, Providence, RI, 2012. ISBN 978-0-8218-7430-1.
+M. Tipping and C. Bishop. Mixtures of probabilistic principal component analysers. Neural
+Computation, 11(2):443–482, 1999.
+F. De La Torre and M. J. Black. Robust principal component analysis for computer vision. In
+Computer Vision, 2001. ICCV 2001. Proceedings. Eighth IEEE International Conference
+on, volume 1, pages 362 –369 vol.1, 2001. doi: 10.1109/ICCV.2001.937541.
+F. De La Torre and M. J. Black. A framework for robust subspace learning. International Journal of Computer Vision, 54:117–142, 2003. ISSN 0920-5691. doi:
+10.1023/A:1023709501986.
+P. Tseng. Nearest q-flat to m points. Journal of Optimization Theory and Applications,
+105:249–252, 2000. ISSN 0022-3239. 10.1023/A:1004678431677.
+D. E. Tyler. A distribution-free M -estimator of multivariate scatter. Ann. Statist., 15(1):
+234–251, 1987. ISSN 0090-5364. doi: 10.1214/aos/1176350263.
+R. Vershynin. Introduction to the non-asymptotic analysis of random matrices. In Compressed sensing, pages 210–268. Cambridge Univ. Press, Cambridge, 2012.
+H. Voss and U. Eckhardt. Linear convergence of generalized weiszfeld’s method. Computing,
+25:243–251, 1980. ISSN 0010-485X. doi: 10.1007/BF02242002.
+L. Wang and A. Singer. Exact and stable recovery of rotations for robust synchronization.
+Information and Inference, 2013. doi: 10.1093/imaiai/iat005.
+G. A. Watson. Some Problems in Orthogonal Distance and Non-Orthogonal Distance Regression. Defense Technical Information Center, 2001. URL http://books.google.com/
+books?id=WKKWGwAACAAJ.
+G. A. Watson. On the gauss-newton method for l1 orthogonal distance regression. IMA
+Journal of Numerical Analysis, 22(3):345–357, 2002. doi: 10.1093/imanum/22.3.345.
+E. Weiszfeld. Sur le point pour lequel la somme des distances de n points donne’s est
+minimum. Tohoku Math. J., 43:35–386, 1937.
+H. Xu, C. Caramanis, and S. Mannor. Principal component analysis with contaminated
+data: The high dimensional case. In COLT, pages 490–502, 2010a.
+H. Xu, C. Caramanis, and S. Sanghavi. Robust PCA via outlier pursuit. In NIPS, pages
+2496–2504, 2010b.
+H. Xu, C. Caramanis, and S. Sanghavi. Robust PCA via outlier pursuit. Information
+Theory, IEEE Transactions on, PP(99):1, 2012. ISSN 0018-9448. doi: 10.1109/TIT.
+2011.2173156.
+807
+
+Teng Zhang and Gilad Lerman
+
+L. Xu and A.L. Yuille. Robust principal component analysis by self-organizing rules based
+on statistical physics approach. Neural Networks, IEEE Transactions on, 6(1):131–143,
+1995. ISSN 1045-9227. doi: 10.1109/72.363442.
+T. Zhang. Robust subspace recovery by geodesically convex optimization. ArXiv e-prints,
+2012.
+T. Zhang, A. Szlam, and G. Lerman. Median K-flats for hybrid linear modeling with
+many outliers. In Computer Vision Workshops (ICCV Workshops), 2009 IEEE 12th
+International Conference on Computer Vision, pages 234–241, Kyoto, Japan, 2009. doi:
+10.1109/ICCVW.2009.5457695.
+T. Zhang, A. Szlam, Y. Wang, and G. Lerman. Randomized hybrid linear modeling by
+local best-fit flats. In Computer Vision and Pattern Recognition (CVPR), 2010 IEEE
+Conference on, pages 1927 –1934, jun. 2010. doi: 10.1109/CVPR.2010.5539866.
+T. Zhang, A. Szlam, Y. Wang, and G. Lerman. Hybrid linear modeling via local best-fit
+flats. International Journal of Computer Vision, 100:217–240, 2012. ISSN 0920-5691.
+doi: 10.1007/s11263-012-0535-6.
+
+808
+
+

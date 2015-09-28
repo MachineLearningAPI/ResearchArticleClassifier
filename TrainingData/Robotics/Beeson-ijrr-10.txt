@@ -1,0 +1,3035 @@
+1
+
+Factoring the mapping problem:
+Mobile robot map-building in the
+Hybrid Spatial Semantic
+Hierarchy∗
+Patrick Beeson† , Joseph Modayil‡ , and
+Benjamin Kuipers†
+† Department
+
+of Computer Sciences, University
+of Texas at Austin, Austin, TX, USA
+‡ Department of Computer Science, University
+of Rochester, Rochester, NY, USA
+
+Abstract
+We propose a factored approach to mobile robot mapbuilding that handles qualitatively different types of uncertainty by combining the strengths of topological and
+metrical approaches. Our framework is based on a computational model of the human cognitive map; thus it allows robust navigation and communication within several
+different spatial ontologies. This paper focuses exclusively on the issue of map-building using the framework.
+Our approach factors the mapping problem into natural sub-goals: building a metrical representation for local small-scale spaces; finding a topological map that represents the qualitative structure of large-scale space; and
+(when necessary) constructing a metrical representation
+for large-scale space using the skeleton provided by the
+topological map. We describe how to abstract a symbolic
+description of the robot’s immediate surround from local metrical models, how to combine these local symbolic
+models in order to build global symbolic models, and how
+to create a globally consistent metrical map from a topological skeleton by connecting local frames of reference.
+∗ This
+
+work has taken place in the Intelligent Robotics Lab at the
+Artificial Intelligence Laboratory, The University of Texas at Austin.
+Research of the Intelligent Robotics lab is supported in part by grants
+from the Texas Advanced Research Program (3658-0170-2007), from
+the National Science Foundation (IIS-0413257, IIS-0713150, and IIS0750011), and from the National Institutes of Health (EY016089).
+
+Introduction
+
+A map is a description of an environment allowing an
+agent—a human, or in our case a mobile robot—to plan
+and perform effective actions. From a single location, an
+agent’s sensors can not observe the whole structure of a
+complex, large environment. For this reason, the agent
+must build a map from observations gathered over time
+and space. We distinguish between large-scale space,
+with spatial structure larger than the agent’s sensory horizon, and small-scale space, with structure within the sensory horizon.
+Most metrical approaches to mobile robot mapbuilding define a single, global frame of reference in
+which to create the map. Range measurements are used
+to perform probabilistic inference about the location of
+features or about the occupancy of discretized cells in
+the map [Thrun et al., 2005]. Existing SLAM (simultaneous localization and mapping) methods are highly effective for building local metrical models of small-scale
+space and for providing reliable localization in the frame
+of reference of the local map; however, maintaining global
+consistency over large-scale environments is difficult, particularly when closing large loops in the environment. A
+popular approach is to use particle filters, where each particle represents a hypothesized exploration trajectory. The
+researcher must hope that with enough particles the distribution will include one that closes the loop correctly.
+Since the space of trajectories can be enormous, this hope
+is often optimistic.
+The fundamental problem is representational: loopclosing hypotheses are alternative topological structures
+for the map, not alternative metrical structures. To be able
+to solve complex, multi-hypothesis loop-closing problems
+in a tractable manner, the robot must reason with symbolic topological maps. The space of metrical maps in
+a single frame of reference does not appropriately represent the states of incomplete knowledge that arise during
+exploration and map-building in complex, large-scale environments.
+Our factored mapping framework is based on the Spatial Semantic Hierarchy (SSH) [Kuipers, 2000, 2008],
+which uses multiple coordinated representations for
+knowledge of large-scale space. The Hybrid SSH (HSSH)
+[Kuipers et al., 2004; Beeson, 2008] extends the basic
+SSH by including representations for small-scale space
+and defining the relationship between large-scale and
+small-scale spatial representations. Symbolic topological mapping methods such as the SSH provide a concise
+representation for the structural alternatives that arise in
+investigating loop closures. Topological maps provide
+the ability to store and access multiple local maps with
+
+T O APPEAR IN THE I NTERNATIONAL J OURNAL OF ROBOTICS R ESEARCH , 29(4): 428–459, A PRIL 2010.
+
+separate frames of reference and topological connections
+annotated with weak metrical constraints. By separating
+small-scale from large-scale space, we postpone the problem of coordinating the local frames of reference until the
+global structure of the topological map has been identified. At that point, the global metrical map can be constructed, efficiently and accurately.
+
+ties can also be utilized in the HSSH framework—the hybrid, hierarchical framework is largely independent of the
+sensors used to create the local metrical model of smallscale space (cf. [Murarka et al., 2006]). A more detailed
+description of the HSSH benefits to control, place detection/description, and human-robot interaction are discussed by Beeson [2008].
+
+Therefore, our approach factors the mapping problem
+into four natural sub-goals: (1) building a metrical representation for local small-scale spaces; (2) detecting places
+and determining their symbolic descriptions; (3) finding a
+topological map representing the qualitative structure of
+large-scale space; and (4) constructing a metrical representation for large-scale space in a single global frame of
+reference, building on the skeleton provided by the topological map. While the global metrical map is useful for
+some purposes, it is worth noting that many autonomous
+planning and navigation goals can be achieved effectively
+using only the global topological map and/or the local
+metrical maps. Therefore, this approach to hybrid mapping is more robust than one that extracts topological relations from a global metrical map that must be built first
+[Thrun and B¨ucken, 1996].
+
+2
+2.1
+
+Background
+Metrical Mapping
+
+Powerful probabilistic methods have been developed for
+range-sensing mobile robots to perform simultaneous localization and mapping (SLAM) within a single frame of
+reference [Thrun et al., 2005]. These methods are accurate and reliable for online incremental localization within
+local neighborhoods. Sensing with sufficiently high frequency relative to local motion guarantees large overlap
+between successive sensory images. Current sensory information can be compared to the current map in order to
+improve localization. By analogy with radar signal interpretation, finding the correct match between observations
+and model is called the data association problem. After improved localization occurs, the sensory information
+is used to update the map for the next SLAM iteration. In
+local regions, many data association problems, such as the
+closing of large loops, can be excluded. The absence of
+large loops means that the problem of large-scale structural ambiguity does not arise in the local metrical map.
+While metrical SLAM methods work in small spaces,
+they do not extend well to larger environments. Global
+metrical maps become more expensive to update and access without clever storage schemes. More important is
+the difficulty that arises when closing large loops (Figure 1). Even with local SLAM methods that use perception to improve the accuracy of localization, odometry error accumulates in the relation between the map’s global
+frame of reference and the ground-truth reference frame
+of the real-world environment. This global error becomes
+even more pronounced in environments with long paths
+that have few distinguishing features. Without proper data
+association along paths, localization often drifts from the
+ground-truth, both in the robot’s distance along the path
+and in the robot’s heading, causing straight paths to compress, stretch, or curve in the map.
+There are ad hoc methods for hypothesizing loop closures when the global odometry error is small. When a
+large loop is closed, accumulated error will often result in
+the robot’s current observations clashing with older portions of the map. Methods exist that search for a nearby
+
+The multiple representations of the HSSH are described
+independently, while their semantic dependencies imply
+that they build on each other. However, this does not imply a simple serial processing pipeline. In fact, processing
+of sensory input to build representations of the different
+kinds is interleaved, providing various sorts of synergies.
+Two are particularly important. First, the local metrical
+map of small-scale space is a useful “observer” both for
+detecting and describing places and for low-level control
+with obstacle avoidance. And second, it may be useful
+to order candidate topological models by using the relative displacement of nearby places or even by using the
+global layout of places within a single frame of reference.
+Nonetheless, in order to clarify the distinct representational ontologies, we will describe them in this paper as
+though they operate independently.
+The Hybrid SSH improves mobile robot capabilities in
+a variety of ways: efficient and robust map-building and
+navigation, “natural” human-robot interaction due to the
+multiple representations of space [Beeson et al., 2007],
+and hierarchical control. This paper cannot cover the full
+breadth of benefits obtained from using a hybrid topological/metrical framework; thus, this paper focuses solely on
+the issue of using the Hybrid Spatial Semantic Hierarchy
+framework for map-building. Here we describe the HSSH
+theory and demonstrate key points of HSSH map-building
+using a particular implementation that focuses on perception using range sensors, though other sensory modali2
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+Figure 1: Closing large loops reveals problems with cumulative errors when attempting to build metrical maps of
+large-scale environments in a single global frame of reference. (a) This environment and the robot’s trajectory through
+it are used as an example throughout. (b) The data comes from a Magellan Pro research robot with differentialdrive odometry and a S ICK-brand lidar device for precise, planar range-sensing. (c) This robot-made map of the
+environment in image (a) shows the effect of accumulated raw odometry error. (d) This map shows the improvement
+in pose estimation over image (c) by using metrical SLAM methods, but it also shows that significant errors still
+accumulate with respect to the real environment.
+
+3
+
+pose in the older portions of the map where perceptions
+match the prediction (propagating detected global error
+backwards through the exploration trace) [Lu and Milios,
+1997; H¨ahnel et al., 2003a]; however, these solutions can
+fail in sufficiently large or complex environments. For
+example, Cummins and Newman [2008] discuss closing
+loops over kilometers of travel, where small rotational errors lead to large positional errors, and the correct loop
+closure may never be considered by odometry-based solutions. Additionally, if the environment is subject to perceptual aliasing (different locations look the same), then
+the matching process may close the loop incorrectly, distorting the map as a whole. Depending on the amount
+of symmetry in the environment, a single incorrect match
+can lead the mapping agent down an arbitrarily long “garden path” before the error is discovered. It is still unclear
+how probabilistic methods applied to metrical maps can
+properly discover an incorrect map and how they might
+efficiently backtrack to hypothesize a different loop closure [H¨ahnel et al., 2003b].
+
+Blackwellized particle filters to explicitly represent the
+distribution of trajectories and maps by maintaining multiple metrical map hypotheses [Montemerlo et al., 2003;
+Eliazar and Parr, 2003; H¨ahnel et al., 2003a]. These methods are run offline (due to computational demands) after exploration is completed, forgoing useful active exploration techniques capable of eliminating some loopclosing hypotheses. Additionally, in large, symmetric environments, intractably large numbers of particles may be
+required to avoid particle depletion when closing large
+loops. Particle depletion is a failure to have a particle in
+the distribution that adequately models the correct map.
+
+2.2
+
+Topological Mapping
+
+Topological mapping is the other major paradigm studied in mobile robotics. Cognitive map research supports the creation of topological maps of large, complex environments [Lynch, 1960; Siegel and White, 1975;
+Kuipers, 1978; Chown et al., 1995; Kuipers, 2000]. A
+topological map, in its most basic form, represents an
+environment as a graph where nodes represent places
+and edges represent connections between places. Several groups of robotics researchers have presented distinct topological implementations that differ in their semantics for the graphs—how they define/describe places
+and actions between them [Kuipers and Byun, 1991;
+Mataric, 1992; Shatkay and Kaelbling, 1997; Duckett
+and Nehmzow, 1999; Choset and Nagatani, 2001; Morris et al., 2005]. Some implementations build topological maps autonomously, some are given topological maps
+a priori [Koenig and Simmons, 1996], and some let the
+robot explore autonomously while the researcher provides
+place names to overcome perceptual aliasing issues [Kortenkamp and Weymouth, 1994].
+Topological maps are more compact representations
+than global metrical maps, allowing efficient large-scale
+planning. Additionally, since the environment is discretized into a graph, movement errors do not accumulate
+globally. Possibly the most important difference for future robotics research is that topological maps allow compact, efficient hierarchical models that support multi-level
+symbolic reasoning for robust navigation, planning, and
+communication.
+The major hurdle for topological map-building has
+been the reliable abstraction of useful symbols from continuous, noisy perceptions of the environment: i.e. how to
+reliably detect and recognize places and paths. This is an
+instance of the more general symbol grounding problem
+[Harnad, 1990] that has troubled the AI community for
+many years. Probabilistic approaches are good at over-
+
+Some research on map-building avoids loop-closing issues by explicitly assuming that the correct data association is known [Leonard and Newman, 2003; Paskin,
+2003]. In some cases, even without an explicit assumption about data association, impressive feats of large-scale
+map-making depend on locations in the environment being sufficiently distinguishable based on local cues [Montemerlo et al., 2002; Konolige, 2004]. Others accept false
+negative matches in order to avoid false positives, sometimes improperly hypothesizing that a previously visited
+location is a new place [Bosse et al., 2003]. This can eliminate the possibility of closing a loop correctly and finding
+the correct map, which leads to poor planning and navigation performance. In a rich environment with noise due
+to dynamic changes, it could be that every location is in
+principle distinguishable, but it is difficult or impossible
+to know which features identify the place, and which are
+noise. Methods created to distinguish between perceptually aliased states can get confused under scenarios of
+perceptual variability (the same place looks different on
+separate occasions) [Kuipers and Beeson, 2002] causing a
+single physical location to be represented multiple times
+in the same map.
+Early approaches to probabilistic localization and mapping used particles to represent a distribution over robot
+poses for localization, but a single shared map was
+updated from the maximum-likelihood pose hypothesis
+[Thrun et al., 2000b]. This could produce an incoherent map due to an incorrect and premature commitment
+to a maximum-likelihood pose hypothesis that turned out
+to be incorrect. A more principled approach uses Rao4
+
+coming the kinds of local uncertainty and systematic noise
+that can hinder reliable symbol extraction. Incorporating
+probabilistic data association techniques into the topological map-building paradigm has sparked interest in hybrid
+map-building, including the HSSH approach presented in
+this paper.
+
+2.3
+
+ates a new place at every n corners or wall segments
+[Bosse et al., 2003]. Some approaches simply have the
+researchers press a button to define places in the world
+[Thrun et al., 1998]. Our research is related to these approaches as well, in that given autonomous place detection at qualitatively distinct and metrically distant places,
+we can provide a compact graph representation of an environment that makes global metrical mapping extremely
+efficient.
+Finally, a third category of hybrid mapping has only recently been investigated. There has been research looking
+at modeling the full Bayesian distribution over topological hypotheses [Ranganathan et al., 2006; Blanco et al.,
+2008]. These methods are still strongly grounded in using odometry knowledge (which can be unreliable over
+large distances [Cummins and Newman, 2007]) and/or
+aligning raw lidar measurements. As mentioned above,
+the “places” they utilize are determined by ad hoc means:
+by the researcher via button presses or by using distance
+thresholds or finite-sized feature buffers. We believe our
+topological representation is useful here as well. Section 10.2 discusses how this new area of hybrid research
+should mesh with the HSSH framework.
+The Hybrid Spatial Semantic Hierarchy (HSSH) is, to
+our knowledge, the first framework and implementation
+to fully describe the process of going from metrical sensations to both metrical and symbolic models of both smallscale and large-scale space—moving from metrical models of small-scale space to symbolic representations of
+small-scale space, inferring large-scale structure via symbolic inference, before producing a consistent global metrical model from the symbolic structure. Our approach
+autonomously detects and describes qualitatively distinct
+places, creating far fewer places than other “hybrid” approaches. Additionally, these places are meaningful to humans as the SSH representations are inspired by human
+cognitive maps.
+
+Hybrid Approaches
+
+Metrical and topological representations for space are
+very different in character, or more precisely, in ontology.
+The topological map describes the structure of large-scale
+space. It abstracts away the specific nature of sensory input and the specific methods used for matching sensory
+images when the topological map is created. Metrical
+mapping techniques that rely on local overlap of successive sensations, on the other hand, precisely capture the
+structure within the local sensory horizon: small-scale
+space.
+Recently, robotics researchers have begun to look at hybrid topological/metrical representations in order to try to
+leverage the benefits of both approaches. There are too
+many hybrid implementations to mention here, many with
+only very subtle differences, but publications about hybrid
+metric/topological representations fall into three basic categories, all of which are addressed by the work in this paper. We refer the reader to the survey of specific hybrid
+mapping implementations by Buschka [2005], as we refer
+to well-known or prototypical examples in this discussion.
+In one category of hybrid map-building approaches, a
+robot uses local metrical models as local observers that
+help filter out sensor noise, aggregate observations over
+time, and create plans that avoid nearby obstacles. Much
+of this research is specifically interested in using metrical models to try to determine qualitatively distinct or interesting places as the robot explores a new environment
+[Yeap and Jefferies, 1999; Lankenau et al., 2002; Tomatis
+et al., 2002; Ko et al., 2004]. This is related to our work
+on grounding places and paths in local metrical models.
+The second category of hybrid approaches focuses on
+using “places” in order to reduce the number of locations
+in the world that must be considered when hypothesizing
+metrical loop closures. That is, the goal of most hybrid
+mapping techniques is still to achieve a global metrical
+map; however, they use some “topological” (i.e. graph)
+constraints to make the closing of loops more efficient.
+Many of these implementations record places arbitrarily
+[Duckett and Saffiotti, 2000; Zimmer, 2000; Blanco et al.,
+2008], e.g., every 5 meters traveled, in order to reduce
+the number of locations in the world where loop closures
+can occur. Others use a feature buffer, so the robot cre-
+
+3
+
+The Spatial Semantic Hierarchy
+
+This section overviews the basic Spatial Semantic Hierarchy (SSH) [Kuipers, 2000; Remolina and Kuipers, 2004;
+Kuipers, 2008].1 The concepts and notations introduced
+here will be important for extension to the Hybrid SSH,
+which is presented starting in Section 3.5.
+The Spatial Semantic Hierarchy (SSH) represents
+knowledge of large-scale space with four distinct representations. Figure 2 illustrates the framework. At the
+1 In order to combine the SSH theory with a probabilistic mapping
+framework, it is necessary to use a slightly different vocabulary and symbol set than in previous SSH publications.
+
+5
+
+Qualitative
+
+Quantitative
+Continuous
+Analog
+Attributes
+Model
+
+Sensory
+
+names
+
+Sensor values
+
+Control
+
+Control laws
+HC and TF
+Distinctive states
+
+Causal
+
+Views
+Actions
+Causal schemas
+
+Turn angle
+Travel distance
+
+Places
+Paths
+Connectivity
+Order
+
+Local headings
+1−D distances
+
+Topological
+
+Metrical
+
+is controlled in the basic SSH by hill-climbing to dstates
+(and in the Hybrid SSH by incremental localization within
+a local metrical map). Structural ambiguity about the
+large-scale topology of the environment is controlled by
+search in a space of alternative topological maps. Global
+metrical uncertainty is controlled by relaxing metrical information from separate local frames of reference into a
+single global frame of reference, guided by the topological map.
+
+Local 2−D
+geometry
+
+3.1
+
+The SSH Control Level
+
+The SSH Control Level describes the system consisting
+of the agent and its environment as a piecewise continuous dynamical system. The agent’s experience is represented at a fine-grained sequence of time-steps 0 ≤ t ≤ N.
+At any time t, the agent-environment system is described
+by the state vector xt (the agent’s pose in a static world),
+the agent’s sense vector zt , and its motor vector ut . We
+assume that both the environment and the agent’s sensory
+system are very rich, so the sense vector zt is very highdimensional.
+The dynamical system is described by the following
+equations, in which the functions F and G represent the
+physics of the agent’s body in the environment and its
+sensorimotor system, respectively. These two functions
+are not explicitly known or available to the agent. The
+control law Hi , on the other hand, can be selected by the
+agent.
+
+Global 2−D
+geometry
+
+Figure 2: The Spatial Semantic Hierarchy. Closedheaded arrows represent dependencies; open-headed arrows represent potential information flow without dependency. (From Kuipers [2000].)
+SSH Control Level, control laws provide reliable motion
+among distinctive states (dstates) qi . At the SSH Causal
+Level, state-action-state schemas q, a, q explain how the
+distinctive states are linked by turn and travel actions,
+and relations o(q) = v between a state and its observable
+view describe the potential experiences of the robot. Thus
+the Causal Level abstracts the continuous world to a deterministic finite automaton [Rivest and Schapire, 1989;
+Dean et al., 1995], related to the way humans utilize route
+instructions in navigation. At the SSH Topological Level,
+a map consisting of discrete places, paths, and regions, describes the connectivity, order, containment, and boundary relations of large-scale environments. At the SSH
+Metrical Level, local metrical information about the location of obstacles, the magnitudes of actions, the lengths of
+path segments, and the directions of paths at place neighborhoods are incorporated into local and global metrical
+maps. One contribution of the Hybrid SSH is to clarify the
+relation between the metrical information and the symbolic abstractions of the basic SSH levels.
+The Spatial Semantic Hierarchy factors spatial uncertainty into distinct components, controlled in distinct
+ways. Movement uncertainty is controlled by the behavior
+of feedback-driven motion control laws. Pose uncertainty
+
+xt+1
+
+= F(xt , ut )
+
+zt
+
+= G(xt )
+
+ut
+
+= Hi (zt )
+
+The agent acts by selecting a control law Hi to determine its motor output signals as a function of its sensor
+input. In the basic SSH [Kuipers, 2000], motion is controlled by alternating between two types of controllers.
+Trajectory-following control laws take the robot from one
+distinctive state (dstate) to the neighborhood of another.
+A hill-climbing control law guides the robot to the destination dstate x¯ from anywhere in its surrounding neighborhood.
+Hill-climbing localizes the agent by moving it reliably
+to a distinctive state within the local neighborhood, preventing the accumulation of position error, and paving the
+way for a discrete abstraction of the continuous space.
+Furthermore, hill-climbing control makes very weak assumptions about the properties of the sensors and the
+agent’s knowledge of those properties. For example, a
+robot may hill-climb to a distinctive state, or follow a trajectory down a hallway, based on features extracted from
+6
+
+sonar or laser range-finders, from monocular or stereo vision, or from sensors for luminance or electromagnetic
+fields. The robot’s map is determined by the behaviors of
+its hill-climbing and trajectory-following control laws. It
+need never know how its sensory features correspond with
+environmental states.
+Despite their simple conceptual definition, hillclimbing control laws can be difficult to define and may
+vary across domains. An agent often does have stronger
+knowledge of the properties of its sensorimotor system,
+and physical motion to distinctive states seems awkward
+and unnecessary in light of that knowledge. A key insight behind the Hybrid SSH is that accurate localization
+in the small-scale space model of a place neighborhood
+can substitute for the physical motion of hill-climbing to
+a particular distinctive state in that neighborhood. In Section 4, we discuss how the Hybrid SSH exploits metrical
+knowledge of small-scale space to build local perceptual
+maps of place neighborhoods, within which localization
+is reliable and effective.
+
+3.2
+
+Figure 3: SSH Control/Causal Level abstraction. In the
+SSH, dstates are defined by pairs of trajectory-following
+and hill-climbing control laws. These sequences are abstracted into actions, and the observations at dstates are
+abstracted into views. (Adapted from Kuipers [2000].)
+ence as a deterministic finite automaton (DFA) [Rivest
+and Schapire, 1989; Dean et al., 1995]. The Causal Level
+deterministic finite automaton
+MC = Q, A,V, R, o
+
+The SSH Causal Level
+
+consists of sets of states Q, actions A, observable views V ,
+a transition function R : Q × A → Q, and an observation
+function o : Q → V . As the robot travels from one distinctive state x¯ to the next, its experience is an alternating
+sequence of views and actions. Some actions are turns,
+while others are travels.
+
+Given pairs of trajectory-following (TF) and hill-climbing
+(HC) controls that represent motion between neighboring dstates at the Control Level, we begin to represent
+the robot’s experiences as a set of symbolic abstractions
+(Figure 3). First, we define an action a ∈ A, to represent
+a pair of trajectory-following and hill-climbing controls
+that connect dstates. Since the sensory image at a dstate
+z¯ = G(x)
+¯ is a point in a very high-dimensional space, it
+will, in general, never be experienced twice. We will
+therefore assume that each distinctive state x¯ has an associated view, o(x)
+¯ = v ∈ V , which is an abstracted description of the sensory image z¯.
+The actual content of a view will depend on the properties of the environment and of the robot’s sensors. Views
+could include such things as the direction and distance
+to nearby obstacles as detected by a range sensor; color,
+texture, and category of nearby objects as identified in
+a camera image; the number and identity of accessible
+wireless routers or cell towers; or any of a number of
+other sensory features. Kuipers and Beeson [2002] describe a bootstrap-learning method for learning a view
+representation suitable for high-performance place recognition; however, for this paper, we will not require that
+the observation function o be discovered autonomously.
+As discussed in Section 5, the Hybrid SSH defines views
+by extracting a specific symbolic description of the local
+environmental structure.
+The SSH Causal Level describes the agent’s experi-
+
+v0
+
+a1
+
+v1
+
+a2
+
+v2
+
+···
+
+vn−1
+
+an
+
+vn
+
+At the SSH Control Level, a view vi is experienced only
+when the agent is at a distinctive state x¯i , so the view vi is
+an observable manifestation of the distinctive state: vi =
+o(x¯i ).
+x¯0
+|
+v0
+
+a1
+
+x¯1
+|
+v1
+
+a2
+
+x¯2
+|
+v2
+
+···
+···
+
+x¯n−1
+|
+vn−1
+
+an
+
+x¯n
+|
+vn
+
+At the Causal Level, each state q ∈ Q represents an equivalence class of distinctive states x¯ in the physical world.2
+Two distinctive states x¯i and x¯ j are equivalent if they represent different experiences of the same distinctive state
+q ∈ Q. (We use the notation [x¯i ] = [x¯ j ] = q for this.)
+The set Q of distinctive states thus represents a specific
+2 The
+
+term distinctive state, abbreviated dstate, is thus overloaded.
+It refers both to the state x¯ resulting from a hill-climbing control law
+at the SSH Control Level, and to the state q = [x]
+¯ at the SSH Causal
+Level which is part of the discrete abstraction of the continuous environment. It is this abstraction from continuous to symbol that facilitates
+causal/topological mapping in the basic SSH.
+
+7
+
+the observation function are deterministic. The deterministic transition function follows from the nature of the abstraction that results from moving reliably between dstates
+via TF and HC control laws. The deterministic observation function follows from the abstraction that defines the
+observation function o. One improvement of the HSSH
+over the SSH is that local small-scale space models make
+place detection and observational classification of states
+deterministic without the need for hill-climbing (Section
+5).
+The effect of the SSH hill-climbing (and HSSH place
+detection and localization) is that the Causal Level representation can assume that actions are deterministic. The
+determinism of the observation function rests on the abstraction from sensory images to views being sufficiently
+aggressive to eliminate perceptual variability. Although
+observations are deterministic, they are not necessarily
+unique since there may still be perceptual aliasing. This
+ambiguity is handled by creating multiple hypotheses of
+topological (thus causal) models, as explained in Section
+3.3. In general, it is not possible for a robot to recover
+the complete spatial structure of any arbitrary environment [Dudek et al., 1991]; therefore, keeping around the
+tree of possible maps allows the robot to continue navigation when the best hypothesis is refuted by an experienced
+counter example.5
+
+hypothesis about which experiences x¯i represent repeated
+encounters with the same state q in the environment; that
+is, Q specifies data association for loop closures.
+All distinctive states in the same equivalent class q must
+have the same view.3
+[x]
+¯ = [x¯ ] → o(x)
+¯ = o(x¯ )
+Thus, o(q) is well-defined, and we can write
+q = q → o(q) = o(q )
+The full sensory input from high bandwidth sensors in a
+realistically complex environment is so rich that sensory
+images will never match exactly. Views must be defined in
+terms of some observation function that allows the same
+dstate to be reliably detected on separate occasions. Thus,
+an experience with repeated states such as
+q0
+|
+v0
+
+a1
+
+q1
+|
+v1
+
+a2
+
+q2
+|
+v2
+
+···
+
+q0
+|
+
+···
+
+vn−1
+
+an
+
+q1
+|
+vn
+
+can only be consistent if vn−1 = v0 and vn = v1 . However,
+abstracted views are subject to perceptual aliasing (different places look the same), leading to ambiguities about the
+topological structure of the map: o(q) = o(q ) → q = q .
+The transition function R : Q × A → Q is represented
+as a set of schemas r = q, a, q , where context(r) =
+q, action(r) = a, and result(r) = q . As new observations are added to the robot’s experience, new schemas
+[x¯n ], an+1 , [x¯n+1 ] are learned by the transition function
+R. The causal map is constructed by searching for an appropriate set Q of states (i.e. equivalence classes of distinctive state observations), such that MC has a deterministic transition function R, predicted and observed views
+are consistent, and MC is consistent with the axioms for
+topological maps [Remolina and Kuipers, 2004].
+For the purpose of building the SSH Causal Level from
+exploration experience, building and using a DFA is far
+more tractable than building and using a probabilistic state
+model, such as a hidden Markov model (HMM).4 The
+key benefit of a DFA over HMMs (or stochastic finite automata in general) are that both the transition function and
+
+3.3
+
+The SSH Topological Level
+
+In the SSH, a topological map is an instantiated model for
+two sets of axioms: one that describes topological maps in
+general and another that describes the exploration experience of the agent in a particular environment. We identify
+the global topological map by generating potential models
+of these axioms, discarding those that violate the axioms,
+and applying an ordering on the remaining ones so that
+a single best model can be selected. If there is no single
+best model, then a few closely competing models can be
+identified and can be used to make an exploration plan to
+help discriminate between models.
+The SSH Topological map M T describes the environment in terms of dstates, places, paths, regions, and the
+3 The axioms provided here describe the nature of the spatial knowlqualitative relations among them such as connectivity, or-
+
+edge represented at each SSH level, but we omit auxiliary axioms required for logical completeness (e.g., unique names axioms, etc). A
+complete set of axioms is provided by Remolina and Kuipers [2004]. For
+clarity and conciseness, we use a typed logic in which variable names
+encode their types, and we assume that all free variables in axioms are
+universally quantified.
+4 Finding the minimal DFA in the general case, like finding the minimal HMM, is NP-Complete [Gold, 1978; Angluin, 1978]. However,
+given non-symmetries in the environment, it is possible to use active
+exploration routines to eliminate many DFA hypotheses. Active exploration routines that eliminate ambiguity among DFA hypotheses are
+
+closely related to adaptive distinguishing sequences, which can be computed in polynomial time [Yannakakis and Lee, 1991], and should allow
+the robot to find a minimal DFA in polynomial time [Schapire, 1991] in
+future work on active exploration.
+5 Long-term experience with the HSSH has yielded deterministic actions and views in research settings, but we can envision rare scenarios,
+e.g., an intersection crowded with people, that could lead to an undetected or misclassified place. Detecting and understanding these unusual
+events should allow us to still assume deterministic actions (100 − ε)%
+of the time.
+
+8
+
+der, and containment. A dstate q ∈ Q represents a disq, a, q ∈ S ∧ a = TurnAround ∧
+tinctive state or pose of the agent in the environment, a
+along(q, π, d) → along(q , π, opp(d))
+(4)
+place p ∈ P represents a zero-dimensional location, a path
+π ∈ Π represents a one-dimensional structure, and a re- The relation on(π, p) means that the place p ∈ P is on the
+gion r ∈ R represents a two-dimensional subset of the path π ∈ Π.
+environment. In this paper, we will not discuss regions
+at(q, p) ∧ along(q, π, d) → on(π, p)
+(5)
+or their relations, which are described by Remolina and
+Kuipers [2004].
+A path defines an order relation over the places on it:
+We formalize a topological map as
+q, a, q ∈ S ∧ a ∈ Travels ∧ at(q, p) ∧
+
+M T = MC ∪ Ob jects ∪ Relations.
+Here Ob jects = P, Π, R , where P is a set of places, Π is
+a set of paths, and R is a set of regions. M T thus includes
+(via MC ) the sets of states, actions, and views. Relations
+encodes the relations over this set of objects. These relations, including at, along, on, order (and the local topology “star” relations introduced in Section 5), allow for a
+richer description of the connectivity of places and paths,
+and are introduced below as needed.
+At the SSH Causal Level, the experience is represented
+as an alternating sequence of states (qi ∈ Q) and actions
+(a j ∈ A).
+q0
+
+a1
+
+q1
+
+a2
+
+q2
+
+···
+
+qn−1
+
+an
+
+(1)
+
+along(q, π d ) ≡ along(q, π, d)
+Additionally, there are two kinds of basic actions, turns
+and travels, and there is a TurnAround action.
+TurnAround ∈ Turns
+
+A place p ∈ P corresponds to a set of states linked by
+turn actions.
+(2)
+
+Similarly, a path π ∈ Π corresponds to a set of states
+linked by travel actions, or by a TurnAround.
+
+3.4
+
+¬order(π, d, p, p)
+
+(8)
+
+order(π, d, a, b) ⇐⇒ order(π, opp(d), b, a)
+
+(9)
+
+(10)
+
+The SSH Metrical Level
+
+The SSH, often thought of as a framework for creating
+purely topological maps, has always allowed for local
+metrical knowledge to be utilized at the Control Level
+
+q, a, q ∈ S ∧ a ∈ Travels ∧
+along(q, π, d) → along(q , π, d)
+
+(7)
+
+In order to create a Topological Level map from a Causal
+Level experience, such as q1 ,travel, q2 , q2 ,turn, q3 ,
+q3 ,travel, q4 , the agent uses abduction to hypothesize
+the existence of several places and paths at which these
+distinctive states occur. Figure 4 shows an example of the
+abduction process.
+Remolina and Kuipers [2004] provide a non-monotonic
+axiomatization of the SSH topological map, including additional elements of the theory (regions, boundary relations, and metrical relations), along with more details and
+motivating examples. This theory provides a precise specification of the possible logical models (topological maps)
+that are consistent with the axioms and the sequence of
+actions and views observed while exploring. A prioritized
+circumscription policy (expressed as a nested abnormality
+theory [Lifschitz, 1995]) specifies how distinct consistent
+logical models are ordered by simplicity. Furthermore,
+Savelli and Kuipers [2004] have developed the non-local
+planarity constraint, which enforces the requirement that
+a topological map is a graph embedded in the plane. Figure 5 presents an algorithm for constructing all possible
+topological maps by generating all possible sets Q.
+
+∀q ∈ Q ∃p ∈ P, π ∈ Π,
+
+q, a, q ∈ S ∧ a ∈ Turns ∧ at(q, p) → at(q , p)
+
+order(π, d, a, b) → on(π, a) ∧ on(π, b)
+
+order(π, d, a, c)
+
+At the Topological Level, each distinctive state q ∈ Q corresponds to being at a place, and facing along a path in
+some direction. Since a path is one-dimensional, it has
+two directions d ∈ {+, −}, for which opp(+) = − and
+opp(−) = +. We define a directed path, π d , to represent
+facing along a path in a particular direction.
+
+A = Turns ∪ Travels
+
+(6)
+
+order(π, d, a, b) ∧ order(π, d, b, c) →
+
+qn
+
+d ∈ {+, −} [at(q, p) ∧ along(q, π, d)]
+
+at(q , p ) ∧ along(q, π, d) → order(π, d, p, p )
+
+(3)
+9
+
+Causal schema
+
+Equation #
+
+Topological relation
+
+q1 ,travel, q2 ∈ S
+
+(1) →
+(5) →
+(3) →
+(1) →
+(5) →
+(6) →
+(8) →
+
+at(q1 , p1 ), along(q1 , πa+ )
+on(πa , p1 )
+along(q1 , πa+ ), along(q2 , πa+ )
+at(q2 , p2 )
+on(πa , p2 )
+order(πa+ , p1 , p2 )
+p1 = p2
+
+q2 ,turn, q3 ∈ S
+
+(2) →
+(1) →
+(5) →
+
+at(q3 , p2 )
+along(q3 , πb− )
+on(πb , p2 )
+
+q3 ,travel, q4 ∈ S
+
+(3) →
+(1) →
+(5) →
+(6) →
+(8) →
+
+along(q4 , πb− )
+at(q4 , p3 )
+on(πb , p3 )
+order(πb− , p2 , p3 )
+p2 = p3
+
+Figure 4: Topological abduction example. Here we illustrate the abduction process, using the topological axioms to
+model exploration. Starting at dstate q1 , the agent reaches dstate q2 at a place p2 having traveled along directed path
+πa+ . It then turns to dstate q3 , still at place p2 , and is ready to travel along another path, say πb− , from q3 to dstate q4
+at some other place.
+then be abstracted to a topological map. That is, it uses the
+sparse structure of man-made environments (or man-made
+paths in natural environments) to define a small number of
+discrete places and connecting paths. Obviously, topological structure may be imposed even in unstructured environments. Defining places at visually distinctive locations along a single path (e.g., a water tower on the side
+of a highway) or even based on metrical path-integration
+in wide-open spaces (as the Puluwat navigators do when
+piloting dugout canoes between distant islands [Gladwin,
+1970]) are currently not handled by our SSH hill-climbing
+controllers or the HSSH place detection methods. We believe these type of places can be represented within the
+SSH framework, but we leave this problem for future
+work.
+The basic SSH makes weak (i.e. very general) assumptions about the sensory capabilities of the navigational
+agent; thus, abstraction from continuous sensations to discrete models of the environment depends on well-crafted
+control laws that move the robot reliably between distinctive states. The Hybrid SSH makes stronger (i.e. more
+specific) assumptions about the types of sensors available
+3.5 Extending the SSH
+to the agent, for example, range sensors. This allows the
+The Spatial Semantic Hierarchy depends on the assump- HSSH to extend the basic SSH by using existing metrical
+tion that the environment naturally decomposes into place mapping techniques to create precise observational modneighborhoods, connected by path segments, which can els of the local surround.
+
+(Figure 2, right column). Additionally, the SSH Metrical Level has always supported a global metrical map to
+be created after the topological map—it is our belief that
+such a global metrical map is often unnecessary for navigation in and communication about large-scale environments. However, the SSH theory has lacked a formal description of exactly how metrical information influences
+the hierarchical abstractions of space. One contribution
+of this paper is to clarify the relationships between metrical and symbolic knowledge in a navigational agent.
+In work leading to the development of the SSH,
+Kuipers and Byun [1991] created a “patchwork metrical
+map”. Their mapping implementation annotated topological places and paths with metrical data gathered during exploration. Given a topological map hypothesis, the global
+place layout was relaxed to minimize errors with respect
+to the annotated metrical data before adding stored range
+information to create the obstacle map. This approach is
+similar to the probabilistic techniques we define formally
+in Section 7.3.
+
+10
+
+0. Perform initial action a0 that brings the robot to a place along a directed path. Initialize the tree of maps with the
+map hypothesis M0 , q0 , where M0C contains the single dstate q0 with its observed view v0 , and M0T contains the
+single place p0 and path π0 .
+After performing a new action a and observing the resulting view v, for each consistent map M, q on the fringe of
+the tree:
+1. If MC includes q, a, q in R and v = o(q ),
+• if match(v, v ), then M, q is the successor to M, q , extending the tree;
+• if not, then mark M, q as inconsistent.
+2. Otherwise, MC does not include q, a, q in R. Let M be M extended with a new distinctive state symbol q and
+the assertions v = o(q ) and q, a, q . Consider the k ≥ 0 dstates q j in M with v j = o(q j ), such that match(v j , v).
+Then M, q has k + 1 successors:
+• M j , q for 1 ≤ j ≤ k, where M j is M extended with the assertion q = q j .
+• Mk+1 , q , where Mk+1 is M extended with the k assertions that q = q j , for 1 ≤ j ≤ k.
+3. Mark a new successor map inconsistent if it violates the axioms of topological maps.
+4. Define a preference order on the consistent maps at the leaves of the tree.
+In the Basic SSH:
+M = MT .
+A view is a simple symbol.
+match(v, v ) iff v = v .
+Both a ∈ Turns and a ∈ Travels can reach step 2 and cause a branch.
+Preference order from prioritized circumscription policy [Remolina and Kuipers, 2004].
+In the Hybrid SSH (Section 6):
+M = MT , MP .
+A view is a structure S p , π˜ d , where p = place(q), consisting of a local topology and the directed
+local-path the robot arrived upon.
+match(v, v ) iff there exists an isomorphism φ : S p → S where φ (q) = q .
+Only a ∈ Travels can reach step 2 and cause a branch.
+Future work: Preference order from map probabilities (Section 10.2).
+Figure 5: Building the tree of topological maps. This pseudo-code framework describes the algorithm for building a
+tree of all possible topological consistent with a sequence of actions and observations at discrete places. The different
+instantiations of this framework for the basic and hybrid SSH are also described.
+
+11
+
+The HSSH has four major levels of representation that
+correspond to the four SSH levels (Figure 6). At the Local
+Metrical Level, the agent builds and localizes itself in the
+Local Perceptual Map (LPM), a metrically accurate map
+of the local space within its sensory horizon. The LPM is
+used for local motion planning and hazard avoidance. At
+the Local Topological Level, the agent identifies discrete
+places (e.g., corridor intersections, rooms, etc.) in the
+large-scale continuous environment, and symbolically describes the configuration of the paths through the place—
+its local decision structure. At the Global Topological
+Level, the agent resolves structural ambiguities and determines how the environment is best described as a graph
+of places, paths, and regions. The Global Metrical Level
+specifies the layout of places, paths, and obstacles within
+a single global frame of reference. It can be built on the
+skeleton provided by the topological map. Figure 6 diagrams the basic flow of data in the HSSH, from sensors,
+through the local metrical model of small-scale space and
+the local and global symbolic models of the large-scale
+environment, finally creating the global metrical model if
+desired.
+
+Effectors, Sensors
+Motor
+Commands
+
+Hardware
+Control
+
+Data Flow:
+Control Flow:
+
+Motion
+Commands
+
+Local Metrical
+Representation
+
+(x, y, θ)
+
+LPM with
+Robot Pose
+
+Local Symbolic
+Representation
+
+Having small-scale space models of the local surround
+creates several advantages when implementing the HSSH
+versus the basic SSH. First, the robot represents the local
+environment using a local perceptual map (LPM) (Section 4). The robot can therefore use algorithms for local metrical motion planning and obstacle avoidance instead of relying on behavior-based controllers. Second,
+metrical localization can be done quickly after entering
+a place neighborhood, rather than requiring physical hillclimbing to a distinctive pose.
+A symbolic description of the local topology is extracted from this precise small-scale-space model of the
+local surround via gateways (Section 5). Thus, the view
+of a distinctive state no longer need be some user-defined
+function of the perceptual inputs. Instead, the method relies on the local topology extracted from the LPM to describe places, thus describing all distinctive states at each
+place. Using local topology to detect and describe places
+allows the robot to model more complicated intersections
+of paths than with hill-climbing. Additionally, using local
+topology constrains the global topological model search
+(Section 6), as branching in the tree of possible maps occurs only when arriving at a place, not when visiting the
+various dstates of a place (Section 8).
+
+Observations
+
+Travel, Turn
+
+Place LPM, Small Scale Star,
+Last Gateway, Action Type,
+Path Hazards/Metrical Annotations
+
+Global Symbolic
+Representation
+
+Place, Path
+
+Topological Map,
+LPMs of all Places,
+Metrical Annotations
+Likelihood of
+
+(x, y,θ)
+
+Global Metrical
+Representation
+
+Place Layouts
+
+Figure 6: HSSH description. The HSSH is an integrated
+framework of multiple, distinct representations of spatial
+knowledge. Each level of abstraction uses its own ontology with concepts motivated by human cognitive abilities
+and grounded to the environment via local metrical observations. The four major components here correspond to
+the four levels of the basic SSH shown in Figure 2.
+
+Stored metrical information along topological connections between places can be used to efficiently obtain a
+global metrical layout of places (Section 7), which provides the “backbone” for a global map if desired. The
+HSSH also improves navigational behaviors and facili12
+
+tates multi-modal human-robot interaction [Beeson et al.,
+2007; MacMahon et al., 2006].
+The rest of this paper is focused on discussion of the individual components of the HSSH. Section 4 describes local metrical modeling of small-scale space using existing
+SLAM methods, as well as local motion planning. Section
+5 describes how the local topology of a place is abstracted
+from the local metrical model and how this abstraction
+leads to reliable place detections and descriptions. Section
+6 describes how the global topological map is created and
+maintained as exploration provides a sequence of actions
+and local topologies of places encountered during travel.
+Section 7 describes how the global metrical map is built
+on the qualitative skeleton provided by the global topological map. Section 8 discusses computational complexity
+issues for each level of the HSSH. Section 9 summarizes
+the paper, and Section 10 discusses future research on optimizing the HSSH.
+
+4
+
+t:
+
+Local Perceptual Map (LPM)
+
+The local perceptual map (LPM) is a bounded-size metrical description of the small-scale space surrounding the
+agent. It functions as an observer, integrating sensor values over time to determine the locations of obstacles and
+other hazards, for localization, motion planning, and the
+derivation of local features for larger-scale mapping. The
+LPM represents the small-scale space within the robot’s
+sensory horizon, not just what is currently in view. It is
+small enough to avoid the problem of closing large loops.
+The frame of reference of the LPM is local. Its relation
+with the world frame may be unknown, and will drift over
+time due to accumulating errors.
+When the agent travels from one place to another, the
+LPM acts as a scrolling map, m,
+˜ that describes the robot’s
+immediate surround. Information that scrolls off the LPM
+
+The time-steps 0 ≤ t ≤ N of the agent’s experience.
+
+x = x0:N : The sequence of agent poses xt at each timestep t.
+z = z0:N :
+
+The sequence of observations zt .
+
+u = u1:N :
+steps.
+
+The sequence of actions ut between time-
+
+m : The set of map elements, which may be landmarks
+or occupancy grid cells. m˜ (the scrolling local perceptual map) is a particular example of a metrical
+map m.
+
+HSSH Local Metrical Level
+
+The critical difference between the basic SSH and the Hybrid SSH is the use of a local metrical model of smallscale space surrounding the robot. In our current work,
+we call this model a local perceptual map (LPM). The
+LPM is currently built using sensor input from laser range
+sensors that see walls, but the LPM could be built from
+visual sidewalk (or road) detection or other sensor modalities. Similarly, the current LPM representation models
+occupied, free, and unknown regions of space. Work by
+Murarka et al. [2006] investigates incorporating semantic
+labels into the LPM to denote drop offs, pedestrians, and
+other types of hazards.
+
+4.1
+
+is discarded, and new cells that scroll onto the map are
+initialized as unknown.6 Because the LPM has a fixed,
+bounded size, the cost of updating it is constant in both
+time and space.
+The full task of building metrical maps from exploration data can be described as finding the joint posterior
+over maps m and trajectories x = (x, y, θ ) in P(x, m|z, u)
+with the following symbol definitions.
+
+The joint probability of the pose history x and the metrical
+map m can be decomposed as
+P(x, m|z, u) = P(m|x, z, u) · P(x|z, u)
+by the chain rule for probabilities.
+For simple, local regions, the maximum-likelihood map
+can be estimated incrementally given knowledge of x and
+z, so we really just need to solve for P(x|z, u). Additionally, we are not concerned with the full distribution over
+pose trajectories, as we are updating the map from the
+maximum-likelihood pose at each time step. Thus, for
+our online metrical mapping we only need to determine
+the distribution over the current pose.
+Bel(xt ) = P(xt |z0:t , u1:t )
+= η P(zt |xt , m)
+
+P(xt |xt−1 , ut )Bel(xt−1 ) dxt−1 ,
+
+where η is a normalization constant. Figure 7 illustrates
+the basic structure of Markov localization [Fox et al.,
+1999], which allows us to determine in an efficient and
+incremental algorithm, the distribution of poses that best
+fit the current map.
+Though multiple metrical mapping methods might be
+used for the LPM, we utilize the well-known occupancy
+grid representation [Moravec, 1988; Elfes, 1989], along
+6 Our rectangular LPM scrolls, horizontally or vertically, as needed to
+keep to keep the robot’s pose in a central cell. Information in the occupancy grid is only shifted by integral numbers of cells to avoid blurring
+the model by rotations or partial-cell translations.
+
+13
+
+Figure 7: Markov localization. The standard graphical
+dynamic Bayesian network (DBN) for Markov localization within a single frame of reference: combines belief
+about actions P(xt |ut , xt−1 ) and observation P(zt |xt , m).
+Simultaneous localization and mapping (SLAM) algorithms combine localization, P(x|z, u), with one of a number of mapping methods to estimate P(x, m|z, u).
+with particle filter Markov localization [Fox et al., 1999]
+to overcome noisy odometry information. Stated more
+plainly, we model the world as a discretized grid, where
+each cell contains a probability of being occupied by an
+obstacle, as measured by a lidar sensor. Localization is
+performed by comparing hypothesis poses to the current
+map, and the map is updated accordingly. This is a wellknown version of simultaneous localization and mapping
+(SLAM) [Thrun et al., 2005]. Discussions in this paper that refer to this implementation generalize to many
+SLAM implementations.
+
+4.2
+
+LPM Benefits
+
+LPMs provide the HSSH with various information that allows both local and global abstractions of space. In Section 5, we discuss how the LPM supports the abstraction
+of a symbolic small-scale space description of the localpaths in the surround. Section 7 discusses how the local
+metrical information is used, along with the topological
+map, to find the global metrical place layout of an exploration trace and, if desired, the entire global metrical
+map of an explored environment. In addition to providing
+useful local metrical information for place detection, categorization, and layout, the LPM is a reliable observer for
+local control at the SSH Control Level.
+Given a target pose in the LPM, the robot can compute a trajectory to reach the target without colliding into
+obstacles. This can be done using the Vector Field Histogram [Borenstein and Koren, 1991], the Dynamic Window approach [Fox et al., 1997], gradient methods [Kono-
+
+lige, 2000], or even a simple search (using A∗ or RRTs
+[Kuffner and LaValle, 2000]) over the cells of the occupancy grid. The potential function (for gradient methods)
+or the cost function (for A∗ ) reflects the distance of the
+agent from an obstacle or other hazard represented in the
+LPM. Object tracking may be implemented at this level,
+but our current robot implementation simply avoids obstacles by taking the first few steps along the planned trajectory before replanning. We discuss the selection of target
+poses as they apply to Causal Level Travels and Turns in
+Section 5.3.
+In the basic SSH [Kuipers, 2000], an agent localizes itself in a place neighborhood by hill-climbing to a distinctive state. Localization by physically moving to maximize
+a “distinctiveness measure” requires very little knowledge
+about the nature of the environment or the sensors. In
+the Hybrid SSH, on the other hand, the agent uses an
+online SLAM method to localize itself unambiguously
+within the local perceptual map. SLAM methods depend
+on stronger knowledge about the relation between sensor input and the agent’s location in the local frame of
+reference—P(zt |xt , m).
+˜
+In return for these stronger assumptions, the agent does not need to move to a particular
+location to be adequately localized.
+Finally, when the agent is in the neighborhood of a
+particular topological place p, a snapshot of the LPM
+m˜ serves as a small-scale space description of the place
+neighborhood that is stored as a place annotation m p in
+the topological map. When a place p is first encountered,
+the local map m p for its neighborhood is initialized with
+the information from the scrolling map m.
+˜ The frame of
+reference defined for m p may be different from that of m,
+˜
+appropriate to the characteristics of the place neighborhood. When the neighborhood of p is encountered on
+subsequent occasions, the agent may localize itself with
+respect to the stored map m p and may update m p with the
+more recent information in m.
+˜
+
+5
+
+HSSH Local Topological Level
+
+As the robot and its scrolling LPM move continuously
+through the environment, the robot identifies a discrete
+set of isolated places and the path segments that connect
+them. In the small-scale space of the LPM, a place neighborhood is an extended region. In the large-scale space
+representation, a place is a node in the topological graph,
+and is connected by paths to other places. These are the
+local elements from which a global topological map is
+constructed. We abstract the structure of a place neighborhood to the local topology description of the place. Just as
+a path describes the linear order of places on it, a place de-
+
+14
+
+scribes the circular order of directed paths radiating from
+it. We call this the local topology S p of a place p, and
+describe the circular order with a structure called a star
+[Kuipers et al., 2004]. This section discusses how this
+symbolic representation of a place (in large-scale space)
+is grounded in the metrical description m p of the place
+neighborhood (in small-scale space).
+A local-path π˜ at a place p is the fragment of a topological path that is visible within the stored local perceptual
+map, m p , of the neighborhood of p. A directed local-path
+is of the form π˜ d , where d ∈ {+, −} represents the direction along π˜ moving away from p. Upon arriving at
+a new place, a local-path and its directions may not yet
+have been matched with a global topological path and its
+directions.
+A star S is a set of directed local-paths such that π˜ + ∈
+S ⇐⇒ π˜ − ∈ S. There are two functions that describe
+stars.
+next : S → S induces a clockwise circular order over
+π˜ d ∈ S. next(π˜ d ) is the next element from π˜ d in the
+clockwise order.
+α:
+
+S → {0, 1} associates an attribute value α(π˜ d ) to
+∈ S, where α(π˜ d ) = 1 means that travel is possible along π˜ d away from p, and α(π˜ d ) = 0 means
+that travel away from p along π˜ d is not possible.
+π˜ d
+
+The star is naturally encoded as a sequence of pairs, where
+the sequence encodes the next relation (next of the last element being the first element), and the second element of
+each pair is the value of α applied to the first element. For
+example, consider the following local topology (star) descriptions of familiar intersection types7 including localpaths π˜a , π˜b , and sometimes π˜c . (For ease of visualization,
+the first directed local-path in the circular order is the one
+directed upward.)
++
+T
+L
+Y
+K
+ψ
+
+[
+[
+[
+[
+[
+[
+
+π˜a+ , 1
+π˜a− , 0
+π˜a+ , 1
+π˜a− , 0
+π˜a+ , 1
+π˜a+ , 1
+
+,
+,
+,
+,
+,
+,
+
+π˜b+ , 1
+π˜b+ , 1
+π˜b+ , 1
+π˜b+ , 1
+π˜b+ , 1
+π˜b+ , 1
+
+,
+,
+,
+,
+,
+,
+
+π˜a− , 1
+π˜a+ , 1
+π˜a− , 0
+π˜c− , 0
+π˜c+ , 1
+π˜c− , 0
+
+,
+,
+,
+,
+,
+,
+
+π˜b− , 1
+π˜b− , 1
+π˜b− , 0
+π˜a+ , 1
+π˜a− , 1
+π˜a− , 1
+
+]
+]
+]
+, π˜b− , 0 , π˜c+ , 1 ]
+, π˜b− , 0 , π˜c− , 0 ]
+, π˜b− , 0 , π˜c+ , 1 ]
+
+is a bijective function such that
+next(φ (π˜ d )) = φ (next(π˜ d ))
+α(φ (π˜ d )) = α(π˜ d )
+path(φ (π˜ d )) =
+
+path(φ (π˜ opp(d) )),
+
+˜ An isomorphism means that the two
+where path(π˜ d ) = π.
+stars have the same local topology under a suitable rotation of the circular order. Note that two stars may have
+multiple distinct isomorphisms. For example, there are
+four distinct isomorphisms between two + intersections.
+The local topology description provides a purely qualitative account of “left” and “right”, avoiding the need to
+define them in terms of thresholds on some angular variable. A particular directed local-path at a place p, π˜ + , and
+its opposite, π˜ − , partition the other directed local-paths in
+the star into two groups. Those that are between π˜ + and
+π˜ − in the clockwise direction can be described as being
+“to the right” of π˜ + . Those between π˜ + and π˜ − in the
+counter-clockwise direction can be described as “to the
+left” of π˜ + . This also defines the appropriate destination
+for a route instruction such as “turn right” when the agent
+is at a place p, facing along a directed path π˜a+ . The pragmatics of natural language requires that “turn right” must
+uniquely specify a directed local-path π˜bd that is “to the
+right” of π˜a+ , such that α(π˜bd ) = 1 (i.e. π˜bd is navigable
+from p).
+
+5.1
+
+Grounding Local Topology in the Local
+Perceptual Map
+
+We have illustrated how to describe a place symbolically
+as a circular order of directed local-paths. Here we discuss
+how to use gateways to ground local-paths in the LPM.
+Gateways allow the robot to ground large-scale actions in
+the small-scale metrical models, abstract a symbolic local topology description from the small-scale model, and
+detect and compare places in the environment.
+5.1.1
+
+Gateways
+
+The term “gateway” is adapted from Chown et al. [1995],
+who define gateways as the locations of major changes in
+visibility.
+
+An isomorphism φ : S → S between two stars S and S
+7 Note that we do not have a fixed set of equivalence classes for local
+topology abstraction. Although there is an upper bound on the number
+of paths that can fit into an LPM, this is determined by the path width and
+the LPM size. Thus, many types of intersections can exist that cannot be
+“named” using a letter.
+
+15
+
+In buildings, these [gateways] are typically
+doorways. . . . Therefore, a gateway occurs
+where there is at least a partial visual separation
+between two neighboring areas and the gateway itself is a visual opening to a previously
+obscured area. At such a place, one has the option of entering the new area or staying in the
+previous area. [Chown et al., 1995, p. 32]
+
+We define a gateway as a boundary in the local perceptual map that separates the local place neighborhood from
+the larger environment. That is, a gateway is the boundary
+where control shifts between localization within the local
+place neighborhood and travel from one place neighborhood to another. A gateway has two directions, inward
+(looking into the place) and outward (looking away from
+the place), according to the direction of that shift. The location, extent, and orientation of gateways at a place are
+saved as annotations of the local place neighborhood map
+mp.
+In much of human experience with large-scale environments (both natural and man-made) local place neighborhoods are separated from each other (either by boundaries
+or by distance), and they are connected by travel actions
+along paths. Navigation in large-scale space is thus typically an alternation between motion along travel paths
+and motion within place neighborhoods. The existence
+of gateways, as interfaces between the two types of travel,
+is therefore a requirement for the abstraction from smallscale to large-scale space. Certainly extreme situations
+occur, such as place neighborhoods that overlap or are immediately adjacent, or environments with (apparently) no
+distinctive states at all. These will be discussed in appropriate sections below.
+Schr¨oter et al. [2004] and Yeap [1988] discuss finding gateways by looking for occlusions from laser data
+or local models.8 Schr¨oter [2006] also details a visual
+door recognition system for determining gateways. Below, we describe an alternative algorithm for identifying
+gateways within the small-scale space of the local perceptual map. This algorithm relies on a Voronoi skeleton
+computed from the free space in the LPM. Our implementation first prunes the Voronoi skeleton, using the fact that
+we have a bounded LPM to determine the true skeleton of
+free space in the local surround. It then defines the “core”
+of the local region by grouping nearby Voronoi junctions,
+if they exist. Walking along the graph, from the core, to
+the frontiers of the local map, the algorithm looks for constrictions as locations for gateways. Constrictions can be
+defined several ways, e.g., local minima in the distances
+to the closest obstacles (what Thrun and B¨ucken [1996]
+call “critical points”). Gateways are then defined as line
+segments that separate distinct regions of free space in the
+LPM.
+
+[Fortune, 1992]. Using a Voronoi graph to describe the
+free space of a metrical model can be useful; however,
+given noisy measurements, a Voronoi graph can contain
+many branches and spurs that do not contribute to the
+“base” skeleton that describes the “backbone” of the modeled environment. As a result there has been work on
+pruning of Voronoi graphs [Choset and Nagatani, 2001;
+Wallgr¨un, 2005] and on using thinning-based approximations of Voronoi graphs for mobile robot navigation [Choi
+et al., 2002]. Thinned skeletons often have far fewer spurs
+into concave corners; thus, they represent an approximation of a partially pruned Voronoi skeleton.
+In order to determine the “critical” skeleton of a noisy
+Voronoi graph, we assume that the robot is computing a
+Voronoi graph in the LPM. Currently, we also remove “island” obstacles by removing occupied or unknown cells
+in the occupancy grid that are completely surrounded by
+free cells. This reduces drastic changes in the skeleton due
+to pedestrians. The Voronoi graph is computed by treating
+occupied cells in the occupancy grid as obstacles.
+Because we use a small, bounded LPM, there is always
+some region of free space that touches the edge of the occupancy grid or some region of “unknown occupancy”
+(gray cells in the figures) that may provide an option to
+leave the current region. We define a terminal point of
+the Voronoi graph that reaches the edge of the LPM or
+reaches unexplored cells to be an exit. We can then define the branches of the Voronoi graph that contain exits
+to be “critical” branches. Instead of actively pruning away
+branches, a better approach is to include only the union of
+all shortest paths that connect each exit to all other exits
+in the LPM.9 Figure 8 shows how this spanning tree eliminates all spurious junctions and branches in these smallscale models.
+
+Determining Gateways. Gateways can be grounded in
+an LPM by using the Voronoi graph. Although the full,
+continuous generalized Voronoi graph can be computed
+using Fortune’s algorithm [Fortune, 1992], it is usually
+more efficient to approximate the Voronoi graph of an occupancy grid, using pixel-based “brush-fire” algorithms:
+imagine a brush fire along all defined obstacle pixels,
+burning inward at a constant speed, and the skeleton
+is marked by all points where two or more fires meet.
+Similarly, there exists a thinning algorithm [Zhang and
+Suen, 1984] that gives a pixel-based skeleton, but with
+Pruning the Voronoi graph. A Voronoi graph is the many spurious terminal branches pre-pruned. As both
+set of points equidistant from the two (or more) closest the brush-fire approaches and the thinning approach are
+obstacles. It lies on the boundaries of Voronoi regions
+8 Gateways
+
+[1999].
+
+are called exits by Yeap [1988]; Yeap and Jefferies
+
+9 Dead-ends are a special case, where only one exit exists. Here we
+just keep the branch that connects the exit to the Voronoi junction at the
+dead-end.
+
+16
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+(e)
+
+(f)
+
+Figure 8: Pruning a Voronoi graph using the LPM boundary. (a,b,c) Examples of Voronoi graphs at common
+places. (d) Pruning the skeleton at an L leaves no junction, which means methods that rely on junctions in pruned
+graphs to define places [Choset and Nagatani, 2001] ignore these types of intersections. (e) Small bits of noise around
+objects can cause spurs and hierarchical branches in the Voronoi skeleton. Methods that use fixed-depth or distancebased pruning [Choset and Nagatani, 2001] can leave junctions in the graph, while the LPM pruning eliminates all
+non-critical branches. (f) Dead-ends are a special case where we keep the minimal branch that connects the single exit
+to the junction closest to the robot.
+
+17
+
+linear in the grid size, we utilize the thinned skeleton,
+as it speeds up the pruning process due to having fewer
+branches that need to be examined.
+Figure 9 shows a few steps of the gateway algorithm on
+a thinning-based skeleton. The algorithm below has been
+tested on both thinned skeletons and true Voronoi graphs,
+and works well on both kinds of skeletons. Given a pruned
+skeleton, the method for finding gateways is as follows:10
+• l is the location of the physical robot w.r.t the LPM.
+
+robot computer).11 This implementation was used to produce Figures 9(d), 10(a), 11(a-c), and 12(b,c), and it was
+the implementation used to detect the places in Figure
+15(a). A constriction is currently a local minimum over
+r p ∈ R. Defining gateways where the change in distance
+to nearby obstacles is minimal (or plateaus) provides useful gateways at the beginning of hallways and doorways
+in corridor environments.
+5.1.2
+
+Local Topology
+
+• c is the point on the Voronoi graph closest to l (Figure Given an implementation for detecting gateways in a
+9(a)).
+stored map of a place, m p , we can ground the local topology concepts of local-paths in our small-scale model of
+• J is the set of Voronoi junctions j (Figure 9(b)).
+the surrounding environment.
+• r p is the “Voronoi radius”: the distance from Voronoi
+point p to the closest obstacle.
+
+• For each outward-facing oriented gateway g, out ,
+define a directed local-path π˜g+ that leads away from
+the current place.
+
+• K = { j ∈ J : dist( j, l) ≤ r j } (the robot is within the
+“radius” of the junction point).
+
+• Initialize a circularly ordered star S p with a list
+(clockwise from an arbitrary starting point) of associations between directed local-paths and oriented
+gateways, ( π˜g+ , 1 ↔ g, out ). Since these are
+traversable paths, each α(π˜g+ ) = 1.12
+
+• Two junctions j and j are neighbors if dist( j, j ) ≤
+max(r j , r j ).
+• Define the “core” of the place neighborhood as F:
+the equivalence class of neighboring junctions that
+includes K as the starting set of junctions. See Figure
+9(b).
+
+• Test each pair of gateways, g and g , via a path continuity test, to determine whether their directed localpaths belong to a single continuous path. If so, give
+both directed local-paths the same path name (e.g.,
+π˜a below and in Figure 10(b,c)), and include the inward oriented gateways in the association. For example, change
+
+• If F = 0/ then define F = {c}.
+• Q is the set of all Voronoi points q, where ∃ f ∈ F
+s.t. dist( f , q) = r f ∧ ∀ f ∈ F dist( f , q) ≥ r f . This
+selects the set of points on the border of the “core”
+of the place.
+
+( π˜g+ , 1 ↔ g, out )
+( π˜g+ , 1 ↔ g , out )
+
+• For each q ∈ Q, walk along the branch that contains
+q in the direction away from the “core” of the place
+(Figure 9(c)). Look for a point p that corresponds to
+a constriction.
+
+to
+
+( π˜a+ , 1 ↔ g , in , g, out )
+( π˜a− , 1 ↔ g, in , g , out )
+
+• For each π˜g+ ∈ S p such that π˜g− ∈ S p , insert the association ( π˜g− , 0 ↔ g, in ) into the circular order of
+S p , in a position determined by its failure of the path
+continuity test.
+
+• At each of these constrictions m, define a line seg11 Note that the gateway algorithm is useable on LPMs with quite low
+ment g of length 2 · rm , centered on m, oriented nor- resolution
+Beeson [2008]. Because higher resolution LPMs do not immal to the branch at point m. See Figure 9(d).
+prove the reliability of gateways and because the thinning algorithm is
+linear in the number of cells in the LPM, we chose LPM parameters that
+
+A recursive version of this algorithm was implemented facilitate reliable SLAM and local motion planning, while still fitting
+within the cache of our robot’s onboard computer.
+that runs quickly enough to recompute gateways in real- nicely
+12 In future implementations, α : S → { M IDLINE , L EFT WALL ,
+time (2-3 times a second for a 300x300 cell occupancy R IGHT WALL, D EAD E ND, N ONE} should associate directed localgrid with 10 cm cells using an older 450 MHz research paths with attributes representing the control laws for traversing the path
+10 Symbols
+
+used in the discussion of the gateway implementation are
+local in scope and have no relation to symbols used elsewhere in this
+paper, even if they are spelled the same.
+
+in that direction. (L EFT WALL and R IGHT WALL imply coastal navigation scenarios. For terminating local-paths, D EAD E ND means that
+further travel is blocked, while N ONE means that no control law is applicable.)
+
+18
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+Figure 9: Example of gateway detection. Here we show certain steps of the gateway algorithm. We begin with
+a model of the local surround. (a) We then calculate a pruned Voronoi skeleton. Here we use a thinning-based
+approximation of the Voronoi skeleton [Zhang and Suen, 1984], which we have found to be much faster to calculate
+on slower processors. We then locate the closest point on the skeleton to the robot. (b) The robot then determines the
+“core” of the local region. (c) The algorithm ignores all portion of the skeleton inside of the core, only looking for
+gateways along portions of the skeleton outside of the core. (d) The algorithm looks for a local minimum in the rate
+of change of the Voronoi radius. These constrictions define the locations of gateways, while the skeleton itself defines
+the orientation of the gateway.
+
+19
+
+In our current implementation, the gateways g and g belong to a single continuous path if: (1) a ray normal to the
+orientation of gateway g and centered at the midpoint of
+gateway g intersects the line segment that defines gateway
+g ; and (2) vice versa for a ray from g towards gateway
+g. (Note that the failure of this test should determine a
+pair of gateways that the non-traversable path continuation falls between.)
+At this point, the star S p is a complete representation of
+the local topology of the neighborhood described by the
+LPM. Since this representation is expressed completely
+in terms of small-scale space (the gateways g and the directed local-paths π˜gd ), we refer to this as the small-scale
+star (Figure 10(c)). Binding the directed local-paths to directed paths in the topological map of large-scale space
+implies the appropriate large-scale star (Figure 10(d)).
+This binding is part of the HSSH topological mapping
+process, and is discussed in Section 6.1.
+
+5.2
+
+Detecting Places
+
+To explain local topology extraction, we provided examples where the robot was already at a place. Perhaps surprisingly, the method for constructing the local topology
+of a place neighborhood does not actually depend on being at a place neighborhood. Gateways can also be defined
+along paths, as they separate the robot from the “frontier”
+of the LPM. Therefore, if we recalculate gateways and local topology at each time step, we can very easily detect
+places.
+We define the robot to be on-path when the local topology of the LPM contains exactly two gateways and exactly one path (e.g., Figure 11(a)). When the agent is
+on-path, it is selecting and executing control laws (and
+hence primitive motions) to perform a travel action. The
+LPM scrolls as the agent moves, keeping the agent near its
+center cell, and serving as an observer for the local smallscale space.
+When the agent is not on-path, it is in a place neighborhood. In this situation, the agent establishes a fixed correspondence between the LPM and the structure of the place
+neighborhood. Here, the LPM serves as a local metrical
+map m p of the place neighborhood (and does not scroll
+with the agent’s motion within the place neighborhood).
+Thus, the number and location of places in an environment
+depends in part on the predetermined size of the LPM13 ,
+although places are not sensitive to small changes in LPM
+size.
+When the robot is not on-path, it either has more than
+13 One interesting avenue of future research is to try adapting the LPM
+
+size by environment characteristics.
+
+one local-path, which occurs at intersections or open doorways, or one local-path with only one gateway, which occurs at dead ends. These are all places (Figure 11). There
+is a degenerate case where no gateways exist. Due to our
+implementation of gateways, this situation means there is
+no way out of the current location, so the robot’s entire
+world is simply modeled by a single place and LPM.14
+When traveling along a path, the robot may see multiple unaligned gateways and suspect it is at a place. Sometimes, false gateways appear in the LPM due to the boundary between observed free space (i.e. white cells in the
+occupancy grid) and unknown space (i.e. gray cells in the
+grid). This is often the case when the robot’s sensors do
+not provide a 360◦ field of view, as with S ICK-brand lidars. Before the robot commits itself to being at a place,
+it must perform some local exploration in the fixed map
+of the potential place to eliminate any false gateways. We
+have found that for a robot with a 180◦ field of view, simply rotating in place eliminates most false gateways.
+Using the local topology defined by gateways allows
+the robot to detect places more reliably than when using methods that simply look for Voronoi graph junctions. First, Voronoi graphs can have many spurious junctions. This is especially true given noisy sensors or environments, but even occurs in the face of no noise at
+small alcoves and other common architectural features.
+Similarly, complex intersections can have multiple junctions. The gateways and local topology can see one place,
+whereas a junction-based approach (including Delaunay
+triangle approaches [Silver et al., 2004]) must define multiple strangely connected places. Figures 9(b) and 10(a)
+both show multiple junctions at a single place. Additionally, there exist important places detected via the gateway
+approach, like L intersections, that contain no junctions at
+all after pruning the Voronoi graph (Figure 8(d-f)).
+
+5.3
+
+Selecting Local Motion Targets
+
+Instead of relying on the dynamical system approach to
+motion used in the basic SSH, we introduce gateways as
+an alternative approach. Gateways provide a geometric
+method for control of motion—where midline or coastal
+navigation along paths is applicable. The motion of the
+robot in large-scale space can be adequately captured by
+noting which oriented gateways the robot passes through.
+Reconsider the example of abductive inference for a topological map in Figure 4 that modeled the world as points
+connected by lines. Compare this to the Hybrid SSH ap14 There is another degenerate case when the robot is in the middle
+of a featureless environment. As mentioned in Section 3.5, the HSSH
+currently does not handle these types of environments.
+
+20
+
+(a)
+
+((
+(
+(
+(
+(
+(
+(
+(
+
+π˜a+ , 1
+π˜b+ , 1
+π˜c− , 0
+π˜d+ , 1
+π˜a− , 1
+π˜d− , 0
+π˜c+ , 1
+π˜b− , 0
+
+(b)
+
+Small-scale star
+description
+↔ g4 , in , g1 , out )
+↔ g2 , out )
+↔ g5 , in )
+↔ g3 , out )
+↔ g1 , in , g4 , out )
+↔ g3 , in )
+↔ g5 , out )
+↔ g2 , in ))
+
+An example large-scale
+star abstraction
+(( π1+ , 1 ↔ q1 )
+( π2+ , 1 ↔ q2 )
+( π3− , 0 ↔ q3 )
+( π4+ , 1 ↔ q4 )
+( π1− , 1 ↔ q5 )
+( π4− , 0 ↔ q6 )
+( π3+ , 1 ↔ q7 )
+( π2− , 0 ↔ q8 ))
+
+(c)
+
+(d)
+
+Figure 10: Identifying gateways and local topology in the LPM. The local perceptual map (LPM) is implemented
+as a bounded occupancy grid. The robot is shown as a circle in the center of the LPM. (a) The gateways separating
+the core from the exits are defined. In our implementation this is done using a pruned Voronoi skeleton. (b) Gateway
+locations and directions are used to identify the directed local-paths and to determine which pairs satisfy the path
+continuity requirements. (c) The small-scale star enumerates directed local-paths in clockwise order, describing their
+traversability and association with gateways. Note: the robot entered the place via g5 ; thus, it arrived on directed localpath π˜c− . (d) The large-scale star (Section 6.1) replaces local-paths with topological paths from the global topological
+map, and defines a distinctive state for each directed path at this place. This environment has five gateways, four paths,
+and eight distinctive states.
+
+21
+
+(a)
+
+(b)
+
+(c)
+
+Figure 11: More real-world gateways. Our current gateway algorithm uses a Voronoi skeleton to find the gateways
+surrounding a location. (a,b) Even at locations with no Voronoi junction points, the gateway algorithm works. Example
+(a) shows the robot on a path, where two gateways on either side of the robot give a stable topology, and (b) shows the
+robot at a place. (c) At dead ends, there is only a single gateway.
+proach illustrated in Figure 12 where turns and travels correspond to moving towards gateways.
+As discussed in Section 4.2, local motion planning consists of selecting a target pose in the LPM, computing a
+safe trajectory to it, executing the first step of that trajectory, sensing the environment, updating the LPM, and
+repeating the cycle. The selection of target poses for local motion control corresponds to the action or goal being
+pursued. There are three distinct cases.
+
+ing its driver to her desk after entering her office, in
+which case the local motion target is a pose associated with that destination. Such motion targets can
+also be generated when exploring the fixed LPM of
+a potential place.
+• The agent may be executing a turn action as part of
+a route through large-scale space. In this situation,
+the LPM is fixed in the local frame of reference, and
+a large-scale turn action corresponds to moving from
+an inward-facing oriented gateway to a location just
+beyond an outward-facing oriented gateway. After
+passing through the outbound gateway, the robot is in
+position to begin following another path. Note, that
+the TurnAround action simply corresponds to traveling past the same gateway the robot entered the place
+through, facing the outward instead of the inward orientation. Continuing along a path that passes through
+a place (no turn) also falls into this case.
+
+• If the agent is not in a place neighborhood, it is onpath, in which case it is moving along the local-path
+in the LPM toward one of the two gateways. Just
+beyond the forward gateway, in the outward orientation, is an appropriate target for local motion planning; however, a more robust approach with respect
+to obstacle avoidance is to aim at a point well beyond
+the gateway, like the edge of the LPM. As the LPM
+scrolls, the gateway location is constantly refreshed.
+The robot never reaches the gateway until its location
+In certain scenarios, such as two large rooms connected
+becomes stable (which only happens when the agent
+by a doorway, it may be possible for an agent to move
+arrives at a place).15
+directly from one place neighborhood to another, mov• If the agent is in a place neighborhood, the LPM is ing between two distinct local topologies, without ever
+fixed to the local environment, so motion planning is being significantly on-path. The SSH can accommodate
+confined to the small-scale space of the place neigh- this transition with a dummy travel action whose effect is
+borhood. The agent may have a pragmatic destina- simply to transition between the reference frames of two
+tion within the place neighborhood, for example an adjacent, or even slightly overlapping, places.16
+intelligent wheelchair may have the goal of bring15 Lee
+
+[1996] calls control algorithms that continuously re-plan for a
+moving point ahead as “red wagon” controllers.
+
+16 Taking this idea to an extreme, the Atlas system [Bosse et al., 2003]
+creates new frames of reference based on feature counts, building a
+“patchwork” map of overlapping frames of references. However, if the
+
+22
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+Figure 12: Grounding control using gateways. (a) The example from Figure 4 is further examined in a simulated
+3D office environment with obstacles. The gateways are found and drawn on the LPM in real-time, with arrows
+representing the outward orientations that leave the current area. The gateway associated with the robot’s past motion is
+depicted using an arrow pointing in the inward orientation. (b) Traveling along directed path πa+ corresponds to aiming
+for an oriented gateway, e.g., g2 , out , in the appropriate direction. The gateway is continually recomputed, which
+keeps moving the local motion target along the path, until it becomes stable at the entrance to a place. (c) Arriving
+at dstate q2 at place p2 corresponds to arriving at a gateway g3 , in associated with a directed local-path π˜a+ in the
+LPM for place p2 . The turn action from dstate q2 to q3 corresponds to local motion within the LPM through outwardfacing oriented gateway g6 , out on directed local-path π˜b− . (d) In calculating local topology, “island” obstacles that
+are surrounded by free space are removed to ensure reliable gateway detection. Planning to move through a gateway
+requires consideration of these obstacles. Once the robot moves past gateway g6 , out , two new aligned gateways
+appear that will flank the robot throughout the next travel action, as in image (b).
+
+23
+
+6
+
+HSSH Global Topological Level
+
+large-scale space. This allows us to determine the largescale star that describes the circular ordering of topologiThe next two sections will address the problems of build- cal directed paths at the place.
+ing a global topological map to describe the qualitative
+Assimilating the local topology of a place into the
+structure of large-scale space and building a global metriglobal topological map requires a 1-1 mapping between
+cal map to describe its geometric structure within a single
+the directed local-paths in the small-scale star and a set of
+global frame of reference. We describe these two mapdirected paths from the global topological map. In Figure
+building problems separately, but their solutions benefit
+10(c,d), we illustrate such a mapping between the localfrom each other and should be interleaved in future repaths, π˜a , π˜b , π˜c , and π˜d , and the corresponding global
+search (Section 10.2).
+topological paths π1 , π2 , π3 , and π4 , respectively. To keep
+The first problem is to identify the best global topo- this example simple, we specified + and − on the directed
+logical map consistent with exploration experience. The paths to correspond consistently, but of course this need
+process of generating possible topological maps from ex- not be true in general.
+perience and testing them for consistency can provide forIn large-scale space, a distinctive state q corresponds
+mal guarantees that the correct map is generated and never
+uniquely
+to a place, a path, and a direction on that path
+discarded [Dudek et al., 1993]. A logic-based theory of
+(Equation
+1). Thus, the dstate q is at a particular place p,
+topological maps [Remolina and Kuipers, 2004] makes
+and
+there
+is
+a bijective association between a dstate and a
+explicit the assumptions upon which those guarantees dedirected
+local-path:
+ψ p (q) = π˜ d where π˜ d ∈ S p . This impend.
+plies
+that
+in
+the
+case
+where the directed local-path passes
+If the robot knows it is in an environment with no
+through
+the
+place,
+the
+distinctive state q will correspond
+loops, creating a topological map is quite easy. This is
+with
+two
+different
+oriented
+gateways, one g, in entering
+especially true given deterministic actions, as the robot
+the
+place
+neighborhood,
+and
+the other g , out departing
+simply moves deterministically between known places
+from
+it.
+when it revisits parts of the environment. Even with nondeterministic actions, creating the topology of such enAn isomorphism φ : S → S between two stars implies a
+vironments is still possible [Tomatis et al., 2002]. The bijective mapping between the associated dstates as well.
+difficulty in map-building arises from closing loops: de- We will extend φ to write these implied mappings as
+termining when a newly-encountered place is the same as φ (q) = q . For a topological map M T , and the set P of
+a previously-experienced place, and creating a hypothe- places in M T , we can now define the set of local place
+sized new loop in the topological map. When large loops maps,
+in the environment result in structural ambiguity, a topological representation can concisely represent the loopM P = { p, m p , S p , ψ p : p ∈ P}
+closing hypotheses by generating a single topological map
+for each qualitatively distinct alternative.
+
+6.1
+
+associating each place p ∈ P with its local metrical map
+m p , its local topology S p , and ψ p , the association between
+dstates and directed local-paths in the local topology.
+
+From Small-Scale to Large-Scale Star
+
+In small-scale space, the LPM is used for the detection
+of gateways, local-paths, and places, and to create the local map m p that is stored at places. The small-scale star
+describes both a circular order on the set of directed localpaths in a place neighborhood and also the correspondence between directed local-paths and oriented gateways. A place p in large-scale space is associated with
+the local map m p , a model of the place neighborhood in
+small-scale space. At a place, each directed local-path π˜ d
+in small-scale space corresponds to a directed path π d in
+
+Assuming that the LPM is sufficiently well explored,
+the set of directed local-paths and gateways in the smallscale star is complete, so the description of the distinctive
+states and directed paths in the circular order of the largescale star is also complete. A turn action in large-scale
+space corresponds to motion in small-scale space within a
+place neighborhood from the inward-facing oriented gateway the robot arrived upon to an outward-facing oriented
+gateway (Figure 12(c)). Thus, for every pair of dstates qi
+and q j at the place, a causal schema for the turn action
+qi ,turn, q j is implicitly defined. Exploration experience
+entire environment is described in terms of overlapping place neighborcan
+now be described as an alternating sequence of travel
+hoods, the benefit of the topological map as a concise description of
+actions
+and place neighborhoods, which simplifies conlarge-scale space is decreased. Likewise, the local and global distinctiveness of places is sacrificed.
+struction of the global topological map (Figure 5).
+24
+
+6.2
+
+The Tree of Possible Topological Maps
+
+The topological map-builder maintains a tree whose nodes
+are pairs M, q , where M is a topological map (augmented below for the HSSH) and q is a distinctive state
+within M representing the robot’s current position. The
+leaves of the tree represent all possible topological maps
+consistent with current experience [Dudek et al., 1993].
+The algorithm for growing the tree of possible topological maps was presented in Figure 5. This figure also describes the differences between map-building in the basic
+SSH and Hybrid SSH.
+After each action a and resulting view v, we extend
+each map hypothesis at a leaf of the tree. If the current
+action moves within known territory, the map M, q will
+predict the resulting dstate q and the view to be observed,
+so the hypothesis can be updated or refuted according
+to whether the prediction was correct or not. If the current action explores new territory, then either the resulting
+dstate is also new, or the action closes a loop and connects with a previously known dstate. Since there may
+be multiple possibilities that all match view v, the tree of
+topological map hypotheses will branch. For purposes of
+generating and testing candidate topological maps in the
+HSSH, we will extend the basic SSH topological map M T
+with M P = {(p, m p , S p , ψ p ) : p ∈ P}, the set of local metrical maps and local topologies of individual place neighborhoods.
+M = MT , MP
+In the SSH, a view v is an abstracted description of the
+agent’s perception of the local environment from a distinctive state q. We select the level of description to ensure that the view is a deterministic function of the dstate
+(v = o(q)), although we allow perceptual aliasing (different states with the same view) [Kuipers and Beeson,
+2002]. In the basic SSH, a view is a symbol, abstracting
+away the nature of the perceptual system, and views are
+matched only for equality. In the Hybrid SSH, we define
+a view to be the local topology S p of the current place p
+and the current directed local-path the robot is on; thus,
+the new view description is derived from the local topology, which is grounded in local perceptual map m p .
+v
+
+=
+=
+
+S p , π˜ d where d ∈ {+, −}
+S p , ψ p (q)
+
+Given two views v and v , we say that match(v, v ) holds
+iff there is an isomorphism φ : S → S such that φ (q) = q .
+That is, from the perspectives of the specified dstates, the
+local topologies match.
+As exploration progresses, the map M is extended with
+new information. For example, after an exploration step
+
+that closes a loop in the map, the resulting map M is M
+extended with a new dstate q and assertions q, a, q , v =
+o(q ), and q = q j . A new version of MC = Q, A,V, S, o is
+created, and the implications of the loop-closing assertion
+q = q j propagate through new versions of M T and M P to
+unify place and path labels as necessary. Because we are
+matching complete local topologies in the HSSH, the tree
+of maps only branches on travel actions. Turn actions are
+already fully described by the large-scale star.
+
+6.3
+
+Topological Mapping Example
+
+We applied an implementation of the Hybrid SSH mapbuilding to a pre-specified route through an office environment including multiple nested loops. This office had
+a large number of cubicles and office doorways. To respect student and faculty privacy, we prune the Voronoi
+skeleton so that Voronoi branches, thus gateways, were
+defined only for large hallway intersections, not at doorways or cubicle openings. The environment, as defined by
+the robot, contained 6 paths and 9 places with 4 distinct
+local topologies. Figure 13 shows the exploration route
+as a sequence of place visits, the sequence of LPMs observed at successive place neighborhoods, and the unique
+simplest topological map that resulted from the mapping
+algorithm, with LPMs overlaid at corresponding places in
+the correct topological map.
+After a sequence of 14 travel actions, the topological
+mapper finds 83 possible configurations of the environment that are consistent with the observed local topologies
+and the topological axioms—that is there exist 83 leaves
+in the tree of maps. The prioritized circumscription [Remolina and Kuipers, 2004] on this set of maps produces 4
+minimal models. All but one of these can be eliminated
+with further exploration or by simply matching LPMs using the alignments specified by the four minimal maps.
+This final map model is the correct topological representation of the environment.
+If we assume planarity of the environment, we can
+use a more sophisticated version of the topological mapbuilding algorithm [Savelli and Kuipers, 2004] that rules
+out many more models as inconsistent. Here, there are
+only 46 consistent configurations of the exploration experience, and the circumscription policy produces a single minimal model, which is the correct topological map
+of the environment (Figure 13(c)). Currently, our implementation can build the complete tree of maps for this exploration trace and determine the unique minimal map of
+this environment in ∼200 ms on the robot’s Pentium III
+450 MHz processor. Notably, the results presented on this
+office environment would be unchanged if the path seg-
+
+25
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+(a)
+
+15
+
+(b)
+
+(c)
+
+Figure 13: An environment with multiple nested loops. In the CAD drawing (a), we show the path traveled between
+places in the environment. We enumerate the sequence of places as experienced by the robot. (This exploration trace
+was also used for Figure 1.) In (b), we show the LPMs created at the places during the travel. We constrained the
+gateway algorithm in order to ignore open office doors and cubicle openings, which ensures places only at hallway
+intersections. The stars generated from these LPMs are used to search through the space of consistent topological
+maps. In (c), we show the unique topological map generated after matching local stars and LPMs. The map is overlaid
+with the LPMs generated at the places, with the gateways, and with the connections between gateways which lie on
+the same path.
+ments were longer or even very convoluted, as the number alternating sequence of actions and distinctive states, with
+of places and paths would not change. Additionally, the each distinctive state associated with a view.
+tree of maps ensures the correct map is never discarded.
+q0 a1 q1 a2 q2 · · · qn−1 an qn
+|
+|
+|
+|
+|
+6.4 Levels of Spatial and Temporal Granuv0
+v1
+v2 · · · vn−1
+vn
+
+larity
+At this point, we summarize the three different levels of
+granularity, with different ontologies, that we are using to
+describe space and time.
+The agent’s experience is a trajectory through the environment. At the SSH Control Level and in the LPM, the
+trajectory is represented using a fine-grained representation for time t, pose x, motor signal u, and sensory image
+z. These are used both for control laws, and for simultaneous localization and mapping to build the LPM. Expanding Figure 7, the agent’s exploration experience is
+described by
+···
+
+ut−1
+ut
+ut+1
+···
+uN
+↓
+↓
+↓
+↓
+x0 → · · · → xt−1 → xt → xt+1 → · · · → xN
+↓
+↓
+↓
+↓
+↓
+z0
+···
+zt−1
+zt
+zt+1
+···
+zN
+
+In both the basic and hybrid versions of the SSH, distinctive states q correspond to being at a place, facing
+along a directed path. In the basic SSH, the distinctive
+states q are grounded by isolated distinctive states x¯ where
+hill-climbing control laws terminate. In the Hybrid SSH,
+dstates are grounded by a directed local-path extracted
+from the LPM of a place neighborhood.
+At the SSH Topological Level, a particular place p j can
+correspond to several distinctive states, say qi−1 and qi
+and the turn action ai between them. A travel action ai+1
+from qi at p j to qi+1 at a different place p j+1 can be used
+to infer the displacement λ j+1 , which is the pose of place
+p j+1 in the frame of reference of place p j . This lets us
+abstract the sequence of distinctive states and actions to
+an alternating sequence of place p j and displacements λ j .
+p0
+
+λ1
+
+p1
+
+λ2
+
+p2
+
+···
+
+pm−1
+
+λm
+
+pm
+
+As described in Section 7 and illustrated in Figure 14,
+At the SSH Causal Level (which is part of the topo- in order to define the λi , each place neighborhood must
+logical map), exploration experience is described by an have its own frame of reference and we must select a set
+26
+
+of distinguished time-points 0 ≤ t0 < t1 < · · · ≤ tN = N
+such that adjacent time-points belong to different place
+neighborhoods, and the pose xti at each time-point ti can
+be unambiguously localized in its place neighborhood. To
+fit this into the SSH causal framework, we select distinguished time-points at the termination of each travel action: in the basic SSH, this is after hill-climbing terminates, and in the hybrid SSH, this is after a place is detected. In the Hybrid SSH, the dividing poses are near the
+incoming gateways in place neighborhoods. The net effect of the turn and travel actions between these dividing
+points are used to estimate the displacements λi between
+the frames of reference of adjacent place neighborhoods
+connected by path segments.
+
+7
+
+x i,0
+
+x i+1,0
+x i,j
+
+Li
+
+L i+1
+
+place(t i+1 )
+
+place(t i )
+
+Figure 14: Defining local frames of reference. The
+agent creates the local scrolling map m˜ i when traveling
+between places. The agent’s poses at the distinguished
+time-points ti and ti+1 are Li = [xi,0 ] place(ti ) and Li+1 =
+[xi+1,0 ] place(ti+1 ) . The displacement between the two place
+frames of reference is λi+1 = Li ⊕ [xi+1,0 ]m˜ i ⊕ ( Li+1 ).
+
+HSSH Global Metrical Level
+
+[x] p : The coordinates of the pose x in the frame of
+reference of place p.
+
+The topological map identifies a discrete set of places,
+each with its own local metrical map within its own frame
+of reference. The topological map also encodes decisions
+about how loops are closed and which aliased local neighborhoods represent the same places. The global metrical map is built on the structural skeleton provided by
+the topological map [Modayil et al., 2004]. The steps in
+building the global metrical map are: (1) describe the displacements λ = {λi }, each describing the change in pose
+from one place neighborhood to the next in the frame of
+reference of the first; (2) describe the layout χ = {χ p },
+specifying the poses of places in a global frame of reference; (3) describe the trajectory x = {xt } of robot poses
+within the global frame; and (4) create the global map m∗
+from sensor readings given the trajectory.
+
+7.1
+
+~ i at ti +j
+m
+
+Op :
+
+Li ≡ [xti ] place(ti ) : The coordinates of the pose xti in the
+reference frame of place(ti ).
+m˜ i :
+The scrolling map that models the agent’s surroundings between distinctive time-points ti and ti+1 .
+The map’s origin is defined as the agent’s pose at
+time ti . That is, Om˜ i = xti .
+λi ≡ [O place(ti ) ] place(ti−1 ) : The location of O place(ti ) in
+the reference frame of place(ti−1 ), estimated using
+the experience from ti−1 to ti .
+χ p ≡ [O p ]m∗ : The pose of O p in the global reference
+frame of m∗ .
+m∗ :
+
+Terminology
+
+The global topology τ, used below, consists of the set
+M P = { p, m p , S p , ψ p : p ∈ P} of places with their local information, the set of distinguished time-points 0 ≤
+t0 < t1 < · · · < tn ≤ N that divide the fine-grained sequence
+of exploration experience into segments corresponding to
+travel between adjacent place neighborhoods, and the relation place(ti ) = p j between them. It is convenient to
+relabel the variables x, z, and u, defining xi, j ≡ xti + j . At
+each distinguished time-point ti , where place(ti ) = p j ∈ P
+and place(ti+1 ) = place(ti ), the agent is localized in the
+local metrical map m p j .
+Much of our metrical inference consists of defining an
+appropriate set of reference frames, and estimating the
+values of local and non-local metrical quantities. Many
+of these concepts can be simply understood by examining
+Figure 14.
+27
+
+The pose x such that [x] p = (0, 0, 0).
+
+7.2
+
+The global metrical map.
+
+The Theory of the Global Metrical Map
+
+To build a global metrical map m∗ , we want to find the
+maximum-likelihood path the robot traveled, using the
+topological skeleton in addition to odometry. As discussed in Section 4.1, the joint probability of the pose
+history x and the global map m∗ can be decomposed as
+P(x, m∗ |z, u) = P(m∗ |x, z, u) · P(x|z, u)
+by the chain rule for probabilities. This decomposition is
+valuable since P(m∗ |x, z, u) (map-building given accurate
+localization) can be computed analytically and incrementally for popular map types, so we can focus our attention
+on P(x|z, u) (pose estimation).
+
+To include the effect of possible global topologies τ on
+pose estimation, we marginalize over the space of topologies. If we assume that the correct global topology τ¯ has
+been identified, only one topological hypothesis τ = τ¯ has
+nonzero probability.
+P(x|z, u) =
+
+∑ P(x|z, u, τ) · P(τ|z, u)
+
+derived from local metrical maps; the metrical layout
+G(χ) of places in the global topological map; and the
+global metrical layout H(x) of the robot’s pose trajectory. Finally, we can combine the pose trajectory with
+P(m∗ |x, z, u) to define the joint distribution P(x, m∗ |z, u).
+
+7.3
+
+τ
+
+Global Mapping Example
+
+¯
+= P(x|z, u, τ)
+On the other hand, suppose there are multiple topologies
+τ with significantly non-zero values of P(τ|z, u). While
+the weighted sum provides a mathematically correct characterization of the probability distribution P(x|z, u), it can
+easily lead to a nonsensical metrical map due to the dramatic qualitative impact of topological structure on the
+metrical map. Thus the summation should be regarded
+as describing a disjunction over topological maps, with
+P(τ|z, u) being the likelihood of each map. This is exactly
+the tree of possible topological maps we have already constructed. Therefore, even in the case where there are multiple plausible topological maps, we will construct global
+metrical maps for each one individually.
+¯ we can marginalize over
+Given a particular topology τ,
+the global poses of all topological places χ = χi and their
+estimated relative displacements λ .
+¯ =
+P(x|z, u, τ)
+
+Here we detail each step of creating the global map and
+discuss our current implementation, which runs offline.
+Figure 15 demonstrates the stages of creating an accurate
+global metrical map of a large, complex environment using these methods.
+7.3.1
+
+Estimating F(λ )
+
+Given the topology τ, we can compute F(λ ). Each λi corresponds to a single experience of a path segment. Since
+closing large loops is not a problem when considering a
+single path segment, traditional SLAM methods may be
+employed to estimate F(λ ) by decoupling it into a set of
+independent probabilities.
+Di
+
+= zi,0 , . . . , zi,ni , ui,1 , . . . , ui+1,0
+
+Fi (λi ) = P(λi |Di−1 , Li−1 , Li )
+n
+
+¯ ·
+P(x|χ, λ , z, u, τ)
+
+F(λ ) =
+
+∏ Fi (λi )
+i=1
+
+¯ · P(λ |z, u, τ)
+¯ dλ dχ
+P(χ|λ , z, u, τ)
+
+Because x is conditionally independent of λ given χ, and See Figure 14 to understand L. Our current implementaχ is conditionally independent of z, u given λ , we can sim- tion is an incremental maximum-likelihood method [Fox
+et al., 1999], modeling each Fi (λi ) as a Gaussian.
+plify this equation.
+Using the notation of the compounding operator [Smith
+et
+al., 1990], we compute the distribution of λi by com¯
+¯
+P(x|z, u, τ) = P(x|χ, z, u, τ) ·
+posing three uncertain vectors: the vector Li−1 from
+O place(ti−1 ) to xi−1,0 ; the vector [xi,0 ]m˜ i−1 from xi−1,0 to xi,0 ;
+¯ · P(λ |z, u, τ)
+¯ dλ dχ
+P(χ|λ , τ)
+and finally the vector −Li from xi,0 to O place(ti ) .18
+We divide this equation into simpler components, defining
+the following functions representing probability distribuFi (λi ) = P(λi = (Li−1 ⊕ [xi,0 ]m˜ i−1 ⊕ ( Li )))
+tions over their arguments.17
+The essential connection is that the pose xi,0 at the end of
+¯
+F(λ ) = P(λ |z, u, τ)
+a path-segment is described in the frame of reference of
+place pi−1 by the expression Li−1 ⊕ [xi,0 ]m˜ i−1 , and simul¯ F(λ ) dλ
+G(χ) =
+P(χ|λ , τ)
+taneously in the frame of reference of place pi by Li .
+The problem of estimating [xi,0 ]m˜ i−1 is relatively simple
+¯ G(χ) dχ
+H(x) =
+P(x|χ, z, u, τ)
+along individual path segments, since loops cannot be inThus, we use the topological map τ¯ to factor the lo- volved. The more difficult problem arises from determincalization term P(x|z, u) = H(x) into three separate prob- ing Li after a loop closure. Here we need to align the
+ability distributions: place-to-place displacements F(λ )
+18
+17 We
+
+assume that there is no opportunity for confusion between these
+probability functions F, G, and H, and the dynamical system functions
+F, G, and Hi used in Section 3.1.
+
+Given two poses a and b, we write [b]a for the coordinates of b in
+the frame where a lies at the origin and faces along the positive x-axis
+[Smith et al., 1990]. Then, [c]a = [b]a ⊕ [c]b . The inverse operator is
+[b]a = [a]b .
+
+28
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+12
+
+13
+
+14
+
+15
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+(e)
+
+(f)
+
+Figure 15: Global map-building process. (a) The sequence of local place maps m p experienced. (b) The unique
+topological map consistent with topological and planarity constraints. (c) We determine λi for loop closures by finding
+the offset between the current pose and the place origin (defined on the initial place visit). (d) The layout χ derived
+from the topological map and the place-to-place displacements λ . (e) The pose trajectory x(t) anchored at points
+where the robot is localized in place neighborhoods in the layout χ. (f) Given the localized pose trajectory x(t) in the
+global frame of reference, the global metrical map m∗ is created accurately and efficiently. Compare with Figure 1.
+
+29
+
+map m pi with a previously stored map m ph in order to determine [O ph ] pi , which allows us to solve Li . Matching
+maps can be expensive and can lead to false positives due
+to local minima (e.g., two LPMs of a + intersection can be
+matched four ways). To eliminate this problem, we first
+align the LPMs based on the locations of corresponding
+gateways, consistent with mh , Sh , ψh and mi , Si , ψi , before
+refining the alignment using the obstacles and free space
+of the LPMs. (Figure 15(c) omits this gateway alignment
+step in order to better illustrate the process of LPM alignment.)
+7.3.2
+
+Estimating G(χ)
+
+The layout χ = {χ p } represents the poses of the places
+in the topological map, with respect to the frame of reference of the global metrical map m∗ . G(χ) is a probability
+density function over possible layouts χ. Among other
+things, it reflects the distortion in the place layout due to a
+loop-closing hypothesis, compared with the observed displacements λ .
+Given the topological map, which specifies the data association between observations and places, we can evaluate G(χ) for an arbitrary distribution of F(λ ). For a par¯ will only be non-zero for a
+ticular value of χ, P(χ|λ , τ)
+single value of λ , namely when each λi = ( χ place(ti−1 ) )⊕
+¯ is a Dirac delta function,
+χ place(ti ) . Hence, P(χ|λ , τ)
+which gives us a simple expression for G(χ).
+¯ F(λ ) dλ
+P(χ|λ , τ)
+
+G(χ) =
+n
+
+=
+
+∏ Fi ((
+
+χ place(ti−1 ) ) ⊕ χ place(ti ) )
+
+i=1
+
+When F(λ ) is represented as a Gaussian, an Extended
+Kalman Filter (EKF) is a simple way to approximate
+G(χ). The idea is to consider place p to be a landmark
+with pose χ p . These landmarks are observed one at a
+time, linked by actions λi . This is essentially the classic
+approach of Smith et al. [1990]. Given Gaussian uncertainty along each action ui connecting the n robot poses,
+along with constraints that give Gaussian uncertainty between poses taken from multiple visits to the same place
+(to associate poses after loop closures), we can solve for
+H(x) in time O(n log n) using the sparse matrix methods
+of Konolige [2004]. However, often we may only want
+G(χ), which can be computed in O(m log m) time for m
+places, where m n.
+In our current implementation, we utilize a hillclimbing search to quickly converge to a local maximum
+of G(χ) (Figure 15(d)). The Levenberg-Marquardt algorithm for nonlinear optimization [Press et al., 1992] treats
+30
+
+the λi as “springs” between the poses of the places pk in χ,
+and relaxes their configuration to reach a local minimumenergy configuration. Efficient estimations of this nonlinear optimization also exist [Olson et al., 2006]. A good
+initial layout χ for this hill-climbing search can be derived from the displacements λi , which represent SLAMcorrected odometry from the scrolling map. We use the
+term χˆ to denote the computed estimate of G(χ).
+7.3.3
+
+Estimating H(x)
+
+An extended Kalman filter can be used to estimate H(x)
+using G(χ) and individual pose covariances from the experienced trajectory. Alternatively, if accurate pose covariances are not available, a simple method can estimate
+the maximum-likelihood trajectory through the environment. We calculate the independent trajectory Hi (x) along
+each path segment, as each place location is fully determined by a global layout χ. In most cases, there will
+be some discrepancy between the measured distance λi
+along the path segment and the fixed distance between the
+places in χ. We transform the experienced motion along
+the path segment to fit the global path segment distance
+using a simple affine transformation. This process is similar to methods of distributing odometry error after closing
+a loop in a global metrical map [Thrun et al., 2000a].
+For each trajectory between adjacent places pi and
+pi+1 , we transform the relative, incremental displacements ∆(x, y, θ ) from the pose estimates in the scrolling
+LPM m˜ i into relative displacements ξi, j in the global
+frame of reference. This uses a simple affine transformation Ti to anchor the beginning of the LPM experience to
+the global frame of reference.
+χ placeti ⊕ Li
+
+[xi,0 ]m∗
+
+=
+
+[xi, j ]m∗
+
+≡ Ti ([xi, j ]m˜ i )
+
+ξi, j
+
+≡ [xi, j ]m∗ − [xi, j−1 ]m∗
+
+We compute a final trajectory for x from the set of incremental displacements ξˆ by satisfying the constraint that
+the travel experience between the places must fit the globally defined distance between the places. This uses another affine transformation Ti to map the final pose along
+the path segment (xi,ni ) to the global frame of reference.
+[xi+1,0 ]m∗
+[xi+1,0 ]m∗ − [xi,0 ]m∗
+
+=
+
+χ placeti+1 ⊕ Li+1
+
+≡ Ti ([xi,ni ]m∗ − [xi,0 ]m∗ )
+ni
+
+≡ Ti ( ∑ ξi, j )
+j=1
+
+ξˆi, j
+
+≡ Ti (ξi, j )
+
+7.3.4
+
+Creating a map m∗
+
+The trajectory above can be used as a starting trajectory for gradient descent methods to align the pose
+positions with map estimates to converge upon a locally optimal map [Lu and Milios, 1997; Thrun et al.,
+2000a].
+A more principled approach is to run a
+Rao-Blackwellized particle-filtering algorithm, using the
+maximum-likelihood trajectory as the mean of a proposal
+distribution: P(x, m|z, u) = P(m|x, z, u) · H(x). However,
+we have found that in practice the x values defined by the
+above scaling method adequately approximate the mode
+of the posterior [Modayil et al., 2004]; thus the global
+map can be built by projecting the recorded range measurements from poses in the new global coordinates. The
+final map produced from the topological skeleton is shown
+in Figure 15(f). Compare this to Figure 1(d) to see the improved map.
+
+8
+
+Complexity in the HSSH
+
+topological identification, it must also be small enough to
+allow these algorithms to run in real-time. Highly detailed
+models of the small scale space for visualization or other
+purposes can be generated along with the LPM, but they
+are not required for the mapping process.
+Topological maps for metrically large spaces can be
+computed efficiently in practice since the complexity
+grows with the size of the topological exploration instead
+of the distance traveled; however, in general, the complexity of learning the topological map can be exponential.
+Let n be the number of poses in the exploration trajectory;
+let m (m
+n) be the number of topological places; let k
+(k < m) be the maximum number of places matching an
+observed local topology; and let l be the maximum number of directed local-paths in the local topologies (often
+l ≤ 4). For example, for the environment in Figure 13,
+n ≈ 7300, m = 9, k = 4, and l = 4. In the Hybrid SSH, the
+maximum branching factor in the tree of maps is k + 1.
+Branches only occur when the robot travels between two
+connected places for the first time, which can only happen at most ml/2 times. This means the size of the tree
+of maps is O(km ); thus, computing the tree of maps is
+exponential in m (not in n). In the HSSH, the exponent
+decreases by at least a factor of 3 compared with the basic SSH version due to branching only on travels, not on
+turns, and matching local topologies of places.19
+Savelli and Kuipers [2004] show that the planarity constraint gives an additional improvement in the branching
+factor k by rejecting many loop-closing hypotheses. They
+also point out that for each map mi in the tree to be expanded, the reduction of the branching factor ki due to
+the planarity constraint is proportional to the number of
+closed loops already present in mi . In other words, “the
+more loops [that] have been closed, the more topologically compact the map must be, and therefore the fewer
+ways there are to close new loops while preserving planarity,” which reduces the branching factor further.
+Once the topological map is known, the computation of
+a global metrical map will be linear in the number of poses
+n in the exploration trace. The work in generating the local perceptual maps has a constant run-time, so is linear
+in n for the complete trace. Computing the distribution of
+the relative place displacements F is linear in n. Computing the layout of the places G uses an iterative non-linear
+optimizer whose computation is O(m log m), which, for
+m
+n, is bounded by O(n). Computing the pose layout
+H, and inserting the scans along the poses in the final map
+is again linear in n.
+
+The different components of the HSSH fulfill different
+complexity requirements. The algorithms that pertain to
+small-scale space operate in real-time on the robot, and
+are designed for constant run-time complexity at each
+time step. The algorithms that pertain to large-scale space
+depend on the number of places and paths in the environment, and thus require more computation with increased topological ambiguities. Nonetheless, the topological complexity terms are functions of variables with
+far smaller values than the number of poses during exploration, due to the coarse granularity of the topological
+map.
+The theoretical run-time complexity for all small-scale
+space operations is bounded by a constant due to the fixed
+size of the LPM. Updating the map is a function of the observation size and the resolution of the grid, but these are
+constant with respect to the number of actions and observations gathered during exploration. Localization with the
+fixed-sized LPM takes a constant amount of time since incremental localization within a fixed size LPM requires a
+bounded number of particles. Computing the local topology for an LPM (generating a thinned skeleton, pruning
+the skeleton, and finding gateways) is linear in the number of grid cells, so for a fixed-size LPM, this algorithm
+also has a constant run-time complexity.
+In practice, the robot is able to update the LPM, use
+the LPM for local motion planning, and compute the lo19
+are at most ml/2 unique travel actions. There are at most l
+cal topology from the LPM in real-time for a grid size of turnsThere
+at each of the m places. Thus, in the worst case environment, we
+300x300 with 10 cm cells. Although the LPM must have have ml turns and ml/2 travels, resulting in 3ml/2 actions in the basic
+enough resolution to support control, localization, and SSH.
+31
+
+To summarize, the computation of the LPM and the local topology is done in constant time per pose. Additionally, for a specific global topological map, exploration and
+the construction of the global metrical map is linear in the
+length of the exploration. When constructing the global
+topological map, the worst-case number of loop-closing
+hypotheses is the hyper-exponential Bell’s number [Ranganathan and Dellaert, 2005], but this is a function of the
+number of topological places, not the number of poses. In
+practice, this number can be made much smaller by exploration strategies that close smaller loops earlier. A detailed examination of how exploration strategy affects the
+number of topological hypotheses is proposed for future
+work (Section 10.2).
+
+control along paths. They also provide a local topology
+description of the local surround, useful for detecting and
+describing places and the paths that emanate from places.
+We demonstrated an implementation of the HSSH
+within an environment with fairly large, nested loop closures. The results support our claims of efficient, online
+map-building in the presence of multiple loop closures.
+We demonstrated that a global layout of places is easily
+achieved given a topological map hypothesis, and a full
+global metrical map can be accurately achieved by filling in exploration experience along the path segments that
+connect places in the environment.
+
+9
+
+There are obvious avenues of future work at all levels of
+the Hybrid SSH: creating semantically labeled LPMs using vision, demonstrating a Hybrid SSH interface that improves human-robot navigation tasks, and exploring very
+large environments to demonstrate claims about scalability. Below we discuss several specific issues that relate
+directly to the issues in the paper.
+
+Summary
+
+We have presented a hybrid metrical/topological framework that processes information at both small-scale and
+large-scale abstractions. Our Hybrid Spatial Semantic
+Hierarchy is inspired by human cognitive maps; thus, it
+represents the environment using human-like concepts,
+such as places and paths, which support hierarchical
+navigation, human-robot interaction, and logical reasoning. Specifically, we focused on the problem of mapbuilding—discussing how the HSSH builds metrical representations for local small-scale spaces, finds a topological map representing the qualitative structure of largescale space, and constructs a metrical representation for
+large-scale space in a single global frame of reference by
+building on the skeleton provided by the topological map.
+Unlike many robotic implementations that attempt to
+build a monolithic, Cartesian global metrical map, we propose an alternative approach that handles closing large
+loops by hypothesizing symbolic place matches. This ensures all possible loop closures are considered, not just
+ones where the robot, with accumulated odometry error,
+happens to be near some older portion of the map. The
+minimal topological map that results from large-scale exploration is sufficient for navigation and necessary for efficient planning, especially to rule out alternative topological structures during exploration.
+The thrust of this paper has been to formally describe
+how concepts of large-scale space can be grounded in the
+robot’s low-level observations. This problem has hindered
+topological map-building research, as it is an example of
+the hard AI problem of symbol grounding [Harnad, 1990].
+Our innovation has been to utilize metrical approaches to
+model the immediate, local surround of the robot in order to ground gateways in small-scale space. Gateways
+provide the robot with local motion targets that facilitate
+
+10
+
+10.1
+
+Future Work
+
+Gateways for Coastal Navigation
+
+In Section 5.1.1, we describe an initial “constrictionbased” algorithm for gateway detection that works in
+well-structured LPMs with boundaries on both sides
+of the underlying paths. We are currently utilizing a
+new “anchor-based” gateway algorithm that is essentially
+functionally equivalent to our constriction-based algorithm in corridor environments; however, it also handles
+coastal navigation scenarios, where constrictions do not
+exist, as well as improving certain boundary cases that
+can occur at places with no Voronoi junctions. We refer the reader to the dissertation work by Beeson [2008,
+Chapter 6] for a detailed discussion of the “anchor-based”
+gateway algorithm, including an empirical evaluation that
+shows the robustness of this new gateway algorithm under
+noisy conditions and using low-resolution LPMs.
+Given gateways that define paths along the perimeter
+of walls, our robot can explore and map the areas around
+the outside of building or rooms that are larger than the
+LPM size. When using the new gateway algorithm, upon
+entering a large room, there will be paths to follow, at
+least around the edge of the room (see Figure 16(a)). Even
+without a global metrical map, the robot could find places
+at the corners of the room, and paths between them (Figure 16(b-d)). By using the LPM and the symbolic local
+topology of the detected places, the robot has enough evidence from local information along the paths to know that
+
+32
+
+(a)
+
+(b)
+
+(c)
+
+(d)
+
+Figure 16: Coastal navigation gateways. In regions of the environment where corridors cease to exist, the traditional
+Voronoi graph will lead the robot away from all nearby obstacles.Instead we utilize the extended Voronoi graph (EVG)
+[Beeson et al., 2005], which is equivalent to the Voronoi graph in corridors but switches to perimeter following at
+a maximum distance threshold. (a) The “constriction-based” gateway algorithm described in Section 5.1.1 is not
+applicable in coastal navigation scenarios, because branches of the EVG may have no nearby constrictions. Our new
+“anchor-based” gateway algorithm Beeson [2008], handles these situations in addition to any corridor situations a
+robot will encounter. (b-d) The anchor-based algorithm works when the path is defined by a single wall, and in the
+convex and concave corners encountered in large rooms or when navigating the exterior of buildings.
+
+33
+
+it was circumnavigating a large space.
+For many navigation tasks such a model may be sufficient; however, by, using the relative displacements λ to
+ˆ a metrical map of the obstacalculate a global layout χ,
+cles near the walls of large rooms can be created. Starting
+with a global metrical map near the walls of a large room,
+it should be possible to define control laws that set off
+into unknown space, using SLAM and/or dead reckoning
+to stay localized the global frame of reference. Such a
+strategy could estimate where the robot should intersect
+the far side of the room, and compare that with its observation when it actually arrived, in order to create a new
+kind of “path” across the open space. This strategy should
+make it possible to find “islands” of interest in the middle
+of unexplored space in the middle of large open rooms.
+The perimeter of these islands may also be explored using
+coastal navigation.
+
+10.2
+
+Efficient Expansion of the Tree of
+Maps
+
+In the example of Section 6.3, the exploration sequence
+was provided to the robot. One obvious improvement that
+will limit the number of map hypotheses in future work
+is to perform active exploration that occasionally exploits
+knowledge of asymmetries in the environment to eliminate entire branches from the tree of maps. Such strategies are similar to the localization procedures advocated
+by proponents of DFA-style maps [Kuipers and Byun,
+1991; Dean et al., 1995; Rekleitis et al., 1999]. Dudek
+et al. [1991] propose an exploration algorithm that finds
+the correct topological structure in polynomial number of
+travel actions, but this requires the robot to drop markers
+and backtrack to determine which loop-closing hypothesis was correct.
+Along with utilizing intelligent exploration strategies,
+we would like reduce the tree of maps by drawing on perceptual information currently unused in the topological
+map-building process. We should be able to use observational data, such as the likelihood of the global metrical
+ˆ , τ),
+¯ probabilistic local topology matching,
+layout P(χ|λ
+or the likelihood of visual observations at places [Cummins and Newman, 2008], to define weights on the tree
+of maps. These weights should allow us to have a quantitative ordering on the map hypotheses, and should allow best-first expansion of the tree that focuses on a limited number of highly ranked candidates at a time. This
+should allow the robot to map larger environments including those with large amounts of symmetry and perceptual
+aliasing.
+
+Currently, the tree of maps contains every topological map
+consistent with exploration experience and the topological
+axioms. This guarantees soundness, which is useful in the
+case where observations refute the current best map and
+the next best map must be identified. However, there remain two related problems that need to be addressed in
+future work. First is the need for a reliable method to
+identify the best candidate among a set of possible topological maps, given odometry and perceptual information
+[Ranganathan et al., 2006]. Second, is the need to reduce References
+the tree of maps from a “breadth-first” search to a more
+focused search that tracks a small number of maps at a D. Angluin. On the complexity of minimum inference
+of regular sets. Information and Control, 39:337–350,
+time.
+1978.
+In Section 6.3, we identified the “best” map as the simplest one based on a prioritized circumscription policy
+over the models generated by the non-monotonic theory P. Beeson. Creating and Utilizing Symbolic Representations of Spatial Knowledge using Mobile Robots. PhD
+of topological maps [Remolina and Kuipers, 2004]. This
+thesis, The University of Texas at Austin, 2008.
+is sufficient for the environment in Figure 15, but Savelli
+and Kuipers [2004] describe larger environments where P. Beeson, N. K. Jong, and B. Kuipers. Towards auextreme symmetry and aliasing cannot so easily be retonomous topological place detection using the exsolved by purely qualitative methods, as the tree of maps
+tended Voronoi graph. In Proceedings of the IEEE
+grows too large to maintain in real-time.20 These are not
+International Conference on Robotics and Automation
+entirely unrealistic examples, since large grid-structured
+(ICRA), pages 4373–4379, Barcelona, Spain, April
+neighborhoods in real cities provide opportunities for vast
+2005.
+topological ambiguity [Lynch, 1960].
+P. Beeson, M. MacMahon, J. Modayil, A. Murarka,
+20 Ranganathan and Dellaert [2005] claim that because (in the worst
+B. Kuipers, and B. Stankiewicz. Integrating multiple
+case) the number of aliased places grows with the amount of exploration
+representations of spatial knowledge for mapping, naviexperience, the number of possible topological maps is given by Bell’s
+gation, and communication. In Proceedings of the Symnumber, which grows hyper-exponentially with the number of perceptually aliased places.
+posium on Interaction Challenges for Intelligent As34
+
+sistants, AAAI Spring Symposium Series, pages 1–9, T. Duckett and U. Nehmzow. Exploration of unknown enStanford, CA, March 2007. AAAI Technical Report
+vironments using a compass, topological map and neuSS-07-04.
+ral network. In Proceedings of the IEEE International
+Symposium on Computational Intelligence in Robotics
+J.-L. Blanco, J.-A. Fern´andez-Madrigal, and J. Gonz´alez.
+and Automation (CIRA), pages 312–317, Monterey,
+Toward a unified bayesian approach to hybrid metricCalifornia, November 1999.
+topological SLAM. IEEE Transactions on Robotics,
+24(2):259–270, April 2008.
+T. Duckett and A. Saffiotti. Building globally consistent gridmaps from topologies. In Proceedings of the
+J. Borenstein and Y. Koren. The Vector Field Histogram—
+International IFAC Symposium on Robot Control (SYfast obstacle avoidance for mobile robots. IEEE TransROCO), pages 357–361, Vienna, Austria, September
+actions on Robotics and Automation, 7(3):278–288,
+2000.
+1991.
+G. Dudek, M. Jenkin, E. Milios, and D. Wilkes. Robotic
+M. Bosse, P. Newman, J. Leonard, M. Soika, W. Feiten,
+exploration as graph construction. IEEE Transactions
+and S. Teller. An Atlas framework for scalable mapon Robotics and Automation, 7(6):859–865, 1991.
+ping. In Proceedings of the IEEE International Conference on Robotics and Automation (ICRA), pages 1899– G. Dudek, P. Freedman, and S. Hadjres. Using local in1906, Taipei, Taiwan, September 2003.
+formation in a non-local way for mapping graph-like
+worlds. In Proceedings of the International Joint Conference on Artificial Intelligence (IJCAI), pages 1639–
+1647, Chamb´ery, France, September 1993.
+
+P. Buschka. An Investigation of Hybrid Maps for Mobile
+¨
+Robots. PhD thesis, Orebro
+University, 2005.
+
+C.-H. Choi, J.-B. Song, W. Chung, and M. Kim. Topological map building based on thinning and its appli- A. Elfes. Occupancy Grids: A Probabilistic Framework for Robot Perception and Navigation. PhD thesis,
+cation to localization. In Proceedings of the IEEE/RSJ
+Carnegie Mellon University, 1989.
+Conference on Intelligent Robots and Systems (IROS),
+pages 552–557, Lausanne, Switzerland, October 2002.
+A. Eliazar and R. Parr. DP-SLAM: Fast, robust simultaneous localization and mapping without predetermined
+H. Choset and K. Nagatani. Topological simultaneous
+landmarks. In Proceedings of the International Joint
+localization and mapping (SLAM): toward exact loConference on Artificial Intelligence (IJCAI), pages
+calization without explicit localization. IEEE Trans1135–1142, Acapulco, Mexico, August 2003.
+actions on Robotics and Automation, 17(2):125–137,
+April 2001.
+S. Fortune. Voronoi diagrams and Delaunay triangulations. In D.-Z. Du and F. Hwang, editors, Computing in
+E. Chown, S. Kaplan, and D. Kortenkamp. Prototypes,
+Euclidean Geometry, volume 1 of Lecture Notes Series
+location, and associative networks (PLAN): Towards a
+on Computing, pages 193–234. World Scientific, River
+unified theory of cognitive mapping. Cognitive Science,
+Edge, New Jersey, 1992.
+19(1):1–51, 1995.
+M. Cummins and P. Newman. FAB-MAP: Probabilistic D. Fox, W. Burgard, and S. Thrun. The dynamic winlocalization and mapping in the space of appearance.
+dow approach to collision avoidance. IEEE Robotics &
+International Journal of Robotics Research, 27(6):647–
+Automation Magazine, 4(1):23–33, March 1997.
+665, 2008.
+D. Fox, W. Burgard, and S. Thrun. Markov localization
+M. Cummins and P. Newman. Probabilistic appearance
+for mobile robots in dynamic environments. Journal of
+based navigation and loop closing. In Proceedings of
+Artificial Intelligence Research, 11:391–427, 1999.
+the IEEE International Conference on Robotics and
+Automation (ICRA), pages 2042–2048, Rome, Italy, T. Gladwin. East is a Big Bird: Navigation and Logic on
+Puluwat Atoll. Harvard University Press, Cambridge,
+April 2007.
+Massachusetts, 1970.
+T. Dean, D. Angluin, K. Basye, S. Engelson, L. Kaelbling,
+E. Kokkevis, and O. Maron. Inferring finite automata E. M. Gold. Complexity of automaton identification
+with stochastic output functions and an application to
+from given sets. Information and Control, 37:302–320,
+map learning. Machine Learning, 18(1):81–108, 1995.
+1978.
+35
+
+D. H¨ahnel, W. Burgard, D. Fox, and S. Thrun. An efficient
+Mapping, volume 38 of Springer Tracts in Advanced
+FastSLAM algorithm for generating maps of largeRobotics, pages 243–264. Springer, Berlin, Germany,
+scale cyclic environments from raw laser range mea2008.
+surements. In Proceedings of the IEEE/RSJ Conference
+on Intelligent Robots and Systems (IROS), pages 206– B. Kuipers and P. Beeson. Bootstrap learning for place
+recognition. In Proceedings of the National Confer211, Las Vegas, Nevada, October 2003a.
+ence on Artificial Intelligence (AAAI), pages 174–180,
+D. H¨ahnel, S. Thrun, B. Wegbreit, and W. Burgard. ToEdmonton, Canada, July 2002.
+wards lazy data association in SLAM. In Proceedings
+of the International Symposium on Robotics Research B. Kuipers, J. Modayil, P. Beeson, M. MacMahon, and
+F. Savelli. Local metrical and global topological maps
+(ISRR), pages 83–105, Sienna, Italy, October 2003b.
+in the Hybrid Spatial Semantic Hierarchy. In ProceedS. Harnad. The symbol grounding problem. Physica D,
+ings of the IEEE International Conference on Robotics
+42:335–346, 1990.
+and Automation (ICRA), pages 4845–4851, New Orleans, Louisiana, April 2004.
+B.-Y. Ko, J.-B. Song, and S. Lee. Real-time building of a
+thinning-based topological map with metric features. In B. J. Kuipers. Modeling spatial knowledge. Cognitive
+Proceedings of the IEEE/RSJ Conference on Intelligent
+Science, 2:129–153, 1978.
+Robots and Systems (IROS), pages 797–802, Sendai,
+B. J. Kuipers and Y.-T. Byun. A robot exploration and
+Japan, September 2004.
+mapping strategy based on a semantic hierarchy of
+S. Koenig and R. G. Simmons. Unsupervised learning of
+spatial representations. Journal of Robotics and Auprobabilistic models for robot navigation. In Proceedtonomous Systems, 8:47–63, 1991.
+ings of the IEEE International Conference on Robotics
+and Automation (ICRA), pages 2301–2308, Minneapo- A. Lankenau, T. R¨ofer, and B. Krieg-Br¨uckner. Selflocalization in large-scale environments for the bremen
+lis, Minnesota, April 1996.
+autonomous wheelchair. In Spatial Cognition III, volK. Konolige. Large-scale map-making. In Proceedume 2685 of Lecture Notes in Artificial Intelligence,
+ings of the National Conference on Artificial Intellipages 34–61. Springer-Verlag, Berlin, Germany, 2002.
+gence (AAAI), pages 457–463, San Jose, California,
+W.-Y. Lee. Spatial Semantic Hierarchy for a Physical
+July 2004.
+Mobile Robot. PhD thesis, The University of Texas at
+K. Konolige. A gradient method for realtime robot conAustin, 1996.
+trol. In Proceedings of the IEEE/RSJ Conference on
+Intelligent Robots and Systems (IROS), pages 639–646, J. Leonard and P. Newman. Consistent, convergent, and
+constant-time SLAM. In Proceedings of the InternaTakamatsu, Japan, November 2000.
+tional Joint Conference on Artificial Intelligence (IJD. Kortenkamp and T. Weymouth. Topological mapping
+CAI), pages 1143–1150, Acapulco, Mexico, August
+for mobile robots using a combination of sonar and vi2003.
+sion sensing. In Proceedings of the National Conference on Artificial Intelligence (AAAI), pages 979–984, V. Lifschitz. Nested abnormality theories. Artificial Intelligence, 74:351–365, 1995.
+Seattle, Washington, August 1994.
+J. J. Kuffner and S. M. LaValle. RRT-Connect: An F. Lu and E. Milios. Globally consistent range scan alignment for environment mapping. Autonomous Robots,
+efficient approach to single-query path planning. In
+4:333–349, 1997.
+Proceedings of the IEEE International Conference on
+Robotics and Automation (ICRA), pages 995–1001, San
+K. Lynch. The Image of the City. MIT Press, Cambridge,
+Francisco, California, April 2000.
+Massachusetts, 1960.
+B. Kuipers. The Spatial Semantic Hierarchy. Artificial
+M. MacMahon, B. Stankiewicz, and B. J. Kuipers. Walk
+Intelligence, 119:191–233, 2000.
+the talk: Connecting language, knowledge, action in
+B. Kuipers. An intellectual history of the Spatial Seroute instructions. In Proceedings of the National Conmantic Hierarchy. In M. E. Jefferies and W.-K. Yeap,
+ference on Artificial Intelligence (AAAI), pages 1475–
+editors, Robotics and Cognitive Approaches to Spatial
+1482, Boston, Massachusetts, July 2006.
+36
+
+M. J. Mataric. Integration of representation into goal- A. Ranganathan and F. Dellaert. Data driven MCMC for
+driven behavior-based robots. IEEE Transactions on
+appearance-based topological mapping. In Proceedings
+Robotics and Automation, 8(3):304–312, 1992.
+of Robotics: Science and Systems (RSS), pages 209–
+216, Cambridge, Massachusetts, June 2005.
+J. Modayil, P. Beeson, and B. Kuipers. Using the topological skeleton for scalable, global, metrical map-building. A. Ranganathan, E. Menegatti, and F. Dellaert. Bayesian
+inference in the space of topological maps. IEEE TransIn Proceedings of the IEEE/RSJ Conference on Intelactions on Robotics, 22(1):92–107, February 2006.
+ligent Robots and Systems (IROS), pages 1530–1536,
+Sendai, Japan, September 2004.
+I. M. Rekleitis, V. Dujmovic, and G. Dudek. Efficient
+topological exploration. In Proceedings of the IEEE
+M. Montemerlo, S. Thrun, D. Koller, and B. Wegbreit.
+International Conference on Robotics and Automation
+FastSLAM: a factored solution to the simultaneous lo(ICRA), pages 676–681, Detroit, Michigan, May 1999.
+calization and mapping problem. In Proceedings of the
+National Conference on Artificial Intelligence (AAAI),
+E. Remolina and B. Kuipers. Towards a general theory of
+pages 593–598, Edmonton, Canada, July 2002.
+topological maps. Artificial Intelligence, 152:47–104,
+2004.
+M. Montemerlo, S. Thrun, D. Koller, and B. Wegbreit.
+FastSLAM 2.0: an improved particle filtering algo- R. L. Rivest and R. E. Schapire. Inference of finite aurithm for simultaneous localization and mapping that
+tomata using homing sequences. In Proceedings of
+provably converges. In Proceedings of the Internathe ACM Symposium on Theory of Computing (STOC),
+tional Joint Conference on Artificial Intelligence (IJpages 411–420, Seattle, Washington, May 1989.
+CAI), pages 1151–1156, Acapulco, Mexico, August
+F. Savelli and B. Kuipers. Loop-closing and planarity
+2003.
+in topological map-building. In Proceedings of the
+H. P. Moravec. Sensor fusion in certainty grids for mobile
+IEEE/RSJ Conference on Intelligent Robots and Sysrobots. AI Magazine, pages 61–74, Summer 1988.
+tems (IROS), pages 1511–1517, Sendai, Japan, September 2004.
+A. C. Morris, D. Silver, D. Ferguson, and S. Thayer. Towards topological exploration of abandoned mines. In R. E. Schapire. The design and analysis of efficient learnProceedings of the IEEE International Conference on
+ing algorithms. Technical report, MIT Laboratory for
+Robotics and Automation (ICRA), pages 2117–2123,
+Computer Science, 1991. MIT/LCS/TR-493.
+Barcelona, Spain, April 2005.
+D. Schr¨oter. Region & Gateway Mapping: Acquiring
+A. Murarka, J. Modayil, and B. Kuipers. Building loStructured and Object-Oriented Representations of Incal safety maps for a wheelchair robot using vision and
+door Environments. PhD thesis, Technical University
+lasers. In Proceedings of the Canadian Conference on
+of Munich, 2006.
+Computer and Robot Vision (CRV), page 25, Quebec
+D. Schr¨oter, T. Weber, M. Beetz, and B. Radig. DetecCity, Canada, June 2006.
+tion and classification of gateways for the acquisition
+E. Olson, J. Leonard, and S. Teller. Fast iterative optiof structured robot maps. In Proceedings of the Symmization of pose graphs with poor initial estimates. In
+posium of the German Association for Pattern RecogProceedings of the IEEE International Conference on
+nition (DAGM), pages 553–561, T¨ubingen, Germany,
+Robotics and Automation (ICRA), pages 2262–2269,
+August 2004.
+Orlando, Florida, May 2006.
+H. Shatkay and L. P. Kaelbling. Learning topological
+M. A. Paskin. Thin junction tree filters for simultaneous
+maps with weak local odometric information. In Prolocalization and mapping. In Proceedings of the Inceedings of the International Joint Conference on Arternational Joint Conference on Artificial Intelligence
+tificial Intelligence (IJCAI), pages 920–929, Nagoya,
+(IJCAI), pages 1157–1166, Acapulco, Mexico, August
+Japan, August 1997.
+2003.
+A. W. Siegel and S. H. White. The development of spatial
+W. H. Press, S. A. Teukolsky, W. T. Vitterling, and B. P.
+representations of large-scale environments. In H. W.
+Flannery. Numerical Recipes in C: The Art of ScienReese, editor, Advances in Child Development and Betific Computing. Cambridge University Press, London,
+havior, volume 10, pages 9–55. Academic Press, New
+second edition, 1992.
+York, 1975.
+37
+
+D. Silver, D. Ferguson, A. C. Morris, and S. Thayer. Fea- M. Yannakakis and D. Lee. Testing finite state mature extraction for topological mine maps. In Proceedchines. In Proceedings of the ACM Symposium on Theings of the IEEE/RSJ Conference on Intelligent Robots
+ory of Computing (STOC), pages 476–485, New Orand Systems (IROS), pages 773–779, Sendai, Japan,
+leans, Louisiana, May 1991.
+September 2004.
+W.-K. Yeap. Towards a computational theory of cognitive
+maps. Artificial Intelligence, 34:297–360, 1988.
+R. Smith, M. Self, and P. Cheeseman. Estimating uncertain spatial relationships in robotics. In I. J. Cox W.-K. Yeap and M. E. Jefferies. Computing a represenand G. T. Wilfong, editors, Autonomous Robot Vehicles,
+tation of the local environment. Artificial Intelligence,
+pages 167–193. Springer Verlag, New York, 1990.
+107(2):265–301, 1999.
+S. Thrun and A. B¨ucken. Integrating grid-based and topo- T. Y. Zhang and C. Y. Suen. A fast parallel algorithm for
+logical maps for mobile robot navigation. In Proceedthinning digital patterns. Communications of the ACM,
+ings of the National Conference on Artificial Intelli27(3):236–239, March 1984.
+gence (AAAI), pages 944–950, Portland, Oregon, AuU. R. Zimmer. Embedding local metrical map patches in
+gust 1996.
+a globally consistent topological map. In Proceedings
+of the International Symposium on Underwater TechS. Thrun, S. Gutmann, D. Fox, W. Burgard, and B. J.
+nology (UT), pages 301–305, Tokyo, Japan, May 2000.
+Kuipers. Integrating topological and metric maps for
+mobile robot navigation: A statistical approach. In Proceedings of the National Conference on Artificial Intelligence (AAAI), pages 989–995, Madison, Wisconsin,
+July 1998.
+S. Thrun, W. Burgard, and D. Fox. A real-time algorithm for mobile robot mapping with applications to
+multi-robot and 3d mapping. In Proceedings of the
+IEEE International Conference on Robotics and Automation (ICRA), pages 321–328, San Francisico, California, April 2000a.
+S. Thrun, D. Fox, and W. Burgard. Monte Carlo localization with mixture proposal distribution. In Proceedings of the National Conference on Artificial Intelligence (AAAI), pages 859–865, Austin, Texas, August
+2000b.
+S. Thrun, W. Burgard, and D. Fox. Probabilistic Robotics.
+MIT Press, Cambridge, Massachusetts, 2005.
+N. Tomatis, I. Nourbakhsh, and R. Siegwart. Hybrid
+simultaneous localization and map building: Closing
+the loop with multi-hypotheses tracking. In Proceedings of the IEEE International Conference on Robotics
+and Automation (ICRA), pages 2749–2754, Washington, DC, May 2002.
+J. O. Wallgr¨un. Autonomous construction of hierarchical
+voronoi-based route graph representations. In Spatial
+Cognition IV. Reasoning, Action, Interaction, volume
+3343 of Lecture Notes in Artificial Intelligence, pages
+413–433. Springer-Verlag, Berlin, Germany, 2005.
+38
+
+

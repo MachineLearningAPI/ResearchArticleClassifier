@@ -1,0 +1,3940 @@
+Journal of Machine Learning Research 15 (2014) 147-191
+
+Submitted 4/13; Revised 9/13; Published 1/14
+
+A Junction Tree Framework for
+Undirected Graphical Model Selection
+Divyanshu Vats
+
+dvats@rice.edu
+
+Department of Electrical and Computer Engineering
+Rice University
+Houston, TX 77005, USA
+
+Robert D. Nowak
+
+nowak@ece.wisc.edu
+
+Department of Electrical and Computer Engineering
+University of Wisconsin–Madison
+Madison, WI 53706, USA
+
+Editor: Sebastian Nowozin
+
+Abstract
+An undirected graphical model is a joint probability distribution defined on an undirected
+graph G∗ , where the vertices in the graph index a collection of random variables and
+the edges encode conditional independence relationships among random variables. The
+undirected graphical model selection (UGMS) problem is to estimate the graph G∗ given
+observations drawn from the undirected graphical model. This paper proposes a framework
+for decomposing the UGMS problem into multiple subproblems over clusters and subsets
+of the separators in a junction tree. The junction tree is constructed using a graph that
+contains a superset of the edges in G∗ . We highlight three main properties of using junction
+trees for UGMS. First, different regularization parameters or different UGMS algorithms
+can be used to learn different parts of the graph. This is possible since the subproblems
+we identify can be solved independently of each other. Second, under certain conditions,
+a junction tree based UGMS algorithm can produce consistent results with fewer observations than the usual requirements of existing algorithms. Third, both our theoretical
+and experimental results show that the junction tree framework does a significantly better
+job at finding the weakest edges in a graph than existing methods. This property is a
+consequence of both the first and second properties. Finally, we note that our framework
+is independent of the choice of the UGMS algorithm and can be used as a wrapper around
+standard UGMS algorithms for more accurate graph estimation.
+Keywords: Graphical models, Markov random fields, junction trees, model selection,
+graphical model selection, high-dimensional statistics, graph decomposition
+
+1. Introduction
+An undirected graphical model is a joint probability distribution PX of a random vector X
+defined on an undirected graph G∗ . The graph G∗ consists of a set of vertices V = {1, . . . , p}
+and a set of edges E(G∗ ) ⊆ V × V . The vertices index the p random variables in X and
+the edges E(G∗ ) characterize conditional independence relationships among the random
+variables in X (Lauritzen, 1996). We study undirected graphical models (also known as
+Markov random fields) so that the graph G∗ is undirected, that is, if an edge (i, j) ∈ E(G∗ ),
+c 2014 Divyanshu Vats and Robert D. Nowak.
+
+Vats and Nowak
+
+1,2,3,5
+1
+
+3
+
+5
+
+1
+
+3
+
+5
+7
+
+7
+2
+
+4
+
+6
+
+(a) Graph
+
+2
+
+G∗
+
+4
+
+6
+
+(b) Graph H
+
+1,3,5
+1,2,3,5
+1,3,4,5
+3,4,5
+4,5,6
+3,4,5,6
+4,5,6,7
+
+(c) Junction tree
+
+1,3,4,5
+1,3,5
+
+3,4,5,6
+
+3,4,5
+3,5
+
+4,5,6,7
+
+4,5,6
+
+4,5
+
+(d) Region graph
+
+Figure 1: Our framework for estimating the graph in (a) using (b) computes the junction
+tree in (c) and uses a region graph representation in (d) of the junction tree to
+decompose the UGMS problem into multiple subproblems.
+
+then (j, i) ∈ E(G∗ ). The undirected graphical model selection (UGMS) problem is to
+estimate G∗ given n observations Xn = X (1) , . . . , X (n) drawn from PX . This problem is
+of interest in many areas including biological data analysis, financial analysis, and social
+network analysis; see Koller and Friedman (2009) for some more examples.
+This paper studies the following problem: Given the observations Xn
+drawn from PX and a graph H that contains all the true edges E(G∗ ), and
+possibly some extra edges, estimate the graph G∗ .
+A natural question to ask is how can the graph H be selected in the first place? One
+way of doing so is to use screening algorithms, such as in Fan and Lv (2008) or in Vats (to
+appear), to eliminate edges that are clearly non-existent in G∗ . Another method can be
+to use partial prior information about X to remove unnecessary edges. For example, this
+could be based on (i) prior knowledge about statistical properties of genes when analyzing
+gene expressions, (ii) prior knowledge about companies when analyzing stock returns, or
+(iii) demographic information when modeling1social networks. Yet another method can be
+to use clever model selection algorithms that estimate more edges than desired. Assuming
+an initial graph H has been computed, our main contribution in this paper is to show how
+a junction tree representation of H can be used as a wrapper around UGMS algorithms for
+more accurate graph estimation.
+1.1 Overview of the Junction Tree Framework
+A junction tree is a tree-structured representation of an arbitrary graph (Robertson and
+Seymour, 1986). The vertices in a junction tree are clusters of vertices from the original
+graph. An edge in a junction tree connects two clusters. Junction trees are used in many
+applications to reduce the computational complexity of solving graph related problems
+(Arnborg and Proskurowski, 1989). Figure 1(c) shows an example of a junction tree for the
+graph in Figure 1(b). Notice that each edge in the junction tree is labeled by the set of
+vertices common to both clusters connected by the edge. These set of vertices are referred
+to as a separator.
+Let H be a graph that contains all the edges in G∗ . We show that the UGMS problem
+can be decomposed into multiple subproblems over clusters and subsets of the separators
+in a junction tree representation of H. In particular, using the junction tree, we construct
+148
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+V1
+
+T
+
+V2
+
+Figure 2: Structure of the graph used to analyze the junction tree framework for UGMS.
+a region graph, which is a directed graph over clusters of vertices. An example of a region
+graph for the junction tree in Figure 1(c) is shown in Figure 1(d). The first two rows in the
+region graph are the clusters and separators of the junction tree, respectively. The rest of the
+rows contain subsets of the separators.1 The multiple subproblems we identify correspond
+to estimating a subset of edges over each cluster in the region graph. For example, the
+subproblem over the cluster {1, 2, 3, 5} in Figure 1(d) estimates the edges (2, 3) and (2, 5).
+We solve the subproblems over the region graph in an iterative manner. First, all
+subproblems in the first row of the region graph are solved in parallel. Second, the region
+graph is updated taking into account the edges removed in the first step. We keep solving
+subproblems over rows in the region graph and update the region graph until all the edges
+in the graph H have been estimated.
+As illustrated above, our framework depends on a junction tree representation of the
+graph H that contains a superset of the true edges. Given any graph, there may exist several
+junction tree representations. An optimal junction tree is a junction tree representation
+such that the maximum size of the cluster is as small as possible. Since we apply UGMS
+algorithms to the clusters of the junction tree, and the complexity of UGMS depends on
+the number of vertices in the graph, it is useful to apply our framework using optimal
+junction trees. Unfortunately, it is computationally intractable to find optimal junction
+trees (Arnborg et al., 1987). However, there exists several computationally efficient greedy
+c Divyanshu Vats and Robert D. Nowak.
+heuristics that compute close to optimal junction trees (Kjaerulff, 1990; Berry et al., 2003).
+We use such heuristics to find junction trees when implementing our algorithms in practice.
+1.2 Advantages of Using Junction Trees
+We highlight three main advantages of the junction tree framework for UGMS.
+Choosing Regularization Parameters and UGMS Algorithms: UGMS algorithms typically
+depend on a regularization parameter that controls the number of estimated edges. This
+regularization parameter is usually chosen using model selection algorithms such as crossvalidation or stability selection. Since each subproblem we identify in the region graph
+is solved independently, different regularization parameters can be used to learn different
+parts of the graph. This has advantages when the true graph G∗ has different characteristics in different parts of the graph. Further, since the subproblems are independent,
+different UGMS algorithms can be used to learn different parts of the graph. Our numerical
+simulations clearly show the advantages of this property.
+Reduced Sample Complexity: One of the key results of our work is to show that in many
+cases, the junction tree framework is capable of consistently estimating a graph under weaker
+conditions than required by previously proposed methods. For example, we show that if
+1. See Algorithm 1 for details on how to exactly construct the region graph.
+
+149
+
+Vats and Nowak
+
+G∗ consists of two main components that are separated by a relatively small number of
+vertices (see Figure 2 for a general example), then, under certain conditions, the number of
+observations needed for consistent estimation scales like log(pmin ), where pmin is the number
+of vertices in the smaller of the two components. In contrast, existing methods are known
+to be consistent if the observations scale like log p, where p is the total number of vertices. If
+the smaller component were, for example, exponentially smaller than the larger component,
+then the junction tree framework is consistent with about log log p observations. For generic
+problems, without structure that can be exploited by the junction tree framework, we
+recover the standard conditions for consistency.
+Learning Weak Edges: A direct consequence of choosing different regularization parameters
+and the reduced sample complexity is that certain weak edges, not estimated using standard
+algorithms, may be estimated when using the junction tree framework. We show this
+theoretically and using numerical simulations on both synthetic and real world data.
+1.3 Related Work
+Several algorithms have been proposed in the literature for learning undirected graphical models. Some examples include References Spirtes and Glymour (1991), Kalisch
+and B¨
+uhlmann (2007), Banerjee et al. (2008), Friedman et al. (2008), Meinshausen and
+B¨
+uhlmann (2006), Anandkumar et al. (2012a) and Cai et al. (2011) for learning Gaussian
+graphical models, references Liu et al. (2009), Xue and Zou (2012), Liu et al. (2012a), Lafferty et al. (2012) and Liu et al. (2012b) for learning non-Gaussian graphical models, and
+references Bresler et al. (2008), Bromberg et al. (2009), Ravikumar et al. (2010), Netrapalli
+et al. (2010), Anandkumar et al. (2012b), Jalali et al. (2011), Johnson et al. (2012) and Yang
+et al. (2012) for learning discrete graphical models. Although all of the above algorithms
+can be modified to take into account prior knowledge about a graph H that contains all the
+true edges (see Appendix B for some examples), our junction tree framework is fundamentally different than the standard modification of these algorithms. The main difference is
+that the junction tree framework allows for using the global Markov property of undirected
+graphical models (see Definition 1) when learning graphs. This allows for improved graph
+estimation, as illustrated by both our theoretical and numerical results. We note that all
+of the above algorithms can be used in conjunction with the junction tree framework.
+Junction trees have been used for performing exact probabilistic inference in graphical
+models (Lauritzen and Spiegelhalter, 1988). In particular, given a graphical model, and
+its junction tree representation, the computational complexity of exact inference is exponential in the size of the cluster in the junction tree with the most of number of vertices.
+This has motivated a line of research for learning thin junction trees so that the maximum
+size of the cluster in the estimated junction tree is small so that inference is computationally tractable (Chow and Liu, 1968; Bach and Jordan, 2001; Karger and Srebro, 2001;
+Chechetka and Guestrin, 2007; Kumar and Bach, 2013). We also make note of algorithms
+for learning decomposable graphical models where the graph structure is assumed to triangulated (Malvestuto, 1991; Giudici and Green, 1999). In general, the goal in the above
+algorithms is to learn a joint probability distribution that approximates a more complex
+probability distribution so that computations, such as inference, can be done in a tractable
+manner. On the other hand, this paper considers the problem of learning the structure of
+150
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+the graph that best represents the conditional dependencies among the random variables
+under consideration.
+There are two notable algorithms in the literature that use junction trees for learning
+graphical models. The first is an algorithm presented in Xie and Geng (2008) that uses
+junction trees to find the direction of edges for learning directed graphical models. Unfortunately, this algorithm cannot be used for UGMS. The second is an algorithm presented
+in Ma et al. (2008) for learning chain graphs, that are graphs with both directed and undirected edges. The algorithm in Ma et al. (2008) uses a junction tree representation to learn
+an undirected graph before orienting some of the edges to learn a chain graph. Our proposed algorithm, and subsequent analysis, differs from the work in Ma et al. (2008) in the
+following ways:
+(i) Our algorithm identifies an ordering on the edges, which subsequently results in a
+lower sample complexity and the possibility of learning weak edges in a graph. The
+ordering on the edges is possible because of our novel region graph interpretation for
+learning graphical models. For example, when learning the graph in Figure 1(a) using
+Figure 1(b), the algorithm in Ma et al. (2008) learns the edge (3, 5) by applying a
+UGMS algorithm to the vertices {1, 2, 3, 4, 5, 6}. In contrast, our proposed algorithm
+first estimates all edges in the second layer of the region graph in Figure 1(d), reestimates the region graph, and then only applies a UGMS algorithm to {3, 4, 5} to
+determine if the edge (3, 4) belongs to the graph. In this way, our algorithm, in general,
+requires applying a UGMS algorithm to a smaller number of vertices when learning
+edges over separators in a junction tree representation.
+(ii) Our algorithm for using junction trees for UGMS is independent of the choice of the
+UGMS algorithm, while the algorithm presented in Ma et al. (2008) uses conditional
+independence tests for UGMS.
+(iii) Our algorithm, as discussed in (i), has the additional advantage of learning certain
+weak edges that may not be estimated when using standard UGMS algorithms. We
+theoretically quantify this property of our algorithm, while no such theory was presented in Ma et al. (2008).
+Recent work has shown that solutions to the graphical lasso (gLasso) (Friedman et al.,
+2008) problem for UGMS over Gaussian graphical models can be computed, under certain
+conditions, by decomposing the problem over connected components of the graph computed
+by thresholding the empirical covariance matrix (Witten et al., 2011; Mazumder and Hastie,
+2012). The methods in Witten et al. (2011) and Mazumder and Hastie (2012) are useful
+for computing solutions to gLasso for particular choices of the regularization parameter
+and not for accurately estimating graphs. Thus, when using gLasso for UGMS, we can
+use the methods in Witten et al. (2011) and Mazumder and Hastie (2012) to solve gLasso
+when performing model selection for choosing suitable regularization parameters. Finally,
+we note that recent work in Loh and Wainwright (2012) uses properties of junction trees to
+learn discrete graphical models. The algorithm in Loh and Wainwright (2012) is designed for
+learning discrete graphical models and our methods can be used to improve its performance.
+151
+
+Vats and Nowak
+
+1.4 Paper Organization
+The rest of the paper is organized as follows:
+• Section 2 reviews graphical models and formulates the undirected graphical model
+selection (UGMS) problem.
+• Section 3 shows how junction trees can be represented as region graphs and outlines
+an algorithm for constructing a region graph from a junction tree.
+• Section 4 shows how the region graphs can be used to apply a UGMS algorithm to
+the clusters and separators of a junction tree.
+• Section 5 presents our main framework for using junction trees for UGMS. In particular, we show how the methods in Sections 3-4 can be used iteratively to estimate a
+graph.
+• Section 6 reviews the PC-Algorithm, which we use to study the theoretical properties
+of the junction tree framework.
+• Section 7 presents theoretical results on the sample complexity of learning graphical
+models using the junction tree framework. We also highlight advantages of using the
+junction tree framework as summarized in Section 1.2.
+• Section 8 presents numerical simulations to highlight the advantages of using junction
+trees for UGMS in practice.
+• Section 9 summarizes the paper and outlines some future work.
+
+2. Preliminaries
+In this section, we review some necessary background on graphs and graphical models that
+we use in this paper. Section 2.1 reviews some graph theoretic concepts. Section 2.2 reviews
+undirected graphical models. Section 2.3 formally defines the undirected graphical model
+selection (UGMS) problem. Section 2.4 reviews junction trees, which we use use as a tool
+for decomposing UGMS into multiple subproblems.
+2.1 Graph Theoretic Concepts
+A graph is a tuple G = (V, E(G)), where V is a set of vertices and E(G) ⊆ V × V are
+edges connecting vertices in V . For any graph H, we use the notation E(H) to denote its
+edges. We only consider undirected graphs where if (v1 , v2 ) ∈ E(G), then (v2 , v1 ) ∈ E(G)
+for v1 , v2 ∈ V . Some graph theoretic notations that we use in this paper are summarized
+as follows:
+• Neighbor neG (i): Set of nodes connected to i.
+• Path {i, s1 , . . . , sd , j}: A sequence of nodes such that (i, s1 ), (sd , j), (sk , sk+1 ) ∈ E for
+k = 1, . . . , d − 1.
+152
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+• Separator S: A set of nodes such that all paths from i to j contain at least one node
+in S. The separator S is minimal if no proper subset of S separates i and j.
+• Induced Subgraph G[A] = (A, E(G[A])): A graph over the nodes A such that E(G[A])
+contains the edges only involving the nodes in A.
+• Complete graph KA : A graph that contains all possible edges over the nodes A.
+For two graphs G1 = (V1 , E(G1 )) and G2 = (V2 , E(G2 )), we define the following standard
+operations:
+• Graph Union: G1 ∪ G2 = (V1 ∪ V2 , E1 ∪ E2 ).
+• Graph Difference: G1 \G2 = (V1 , E1 \E2 ).
+2.2 Undirected Graphical Models
+Definition 1 (Undirected Graphical Model, Lauritzen, 1996) An undirected graphical model is a probability distribution PX defined on a graph G∗ = (V, E(G∗ )), where
+V = {1, . . . , p} indexes the random vector X = (X1 , . . . , Xp ) and the edges E(G∗ ) encode
+the following Markov property: for a set of nodes A, B, and S, if S separates A and B,
+then XA ⊥
+⊥ XB |XS .
+The Markov property outlined above is referred to as the global Markov property. Undirected
+graphical models are also referred to as Markov random fields or Markov networks in the
+literature. When the joint probability distribution PX is non-degenerate, that is, PX >
+0, the Markov property in Definition 1 are equivalent to the pairwise and local Markov
+properties:
+• Pairwise Markov property: For all (i, j) ∈
+/ E, Xi ⊥
+⊥ Xj |XV \{i,j} .
+• Local Markov property: For all i ∈ V , Xi ⊥
+⊥ XV \{neG (i)∪{i}} |XneG (i) .
+In this paper, we always assume PX > 0 and say PX is Markov on G to reflect the
+Markov properties. Examples of conditional independence relations conveyed by a probability distribution defined on the graph in Figure 3(d) are X1 ⊥
+⊥ X6 |{X2 , X4 } and X4 ⊥
+⊥
+X6 |{X2 , X5 , X8 }.
+2.3 Undirected Graphical Model Section (UGMS)
+Definition 2 (UGMS) The undirected graphical model selection (UGMS) problem is to
+estimate a graph G∗ such that the joint probability distribution PX is Markov on G∗ , but
+not Markov on any subgraph of G∗ .
+The last statement in Definition 2 is important, since, if PX is Markov on G∗ , then it is
+also Markov on any graph that contains G∗ . For example, all probability distributions are
+Markov on the complete graph. Thus, the UGMS problem is to find the minimal graph
+that captures the Markov properties associated with a joint probability distribution. In the
+literature, this is also known as finding the minimal I-map.
+153
+
+Vats and Nowak
+
+Let Ψ be an abstract UGMS algorithm that takes as inputs a set of n i.i.d. observations
+Xn = {X (1) , . . . , X (n) } drawn from PX and a regularization parameter λn . The output of Ψ
+is a graph Gn , where λn controls the number of edges estimated in Gn . Note the dependence
+of the regularization parameter on n. We assume Ψ is consistent, which is formalized in the
+following assumption.
+Assumption 1 There exists a λn for which P (Gn = G∗ ) → 1 as n → ∞, where Gn =
+Ψ(Xn , λn ).
+We give examples of Ψ in Appendix B. Assumption 1 also takes into account the highdimensional case where p depends on n in such a way that p, n → ∞.
+2.4 Junction Trees
+Junction trees (Robertson and Seymour, 1986) are used extensively for efficiently solving
+various graph related problems, see Arnborg and Proskurowski (1989) for some examples.
+Reference Lauritzen and Spiegelhalter (1988) shows how junction trees can be used for
+exact inference (computing marginal distribution given a joint distribution) over graphical
+models. We use junction trees as a tool for decomposing the UGMS problem into multiple
+subproblems.
+Definition 3 (Junction tree) For an undirected graph G = (V, E(G)), a junction tree
+J = (C, E(J )) is a tree-structured graph over clusters of nodes in V such that
+(i) Each node in V is associated with at least one cluster in C.
+(ii) For every edge (i, j) ∈ E(G), there exists a cluster Ck ∈ C such that i, j ∈ Ck .
+(iii) J satisfies the running intersection property: For all clusters Cu , Cv , and Cw such
+that Cw separates Cu and Cv in the tree defined by E(J ), Cu ∩ Cv ⊂ Cw .
+The first property in Definition 3 says that all nodes must be mapped to at least one
+cluster of the junction tree. The second property states that each edge of the original graph
+must be contained within a cluster. The third property, known as the running intersection
+property, is the most important since it restricts the clusters and the trees that can be be
+formed. For example, consider the graph in Figure 3(a). By simply clustering the nodes
+over edges, as done in Figure 3(b), we can not get a valid junction tree (Wainwright, 2002).
+By making appropriate clusters of size three, we get a valid junction tree in Fig. 3(c). In
+other words, the running intersection property says that for two clusters with a common
+node, all the clusters on the path between the two clusters must contain that common node.
+Proposition 4 (Robertson and Seymour, 1986) Let J = (C, E(J )) be a junction tree
+of the graph G. Let Suv = Cu ∩ Cv . For each (Cu , Cv ) ∈ E, we have the following properties:
+1. Suv = ∅.
+2. Suv separates Cu \Suv and Cv \Suv .
+154
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+12
+
+1
+2
+
+13
+
+123
+
+3
+4
+
+(a)
+
+24
+
+34
+
+(b)
+
+234
+
+(c)
+
+124
+
+236
+
+6
+
+2458
+
+2568
+
+9
+
+478
+
+689
+
+1
+
+2
+
+3
+
+4
+
+5
+
+7
+
+8
+
+(d)
+
+(e)
+
+Figure 3: (a) An undirected graph, (b) Invalid junction tree since {1, 2} separates {1, 3}
+and {3, 4},but 3 ∈
+/ {1, 2}. (c) Valid junction tree for the graph in (a). (d) A grid
+graph. (e) Junction tree representation of (d).
+
+The set of nodes Suv on the edges are called the separators of the junction tree. Proposition 4 says that all clusters connected by an edge in the junction tree have at least one
+common node and the common nodes separate nodes in each cluster. For example, consider
+the junction tree in Figure 3(e) of the graph in Figure 3(d). We can infer that 1 and 5 are
+separated by 2 and 4. Similarly, we can also infer that 4 and 6 are separated by 2, 5, and 8.
+It is clear that if a graphical model is defined on the graph, then the separators can be used
+to easily define conditional independence relationships. For example, using Figure 3(e), we
+can conclude that X1 ⊥
+⊥ X5 given X2 and X4 . As we will see in later Sections, Proposition 4
+allow the decomposition of UGMS into multiple subproblems over clusters and subsets of
+the separators in a junction tree.
+
+3. Overview of Region Graphs
+In this section, we show how junction trees can be represented as region graphs. As we
+will see in Section 5, region graphs allow us to easily decompose the UGMS problem into
+multiple subproblems. There are many different types of region graphs and we refer the
+readers to Yedidia et al. (2005) for a comprehensive discussion about region graphs and how
+they are useful for characterizing graphical models. The region graph we present in this
+section differs slightly from the standard definition of region graphs. This is mainly because
+our goal is to estimate edges, while the standard region graphs defined in the literature are
+used for computations over graphical models.
+A region is a collection of nodes, which in this paper can be the clusters of the junction
+tree, separators of the junction tree, or subsets of the separators. A region graph G =
+(R, E(G)) is a directed graph where the vertices are regions and the edges represent directed
+edges from one region to another. We use the notation E(·) to emphasize that region graphs
+contain directed edges. A description of region graphs is given as follows:
+• The set E(G) contains directed edges so that if (R, S) ∈ E(G), then there exists a
+directed edge from region R to region S.
+• Whenever R −→ S, then S ⊆ R.
+Algorithm 1 outlines an algorithm to construct region graphs given a junction tree
+representation of a graph H. We associate a label l with every region in R and group
+155
+
+Vats and Nowak
+
+3,5
+
+C3 1,3,5
+
+1
+
+3,5,6
+5
+
+2
+
+8
+
+7
+
+4
+
+(a)
+
+9
+
+1,3,5
+
+3,5,6,8
+
+5,6,8,9
+
+2,3,5,6
+
+2,3,4,6
+
+3,4,6,7
+
+5,6,8
+5,6,8,9 C1
+
+C4 2,3,5,6
+6
+
+3
+
+3,5,6,8 C2
+
+3,5
+
+3,5,6
+
+5,6,8
+
+2,3,6
+
+3,4,6
+
+2,3,6
+C5 2,3,4,6
+
+3,4,6
+
+3,4,6,7 C6
+
+(b) Junction tree
+
+3,5
+
+5,6
+
+3,6
+
+(c) Region graph
+
+Figure 4: (a) An example of H. (b) A junction tree representation of H. (c) A region graph
+representation of (b) computed using Algorithm 1.
+
+Algorithm 1: Constructing region graphs
+
+1
+2
+3
+
+4
+
+5
+6
+
+Input: A junction tree J = (C, E(J )) of a graph H.
+Output: A region graph G = (R, E(G)).
+R1 = C, where C are the clusters of the junction tree J .
+Let R2 be all the separators of J , that is, R2 = {Suv = Cu ∩ Cv : (Cu , Cv ) ∈ E(J )}.
+To construct R3 , find all possible pairwise intersections of regions in R2 . Add all
+intersecting regions with cardinality greater than one to R3 .
+Repeat previous step to construct R4 , . . . , RL until there are no more intersecting
+regions of cardinality greater than one.
+For R ∈ R and S ∈ R +1 , add the edge (R, S) to E(G) if S ⊆ R.
+Let R = {R1 , . . . , RL }.
+
+regions with the same label to partition R into L groups R1 , . . . , RL . In Algorithm 1, we
+initialize R1 and R2 to be the clusters and separators of a junction tree J , respectively,
+and
+then iteratively
+R3 , . . . , RL by computing all possible intersections of regions with
+c Divyanshu
+Vats and Robertfind
+D. Nowak.
+the same label. The edges in E(G) are only drawn from a region in Rl to a region in
+Rl+1 . Figure 4(c) shows an example of a region graph computed using the junction tree in
+Figure 4(b).
+Remark 5 Note that the construction of the region graph depends on the junction tree.
+Using methods in Vats and Moura (2012), we can always construct junction trees such
+that the region graph only has two sets of regions, namely the clusters of the junction tree
+and the separators of the junction tree. However, in this case, the size of the regions or
+clusters may be too large. This may not be desirable since the computational complexity
+of applying UGMS algorithms to region graphs, as shown in Section 5, depends on the size
+of the regions.
+Remark 6 (Region graph vs. Junction tree) For every junction tree, Algorithm 1
+outputs a unique region graph. The junction tree only characterizes the relationship between
+the clusters in a junction tree. A region graph extends the junction tree representation to
+characterize the relationships between the clusters as well as the separators. For example,
+in Figure 4(c), the region {5, 6} is in the third row and is a subset of two separators of the
+156
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+junction tree. Thus, the only difference between the region graph and the junction tree is
+the additional set of regions introduced in R3 , . . . , RL .
+Remark 7 From the construction in Algorithm 1, R may have two or more regions that
+are the same but have different labels. For example, in Figure 4(c), the region {3, 5} is in
+both R2 and R3 . We can avoid this situation by removing {3, 5} from R2 and adding an
+edge from the region {1, 3, 5} in R1 to the region {3, 5} in R3 . For notational simplicity
+and for the purpose of illustration, we allow for duplicate regions. This does not change the
+theory or the algorithms that we develop.
+
+4. Applying UGMS to Region Graphs
+Before presenting our framework for decomposing UGMS into multiple subproblems, we
+first show how UGMS algorithms can be applied to estimate a subset of edges in a region of
+a region graph. In particular, for a region graph G = (R, E(G)), we want to identify a set
+of edges in the induced subgraph H[R] that can be estimated by applying a UGMS algorithm
+to either R or a set of vertices that contains R. With this goal in mind, define the children
+ch(R) of a region R as follows:
+Children: ch(R) = S : (R, S) ∈ E
+
+.
+
+(1)
+
+We say R connects to S if (R, S) ∈ E(G). Thus, the children in (1) consist of all regions
+that R connects to. For example, in Figure 4(c),
+ch({2, 3, 4, 6}) = {{2, 3, 6}, {3, 4, 6}} .
+If there exists a direct path from S to R, we say S is an ancestor of R. The set of all
+ancestors of R is denoted by an(R). For example, in Figure 4(c),
+an({5, 6, 8, 9}) = ∅,
+
+an({3, 5, 6}) = {{3, 5, 6, 8}, {2, 3, 5, 6}}, and
+
+an({3, 6}) = {{3, 5, 6}, {2, 3, 6}, {3, 4, 6}, {2, 3, 5, 6}, {2, 3, 4, 6}, {3, 4, 6, 7}, {3, 5, 6, 8}}}.
+
+The notation R takes the union of all regions in an(R) and R so that
+R=
+
+S.
+
+(2)
+
+S∈{an(R),R}
+
+Thus, R contains the union of all clusters in the junction tree that contain R. An illustration
+of some of the notations defined on region graphs is shown in Figure 5. Using ch(R), define
+the subgraph HR as2
+HR = H[R]\ ∪S∈ch(R) KS ,
+(3)
+where H[R] is the induced subgraph that contains all edges in H over the region R and KS
+is the complete graph over S. In words, HR is computed by removing all edges from H[R]
+that are contained in another separator. For example, in Figure 4(c), when R = {5, 6, 8},
+E(HR ) = {(5, 8), (6, 8)}. The subgraph HR is important since it identifies the edges that
+can be estimated when applying a UGMS algorithm to the set of vertices R.
+2. For graphs G1 and G2 , E(G1 \G2 ) = E(G1 )\E(G2 ) and E(G1 ∪ G2 ) = E(G1 ) ∪ E(G2 ).
+
+157
+
+Vats and Nowak
+
+Algorithm 2: UGMS over regions in a region graph
+Input: Region graph G = (R, E(G)), a region R, observations Xn , and a UGMS
+algorithm Ψ.
+2: Compute HR using (3) and R using (2).
+3: Apply Ψ to Xn to estimate edges in HR . See Appendix B for examples.
+R
+1:
+
+4:
+
+Return the estimated edges ER .
+
+an(R)
+
+R
+
+ch(R)
+
+Figure 5: Notations defined on region graphs. The children ch(R) are the set of regions
+that R connects to. The ancestors an(R) are all the regions that have a directed
+path to the region R. The set R takes the union of all regions in an(R) and R.
+
+Proposition 8 Suppose E(G∗ ) ⊆ E(H). All edges in HR can be estimated by solving a
+UGMS problem over the vertices R.
+Proof See Appendix C.
+Proposition 8 says that all edges in HR can be estimated by applying a UGMS algorithm
+to the set of vertices R. The intuition behind the result is that only those edges in the
+region R can be estimated whose Markov properties can be deduced using the vertices in
+R. Moreover, the edges not estimated in H[R] share an edge with another region that does
+not contain all the vertices in R. Algorithm 2 summarizes the steps involved in estimating
+the edges in HR using the UGMS algorithm Ψ defined in Section 2.3. Some examples on
+how
+to use Algorithm
+estimate some edges of the graph in Figure 4(a) using the region
+c Divyanshu
+Vats and Robert2D.to
+Nowak.
+graph in Figure 4(c) are described as follows.
+1. Let R = {1, 3, 5}. This region only connects to {3, 5}. This means that all edges,
+except the edge (3, 5) in H[R], can be estimated by applying Ψ to R.
+2. Let R = {3, 5, 6}. The children of this region are {3, 5}, {5, 6}, and {3, 6}. This means
+that HR = ∅, that is, no edge over H[R] can be estimated by applying Ψ to {3, 5, 6}.
+158
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+Notation
+G∗ = (V, E(G∗ ))
+H
+G = (R, E(G))
+R = (R1 , . . . , RL )
+R
+HR
+
+Description
+Unknown graph that we want to estimate.
+Known graph such that E(G∗ ) ⊆ E(H).
+Region graph of H constructed using Algorithm 1.
+Partitioning of the regions in R into L labels.
+The set of vertices used when applying Ψ to estimate edges over R.
+See (2) for definition.
+Edges in H[R] that can be estimated using Algorithm 2.
+See (3) for definition.
+Table 1: A summary of some notations.
+
+3. Let R = {3, 4, 6}. This region only connects to {3, 6}. Thus, all edges except (3, 6)
+can be estimated. The regions {2, 3, 4, 6} and {3, 4, 6, 7} connect to R, so Ψ needs to
+be applied to R = {2, 3, 4, 6, 7}.
+
+5. UGMS Using Junction Trees: A General Framework
+In this section, we present the junction tree framework for UGMS using the results from
+Sections 3-4. Section 5.1 presents the junction tree framework. Section 5.2 discusses the
+computational complexity of the framework. Section 5.3 highlights the advantages of using
+junction trees for UGMS using some examples. We refer to Table 1 for a summary of all
+the notations that we use in this section.
+5.1 Description of Framework
+Recall that Algorithm 2 shows that to estimate a subset of edges in H[R], where R is a
+region in the region graph G, the UGMS algorithm Ψ in Assumption 1 needs to be applied
+to the set R defined in (2). Given this result, a straightforward approach to decomposing
+the UGMS problem is to apply Algorithm 2 to each region R and combine all the estimated
+edges. This will work since for any R, S ∈ R such that R = S, E(HR ) ∩ E(HS ) = ∅.
+This means that each application of Algorithm 2 estimates a different set of edges in the
+graph. However, for some edges, this may require applying a UGMS algorithm to a large
+set of nodes. For example, in Figure 4(c), when applying Algorithm 2 to R = {3, 6}, the
+UGMS algorithm needs to be applied to R = {2, 3, 4, 5, 6, 7, 8}, which is almost the full set
+of vertices. To reduce the problem size of the subproblems, we apply Algorithms 1 and 2
+in an iterative manner as outlined in Algorithm 3.
+Figure 6 shows a high level description of Algorithm 3. We first find a junction tree and
+then a region graph of the graph H using Algorithm 1. We then find the row in the region
+graph over which edges can be estimated and apply Algorithm 2 to each region in that row.
+We note that when estimating edges over a region, we use model selection algorithms to
+choose an appropriate regularization parameter to select the number of edges to estimate.
+Next, all estimated edges are added to G and all edges that are estimated are removed from
+H. Thus, H now represents all the edges that are left to be estimated and G ∪ H contains
+159
+
+Journal of Machine Learning Research ()
+
+Xn , H
+
+Vats and Nowak
+
+Submitted 4/13; Revised 9/13; Published -
+
+Find Junction Tree
+and Region Graph
+
+Apply UGMS to a
+row of region graph
+
+(Algorithm 1)
+
+(Algorithm 2)
+
+No
+
+Have all edges
+
+Yes
+
+been estimated?
+
+Output graph
+
+Figure 6: A high level overview of the junction tree framework for UGMS in Algorithm 3.
+
+Algorithm 3: Junction Tree Framework for UGMS
+See Table 1 for notations.
+Step 1. Initialize G so that E(G) = ∅ and find the region graph G of H.
+Step 2. Find the smallest
+
+such that there exists a region R ∈ R such that E(HR ) = ∅.
+
+Step 3. Apply Algorithm 2 to each region in R .
+Step 4. Add all estimated edges to G and remove edges from H that have been estimated.
+Now H ∪ G contains all the edges in G∗ .
+Step 5. Compute a new junction tree and region graph G using the graph G ∪ H.
+Step 6. If E(H) = ∅, stop the algorithm, else go to Step 2.
+
+all the edges in G∗ . We repeat the above steps on a new region graph computed using G∪H
+and stop the algorithm when H is an empty graph.
+An example illustrating the junction tree framework is shown in Figure 7. The region
+graph in Figure 7(b) is constructed using the graph H in Figure 7(a). The true graph G∗
+we want to estimate is shown in Figure 1(a). The top and bottom in Figure 7(c) show the
+graphs G and H, respectively, after estimating all the edges in R1 of Figure 7(b). The edges
+in G are represented by double lines to distinguish them from the edges in H. Figure 7(d)
+shows the region graph of G ∪ H. Figure 7(e) shows the updated G and H where only the
+edges (4, 5) and (5, 6) are left to be estimated. This is done by applying Algorithm 2 to
+the regions in R2 of Figure 7(f). Notice that we did not include the region {1, 2} in the
+last region graph since we know all edges in this region have already been estimated. In
+general, if E(H[R]) = ∅ for any region R, we can remove this region and thereby reduce the
+computational complexity of constructing region graphs.
+c Divyanshu Vats and Robert D. Nowak.
+
+160
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+1,2,3,5
+3
+
+1
+
+1,3,4,5
+1,3,5
+
+5
+
+3,4,5,6
+
+3,4,5
+
+4,5,6
+
+7
+4
+
+2
+
+3,5
+
+6
+
+(a) Graph H
+3
+
+5
+
+2
+
+4
+
+6
+
+3
+
+5
+
+2
+
+4
+
+6
+
+1
+
+3
+
+5
+
+2
+
+4
+
+6
+
+4,5,6 5,6,7
+4,5
+
+(d) Step 5
+
+5,6
+
+1
+
+3
+4
+
+4
+1,3,4 3,4,5 4,5,6 5,6,7
+
+5
+6
+
+3
+
+2
+
+G
+
+7
+2
+
+H
+
+(c) Steps 2,3, and 4 applied to (b)
+
+7
+
+1,2 1,3,4,5
+
+G
+
+7
+
+4,5
+
+(b) Region graph of (a)
+1
+
+1
+
+7
+
+4,5,6,7
+
+H
+
+(e) Steps 2,3, and 4 applied to (d)
+
+3,4
+
+4,5
+(f) Step 5
+
+5,6
+
+1
+7
+6
+
+5
+
+(g) Star graph
+
+Figure 7: Example to illustrate the junction tree framework in Algorithm 3.
+5.2 Computational Complexity
+In this section, we discuss the computational complexity of the junction tree framework.
+It is difficult to write down a closed form expression since the computational complexity
+depends on the structure of the junction tree. Moreover, merging clusters in the junction
+tree can easily control the computations. With this in mind, the main aim in this section
+is to show that the complexity of the framework is roughly the same as that of applying a
+standard UGMS algorithm. Consider the following observations.
+
+c
+
+1. Computing H: Assuming no prior knowledge about H is given, this graph needs
+to be computed from the observations. This can be done using standard screening
+algorithms, such as those in Fan and Lv (2008) and Vats (to appear), or by applying a
+UGMS algorithm with a regularization parameter that selects a larger number of edges
+(than that computed by using a standard UGMS algorithm). Thus, the complexity
+Divyanshu
+Vats and Robert
+of computing
+HD.isNowak.
+roughly the same as that of applying a UGMS algorithm to all the
+vertices in the graph.
+2. Applying UGMS to regions: Recall from Algorithm 2 that we apply a UGMS algorithm
+to observations over R to estimate edges over the vertices R, where R is a region in
+a region graph representation of H. Since |R| ≤ p, it is clear that the complexity of
+Algorithm 2 is less than that of applying a UGMS algorithm to estimate all edges in
+the graph.
+3. Computing junction trees: For a given graph, there exists several junction tree representations. The computational complexity of applying UGMS algorithms to a junction
+tree depends on the size of the clusters, the size of the separators, and the degree of the
+junction tree. In theory, it is useful to select a junction tree so that the overall computational complexity of the framework is as small as possible. However, this is hard
+161
+
+Vats and Nowak
+
+since there can be an exponential number of possible junction tree representations.
+Alternatively, we can select a junction tree so that the maximum size of the clusters
+is as small as possible. Such junction trees are often referred to as optimal junction
+trees in the literature. Although finding optimal junction trees is also hard (Arnborg
+et al., 1987), there exists several computationally tractable heuristics for finding close
+to optimal junction trees (Kjaerulff, 1990; Berry et al., 2003). The complexity of such
+algorithms range from O(p2 ) to O(p3 ), depending on the degree of approximation.
+We note that this time complexity is less than that of standard UGMS algorithms.
+It is clear that the complexity of all the intermediate steps in the framework is less than
+that of applying a standard UGMS algorithm. The overall complexity of the framework
+depends on the number of clusters in the junction tree and the size of the separators in the
+junction tree. The size of the separators in a junction tree can be controlled by merging
+clusters that share a large separator. This step can be done in linear time. Removing large
+separators also reduces the total number of clusters in a junction tree. In the worst case,
+if all the separators in H are too large, the junction tree will only have one cluster that
+contains all the vertices. In this case, using the junction tree framework will be no different
+than using a standard UGMS algorithm.
+5.3 Advantages of using Junction Trees and Region Graphs
+An alternative approach to estimating G∗ using H is to modify some current UGMS algorithms (see Appendix B for some concrete examples). For example, neighborhood selection
+based algorithms first estimate the neighborhood of each vertex and then combine all the
+estimated neighborhoods to construct an estimate G of G∗ (Meinshausen and B¨
+uhlmann,
+2006; Bresler et al., 2008; Netrapalli et al., 2010; Ravikumar et al., 2010). Two ways in
+which these algorithms can be modified when given H are described as follows:
+1. A straightforward approach is to decompose the UGMS problem into p different subproblems of estimating the neighborhood of each vertex. The graph H can be used
+to restrict the estimated neighbors of each vertex to be subsets of the neighbors in H.
+For example, in Figure 7(a), the neighborhood of 1 is estimated from the set {2, 3, 4, 5}
+and the neighborhood of 3 is estimated from the set {1, 4, 5, 6}. This approach can be
+compared to independently applying Algorithm 2 to each region in the region graph.
+For example, when using the region graph, the edge (1, 4) can be estimated by applying a UGMS algorithm to {1, 3, 4, 5}. In comparison, when not using region graphs,
+the edge (1, 4) is estimated by applying a UGMS algorithm to {1, 2, 3, 4, 5}. In general,
+using region graphs results in smaller subproblems. A good example to illustrate this
+is the star graph in Figure 7(g). A junction tree representation of the star graph can
+be computed so that all clusters will have size two. Subsequently, the junction tree
+framework will only require applying a UGMS algorithm to a pair of nodes. On the
+other hand, neighborhood selection needs to be applied to all the nodes to estimate
+the neighbors of the central node 1 which is connected to all other nodes.
+2. An alternative approach is to estimate the neighbors of each vertex in an iterative
+manner. However, it is not clear what ordering should be chosen for the vertices. The
+162
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+region graph approach outlined in Section 5.1 leads to a natural choice for choosing
+which edges to estimate in the graph so as to reduce the problem size of subsequent
+subproblems. Moreover, iteratively applying neighborhood selection may still lead to
+large subproblems. For example, suppose the star graph in Figure 7(g) is in fact the
+true graph. In this case, using neighborhood selection always leads to applying UGMS
+to all the nodes in the graph.
+From the above discussion, it is clear that using junction trees for UGMS leads to smaller
+subproblems and a natural choice of an ordering for estimating edges in the graph. We will
+see in Section 7 that the smaller subproblems lead to weaker conditions on the number of
+observations required for consistent graph estimation. Moreover, our numerical simulations
+in Section 8 empirically show the advantages of using junction tree over neighborhood
+selection based algorithms.
+
+6. PC-Algorithm for UGMS
+So far, we have presented the junction tree framework using an abstract undirected graphical model selection (UMGS) algorithm. This shows that our framework can be used in
+conjunction with any UGMS algorithm. In this section, we review the PC-Algorithm,
+since we use it to analyze the junction tree framework in Section 7. The PC-Algorithm
+was originally proposed in the literature for learning directed graphical models (Spirtes and
+Glymour, 1991). The first stage of the PC-Algorithm, which we refer to as PC, estimates an
+undirected graph using conditional independence tests. The second stage orients the edges
+in the undirected graph to estimate a directed graph. We use the first stage of the PCAlgorithm for UGMS. Algorithm 4 outlines PC. Variants of the PC-Algorithm for learning
+undirected graphical models have recently been analyzed in Anandkumar et al. (2012b,a).
+The main property used in PC is the global Markov property of undirected graphical models
+which states that if a set of vertices S separates i and j, then Xi ⊥
+⊥ Xj |XS . As seen in
+Line 5 of Algorithm 4, PC deletes an edge (i, j) if it identifies a conditional independence
+relationship. Some properties of PC are summarized as follows:
+1. Parameter κ: PC iteratively searches for separators for an edge (i, j) by searching for
+separators of size 0, 1, . . . , κ. This is reflected in Line 2 of Algorithm 4. Theoretically,
+the algorithm can automatically stop after searching for all possible separators for
+each edge in the graph. However, this may not be computationally tractable, which
+is why κ needs to be specified.
+2. Conditional Independence Test: Line 5 of Algorithm 4 uses a conditional independence test to determine if an edge (i, j) is in the true graph. This makes PC extremely
+flexible since nonparametric independence tests may be used, see Hoeffding (1948),
+Rasch et al. (2012) and Zhang et al. (2012) for some examples. In this paper, for
+simplicity, we only consider Gaussian graphical models. In this case, conditional independence can be tested using the conditional correlation coefficient defined as
+Conditional correlation coefficient: ρij|S =
+163
+
+Σij − Σi,S Σ−1
+S,S ΣS,j
+Σi,i|S Σj,j|S
+
+,
+
+Vats and Nowak
+
+Algorithm 4: PC-Algorithm for UGMS: PC(κ, Xn , H, L)
+Inputs:
+κ: An integer that controls the computational complexity of PC.
+Xn : n i.i.d. observations.
+H: A graph that contains all the true edges G∗ .
+L: A graph that contains the edges that need to be estimated.
+Output: A graph G that contains edges in L that are estimated to be in G∗ .
+1 G←L
+2 for each k ∈ {0, 1, . . . , κ} do
+3
+for each (i, j) ∈ E(G) do
+4
+Sij ← Neighbors of i or j in H depending on which one has lower cardinality.
+5
+if ∃ S ⊂ Sij , |S| = k, s.t. Xi ⊥
+⊥ Xj |XS (computed using Xn ) then
+6
+Delete edge (i, j) from G and H.
+7
+
+Return G.
+where PX ∼ N (0, Σ), ΣA,B is the covariance matrix of XA and XB , and ΣA,B|S is the
+conditional covariance defined by
+ΣA,B|S = ΣA,B − ΣA,S Σ−1
+S,S ΣB,S .
+Whenever Xi ⊥
+⊥ Xj |XS , then ρij|S = 0. This motivates the following test for independence:
+Conditional Independence Test: |ρij|S | < λn =⇒ Xi ⊥
+⊥ Xj |XS ,
+
+(4)
+
+where ρij|S is computed using the empirical covariance matrix from the observations
+Xn . The regularization parameter λn controls the number of edges estimated in G.
+3. The graphs H and L: Recall that H contains all the edges in G∗ . The graph L contains
+edges that need to be estimated since, as seen in Algorithm 2, we apply UGMS to only
+certain parts of the graph instead of the whole graph. As an example, to estimate
+edges in a region R of a region graph representation of H, we apply Algorithm 4 as
+follows:
+GR = PC η, Xn , H, HR ,
+(5)
+where HR is defined in (3). Notice that we do not use R in (5). This is because Line 4
+of Algorithm 4 automatically finds the set of vertices to apply the PC algorithm to.
+Alternatively, we can apply Algorithm 4 using R as follows:
+GR = PC η, XnR , KR , HR ,
+
+(6)
+
+where KR is the complete graph over R.
+4. The set Sij : An important step in Algorithm 4 is specifying the set Sij in Line 4 to
+restrict the search space for finding separators for an edge (i, j). This step significantly
+reduces the computational complexity of PC and differentiates PC from the first stage
+of the SGS-Algorithm (Spirtes et al., 1990), which specifies Sij = V \{i, j}.
+164
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+7. Theoretical Analysis of Junction Tree based PC
+We use the PC-algorithm to analyze the junction tree based UGMS algorithm. Our main
+result, stated in Theorem 9, shows that when using the PC-Algorithm with the junction
+tree framework, we can potentially estimate the graph using fewer number of observations
+than what is required by the standard PC-Algorithm. As we shall see in Theorem 9, the
+particular gain in performance depends on the structure of the graph.
+Section 7.1 discusses the assumptions we place on the graphical model. Section 7.2
+presents the main theoretical result highlighting the advantages of using junction trees.
+Throughout this section, we use standard asymptotic notation so that f (n) = Ω(g(n))
+implies that there exists an N and a constant c such that for all n ≥ N , f (n) ≥ cg(n). For
+f (n) = O(g(n)), replace ≥ by ≤.
+7.1 Assumptions
+(A1) Gaussian graphical model: We assume X = (X1 , . . . , Xp ) ∼ PX , where PX is a
+multivariate normal distribution with mean zero and covariance Σ. Further, PX is
+Markov on G∗ and not Markov on any subgraph of G∗ . It is well known that this is
+assumption translates into the fact that Σ−1
+/ G∗ (Speed and
+ij = 0 if and only if (i, j) ∈
+Kiiveri, 1986).
+(A2) Faithfulness: If Xi ⊥
+⊥ Xj |XS , then i and j are separated by3 S. This assumption is
+important for the PC algorithm to output the correct graph. Further, note that the
+Markov assumption is different since it goes the other way: if i and j are separated
+by S, then Xi ⊥
+⊥ Xj |XS . Thus, when both (A1) and (A2) hold, we have that Xi ⊥
+⊥
+Xj |XS ⇐⇒ (i, j) ∈
+/ G∗ .
+(A3) Separator Size η: For all (i, j) ∈
+/ G∗ , there exists a subset of nodes S ⊂ V \{i, j},
+where |S| ≤ η, such that S is a separator for i and j in G∗ . This assumption allows
+us to use κ = η when using PC.
+(A4) Conditional Correlation Coefficient ρij|S and Σ: Under (A3), we assume that ρij|S
+satisfies
+sup{|ρij|S | : i, j ∈ V, S ⊂ V, |S| ≤ η}} ≤ M < 1 ,
+where M is a constant. Further, we assume that maxi,S,|S|≤η Σi,i|S ≤ L < ∞.
+(A5) High-Dimensionality We assume that the number of vertices in the graph p scales
+with n so that p → ∞ as n → ∞. Furthermore, both ρij|S and η are assumed to be
+functions of n and p unless mentioned otherwise.
+(A6) Structure of G∗ : Under (A3), we assume that there exists a set of vertices V1 , V2 ,
+and T such that T separates V1 and V2 in G∗ and |T | < η. Figure 8(a) shows the
+general structure of this assumption.
+Assumptions (A1)-(A5) are standard conditions for proving high-dimensional consistency of the PC-Algorithm for Gaussian graphical models. The structural constraints on
+3. If S is the empty set, then there is no path between i and j.
+
+165
+
+Vats and Nowak
+
+V2 ∪ T
+
+V1 ∪ T
+V1
+
+T
+
+T
+
+V2
+
+(a) Structure of the graph in (A5)
+
+(b) Region graph of (a)
+
+Figure 8: General Structure of the graph we use in showing the advantages of the junction
+tree framework.
+
+the graph in Assumption (A6) are required for showing the advantages of the junction tree
+framework. We note that although (A6) appears to be a strong assumption, there are
+several graph families that satisfy this assumption. For example, the graph in Figure 1(a)
+satisfies (A6) with V1 = {1, 2}, V2 = {1, 3, 4, 5, 6, 7}, and T = {1}. In general, if there
+exists a separator in the graph of size less than η, then (A6) is clearly satisfied. Further,
+we remark that we only assume the existence of the sets V1 , V2 , and T and do not assume
+that these sets are known a priori. We refer to Remark 17 for more discussions about (A6)
+and some extensions of this assumption.
+7.2 Theoretical Result and Analysis
+Recall PC in Algorithm 4. Since we assume (A1), the conditional independence test in (4)
+can be used in Line 5 of Algorithm 4. To analyze the junction tree framework, consider the
+following steps to construct G using PC when given n i.i.d. observations Xn :
+Step 1. Compute H: Apply PC using a regularization parameter λ0n such that
+c Divyanshu Vats and Robert D. Nowak.
+
+H = PC(|T |, Xn , KV , KV ) ,
+
+where KV is the complete graph over the nodes V . In the above equation, we apply
+PC to remove all edges for which there exists a separator of size less than or equal
+to |T |.
+Step 2. Estimate a subset of edges over V1 ∪ T and V2 ∪ T using regularization parameters
+λ1n and λ2n , respectively, such that
+GVk = PC η, Xn , H[Vk ∪ T ] ∪ KT , HVk ∪T , for k = 1, 2,
+where HVk ∪T = H[Vk ∪ T ]\KT as defined in (3).
+Step 3. Estimate edges over T using a regularization parameter λTn :
+GT = PC η, Xn , H[T ∪ neGV
+
+1
+
+Step 4. Final estimate is G = GV1 ∪ GV2 ∪ GT .
+166
+
+∪GV2
+
+(T )], H[T ] .
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+Step 1 is the screening algorithm used to eliminate some edges from the complete graph.
+For the region graph in Figure 8(b), Step 2 corresponds to applying PC to the regions V1 ∪T
+and V2 ∪ T . Step 3 corresponds to applying PC to the region T and all neighbors of T
+estimated so far. Step 4 merges all the estimated edges. Although the neighbors of T are
+sufficient to estimate all the edges in T , in general, depending on the graph, a smaller set
+of vertices is required to estimate edges in T . The main result is stated using the following
+terms defined on the graphical model:
+p1 = |V1 | + |T | , p2 = |V2 | + |T | , pT = |T ∪ neG∗ (T )| , ηT = |T | ,
+
+ρ0 = inf{|ρij|S | : i, j s.t. |S| ≤ ηT & |ρij|S | > 0} ,
+
+ρ1 = inf{|ρij|S | : i ∈ V1 , j ∈ V1 ∪ T s.t. (i, j) ∈ E(G∗ ), S ⊆ V1 ∪ T, |S| ≤ η} ,
+
+ρ2 = inf{|ρij|S | : i ∈ V2 , j ∈ V2 ∪ T s.t. (i, j) ∈ E(G∗ ), S ⊆ V2 ∪ T, |S| ≤ η} ,
+
+ρT = inf{|ρij|S | : i, j ∈ T s.t. (i, j) ∈ E, S ⊆ T ∪ neG∗ (T ), ηT < |S| ≤ η} ,
+
+The term ρ0 is a measure of how hard it is to learn the graph H in Step 1 so that E(G∗ ) ⊆
+E(H) and all edges that have a separator of size less than |T | are deleted in H. The terms ρ1
+and ρ2 are measures of how hard it is learn the edges in G∗ [V1 ∪ T ]\KT and G∗ [V2 ∪ T ]\KT
+(Step 2), respectively, given that E(G∗ ) ⊆ E(H). The term ρT is a measure of how hard
+it is learn the graph over the nodes T given that we know the edges that connect V1 to T
+and V2 to T .
+Theorem 9 Under Assumptions (A1)-(A6), there exists a conditional independence test
+such that if
+−2
+−2
+−2
+n = Ω max ρ−2
+0 ηT log(p), ρ1 η log(p1 ), ρ2 η log(p2 ), ρT η log(pT )
+
+,
+
+(7)
+
+then P (G = G) → 0 as n → ∞.
+Proof See Appendix E.
+We now make several remarks regarding Theorem 9 and its consequences.
+Remark 10 (Comparison to Necessary Conditions) Using results from Wang et al.
+(2010), it follows that a necessary condition for any algorithm to recover the graph G∗ that
+satisfies Assumptions (A1) and (A6) is that n = Ω(max{θ1−2 log(p1 − d), θ2−2 log(p2 − d)},
+where d is the maximum degree of the graph and θ1 and θ2 are defined as follows:
+θk =
+
+min
+
+(i,j)∈G∗ [Vk ∪T ]\G∗ [T ]
+
+|Σ−1
+ij |
+−1
+|Σ−1
+ii Σjj |
+
+, k = 1, 2 .
+
+If η is a constant and ρ1 and ρ2 are chosen so that the corresponding expressions dominate all
+−2
+other expressions, then (7) reduces to n = Ω(max{ρ−2
+1 log(p1 ), ρ2 log(p2 )}). Furthermore,
+for certain classes of Gaussian graphical models, namely walk summable graphical models
+(Malioutov et al., 2006), the results in Anandkumar et al. (2012a) show that there exists
+conditions under which ρ1 = Ω(θ1 ) and ρ2 = Ω(θ2 ). In this case, (7) is equivalent to
+n = Ω(max{θ1−2 log(p1 ), θ2−2 log(p2 )}). Thus, as long as p1 , p2
+d, there exists a family
+167
+
+Vats and Nowak
+
+of graphical models for which the sufficient conditions in Theorem 9 nearly match the
+necessary conditions for asymptotically reliable estimation of the graph. We note that the
+particular family of graphical models is quite broad, and includes forests, scale-free graphs,
+and some random graphs. We refer to Anandkumar et al. (2012a) for a characterization of
+such graphical models.
+Remark 11 (Choice of Regularization Parameters) We use the conditional independence test in (4) that thresholds the conditional correlation coefficient. From the proof in
+Appendix E, the thresholds, which we refer to as the regularization parameter, are chosen
+as follows:
+λ0n = O(ρ0 ) and ρ0 = Ω
+
+ηT log(p)/n ,
+
+λkn = O(ρk ) and ρk = Ω
+
+η log(pk )/n , k = 1, 2 ,
+
+λTn = O(ρT ) and ρT = Ω
+
+η log(pT )/n .
+
+We clearly see that different regularization parameters are used to estimate different parts
+of the graph. Furthermore, just like in the traditional analysis of UGMS algorithms, the
+optimal choice of the regularization parameter depends on unknown parameters of the
+graphical model. In practice, we use model selection algorithms to select regularization
+parameters. We refer to Section 8 for more details.
+Remark 12 (Weaker Condition) If we do not use the junction tree based approach
+outlined in Steps 1-4, and instead directly apply PC, the sufficient condition on the number
+of observations will be n = Ω(ρ−2
+min η log(p)), where
+ρmin := inf{|ρij|S | : (i, j) ∈ E(G∗ ), |S| ≤ η} .
+This result is proved in Appendix D using results from Kalisch and B¨
+uhlmann (2007) and
+Anandkumar et al. (2012a). Since ρmin ≤ min{ρ0 , ρ1 , ρ2 , ρT }, it is clear that (7) is a weaker
+condition. The main reason for this difference is that the junction tree approach defines an
+ordering on the edges to test if an edge belongs to the true graph. This ordering allows for
+a reduction in separator search space (see Sij in Algorithm 4) for testing edges over the set
+T . Standard analysis of PC assumes that the edges are tested randomly, in which case, the
+separator search space is always upper bounded by the full set of nodes.
+Remark 13 (Reduced Sample Complexity) Suppose η, ρ0 , and ρT are constants and
+ρ1 < ρ2 . In this case, (7) reduces to
+−2
+n = Ω max log(p), ρ−2
+1 log(p1 ), ρ2 log(p2 )
+−2
+If ρ−2
+1 = Ω max ρ2 log(p2 )/ log(p1 ), log(p)
+
+.
+
+(8)
+
+, then (8) reduces to
+
+n = Ω ρ−2
+1 log(p1 ) .
+On the other hand, if we do not use junction trees, n = Ω ρ−2
+min log(p) , where ρmin ≤
+ρ1 . Thus, if p1
+p, for example p1 = log(p), then using the junction tree based PC
+168
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+V2
+
+V3
+
+V1
+
+V4
+
+V5
+
+∪5i=2Vi
+V1
+
+Figure 9: Junction tree representation with clusters V1 , . . . , V5 and separators denotes by
+rectangular boxes. We can cluster vertices in the junction tree to get a two cluster
+representation as in Figure 8.
+
+requires lower number of observations for consistent UGMS. Informally, the above condition
+says that if the graph structure in (A6) is easy to identify, p1
+p2 , and the minimal
+conditional correlation coefficient over the true edges lies in the smaller cluster (but not
+over the separator), the junction tree framework may accurately learn the graph using
+significantly less number of observations.
+Remark 14 (Learning Weak Edges) We now analyze Theorem 9 to see how the conditional correlation coefficients scale for high-dimensional consistency. Under the assumption
+in Remark 13, it is easy to see that the minimal conditional correlation coefficient scales
+as Ω( log(p1 )/n) when using junction trees and as Ω( log(p)/n) when not using junction
+trees. This suggests that when p1
+p, it may be possible to learn edges with weaker
+conditional correlation coefficients when using junction trees. Our numerical simulations in
+Section 8 empirically show this property of the junction tree framework.
+Remark 15 (Computational complexity) It is easy to see that the worst case compuc Divyanshu Vats and Robert D. Nowak.
+tational complexity of the PC-Algorithm is O(pη+2 ) since there are O(p2 ) edges and testing
+for each edge requires a search over at most O(pη ) separators. The worst case computational
+. Under the conditions
++ pη+2
++ pη+2
+complexity of Steps 1-4 is roughly O p|T |+2 + pη+2
+2
+1
+T
+in Remark 8.3 and when p1
+p, this complexity is roughly O(pη+2 ), which is the same as
+the standard PC-Algorithm. In practice, especially when the graph is sparse, the computational complexity is much less than O(pη+2 ) since the PC-Algorithm restricts the search
+space for finding separators.
+
+Remark 16 (Using other UGMS Algorithms) Although our analysis used the
+PC-Algorithm to derive sufficient conditions for accurately estimating the graph, we can
+easily use other algorithms, such as the graphical Lasso or the neighborhood selection based
+Lasso, for analysis. The main difference will be in the assumptions imposed on the graphical
+model.
+Remark 17 (Extensions) We have analyzed the junction tree framework assuming that
+the junction tree of H only has two clusters. One way to generalize our analysis to junction
+trees with multiple clusters is to merge clusters so that the resulting junction tree admits
+169
+
+Vats and Nowak
+
+the structure in Figure 8. For example, suppose the graph G∗ has a junction tree representation as in Figure 9 with five clusters. If |V1 ∩ V2 | < η, then we can merge the clusters
+V2 , V3 , . . . , V5 so that the resulting junction tree admits the two cluster representation in
+Figure 8. Furthermore, we can also generalize Theorem 9 to cases when |T | = η. The main
+change in the analysis will be in the definition of ρ0 . For example, if the graph is a chain so
+that the first p1 vertices are associated with “weak edges”, we can get similar results as in
+Theorem 9. Finally, we note that a full analysis of the junction tree framework, that also
+incorporates the step of updating the junction tree in Algorithm 3, is challenging and will
+be addressed in future work.
+
+8. Numerical Simulations
+In this section, we present numerical simulations that highlight the advantages of using
+the junction tree framework for UGMS. Throughout this section, we assume a Gaussian
+graphical model such that PX ∼ N (0, Θ−1 ) is Markov on G∗ . It is well known that this
+implies that (i, j) ∈
+/ G∗ ⇐⇒ Θij = 0 (Speed and Kiiveri, 1986). Some algorithmic details
+used in the simulations are described as follows.
+Computing H: We apply Algorithm 4 with a suitable value of κ in such a way that the
+separator search space Sij (see Line 4) is restricted to be small. In other words, we do
+not test for all possible conditional independence tests so as to restrict the computational
+complexity of the screening algorithm. We use the conditional partial correlation to test
+for conditional independence and choose a separate threshold to test for each edge in the
+graph. The thresholds for the conditional independence test are computed using 5-fold
+cross-validation. The computational complexity of this step is roughly O(p2 ) since there
+are O(p2 ) edges to be tested. Note that this method for computing H is equivalent to Step 1
+in Section 7.2 with |T | = κ. Finally, we note that the above method does not guarantee
+that all edges in G∗ will be included in H. This can result in false edges being included
+in the junction tree estimated graphs. To avoid this situation, once a graph estimate G
+has been computed using the junction tree based UGMS algorithm, we apply conditional
+independence tests again to prune the estimated edge set.
+Computing the junction tree: We use standard algorithms in the literature for computing
+close to optimal junction trees.4 Once the junction tree is computed, we merge clusters so
+that the maximum size of the separator is at most κ + 1, where κ is the parameter used
+when computing the graph H. For example, in Figure 9, if the separator associated with V2
+and V3 has cardinality greater than κ + 1, then we merge V2 and V3 and resulting junction
+tree is such that V1 , V4 , and V5 all connect to the cluster V2 ∪ V3 .
+UGMS Algorithms: We apply the junction tree framework in conjunction with graphical
+Lasso (gL) (Banerjee et al., 2008), neighborhood selection using Lasso (nL) (Meinshausen
+and B¨
+uhlmann, 2006), and the PC-Algorithm (PC) (Spirtes and Glymour, 1991). See
+Appendix B for a review of gL and nL and Algorithm 4 for PC. When using nL, we use the
+intersection rule to combine neighborhood estimates. Further, we use the adaptive Lasso
+(Zou, 2006) for finding neighbors of a vertex since this is known to give superior results for
+variable selection (van de Geer et al., 2011).
+4. We use the GreedyFillin heuristic. This is known to give good results with reasonable computational
+time (Kjaerulff, 1990).
+
+170
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+Choosing Regularization Parameters: An important step when applying UGMS algorithms
+is to choose a suitable regularization parameter. It is now well known that classical methods,
+such as cross-validation and information criterion based methods, tend to choose a much
+larger number of edges when compared to an oracle estimator for high-dimensional problems
+(Meinshausen and B¨
+uhlmann, 2010; Liu et al., 2010). Several alternative methods have been
+proposed in the literature; see for example stability selection (Meinshausen and B¨
+uhlmann,
+2010; Liu et al., 2010) and extended Bayesian information (EBIC) criterion (Chen and
+Chen, 2008; Foygel and Drton, 2010). In all our simulations, we use EBIC since it is much
+faster than stability based methods when the distribution is Gaussian. EBIC selects a
+regularization parameter λn as follows:
+λn = max n log det Θλn − trace(SΘ) + |E(Gλn )| log n + 4γ|E(Gλn )| log p
+λn >0
+
+,
+
+where S is the empirical covariance matrix, Θλn is the estimate of the inverse covariance
+matrix and |E(Gλn )| is the number of edges in the estimated graph. The estimate λn
+depends on a parameter γ ∈ [0, 1] such that γ = 0 results in the BIC estimate and increasing
+γ produces sparser graphs. The authors in reference Foygel and Drton (2010) suggest that
+γ = 0.5 is a reasonable choice for high-dimensional problems. When solving subproblems
+using Algorithm 2, the log p term is replaced by log |R|, Θλn is replaced by the inverse
+covariance over the vertices R, and |Gλn | is replaced by the number of edges estimated from
+the graph HR .
+Small subproblems: Whenever |R| is small (less than 8 in our simulations), we independently
+test whether each edge is in G∗ using hypothesis testing. This shows the application of using
+different algorithms to learn different parts of the graph.
+8.1 Results on Synthetic Graphs
+We assume that Θii = 1 for all i = 1, . . . , p. We refer to all edges connected to the first p1
+vertices as weak edges and the rest of the edges are referred to as strong edges. The different
+types of synthetic graphical models we study are described as follows:
+• Chain (CH1 and CH2 ): Θi,i+1 = ρ1 for i = 1, . . . , p1 − 1 (weak edges) and Θi,i+1 = ρ2
+for i = p1 , p − 1 (strong edges). For CH1 , ρ1 = 0.15 and ρ2 = 0.245. For CH2 ,
+ρ1 = 0.075 and ρ2 = 0.245. Let Θij = Θji .
+• Cycle (CY1 and CY2 ): Θi,i+1 = ρ1 for i = 1, . . . , p1 − 1 (weak edges) and Θi,i+1 = ρ2
+for i = p1 , p − 1 (strong edges). In addition, Θi,i+3 = ρ1 for i = 1, . . . , p1 − 3 and
+Θi,i+3 = ρ2 for i = p1 , p1 + 1, . . . , p − 3. This introduces multiple cycles in the graph.
+For CY1 , ρ1 = 0.15 and ρ2 = 0.245. For CY2 , ρ1 = 0.075 and ρ2 = 0.245.
+• Hub (HB1 and HB2 ): For the first p1 vertices, construct as many star5 graphs of size
+d1 as possible. For the remaining vertices, construct star graphs of size d2 (at most
+one may be of size less than d2 ). The hub graph G∗ is constructed by taking a union
+of all star graphs. For (i, j) ∈ G∗ s.t. i, j ≤ p1 , let Θi,j = 1/d1 . For the remaining
+edges, let Θij = 1/d2 . For HB1 , d1 = 8 and d2 = 5. For HB2 , d1 = 12 and d2 = 5.
+5. A star is a tree where one vertex is connected all other vertices.
+
+171
+
+Vats and Nowak
+
+• Neighborhood graph (NB1 and NB2 ): Randomly place vertices
+on the unit square at
+√
+coordinates y1 , . . . , yp . Let Θij = 1/ρ1 with probability ( 2π)−1 exp(−4||yi − yj ||22 ),
+otherwise Θij = 0 for all i, j ∈ {1, . . . , p1 } such that i > j. For all i, j ∈ {p1 + 1, . . . , p}
+such that i > j, Θij = ρ2 . For edges over the first p1 vertices, delete edges so that each
+vertex is connected to at most d1 other vertices. For the vertices p1 + 1, . . . , p, delete
+edges such that the neighborhood of each vertex is at most d2 . Finally, randomly add
+four edges from a vertex in {1, . . . , p1 } to a vertex in {p1 , p1 + 1, . . . , p} such that for
+each such edge, Θij = ρ1 . We let ρ2 = 0.245, d1 = 6, and d2 = 4. For NB1 , ρ1 = 0.15
+and for NB2 , ρ2 = 0.075.
+Notice that the parameters associated with the weak edges are lower than the parameters
+associated with the strong edges. Some comments regarding notation and usage of various
+algorithms is given as follows.
+• The junction tree versions of the UGMS algorithms are denoted by JgL, JPC, and
+JnL.
+• We use EBIC with γ = 0.5 to choose regularization parameters when estimating
+graphs using JgL and JPC. To objectively compare JgL (JPC) and gL (PC), we make
+sure that the number of edges estimated by gL (PC) is roughly the same as the number
+of edges estimated by JgL (JPC).
+• The nL and JnL estimates are computed differently since it is difficult to control the
+number of edges estimated using both these algorithms.6 We apply both nL and JnL
+for multiple different values of γ (the parameter for EBIC) and choose graphs so that
+the number of edges estimated is closest to the number of edges estimated by gL.
+• When applying PC and JPC, we choose κ as 1, 2, 1, and 3 for Chain, Cycle, Hub, and
+Neighborhood graphs, respectively. When computing H, we choose κ as 0, 1, 0, and
+2 for Chain, Cycle, Hub, and Neighborhood graphs, respectively.
+Tables 2-5 summarize the results for the different types of synthetic graphical models.
+For an estimate G of G∗ , we evaluate G using the weak edge discovery rate (WEDR), false
+discovery rate (FDR), true positive rate (TPR), and the edit distance (ED).
+WEDR =
+FDR =
+TPR =
+
+# weak edges in G
+,
+# of weak edges in G∗
+# of edges in G\G∗
+# of edges in G
+
+,
+
+# of edges in G ∩ G∗
+,
+# of edges in G∗
+
+ED = {# edges in G\G∗ } + {# edges in G∗ \G} ,
+6. Recall that both these algorithms use different regularization parameters. Thus, there may exist multiple
+different estimates with the same number of edges.
+
+172
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+Model
+
+n
+
+CH1
+p = 100
+
+300
+
+CH2
+p = 100
+
+300
+
+CH1
+p = 100
+
+500
+
+CH2
+p = 100
+
+500
+
+Alg
+
+WEDR
+
+FDR
+
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+
+0.305 (0.005)
+0.180 (0.004)
+0.312 (0.004)
+0.264 (0.005)
+0.306 (0.005)
+0.271 (0.005)
+0.052 (0.002)
+0.009 (0.001)
+0.048 (0.002)
+0.0337 (0.002)
+0.052 (0.002)
+0.039 (0.002)
+0.596 (0.006)
+0.44 (0.005)
+0.612 (0.005)
+0.577 (0.005)
+0.623 (0.005)
+0.596 (0.005)
+0.077 (0.002)
+0.0211 (0.001)
+0.073 (0.002)
+0.0516 (0.002)
+0.076 (0.002)
+0.066 (0.002)
+
+0.048
+0.061
+0.047
+0.047
+0.072
+0.073
+0.067
+0.062
+0.064
+0.055
+0.077
+0.086
+0.021
+0.050
+0.022
+0.032
+0.059
+0.069
+0.044
+0.053
+0.042
+0.049
+0.070
+0.077
+
+TPR
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+
+0.767
+0.757
+0.775
+0.781
+0.769
+0.757
+0.727
+0.733
+0.735
+0.748
+0.733
+0.723
+0.916
+0.889
+0.921
+0.916
+0.922
+0.918
+0.816
+0.808
+0.817
+0.815
+0.818
+0.815
+
+|G|
+
+ED
+(0.002)
+(0.001)
+(0.001)
+(0.001)
+(0.002)
+(0.001)
+(0.001)
+(0.002)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.000)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+
+27.0
+29.0
+26.0
+25.6
+28.8
+30.0
+32.2
+31.3
+31.2
+29.3
+32.5
+34.2
+10.2
+15.6
+9.86
+11.4
+13.5
+14.9
+22.0
+23.5
+21.7
+22.5
+24.2
+25.1
+
+(0.176)
+(0.153)
+(0.162)
+(0.169)
+(0.188)
+(0.197)
+(0.173)
+(0.162)
+(0.169)
+(0.144)
+(0.186)
+(0.216)
+(0.133)
+(0.132)
+(0.128)
+(0.124)
+(0.133)
+(0.164)
+(0.107)
+(0.082)
+(0.082)
+(0.092)
+(0.102)
+(0.126)
+
+79.8
+79.8
+80.5
+81.2
+82.1
+80.9
+77.3
+77.4
+77.8
+78.4
+78.7
+78.4
+92.6
+92.7
+93.2
+93.7
+97.0
+97.6
+84.5
+84.6
+84.5
+84.9
+87.2
+87.5
+
+Table 2: Results for Chain graphs: p = 100 and p1 = 20
+Recall that the weak edges are over the first p1 vertices in the graph. Naturally, we want
+WEDR and TPR to be large and FDR and ED to be small. Each entry in the table shows
+the mean value and standard error (in brackets) over 50 observations. We now make some
+remarks regarding the results.
+Remark 18 (Graphical Lasso) Of all the algorithms, graphical Lasso (gL) performs the
+worst. On the other hand, junction tree based gL significantly improves the performance
+of gL. Moreover, the performance of JgL is comparable, and sometimes even better, when
+compared to JPC and JnL. This suggests that when using gL in practice, it is beneficial to
+apply a screening algorithm to remove some edges and then use the junction tree framework
+in conjunction with gL.
+Remark 19 (PC-Algorithm and Neighborhood Selection) Although using junction
+trees in conjunction with the PC-Algorithm (PC) and neighborhood selection (nL) does
+improve the graph estimation performance, the difference is not as significant as gL. The
+reason is because both PC and nL make use of the local Markov property in the graph
+H. The junction tree framework further improves the performance of these algorithms by
+making use of the global Markov property, in addition to the local Markov property.
+Remark 20 (Chain Graph) Although the chain graph does not satisfy the conditions
+in (A6), the junction tree estimates still outperforms the non-junction tree estimates. This
+suggests the advantages of using junction trees beyond the graphs considered in (A6). We
+suspect that correlation decay properties, which have been studied extensively in Anandkumar et al. (2012b,a), can be used to weaken the assumption in (A6).
+173
+
+Vats and Nowak
+
+Model
+
+n
+
+CY1
+p = 100
+
+300
+
+CY2
+p = 100
+
+300
+
+CY1
+p = 100
+
+500
+
+CY2
+p = 100
+
+500
+
+Alg
+
+WEDR
+
+FDR
+
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+
+0.314 (0.003)
+0.105 (0.003)
+0.326 (0.004)
+0.307 (0.004)
+0.342 (0.004)
+0.299 (0.004)
+0.047 (0.002)
+0.001 (0.001)
+0.043 (0.002)
+0.027 (0.002)
+0.042 (0.002)
+0.035 (0.002)
+0.532 (0.005)
+0.278 (0.001)
+0.61 (0.004)
+0.609 (0.004)
+0.612 (0.005)
+0.584 (0.005)
+0.086 (0.003)
+0.004 (0.001)
+0.087 (0.002)
+0.074 (0.002)
+0.085 (0.003)
+0.069 (0.003)
+
+0.036
+0.057
+0.030
+0.027
+0.043
+0.044
+0.045
+0.049
+0.042
+0.036
+0.058
+0.057
+0.022
+0.071
+0.012
+0.020
+0.028
+0.041
+0.039
+0.058
+0.034
+0.040
+0.045
+0.053
+
+TPR
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.002)
+(0.002)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+
+0.814
+0.798
+0.819
+0.826
+0.813
+0.793
+0.762
+0.759
+0.764
+0.773
+0.754
+0.743
+0.907
+0.862
+0.925
+0.925
+0.924
+0.919
+0.821
+0.805
+0.825
+0.823
+0.824
+0.821
+
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.000)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+
+ED
+
+|G|
+
+28.5 (0.142)
+32.9 (0.16)
+27.2 (0.18)
+26 (0.169)
+29.5 (0.175)
+32.3 (0.192)
+36.2 (0.163)
+37.0 (0.172)
+35.6 (0.174)
+33.7 (0.137)
+38.6 (0.210)
+39.9 (0.228)
+15.1 (0.139)
+26.9 (0.178)
+11.9 (0.150)
+12.5 (0.134)
+13.6 (0.151)
+15.9 (0.171)
+28.1 (0.116)
+32.3 (0.088)
+27.0 (0.099)
+27.9 (0.010)
+28.4 (0.147)
+29.8 (0.158)
+
+111
+112
+112
+112
+112
+110
+105
+105
+105
+106
+106
+104
+122
+122
+124
+125
+125
+126
+113
+113
+113
+113
+114
+114
+
+Table 3: Results for Cycle graphs, p = 100 and p1 = 20
+
+Model
+
+n
+
+HB1
+p = 100
+
+300
+
+HB2
+p = 100
+
+300
+
+HB1
+p = 100
+
+500
+
+HB2
+p = 100
+
+500
+
+Alg
+
+WEDR
+
+FDR
+
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+
+0.204 (0.004)
+0.154 (0.004)
+0.204 (0.004)
+0.193 (0.004)
+0.245 (0.005)
+0.247 (0.005)
+0.044 (0.002)
+0.013 (0.002)
+0.048 (0.002)
+0.029 (0.002)
+0.054 (0.003)
+0.0467 (0.002)
+0.413 (0.007)
+0.364 (0.007)
+0.438 (0.007)
+0.448 (0.007)
+0.507 (0.006)
+0.52 (0.007)
+0.086 (0.003)
+0.050 (0.002)
+0.097 (0.003)
+0.087 (0.003)
+0.123 (0.004)
+0.106 (0.003)
+
+0.039
+0.038
+0.038
+0.038
+0.089
+0.098
+0.047
+0.043
+0.043
+0.038
+0.083
+0.096
+0.026
+0.035
+0.027
+0.027
+0.076
+0.091
+0.042
+0.047
+0.040
+0.044
+0.084
+0.105
+
+TPR
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.002)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.002)
+(0.002)
+
+0.755
+0.758
+0.753
+0.762
+0.750
+0.752
+0.710
+0.716
+0.709
+0.718
+0.704
+0.700
+0.870
+0.863
+0.878
+0.882
+0.890
+0.893
+0.794
+0.789
+0.798
+0.797
+0.804
+0.801
+
+|G|
+
+ED
+(0.002)
+(0.002)
+(0.002)
+(0.002)
+(0.002)
+(0.002)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.002)
+(0.002)
+(0.002)
+(0.001)
+(0.001)
+(0.002)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+(0.001)
+
+22.3
+22.1
+22.4
+21.7
+26.2
+26.8
+26.7
+26.0
+26.5
+25.5
+29.6
+30.7
+12.4
+13.7
+11.9
+11.6
+14.9
+15.9
+19.8
+20.6
+19.3
+19.7
+22.2
+24.1
+
+(0.151)
+(0.130)
+(0.160)
+(0.143)
+(0.174)
+(0.198)
+(0.116)
+(0.121)
+(0.108)
+(0.121)
+(0.146)
+(0.138)
+(0.156)
+(0.144)
+(0.148)
+(0.141)
+(0.152)
+(0.191)
+(0.086)
+(0.098)
+(0.109)
+(0.111)
+(0.15)
+(0.143)
+
+Table 4: Results for Hub graphs:p = 100 and p1 = 20
+
+174
+
+63.7
+63.8
+63.4
+64.2
+66.7
+67.6
+61.2
+61.4
+60.8
+61.3
+63.0
+63.5
+72.4
+72.5
+73.1
+73.4
+78.2
+79.6
+68.0
+68.0
+68.2
+68.4
+72.1
+73.4
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+Model
+
+n
+
+NB1
+p = 100
+
+300
+
+NB1
+p = 100
+
+300
+
+NB1
+p = 100
+
+500
+
+NB2
+p = 100
+
+500
+
+Alg
+
+WEDR
+
+FDR
+
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+JgL
+gL
+JPC
+PC
+JnL
+nL
+
+0.251 (0.002)
+0.102 (0.0015)
+0.259 (0.002)
+0.255 (0.002)
+0.254 (0.002)
+0.226 (0.002)
+0.005 (0.000)
+0.000 (0.000)
+0.004 (0.000)
+0.003 (0.000)
+0.005 (0.000)
+0.003 (0.000)
+0.449 (0.001)
+0.319 (0.002)
+0.489 (0.002)
+0.496 (0.002)
+0.508 (0.003)
+0.494 (0.003)
+0.008 (0.000)
+0.000 (0.000)
+0.009 (0.000)
+0.005 (0.000)
+0.001 (0.000)
+0.005 (0.000)
+
+0.030
+0.039
+0.031
+0.036
+0.035
+0.039
+0.043
+0.036
+0.042
+0.048
+0.046
+0.050
+0.018
+0.035
+0.019
+0.023
+0.027
+0.033
+0.033
+0.034
+0.032
+0.040
+0.038
+0.043
+
+TPR
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+
+0.813
+0.806
+0.814
+0.813
+0.812
+0.804
+0.784
+0.790
+0.784
+0.782
+0.783
+0.775
+0.921
+0.905
+0.925
+0.920
+0.929
+0.927
+0.870
+0.869
+0.870
+0.865
+0.871
+0.870
+
+(0.000)
+(0.001)
+(0.000)
+(0.000)
+(0.001)
+(0.001)
+(0.001)
+(0.000)
+(0.001)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+(0.000)
+
+ED
+
+|G|
+
+126 (0.329)
+135 (0.345)
+126 (0.260)
+129 (0.330)
+129 (0.461)
+136 (0.458)
+149 (0.385)
+142 (0.259)
+148 (0.376)
+153 (0.239)
+151 (0.356)
+158 (0.374)
+57.1 (0.199)
+75.8 (0.242)
+52.8 (0.189)
+60.2 (0.214)
+57.9 (0.348)
+62.3 (0.400)
+95.0 (0.206)
+96.0 (0.214)
+94.2 (0.215)
+102 (0.207)
+97.3 (0.220)
+101 (0.234)
+
+498
+498
+499
+501
+500
+497
+486
+487
+486
+488
+488
+485
+557
+557
+558
+559
+567
+570
+534
+534
+534
+536
+538
+540
+
+Table 5: Results for Neighborhood graph, p = 300 and p1 = 30
+Remark 21 (Hub Graph) For the hub graph HB1 , the junction tree estimate does not
+result in a significant difference in performance, especially for the PC and nL algorithms.
+This is mainly because this graph is extremely sparse with multiple components. For the
+number of observations considered, H removes a significant number of edges. However, for
+HB2 , the junction tree estimate, in general, performs slightly better. This is because the
+parameters associated with the weak edges in HB2 are smaller than that of HB1 .
+Remark 22 (General Conclusion) We see that, in general, the WEDR and TPR are
+higher, while the FDR and ED are lower, for junction tree based algorithms. This clearly
+suggests that using junction trees results in more accurate graph estimation. Moreover, the
+higher WEDR suggest that the main differences between the two algorithms are over the
+weak edges, that is, junction tree based algorithms are estimating more weak edges when
+compared to a non junction tree based algorithm.
+
+8.2 Analysis of Stock Returns Data
+We applied our methods to the data set in Choi et al. (2011) of n = 216 monthly stock
+returns of p = 85 companies in the S&P 100. We computed H using κ = 1. We applied
+JgL using EBIC with γ = 0.5 and applied gL so that both graphs have the same number
+of edges. This allows us to objectively compare the gL and JgL graphs. Figure 10 shows
+the two estimated graphs in such a way that the vertices are positioned so that the JgL
+graph looks aesthetically pleasing. In Figure 11, the vertices are positioned so that gL looks
+aesthetically pleasing. In each graph, we mark the common edges by bold lines and the
+175
+
+Vats and Nowak
+
+TYC
+
+GD
+
+FDX
+
+MO
+CMCSA
+
+RTN
+AMGN
+ORCL
+
+CBS
+
+XRX IBM
+
+MER
+MS
+
+S
+
+SLB
+BHI
+
+TGT
+
+F
+DOW
+
+CAT
+
+IP
+
+MMM
+
+AA
+HPQ
+
+AEP
+
+BNI
+
+MCD
+
+INTC
+
+RF
+WB
+
+BK
+AIG
+
+SP100
+
+AXP
+PEP
+
+MSFT
+
+SO
+
+JPM BAC
+
+C
+
+GE
+
+ETR
+
+WYE
+BAX
+
+UTX
+BMY
+
+DELL
+
+KO MRKPFE
+HNZ
+JNJ
+
+BA
+
+DIS
+
+WFC
+
+TXN
+EMC
+
+CL
+
+USB
+
+WY
+
+DD
+
+WMB
+
+UNH
+
+NSC
+
+HON
+
+CI
+
+COP
+
+AVP
+
+MDT
+
+SNS
+
+CVX
+XOM
+
+OXY
+
+HD
+WMT
+
+CVS
+
+HAL
+
+AAPL
+
+ABT
+PG
+
+SLE
+
+CPB
+
+EXC
+
+T
+VZ
+
+(a) Junction tree based graphical Lasso
+TYC
+
+GD
+
+FDX
+
+MO
+CMCSA
+
+RTN
+AMGN
+ORCL
+
+CBS
+
+XRX IBM
+
+MER
+MS
+
+S
+
+SLB
+BHI
+
+CVS
+
+HAL
+
+TGT
+
+F
+DOW
+
+AA
+HPQ
+
+USB
+
+WY
+
+DD
+
+AEP
+
+BNI
+
+MCD
+
+BK
+
+INTC
+
+RF
+WB
+
+C
+
+JPM BAC
+AXP
+
+PEP
+
+MSFT
+
+SO
+
+AIG
+
+SP100
+GE
+
+ETR
+
+WYE
+BAX
+
+UTX
+BMY
+KO MRKPFE
+HNZ
+ABT JNJ
+
+DELL
+DIS
+
+WFC
+
+TXN
+EMC
+
+CL
+
+CAT
+
+IP
+
+MMM
+WMB
+
+UNH
+
+NSC
+
+HON
+
+CI
+
+COP
+
+AVP
+
+MDT
+
+SNS
+
+CVX
+XOM
+
+OXY
+
+HD
+WMT
+
+BA
+AAPL
+PG
+
+SLE
+
+CPB
+
+EXC
+
+T
+VZ
+
+(b) Graphical Lasso
+
+Figure 10: Graph over a subset of companies in the S&P 100. The positioning of the
+vertices is chosen so that the junction tree based graph is aesthetically pleasing.
+The edges common in (a) and (b) are marked by bold lines and the remaining
+edges are marked by dashed lines
+176
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+CMCSA
+
+MO
+PFE WYE
+
+WMB
+
+VZ
+
+JNJ
+MRK BMY
+
+CVS
+
+T
+
+RTN
+
+ABT
+
+BAX
+
+SLB
+
+AAPL
+
+HAL
+
+GD
+
+BHI
+
+AVP CL
+
+EMC
+
+DELL
+
+TXN
+
+KO
+
+PEP
+WMT
+XRX
+
+BA
+
+OXY
+
+COP CVX
+
+PG
+
+XOM
+
+INTC
+
+MSFT
+
+HPQ
+
+HD
+TGT
+IBM
+
+TYC
+
+MS
+SP100
+CBS
+
+UTX
+
+HNZ SLE
+
+AIG
+AXP
+DIS
+
+MMM DOW
+
+BNI
+
+JPM
+
+NSC
+
+BK
+
+CI
+
+GE
+
+BAC
+
+MCD
+
+WYAA
+CAT DD
+
+CPB
+
+MER
+
+C
+
+FDX
+WB
+WFC USB
+
+ORCL
+UNH
+
+IP
+
+RF
+ETR SO
+
+HON
+EXC AEP
+SNS
+
+AMGN
+S
+
+MDT
+F
+
+(a) Junction tree based graphical Lasso
+CMCSA
+
+MO
+PFE WYE
+
+WMB
+
+VZ
+
+JNJ
+MRK BMY
+RTN
+
+ABT
+
+CVS
+
+T
+BAX
+
+AAPL
+GD
+
+TXN
+
+KO
+
+PEP
+
+XRX
+
+BA
+
+OXY
+
+COP CVX
+
+PG
+
+XOM
+
+INTC
+
+MSFT
+
+HPQ
+
+HD
+TGT
+IBM
+UTX
+
+BHI
+
+AVP CL
+
+EMC
+
+DELL
+
+WMT
+
+SLB
+HAL
+
+TYC
+
+HNZ SLE
+
+AIG
+MS
+
+SP100
+CBS
+
+AXP
+DIS
+
+MMM DOW
+
+BNI
+
+JPM
+
+NSC
+
+BK
+
+CI
+
+GE
+WYAA
+CAT DD
+
+CPB
+
+MER
+
+C
+
+BAC
+
+MCD
+
+FDX
+WB
+WFC USB
+
+ORCL
+UNH
+
+IP
+
+RF
+ETR SO
+
+HON
+EXC AEP
+SNS
+
+AMGN
+S
+
+MDT
+F
+
+(b) Graphical Lasso
+
+Figure 11: Graph over a subset of companies in the S&P 100. The positioning of the vertices
+is chosen so that the graphical Lasso based graph is aesthetically pleasing. The
+edges common in (a) and (b) are marked by bold lines and the remaining edges
+are marked by dashed lines.
+177
+
+Vats and Nowak
+
+remaining edges by dashed lines. Some conclusions that we draw from the estimated graphs
+are summarized as follows:
+• The gL graph in Figure 11(b) seems well structured with multiple different clusters
+of nodes with companies that seem to be related to each other. A similar clustering
+is seen for the JgL graph in Figure 10(a) with the exception that there are now connections between the clusters. As observed in Choi et al. (2011) and Chandrasekaran
+et al. (2012), it has been hypothesized that the “actual” graph over the companies is
+dense since there are several unobserved companies that induce conditional dependencies between the observed companies. These induced conditional dependencies can be
+considered to be the weak edges of the “actual” graph. Thus, our results suggest that
+the junction tree based algorithm is able to detect such weak edges.
+• We now focus on some specific edges and nodes in the graphs. The 11 vertices represented by smaller squares and shaded in green are not connected to any other vertex
+in gL. On the other hand, all these 11 vertices are connected to at least one other
+vertex in JgL (see Figure 10). Moreover, several of these edges are meaningful. For
+example, CBS and CMCSA are in the television industry, TGT and CVS are stores,
+AEP and WMB are energy companies, GD and RTN are defense companies, and
+MDT and UNH are in the healthcare industry. Finally, the three vertices represented
+by larger squares and shaded in pink, are not connected to any vertex in JgL and are
+connected to at least one other vertex in gL. Only the edges associated with EXC
+seem to be meaningful.
+8.3 Analysis of Gene Expression Data
+Graphical models have been used extensively for studying gene interactions using gene
+expression data (Nevins et al., 2004; Wille et al., 2004). The gene expression data we study
+is the Lymph node status data which contains n = 148 expression values from p = 587 genes
+(Li and Toh, 2010). Since there is no ground truth available, the main aim in this section is
+to highlight the differences between the estimates JgL (junction tree estimate) and gL (non
+junction tree estimate). Just like in the stock returns data, we compute the graph H using
+κ = 1. Both the JgL and gL graphs contain 831 edges. Figure 12 shows the graphs JgL and
+gL under different placements of the vertices. We clearly see significant differences between
+the estimated graphs. This suggests that using the junction tree framework may lead to
+new scientific interpretations when studying biological data.
+
+9. Summary and Future Work
+We have outlined a general framework that can be used as a wrapper around any arbitrary undirected graphical model selection (UGMS) algorithm for improved graph estimation. Our framework takes as input a graph H that contains all (or most of) the edges
+in G∗ , decomposes the UGMS problem into multiple subproblems using a junction tree
+representation of H, and then solves subprolems iteratively to estimate a graph. Our theoretical results show that certain weak edges, which cannot be estimated using standard
+algorithms, can be estimated when using the junction tree framework. We supported the
+178
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+(a) Junction tree based graphical Lasso
+
+(b) Graphical Lasso
+
+(c) Junction tree based graphical Lasso
+
+(d) Graphical Lasso
+
+Figure 12: Graph over genes computed using gene expression data. For (a) and (b), the
+vertices are chosen so that the junction tree estimate is aesthetically pleasing.
+For (c) and (d), the vertices are chosen so that the graphical Lasso estimate
+is aesthetically pleasing. Further, in (a) and (c), we only show edges that are
+estimated in the junction tree estimate, but not estimated using graphical Lasso.
+Similarly, for (b) and (c), we only show edges that are estimated by graphical
+Lasso, but not by the junction tree estimate.
+
+179
+
+Vats and Nowak
+
+theory with numerical simulations on both synthetic and real world data. All the data and
+code used in our numerical simulations can be found at http://www.ima.umn.edu/~dvats/
+JunctionTreeUGMS.html.
+Our work motivates several interesting future research directions. In our framework,
+we used a graph H to decompose the UGMS problem into multiple subproblems. Alternatively, we can also focus on directly finding such decompositions. Another interesting
+research direction is to use the decompositions to develop parallel algorithms for UGMS
+for estimating extremely large graphs. Finally, motivated by the differences in the graphs
+obtained using gene expression data, another research problem of interest is to study the scientific consequences of using the junction tree framework on various computational biology
+data sets.
+
+Acknowledgments
+The first author thanks the Institute for Mathematics and its Applications (IMA) for financial support in the form of a postdoctoral fellowship. The authors thank Vincent Tan
+for discussions and comments on an earlier version of the paper. The authors thank the
+anonymous reviewers for comments which significantly improved this manuscript.
+
+Appendix A. Marginal Graph
+Definition 23 The marginal graph G∗,m [A] of a graph G∗ over the nodes A is defined as
+a graph with the following properties
+1. E(G∗ [A]) ⊆ E(G∗,m [A]).
+2. For an edge (i, j) ∈ E(KA )\E(G∗ [A]), if all paths from i to j in G∗ pass through a
+subset of the nodes in A, then (i, j) ∈
+/ G∗,m [A].
+3. For an edge (i, j) ∈ E(KA )\E(G∗ [A]), if there exists a path from i to j in G∗ such
+that all nodes in the path, except i and j, are in V \A, then (i, j) ∈ G∗,m [A].
+The graph KA is the complete graph over the vertices A. The first condition in Definition 23 says that the marginal graph contains all edges in the induced subgraph over A.
+The second and third conditions say which edges not in G∗ [A] are in the marginal graph.
+As an example, consider the graph in Figure 13(a) and let A = {1, 2, 3, 4, 5}. From the
+second condition, the edge (3, 4) is not in the marginal graph since all paths from 3 to 4
+pass through a subset of the nodes in A. From the third condition, the edge (4, 5) is in
+the marginal graph since there exists a path {4, 8, 5} that does not go through any nodes
+in A\{4, 5}. Similarly, the marginal graph over A = {4, 5, 6, 7, 8} can be constructed as in
+Figure 13(c). The importance of marginal graphs is highlighted in the following proposition.
+Proposition 24 If PX > 0 is Markov on G∗ = (V, E(G∗ )) and not Markov on any subgraph
+of G∗ , then for any subset of vertices A ⊆ V , PXA is Markov on the marginal graph G∗,m [A]
+and not Markov on any subgraph of G∗,m [A].
+180
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+3
+
+6
+
+2
+
+1
+
+7
+
+4
+5
+
+8
+
+(a)
+
+3
+
+6
+
+2
+
+1
+4
+
+5
+
+5
+
+7
+
+4
+
+(b)
+
+8
+
+(c)
+
+Figure 13: (a) A graph over eight nodes. (b) The marginal graph over {1, 2, 3, 4, 5}. (c)
+The marginal graph over {4, 5, 6, 7, 8}.
+ˇ A and not Markov on any subgraph of G
+ˇ A.
+Proof Suppose PXA is Markov on the graph G
+m
+ˇ
+We will show that GA = G [A].
+ˇ A.
+• If (i, j) ∈ G, then Xi ⊥
+⊥ Xj |XS for every S ⊆ V \{i, j}. Thus, G[A] ⊂ G
+• For any edge (i, j) ∈ KA \G[A], suppose that for every path from i to j contains at
+least one node from A\{i, j}. Then, there exists a set of nodes S ⊆ A\{i, j} such that
+ˇ A.
+Xi ⊥
+⊥ Xj |XS and (i, j) ∈
+/G
+• For any edge (i, j) ∈ KA \G[A], suppose that there exists a path from i to j such
+that all nodes in the path, except i and j, are in V \A. This means we cannot find a
+ˇ A.
+separator for i and j in the set A, so (i, j) ∈ G
+ˇ A and Definition 23, it is clear that G
+ˇ A = Gm [A].
+From the construction of G
+Using Proposition 24, it is clear that if the UGMS algorithm Ψ in Assumption 1 is
+applied to a subset of vertices A, the output 1will be a consistent estimator of the marginal
+graph G∗,m [A]. Note that from Definition 23, although the marginal graph contains all
+edges in G∗ [A], it may contain additional edges as well. Given only the marginal graph
+G∗,m [A], it is not clear how to identify edges that are in G∗ [A]. For example, suppose G∗ is
+a graph over four nodes and let the graph be a single cycle. The marginal graph over any
+subset of three nodes is always the complete graph. Given the complete graph over three
+nodes, computing the induced subgraph over the three nodes is nontrivial.
+
+Appendix B. Examples of UGMS Algorithms
+We give examples of standard UGMS algorithms and show how they can be used to implement step 3 in Algorithm 2 when estimating edges in a region of a region graph. For
+simplicity, we review algorithms for UGMS when PX is a Gaussian distribution with mean
+zero and covariance Σ∗ . Such distributions are referred to as Gaussian graphical models. It is well known (Speed and Kiiveri, 1986) that that the inverse covariance matrix
+Θ∗ = (Σ∗ )−1 , also known as precision matrix, is such that for all i = j, Θ∗ij = 0 if and
+only if (i, j) ∈ E(G∗ ). In other words, the graph G∗ can be estimated given an estimate of
+the covariance or inverse covariance matrix of X. We review two standard algorithms for
+estimating G∗ : graphical Lasso and neighborhood selection using Lasso (nLasso).
+181
+
+Vats and Nowak
+
+B.1 Graphical Lasso (gLasso)
+Define the empirical covariance matrix SA over a set of vertices A ⊂ V as follows:
+SA =
+
+1
+n
+
+n
+(k)
+
+XA
+
+(k) T
+
+.
+
+XA
+
+k=1
+
+Recall from Algorithm 2, we apply a UGMS algorithm R to estimate edges in HR defined in
+(3). The graphical Lasso (gLasso) estimates ER by solving the following convex optimization
+problem:
+
+
+
+
+log det(Θ) − trace SR Θ − λ
+Θij , (9)
+Θ = arg
+max
+
+Θ 0,Θij =0 ∀ (i,j)∈H
+/ m [R ] 
+(i,j)∈H
+R
+
+ER = {(i, j) ∈ HA : Θij = 0} .
+
+The graph H m [R] is the marginal graph over R (see Appendix A). When R = V , H = KV ,
+and HA = KV , the above equations recover the standard gLasso estimator, which was
+first proposed in Banerjee et al. (2008). Equation (9) can be solved using algorithms in
+Yuan and Lin (2007), Banerjee et al. (2008), Scheinberg et al. (2010) and Hsieh et al.
+(2011). Theoretical properties of the estimates Θ and ER have been studied in Ravikumar
+et al. (2011). Note that the regularization parameter in (9) controls the sparsity of ER .
+A larger λ corresponds to a sparser solution. Further, we only regularize the terms in Θij
+corresponding to the edges that need to be estimated, that is, the edges in HR . Finally,
+Equation (9) also accounts for the edges H by computing the marginal graph over R. In
+general, H m R can be replaced by any graph that is superset of H m R .
+B.2 Neighborhood Selection (nLasso)
+Using the local Markov property of undirected graphical models (see Definition 1), we
+know that if PX is Markov on G∗ , then P Xi | XV \i = P Xi | XneG∗ (i) . This motivates
+an algorithm for estimating the neighborhood of each node and then combining all these
+estimates to estimate G∗ . For Gaussian graphical models, this can be achieved by solving a
+Lasso problem (Tibshirani, 1996) at each node (Meinshausen and B¨
+uhlmann, 2006). Recall
+that we are interested in estimating all edges in HR by applying a UGMS algorithm to R.
+The neighborhood selection using Lasso (nLasso) algorithm is given as follows:
+H = KR \H m R ,
+β k = arg
+k
+
+ne = i :
+ER =
+k∈R
+
+
+
+
+
+min
+
+βi =0,i∈neH (k)∪k∪V \A 
+
+
+βik
+
+Xnk − Xn β
+
+=0 ,
+
+(k, i) : i ∈ nek
+
+.
+
+182
+
+2
+2
+
++λ
+i∈neH (k)
+R
+
+|βi |
+
+
+
+
+
+
+
+,
+
+(10)
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+Notice that in the above algorithm if i is estimated to be a neighbor of j, then we include the
+edge (i, j) even if j is not estimated to be a neighbor of i. This is called the union rule for
+combining neighborhood estimates. In our numerical simulations, we use the intersection
+rule to combine neighborhood estimates, that is, (i, j) is estimated only if i is estimated to
+be a neighbor of j and j is estimated to be a neighbor of i. Theoretical analysis of nLasso
+has been carried out in Meinshausen and B¨
+uhlmann (2006) and Wainwright (2009). Note
+that, when estimating the neighbors of a node k, we only penalize the neighbors in HR .
+Further, we use prior knowledge about some of the edges by using the graph H in (10).
+References Bresler et al. (2008), Netrapalli et al. (2010) and Ravikumar et al. (2010) extend
+the neighborhood selection based method to discrete valued graphical models.
+
+Appendix C. Proof of Proposition 8
+We first prove the following result.
+
+Lemma 25 For any (i, j) ∈ HR , there either exists no non-direct path from i to j in H or
+all non-direct paths in H pass through a subset of R.
+Proof We first show the result for R ∈ R1 . This means that R is one of the clusters in
+the junction tree used to construct the region graph and ch(R) is the set of all separators of
+cardinality greater than one connected to the cluster R in the junction tree. Subsequently,
+R = R. If ch(R) = ∅, the claim trivially holds. Let ch(R) = ∅ and suppose there exists a
+non-direct path from i to j that passes through a set of vertices S¯ not in R. Then, there will
+¯ Thus, all paths
+exist a separator S in the junction tree such that S separates {i, j} and S.
+in H from i and j to S¯ pass through S. This implies that either there is no non-direct path
+from i to j in H or else we have reached a contradiction about the existence of a non-direct
+path from i to j that passes through the set S¯ not in R.
+Now, suppose R ∈ Rl for l > 1. The set an(R) contains all the clusters in the junction
+tree than contain R. From the running intersection property of junction trees, all these
+clusters must form a subtree in the original junction tree. Merge R into one cluster and
+find a new junction tree J by keeping the rest of the clusters the same. It is clear R will
+be in the first row of the updated region graph. The arguments used above can be repeated
+to prove the claim.
+We now prove Proposition 8.
+Case 1: Let (i, j) ∈ HR and (i, j) ∈
+/ G∗ . If there exists no non-direct path from i to j in
+H, then the edge (i, j) can be estimated by solving a UGMS problem over i and j. By the
+definition of R, i, j ∈ R. Suppose there does exist non-direct paths from i to j in H. From
+Lemma 25, all such paths pass through R. Thus, the conditional independence of Xi and
+Xj can be determined from XR\{i,j} .
+Case 2: Let (i, j) ∈ HR and (i, j) ∈ G∗ . From Lemma 25 and using the fact that
+E(G∗ ) ⊆ E(H), we know that all paths from i to j pass through R. This means that if
+Xi ⊥
+⊥ Xj |XR\{i,j} , then Xi ⊥
+⊥ Xj |XV \{i,j} .
+183
+
+Vats and Nowak
+
+Appendix D. Analysis of the PC-Algorithm in Algorithm 4
+In this section, we present the analysis of Algorithm 4 using results from Anandkumar
+et al. (2012a) and Kalisch and B¨
+uhlmann (2007). The analysis presented here is for the
+non-junction tree based algorithm. Throughout this section, assume
+G = PC(η, Xn , KV , KV ) ,
+where KV is the complete graph over the vertices V . Further, let the threshold for the
+conditional independence test in (4) be λn . We are interested in finding conditions under
+which G = G∗ with high probability.
+Theorem 26 Under Assumptions (A1)-(A5), there exists a conditional independence test
+such that if
+n = Ω(ρ−2
+min η log(p)) or ρmin = Ω( η log(p)/n),
+then P (G = G) → 0 as n → ∞.
+We now prove Theorem 26. Define the set Bη as follows:
+Bη = {(i, j, S) : i, j ∈ V, i = j, S ⊆ V \{i, j}, |S| ≤ η} .
+The following concentration inequality follows from Anandkumar et al. (2012a).
+Lemma 27 Under Assumption (A4), there exists constants c1 and c2 such that for
+sup
+(i,j,S)∈Bη
+
+< M,
+
+P ||ρij|S | − |ρij|S || > ξ ≤ c1 exp −c2 (n − η)ξ 2 ,
+
+where n is the number of vector valued measurements made of Xi , Xj , and XS .
+Let Pe = P (G = G), where the probability measure P is with respect to PX . Recall
+that we threshold the empirical conditional partial correlation ρij|S to test for conditional
+independence, that is, ρij|S ≤ λn =⇒ Xi ⊥
+⊥ Xj |XS . An error may occur if there exists
+two distinct vertices i and j such that either ρij|S = 0 and |ρij|S | > λn or |ρij|S | > 0 and
+|ρij|S | ≤ λn . Thus, we have
+Pe ≤ P (E1 ) + P (E2 ) ,
+
+
+
+
+P (E1 ) = P 
+
+{∃ S s.t. |ρij|S | > λn } ,
+
+P (E2 ) = P 
+
+{∃ S s.t. |ρij|S | ≤ λn } .
+
+(i,j)∈G
+/
+
+
+
+(i,j)∈G
+
+
+
+We will find conditions under which P (E1 ) → 0 and P (E2 ) → 0 which will imply that
+Pe → 0. The term P (E1 ), the probability of including an edge in G that does not belong to
+184
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+the true graph, can be upper bounded as follows:
+
+
+P (E1 ) ≤ P 
+
+{∃ S s.t. |ρij|S | > λn } ≤ P 
+
+(i,j)∈G
+/
+
+η+2
+
+≤p
+
+
+
+sup
+
+(i,j,S)∈Bη
+
+
+
+{|ρij|S | > λn } ,
+
+(i,j)∈G,S⊂V
+/
+\{i,j}
+
+P |ρij|S | > λn ,
+
+≤ c1 pη+2 exp −c2 (n − η)λ2n = c1 exp (η + 2) log(p) − c2 (n − η)λ2n .
+The terms pη+2 comes from the fact that there are at most p2 number of edges and the
+algorithm searches over at most pη number of separators for each edge. Choosing λn such
+that
+(n − η)λ2n
+= ∞,
+(11)
+lim
+n,p→∞ (η + 2) log(p)
+ensures that P (E1 ) → 0 as n, p → ∞. Further, choose λn such that for c3 < 1
+λn < c3 ρmin .
+
+(12)
+
+The term P (E2 ), the probability of not including an edge in G that does belong to the true
+graph, can be upper bounded as follows:
+
+
+P (E2 ) ≤ P 
+
+
+
+≤P
+
+≤p
+
+(i,j)∈G
+
+{∃ S s.t. |ρij|S | ≤ λn } ,
+
+(i,j)∈G,S⊂V \{i,j}
+
+η+2
+
+≤ pη+2
+
+sup
+(i,j,S)∈Bη
+
+sup
+(i,j,S)∈Bη
+
+
+
+|ρij|S | − |ρij|S | > |ρij|S | − λn  ,
+
+P |ρij|S | − |ρij|S | > |ρij|S | − λn ,
+
+P ||ρij|S | − |ρij|S || > ρmin − λn ,
+
+≤ c1 pη+2 exp −c2 (n − η)(ρmin − λn )2 = c1 exp (η + 2) log(p) − c4 (n − η)ρ2min .
+(13)
+To get (13), we use (12) so that (ρmin − λn ) > (1 − c3 )ρmin . For some constant c5 > 0,
+suppose that for all n > n and p > p ,
+c4 (n − η)ρ2min > (η + 2 + c5 ) log(p) .
+
+(14)
+
+Given (14), P (E2 ) → 0 as n, p → ∞. In asymptotic notation, we can write (14) as
+n = Ω(ρ−2
+min η log(p)) ,
+which proves the Theorem. The conditional independence test is such that λn is chosen
+to satisfy (11) and (12). In asymptotic notation, we can show that λn = O(ρmin ) and
+λ2n = Ω (η log(p)/n) satisfies (11) and (12).
+185
+
+Vats and Nowak
+
+Appendix E. Proof of Theorem 9
+To prove the theorem, it is sufficient to establish that
+ρ0 = Ω
+
+ηT log(p)/n ,
+
+(15)
+
+ρ1 = Ω
+
+η log(p1 )/n ,
+
+(16)
+
+ρ2 = Ω
+
+η log(p2 )/n ,
+
+(17)
+
+ρT = Ω
+
+η log(pT )/n .
+
+(18)
+
+Let H be the graph estimated in Step 1. An error occurs if for an edge (i, j) ∈ G∗
+there exists a subset of vertices S such that |S| ≤ ηT and |ρij|S | ≤ λ0n . Using the proof of
+Theorem 26 (see analysis of P (E2 )), it is easy to see that n = Ω(ρ−2
+0 ηT log(p)) is sufficient
+for P (E(G∗ ) ⊂ E(H)) → 0 as n → 0. Further, the threshold is chosen such that λ0n = O(ρ0 )
+and (λ0n )2 = Ω (ηT log(p)/n). This proves (15).
+In Step 2, we estimate the graphs G1 and G2 by applying the PC-Algorithm to the
+vertices V1 ∪ T and V2 ∪ T , respectively. For G1 , given that all edges that have a separator
+of size ηT have been removed, we can again use the analysis in the proof of Theorem 26 to
+show that for λ1n = O(ρ1 ) and (λ1n )2 = Ω (η log(p1 )/n), n = Ω(ρ−2
+1 η log(p1 )) is sufficient for
+∗
+∗
+P (G1 = G [V1 ∪ T ]\KT )|G ⊂ H) → 0 as n → ∞. This proves (16). Using similar analysis,
+we can prove (17) and (18).
+The probability of error can be written as
+2
+
+Pe ≤ P (G∗ ⊂ H) +
+∗
+
+k=1
+∗
+
+P (Gk = G∗ [Vk ∪ T ]\KT |G∗ ⊂ H)
+
++ P (GT = G [T ]|G ⊂ H, G = G[V1 ∪ T ]∗ \KT , G∗ [V2 ∪ T ] = G[V2 ∪ T ]\KT ) .
+Given (15)-(18), each term on the right goes to 0 as n → ∞, so Pe → 0 as n → ∞.
+
+References
+A. Anandkumar, V. Y. F. Tan, F. Huang, and A. S. Willsky. High-dimensional Gaussian
+graphical model selection: Walk summability and local separation criterion. Journal of
+Machine Learning Research, 13:2293–2337, 2012a.
+A. Anandkumar, V. Y. F. Tan, F. Huang, and A. S. Willsky. High-dimensional structure
+learning of Ising models: Local separation criterion. Annals of Statistics, 40(3):1346–1375,
+2012b.
+S. Arnborg, D. G. Corneil, and A. Proskurowski. Complexity of finding embeddings in
+ak-tree. SIAM Journal on Algebraic Discrete Methods, 8(2):277–284, 1987.
+S. Arnborg and A. Proskurowski. Linear time algorithms for NP-hard problems restricted
+to partial k-trees. Discrete Applied Mathematics, 23(1):11–24, April 1989.
+186
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+F. R. Bach and M. I. Jordan. Thin junction trees. In Advances in Neural Information
+Processing Systems (NIPS), pages 569–576. MIT Press, 2001.
+O. Banerjee, L. E. Ghaoui, and A. d’Aspremont. Model selection through sparse maximum likelihood estimation for multivariate Gaussian or binary data. Journal of Machine
+Learning Research, 9:485–516, June 2008.
+A. Berry, P. Heggernes, and G. Simonet. The minimum degree heuristic and the minimal
+triangulation process. In Graph-Theoretic Concepts in Computer Science, pages 58–70.
+Springer, 2003.
+G. Bresler, E. Mossel, and A. Sly. Reconstruction of Markov random fields from samples: Some observations and algorithms. In Ashish Goel, Klaus Jansen, Jos Rolim, and
+Ronitt Rubinfeld, editors, Approximation, Randomization and Combinatorial Optimization. Algorithms and Techniques, volume 5171 of Lecture Notes in Computer Science,
+pages 343–356. Springer Berlin, 2008.
+F. Bromberg, D. Margaritis, and V. Honavar. Efficient Markov network structure discovery
+using independence tests. Journal of Artificial Intelligence Research (JAIR), 35:449–484,
+2009.
+T. Cai, W. Liu, and X. Luo. A constrained 1 minimization approach to sparse precision
+matrix estimation. Journal of the American Statistical Association, 106(494):594–607,
+2011.
+V. Chandrasekaran, P.A. Parrilo, and A.S. Willsky. Latent variable graphical model selection via convex optimization. Annals of Statistics, 40(4):1935–1967, 2012.
+A. Chechetka and C. Guestrin. Efficient principled learning of thin junction trees. In
+Advances in Neural Information Processing Systems (NIPS), pages 273–280, December
+2007.
+J. Chen and Z. Chen. Extended Bayesian information criteria for model selection with large
+model spaces. Biometrika, 95(3):759–771, 2008.
+M. J. Choi, V. Y. F. Tan, A. Anandkumar, and A. S. Willsky. Learning latent tree graphical
+models. Journal of Machine Learning Research, 12:1771–1812, May 2011.
+C. Chow and C. Liu. Approximating discrete probability distributions with dependence
+trees. IEEE Transactions on Information Theory, 14(3):462–467, May 1968.
+J. Fan and J. Lv. Sure independence screening for ultrahigh dimensional feature space.
+Journal of the Royal Statistical Society: Series B (Statistical Methodology), 70(5):849–
+911, 2008.
+R. Foygel and M. Drton. Extended Bayesian information criteria for Gaussian graphical
+models. In Advances in Neural Information Processing Systems (NIPS), pages 604–612,
+2010.
+187
+
+Vats and Nowak
+
+J. Friedman, T. Hastie, and R. Tibshirani. Sparse inverse covariance estimation with the
+graphical Lasso. Biostatistics, 9(3):432–441, July 2008.
+P. Giudici and P. J. Green. Decomposable graphical gaussian model determination.
+Biometrika, 86(4):785–801, 1999.
+W. Hoeffding. A non-parametric test of independence. The Annals of Mathematical Statistics, 19(4):546–557, 1948.
+C. Hsieh, M. A. Sustik, I. S. Dhillon, and P. Ravikumar. Sparse inverse covariance matrix
+estimation using quadratic approximation. In Advances in Neural Information Processing
+Systems 24, pages 2330–2338, 2011.
+A. Jalali, C. Johnson, and P. Ravikumar. On learning discrete graphical models using
+greedy methods. In Advances in Neural Information Processing Systems (NIPS), pages
+1935–1943, 2011.
+C. C. Johnson, A. Jalali, and P. Ravikumar. High-dimensional sparse inverse covariance
+estimation using greedy methods. Journal of Machine Learning Research - Proceedings
+Track, 22:574–582, 2012.
+M. Kalisch and P. B¨
+uhlmann. Estimating high-dimensional directed acyclic graphs with
+the PC algorithm. Journal of Machine Learning Research, 8:613–636, 2007.
+D. Karger and N. Srebro. Learning Markov networks: Maximum bounded tree-width
+graphs. In Proceedings of the twelfth annual ACM-SIAM symposium on Discrete algorithms, pages 392–401, 2001.
+U. B. Kjaerulff. Triangulation of graphs - algorithms giving small total state space. Technical
+Report Research Report R-90-09, Department of Mathematics and Computer Science,
+Aalborg University, Denmark, 1990.
+D. Koller and N. Friedman. Probabilistic Graphical Models: Principles and Techniques. The
+MIT Press, 2009.
+K. S. S. Kumar and F. Bach. Convex relaxations for learning bounded-treewidth decomposable graphs. In Proceedings of the International Conference on Machine Learning
+(ICML), 2013.
+J. Lafferty, H. Liu, and L. Wasserman. Sparse nonparametric graphical models. Statistical
+Science, 27(4):519–537, 2012.
+S. L. Lauritzen and D. J. Spiegelhalter. Local computations with probabilities on graphical
+structures and their application to expert systems. Journal of the Royal Statistical Society.
+Series B (Methodological), 50(2):157–224, 1988.
+S. L. Lauritzen. Graphical Models. Oxford University Press, USA, 1996.
+L. Li and K. C. Toh. An inexact interior point method for 1 -regularized sparse covariance
+selection. Mathematical Programming Computation, 2(3):291–315, 2010.
+188
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+H. Liu, K. Roeder, and L. Wasserman. Stability approach to regularization selection (stars)
+for high dimensional graphical models. In Advances in Neural Information Processing
+Systems (NIPS), 2010.
+H. Liu, F. Han, M. Yuan, J. Lafferty, and L. Wasserman. High dimensional semiparametric
+Gaussian copula graphical models. Annals of Statistics, 40(4):2293–2326, 2012a.
+H. Liu, J. Lafferty, and L. Wasserman. The nonparanormal: Semiparametric estimation
+of high dimensional undirected graphs. The Journal of Machine Learning Research, 10:
+2295–2328, 2009.
+H. Liu, F. Han, and C. Zhang. Transelliptical graphical models. In Advances in Neural
+Information Processing Systems (NIPS), pages 809–817, 2012b.
+P. Loh and M. J. Wainwright. Structure estimation for discrete graphical models: Generalized covariance matrices and their inverses. In Advances in Neural Information Processing
+Systems (NIPS), pages 2096–2104, 2012.
+Z. Ma, X. Xie, and Z. Geng. Structural learning of chain graphs via decomposition. Journal
+of Machine Learning Research, 9:2847–2880, December 2008.
+D. M. Malioutov, J. K. Johnson, and A. S. Willsky. Walk-sums and belief propagation
+in gaussian graphical models. The Journal of Machine Learning Research, 7:2031–2064,
+2006.
+F. M. Malvestuto. Approximating discrete probability distributions with decomposable
+models. IEEE Transactions on Systems, Man and Cybernetics, 21(5):1287–1294, 1991.
+R. Mazumder and T. Hastie. Exact covariance thresholding into connected components for
+large-scale graphical lasso. Journal of Machine Learning Research, 13:781–794, March
+2012. ISSN 1532-4435.
+N. Meinshausen and P. B¨
+uhlmann. Stability selection. Journal of the Royal Statistical
+Society: Series B (Statistical Methodology), 72(4):417–473, 2010.
+N. Meinshausen and P. B¨
+uhlmann. High-dimensional graphs and variable selection with the
+lasso. Annals of Statistics, 34(3):1436–1462, 2006.
+P. Netrapalli, S. Banerjee, S. Sanghavi, and S. Shakkottai. Greedy learning of Markov
+network structure. In 2010 48th Annual Allerton Conference on Communication, Control,
+and Computing (Allerton), pages 1295–1302, 2010.
+A. Dobra, C. Hans, B. Jones, J. R. Nevins, and G. Yao, and M. West. Sparse graphical
+models for exploring gene expression data. Journal of Multivariate Analysis, 90:196–212,
+2004.
+M. J Rasch, A. Gretton, Y. Murayama, W. Maass, N. K Logothetis, L. Wiskott, G. Kempermann, L. Wiskott, G. Kempermann, B. Sch¨olkopf, et al. A kernel two-sample test.
+Journal of Machine Learning Research, 2:299, 2012.
+189
+
+Vats and Nowak
+
+P. Ravikumar, M. J. Wainwright, and J. Lafferty. High-dimensional Ising model selection
+using 1 -regularized logistic regression. Annals of Statistics, 38(3):1287–1319, 2010.
+P. Ravikumar, M. J. Wainwright, G. Raskutti, and B. Yu. High-dimensional covariance
+estimation by minimizing 1 -penalized log-determinant divergence. Electronic Journal of
+Statistics, 5:935–980, 2011.
+N. Robertson and P. D. Seymour. Graph minors. II. Algorithmic aspects of tree-width.
+Journal of Algorithms, 7(3):309 – 322, 1986.
+K. Scheinberg, S. Ma, and D. Goldfarb. Sparse inverse covariance selection via alternating
+linearization methods. In Advances in Neural Information Processing Systems (NIPS),
+pages 2101–2109, 2010.
+T. P. Speed and H. T. Kiiveri. Gaussian Markov distributions over finite graphs. The
+Annals of Statistics, 14(1):138–150, 1986.
+P. Spirtes and C. Glymour. An algorithm for fast recovery of sparse causal graphs. Social
+Science Computer Review, 9:62–72, 1991.
+P. Spirtes, C. Glymour, and R. Scheines. Causality from probability. In Advanced Computing
+for the Social Sciences, 1990.
+R. Tibshirani. Regression shrinkage and selection via the Lasso. Journal of the Royal
+Statistical Society, Series B, 58(1):267–288, 1996.
+S. van de Geer, P. B¨
+uhlmann, and S. Zhou. The adaptive and the thresholded Lasso for
+potentially misspecified models (and a lower bound for the lasso). Electronic Journal of
+Statistics, 5:688–749, 2011.
+D. Vats. High-dimensional screening using multiple grouping of variables. IEEE Transactions On Signal Processing, to appear.
+D. Vats and J. M. F. Moura. Finding non-overlapping clusters for generalized inference
+over graphical models. IEEE Transactions on Signal Processing, 60(12):6368 –6381, Dec.
+2012.
+M. J. Wainwright. Stochastic Processes on Graphs: Geometric and Variational Approaches.
+PhD thesis, Department of EECS, Massachusetts Institute of Technology, 2002.
+M. J. Wainwright. Sharp thresholds for high-dimensional and noisy sparsity recovery using 1 -constrained quadratic programming (Lasso). IEEE Transactions on Information
+Theory, 55(5):2183–2202, 2009. ISSN 0018-9448.
+W. Wang, M. J. Wainwright, and K. Ramchandran. Information-theoretic bounds on model
+selection for Gaussian Markov random fields. In IEEE International Symposium on Information Theory (ISIT), 2010.
+A. Wille, P. Zimmermann, E. Vranov´a, A. F¨
+urholz, O. Laule, S. Bleuler, L. Hennig,
+A. Prelic, P. Von Rohr, L. Thiele, et al. Sparse graphical Gaussian modeling of the
+isoprenoid gene network in arabidopsis thaliana. Genome Biol, 5(11):R92, 2004.
+190
+
+A Junction Tree Framework for Undirected Graphical Model Selection
+
+D. M. Witten, J. H. Friedman, and N. Simon. New insights and faster computations for the
+graphical lasso. Journal of Computational and Graphical Statistics, 20(4):892–900, 2011.
+X. Xie and Z. Geng. A recursive method for structural learning of directed acyclic graphs.
+Journal of Machine Learning Research, 9:459–483, 2008.
+L. Xue and H. Zou. Regularized rank-based estimation of high-dimensional nonparanormal
+graphical models. The Annals of Statistics, 40(5):2541–2571, 2012.
+E. Yang, G. Allen, Z. Liu, and P. Ravikumar. Graphical models via generalized linear
+models. In Advances in Neural Information Processing Systems, pages 1367–1375, 2012.
+J. S. Yedidia, W. T. Freeman, and Y. Weiss. Constructing free-energy approximations and
+generalized belief propagation algorithms. IEEE Transactions on Information Theory,
+51(7):2282–2312, 2005.
+M. Yuan and Yi Lin. Model selection and estimation in the Gaussian graphical model.
+Biometrika, 94(1):19–35, 2007.
+K. Zhang, J. Peters, D. Janzing, and B. Sch¨olkopf. Kernel-based conditional independence
+test and application in causal discovery. Arxiv preprint arXiv:1202.3775, 2012.
+H. Zou. The adaptive lasso and its oracle properties. Journal of the American Statistical
+Association, 101(476):1418–1429, 2006.
+
+191
+
+

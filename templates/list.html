@@ -1,34 +1,49 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="utf-8">
-		<title>Minimal Django File Upload Example</title>	
-	</head>
+{% extends "base.html" %}
 
-	<body>
-		<!-- List of uploaded documents -->
+{% block title %}UpLoad Testfile{% endblock %}
+{% block css %}
+	<style type="text/css">
+		.mylabel{
+			color: #777;
+		}
+	</style>
+{% endblock %}
+{% block content %}
+<div class="bs-example">
+    <table class="table">
+	
+        <thead>
+            <tr>
+                <th>Uploaded documents:</th>
+            </tr>
+        </thead>
+        <tbody>
 		{% if documents %}
-			<ul>
+			
 			{% for document in documents %}
-				<li><a href="{{ document.docfile.url }}">{{ document.docfile.name }}</a></li>
+			<tr>
+				<td><a href="/loadText/?file={{ document.docfile.name }}">{{ document.docfile.name }}</a></td>
+			</tr>			
 			{% endfor %}
-			</ul>
 		{% else %}
-			<p>No documents.</p>
+			<tr>No documents.</tr>
 		{% endif %}
+        </tbody>
+    </table>
+<h5>*The Last One in the above list will be used for testing</h5>
+</div>
+<!-- Upload form. Note enctype attribute! -->
+<form action="{% url "list" %}" method="post" enctype="multipart/form-data">
+	{% csrf_token %}
+	<h2>{{ form.non_field_errors }}</h2>
+	<h3>{{ form.docfile.label_tag }} {{ form.docfile.help_text }}</h3>
+	<h4>
+		{{ form.docfile.errors }}
+		{{ form.docfile }}
+	</h4>
+	<br>
+	<h4><input type="submit" value="Upload"></h4>
+</form>
+{% endblock %}
 
-		<!-- Upload form. Note enctype attribute! -->
-		<form action="{% url "list" %}" method="post" enctype="multipart/form-data">
-			{% csrf_token %}
-			<p>{{ form.non_field_errors }}</p>
-			<p>{{ form.docfile.label_tag }} {{ form.docfile.help_text }}</p>
-			<p>
-				{{ form.docfile.errors }}
-				{{ form.docfile }}
-			</p>
-			<p><input type="submit" value="Upload" /></p>
-		</form>
-		
-	</body>
-
-</html> 

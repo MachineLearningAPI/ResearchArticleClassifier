@@ -1,0 +1,2843 @@
+Journal of Machine Learning Research 15 (2014) 981-1009
+
+Submitted 10/12; Revised 9/13; Published 3/14
+
+Conditional Random Field with High-order Dependencies for
+Sequence Labeling and Segmentation
+Nguyen Viet Cuong
+Nan Ye
+Wee Sun Lee
+
+nvcuong@comp.nus.edu.sg
+yenan@comp.nus.edu.sg
+leews@comp.nus.edu.sg
+
+Department of Computer Science
+National University of Singapore
+13 Computing Drive
+Singapore 117417
+
+Hai Leong Chieu
+
+chaileon@dso.org.sg
+
+DSO National Laboratories
+20 Science Park Drive
+Singapore 118230
+
+Editor: Kevin Murphy
+
+Abstract
+Dependencies among neighboring labels in a sequence are important sources of information for sequence labeling and segmentation. However, only first-order dependencies, which
+are dependencies between adjacent labels or segments, are commonly exploited in practice
+because of the high computational complexity of typical inference algorithms when longer
+distance dependencies are taken into account. In this paper, we give efficient inference
+algorithms to handle high-order dependencies between labels or segments in conditional
+random fields, under the assumption that the number of distinct label patterns used in the
+features is small. This leads to efficient learning algorithms for these conditional random
+fields. We show experimentally that exploiting high-order dependencies can lead to substantial performance improvements for some problems, and we discuss conditions under
+which high-order features can be effective.
+Keywords: conditional random field, semi-Markov conditional random field, high-order
+feature, sequence labeling, segmentation, label sparsity
+
+1. Introduction
+Many problems can be cast as the problem of labeling or segmenting a sequence of observations. Examples include natural language processing tasks, such as part-of-speech tagging
+(Lafferty et al., 2001), phrase chunking (Sha and Pereira, 2003), named entity recognition
+(McCallum and Li, 2003), and tasks in bioinformatics such as gene prediction (Culotta
+et al., 2005) and RNA secondary structure prediction (Durbin, 1998).
+Conditional random field (CRF) (Lafferty et al., 2001) is a discriminative, undirected
+Markov model which represents a conditional probability distribution of a structured output variable y given an observation x. Conditional random fields have been successfully
+applied in sequence labeling and segmentation. Compared to generative models such as
+hidden Markov models (Rabiner, 1989), CRFs model only the conditional distribution of y
+c 2014 Nguyen Viet Cuong, Nan Ye, Wee Sun Lee and Hai Leong Chieu.
+
+Cuong, Ye, Lee and Chieu
+
+Type of CRF
+
+Feature example
+
+First-order (Lafferty et al., 2001)
+Semi-CRF (Sarawagi and Cohen, 2004)
+High-order (Ye et al., 2009, this paper)
+High-order semi-CRF (this paper)
+
+author year
+author+ year+
+author year title title
+author+ year+ title+
+
+Table 1: Examples of the information that can be captured by different types of CRFs for
+the bibliography extraction task. The x+ symbol represents a segment of “1 or
+more” labels of class x.
+given x, and do not model the observations x. Hence, CRFs can be used to encode complex
+dependencies of y on x without significantly increasing the inference and learning costs.
+However, inference for CRFs is NP-hard in general (Istrail, 2000), and most CRFs have
+been restricted to consider very local dependencies. Examples include the linear-chain CRF
+which considers dependencies between at most two adjacent labels (Lafferty et al., 2001)
+and the first-order semi-Markov CRF (semi-CRF) which considers dependencies between at
+most two adjacent segments (Sarawagi and Cohen, 2004), where a segment is a contiguous
+sequence of identical labels. In linear-chain CRF and semi-CRF, a k th -order feature is a
+feature that encodes the dependency between x and (k + 1) consecutive labels or segments.
+Existing inference algorithms for CRFs such as the Viterbi and the forward-backward algorithms can only handle up to first-order features, and inference algorithms for semi-CRFs
+(Sarawagi and Cohen, 2004) can only handle up to first-order features between segments.
+These algorithms can be easily generalized to handle high-order features, but will require
+time exponential in k. In addition, a general inference algorithm such as the clique tree algorithm (Huang and Darwiche, 1996) also requires time exponential in k to handle k th -order
+features (k > 1).
+In this paper, we exploit a form of sparsity that is often observed in real data to design
+efficient algorithms for inference and learning with high-order label or segment dependencies.
+Our algorithms are presented for high-order semi-CRFs in its most general form. Algorithms
+for high-order CRFs are obtained by restricting the segment lengths to 1, and algorithms
+for linear-chain CRFs and first-order semi-CRFs are obtained by restricting the maximum
+order to 1.
+We use a bibliography extraction task in Table 1 to show examples of features that can
+be used with different classes of CRFs. In this task, different fields are often arranged in
+a fixed order, hence using high-order features can be advantageous. The sparsity property
+that we exploit is the following label pattern sparsity: the number of observed sequences
+of k consecutive segment labels (e.g., “author+ year+ title+” is one such sequence where
+k = 3) is much smaller than nk , where n is the number of distinct labels. This assumption
+often holds in real problems. Under this assumption, we give algorithms for computing
+marginals, partition functions, and Viterbi parses for high-order semi-CRFs. The partition
+function and the marginals can be used to efficiently compute the log-likelihood and its gradient. In turn, the log-likelihood and its gradient can be used with quasi-Newton methods
+to efficiently find the maximum likelihood parameters (Sha and Pereira, 2003). The algo982
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+rithm for Viterbi parsing can also be used with cutting plane methods to train max-margin
+solutions for sequence labeling problems in polynomial time (Tsochantaridis et al., 2004).
+Our inference and learning algorithms run in time polynomial in the maximum segment
+length as well as the number and length of the label patterns that the features depend on.
+We demonstrate that modeling high-order dependencies can lead to significant performance improvements in various problems. In our first set of experiments, we focus on
+high-order CRFs and demonstrate that using high-order features can improve performance
+in sequence labeling problems. We show that in handwriting recognition, using even simple high-order indicator features improves performance over using linear-chain CRFs, and
+significant performance improvement is observed when the maximum order of the indicator features is increased. We also use a synthetic data set to discuss the conditions under
+which high-order features can be helpful. In our second set of experiments, we demonstrate
+that using high-order semi-Markov features can be helpful in some applications. More
+specifically, we show that high-order semi-CRFs outperform high-order CRFs and firstorder semi-CRFs on three segmentation tasks: relation argument detection, punctuation
+prediction, and bibliography extraction.1
+
+2. Algorithms for High-order Dependencies
+Our algorithms are presented for high-order semi-CRFs in its most general form. These algorithms generalize the algorithms for linear-chain CRFs and first-order semi-CRFs, which
+are special cases of our algorithms when the maximum order is set to 1. They also generalize
+the algorithms for high-order CRFs (Ye et al., 2009), which are special cases of our algorithms when the segment lengths are set to 1. Thus, only the general algorithms described
+in this section need to be implemented to handle all these different cases.2
+2.1 High-order Semi-CRFs
+Let Y = {1, 2, . . . , n} denote the set of distinct labels, x = (x1 , . . . , x|x| ) denote an input
+sequence of length |x|, and xa:b denote the sub-sequence (xa , . . . , xb ). A segment of x is defined as a triplet (u, v, y), where y is the common label of the segment xu:v . A segmentation
+for xa:b is a segment sequence s = (s1 , . . . , sp ), with sj = (uj , vj , yj ) such that uj+1 = vj + 1
+for all j, u1 = a and vp = b. A segmentation for xa:b is a partial segmentation for x.
+A semi-CRF defines a conditional distribution over all possible segmentations s of an
+input sequence x such that
+1
+P (s|x) =
+exp(
+Zx
+
+m
+
+|s|
+
+λi fi (x, s, t))
+i=1 t=1
+
+1. This paper is an extended version of a previous paper (Ye et al., 2009) published in NIPS 2009. Some
+of the additional material presented here has also been presented as an abstract (Nguyen et al., 2011)
+at the ICML Workshop on Structured Sparsity: Learning and Inference, 2011. The source code for our
+algorithms is available at https://github.com/nvcuong/HOSemiCRF.
+2. In an earlier paper (Ye et al., 2009), we give algorithms for high-order CRFs which are similar to those
+presented here. The main difference lies in the backward algorithm. The version presented here is
+a conditional version which uses properties of labels before the suffix labels being considered, making
+extension to the high-order semi-Markov features simpler.
+
+983
+
+Cuong, Ye, Lee and Chieu
+
+where Zx = s exp( i t λi fi (x, s, t)) is the partition function with the summation over
+all segmentations of x, and {fi (x, s, t)}1≤i≤m is the set of semi-Markov features, each of
+which has a corresponding weight λi .
+We shall work with features of the following form
+fi (x, s, t) =
+
+gi (x, ut , vt )
+0
+
+if yt−|zi |+1 . . . yt = zi
+otherwise
+
+(1)
+
+where zi ∈ Y |zi | is a segment label pattern associated with fi , and s is a segmentation or a
+partial segmentation for x. The function fi (x, s, t) depends on the t-th segment as well as
+the label pattern zi and is said to be of order |zi | − 1. The order of the resulting semi-CRF
+is the maximal order of the features.
+We will give exact inference algorithms for high-order semi-CRFs in the following sections. As in exact inference algorithms for linear-chain CRFs and semi-CRFs, our algorithms
+perform forward and backward passes to obtain the necessary information for inference.
+2.2 Notations
+Without loss of generality, let Z = {z1 , . . . , zM } be the segment label pattern set, that is,
+the set of distinct segment label patterns of the m features (M ≤ m). For our forward
+algorithm, the forward-state set P = {p1 , . . . , p|P| } consists of distinct elements in the set
+of all the labels and proper prefixes (including the empty sequence ) of the segment label
+patterns. Thus, P = Y ∪ {zj1:k }0≤k<|zj |,1≤j≤M . For the backward algorithm, the backwardstate set S = {s1 , . . . , s|S| } consists of distinct elements in PY, that is, the set consisting of
+elements in P concatenated with a label in Y.
+Transitions between states in our algorithm are defined using the suffix relationships
+between them. We use z1 ≤s z2 to denote that z1 is a suffix of z2 . The longest suffix
+relation on a set A is denoted by z1 ≤sA z2 . This relation holds true if and only if z1 , among
+all the elements of A, is the longest suffix of z2 . More formally, z1 ≤sA z2 if and only if
+z1 ∈ A and z1 ≤s z2 and ∀z ∈ A, z ≤s z2 ⇒ z ≤s z1 .
+2.3 Training
+Given a training set T , we estimate the model parameters λ = (λ1 , . . . , λm ) by maximizing
+the regularized log-likelihood function
+LT (λ) =
+
+(x,s)∈T
+
+log P (s|x) −
+
+λ2i
+m
+2
+i=1 2σreg
+
+where σreg is a regularization parameter. This function is convex, and thus can be maximized
+using any convex optimization algorithm. In our implementation, we use the L-BFGS
+method (Liu and Nocedal, 1989). The method requires computation of the value of LT (λ)
+and its partial derivatives
+∂LT
+˜ i ) − E(fi ) − λi
+= E(f
+2
+∂λi
+σreg
+˜ i) =
+where E(f
+E(fi ) = (x,s)∈T
+
+t fi (x, s, t) is the empirical feature sum of the feature fi , and
+P (s |x) t fi (x, s , t) is the expected feature sum of fi . To compute
+
+(x,s)∈T
+s
+
+984
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+LT (λ) and its partial derivatives, we need to efficiently compute the partition function Zx
+and the expected feature sum of fi ’s.
+2.3.1 Partition Function
+For any pi ∈ P, let pj,pi be the set of all segmentations for x1:j whose segment label
+sequences contain pi as the longest suffix among all elements in P. We define the forward
+variables αx (j, pi ) as follows
+αx (j, pi ) =
+
+λk fk (x, s, t)).
+
+exp(
+s∈pj,pi
+
+t
+
+k
+
+The above definition of the forward variable αx is the same as the usual definition of forward variable for first-order semi-CRFs when only zeroth-order and first-order semi-Markov
+features are used. The forward variables can be computed by dynamic programming:
+L−1
+
+Ψx (j − d, j, pk y)αx (j − d − 1, pk )
+
+αx (j, pi ) =
+d=0 (pk ,y):pi ≤sP pk y
+
+where L is the longest possible length of a segment,
+i:Pred(i) denotes summation over
+all i’s satisfying the predicate Pred(i), and Ψx (u, v, p) counts the contribution of features
+activated when there is a segment label sequence p with its last segment having boundary
+(u, v). The factor Ψx (u, v, p) is defined as
+Ψx (u, v, p) = exp(
+
+λi gi (x, u, v)).
+i:zi ≤s p
+
+The correctness of the above recurrence is shown in Appendix A. The partition function
+can be computed from the forward variables by
+αx (|x|, pi ).
+
+Zx =
+i
+
+2.3.2 Expected Feature Sum
+Let sj be the set of all partial segmentations for xj:|x| . For s ∈ sj and sk ∈ S, we define for
+each feature fi a conditional feature function fi (x, s, t|sk ), which takes the value of fi (x, s, t)
+when sk is the longest suffix (in S) of the segment label sequence for x1:j−1 . Otherwise, its
+value is 0. For example, if s = (s1 , . . . , sp ) ∈ sj and s1 = (u1 , v1 , y1 ), then
+fi (x, s, 1|sk ) =
+
+gi (x, u1 , v1 ) if zi ≤s sk y1
+.
+0
+otherwise
+
+For each si ∈ S, we define the backward variables βx (j, si ) as follows
+βx (j, si ) =
+
+λk fk (x, s, t|si )).
+
+exp(
+s∈sj
+
+k
+
+985
+
+t
+
+Cuong, Ye, Lee and Chieu
+
+s ੣ sj
+
+*si
+
+...
+
+y
+
+...
+
+x
+1
+
+2
+
+j
+
+j-1
+
+j+1
+
+|x|-2
+
+|x|-1
+
+|x|
+
+Figure 1: An illustration of the backward variable βx (j, si ). Each rectangular box corresponds to a segment. The regular expression ∗si means that si is the suffix of the
+segment label sequence for x1:j−1 . In fact, si is the longest suffix of the segment
+label sequence for x1:j−1 . The summation in the definition of βx (j, si ) is over all
+the partial segmentations s of xj:|x| .
+
+Figure 1 gives an illustration of the backward variable βx (j, si ). Note that our definition
+of βx uses the conditional feature function and does not generalize the usual definitions of
+the backward variables in first-order semi-CRFs (Sarawagi and Cohen, 2004) or high-order
+CRFs (Ye et al., 2009).
+Similar to the case of forward variables, we can compute βx (j, si ) by dynamic programming:
+L−1
+
+βx (j, si ) =
+
+Ψx (j, j + d, si y)βx (j + d + 1, sk ).
+d=0 (sk ,y):sk ≤sS si y
+
+In Appendix A, we show the correctness proof for the recurrence. We can now compute
+the marginals P (u, v, z|x) for each z ∈ Z and u ≤ v, where P (u, v, z|x) denotes the probability that a segmentation of x contains label pattern z and has (u, v) as z’s last segment
+boundaries. These marginals can be computed by
+P (u, v, z|x) =
+
+1
+Zx
+
+αx (u − 1, pi )Ψx (u, v, pi y)βx (v + 1, pi y).
+(pi ,y):z≤s pi y
+
+We compute the expected feature sum for fi by
+P (u, v, zi |x)gi (x, u, v).
+
+E(fi ) =
+(x,s)∈T u≤v
+
+In Appendix B, we give an example to illustrate our algorithms for the second-order CRF
+model.
+Using the conditional feature function to define the backward variables βx can help to
+simplify the computation of the marginals for high-order semi-CRF models. If we directly
+generalized the usual definition of the backward variables (Ye et al., 2009) to high-order
+semi-CRFs (which can be done easily), computing the marginals using these backward variables would be complicated. The main reason is that the semi-Markov features in Equation
+986
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+(1) only know the correct position (ut , vt ) of the last segment. In other words, although
+they know the label sequence of the previous segments, the features do not know the actual
+boundaries of these segments. So, to compute the marginal P (u, v, z|x) using the usual
+extension of the backward variables, we need to sum over all possible segmentations near
+(u, v) that contain (u, v) as a segment. This may result in an algorithm that is exponential
+in the order of the semi-CRFs. Note that this problem does not occur for high-order CRFs
+(Ye et al., 2009) since in these models, the segment length is 1 and thus we can always
+determine the boundaries of the segments.
+2.4 Decoding
+We compute the most likely segmentation for high-order semi-CRF by a Viterbi-like decoding algorithm. It is the same as the forward algorithm with the sum operator replaced by
+the max operator. Define
+δx (j, pi ) = max exp(
+s∈pj,pi
+
+λk fk (x, s, t)).
+k
+
+t
+
+These variables can be computed by
+δx (j, pi ) =
+
+max
+
+(d,pk ,y):pi ≤sP pk y
+
+Ψx (j − d, j, pk y)δx (j − d − 1, pk ).
+
+Note that the value of d is inclusively between 0 and L − 1 in the above equation. The most
+likely segmentation can be obtained using backtracking from maxi δx (|x|, pi ).
+2.5 Time Complexity
+We now give rough time bounds for the above algorithm. It is important to note that the
+bounds given in this part are pessimistic, and the computation can be done more quickly in
+practice. For simplicity, we assume that the features gi (·, ·, ·) can be computed in O(1) time
+for all i ∈ {1, 2, . . . , m} and the algorithm would pre-compute all the values of Ψx before
+doing the forward and backward passes. This assumption often holds for features used in
+practice, although one can define gi ’s which are arbitrarily difficult to compute.
+Since the total number of different patterns of the last argument of Ψx is O(|S||Y|) =
+O(|P||Y|2 ), the time complexity to pre-compute all the values of Ψx in the worst case is
+O(mT 2 |P||Y|2 ) = O(mn2 T 2 |P|), where T is the maximum length of an input sequence.
+After pre-computing the values of Ψx , we can compute all the values of αx in O(T 2 |Y||P|)
+time. Similarly, the time complexity to compute all the values of βx is O(T 2 |Y||S|). Then,
+with these values, we can compute all the marginal probabilities in O(T 2 |Z||P|). Finally,
+the time complexity for decoding is O(T 2 |Y||P|).
+
+3. Experiments
+In this section, we describe experiments comparing CRFs, semi-CRFs, high-order CRFs,
+and high-order semi-CRFs. The experiments in Section 3.1 show the advantages of the
+high-order CRFs, while those in Section 3.2 show the advantages of the high-order semiCRFs.
+987
+
+Cuong, Ye, Lee and Chieu
+
+3.1 Experiments with High-order CRFs
+The practical feasibility of making use of high-order features based on our algorithm lies
+in the observation that the label pattern sparsity assumption often holds. Our algorithm
+can be applied to take those high-order features into consideration: high-order features now
+form a component that one can play with in feature engineering.
+Now, the question is whether high-order features are practically significant. We first use
+a synthetic data set to explore conditions under which high-order features can be expected
+to help. We then use a handwritten character recognition problem to demonstrate that even
+incorporating simple high-order features can lead to impressive performance improvement
+on a naturally occurring data set.3
+3.1.1 Synthetic Data Generated Using k th -order Markov Model
+We randomly generate an order k Markov model with n states s1 , . . . , sn as follows. To
+increase pattern sparsity, we allow at most r randomly chosen possible next states given the
+previous k states. This limits the number of possible label sequences in each length (k + 1)
+segment from nk+1 to nk r. The conditional probabilities of these r next states are generated
+by randomly selecting a vector from the uniform distribution over [0, 1]r and normalizing
+them. Each state si generates an observation (a1 , . . . , am ) such that aj follows a Gaussian
+distribution with mean µij and standard deviation σ. Each µi,j is independently randomly
+generated from the uniform distribution over [0, 1]. In the experiments, we use values of
+n = 5, r = 2 and m = 3.
+The standard deviation σ controls how much information the observations reveal about
+the states. If σ is very small as compared to most µij ’s, then using the observations alone
+as features is likely to be good enough to obtain a good classifier of the states; the label
+correlations become less important for classification. However, if σ is large, then it is
+difficult to distinguish the states based on the observations alone and the label correlations,
+particularly those captured by higher order features are likely to be helpful.
+We use the current, previous, and next observations, rather than just the current observation as features, exploiting the conditional probability modeling strength of CRFs. For
+higher order features, we simply use all indicator features that appeared in the training
+data up to a maximum order. We considered the case k = 2 and k = 3, and varied σ and
+the maximum order. We run the experiment with training sets that contain 300, 400, and
+500 sequences, and evaluate the models on a test set that contains 500 sequences. All the
+sequences are of length 20; each sequence was initialized with a random sequence of length
+k and generated using the randomly generated order k Markov model. Training was done
+by maximizing the regularized log-likelihood with regularization parameter σreg = 1 in all
+experiments in this paper. The experimental results are shown in Figures 2.
+Figure 2 shows that the high-order indicator features are useful in all cases. In particular,
+we can see that it is beneficial to increase the order of the high-order features when the
+underlying model has longer distance correlations. As expected, increasing the order of the
+features beyond the order of the underlying model is not helpful. The results also suggest
+3. The results given in the earlier version of this work (Ye et al., 2009) are significantly lower than the
+results presented here due to a bug in the decoding algorithm. We have fixed the bug and reported the
+corrected results in this paper.
+
+988
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+Generated by 3rd-Order Markov Model
+Training set size = 300
+
+Generated by 2nd-Order Markov Model
+Training set size = 300
+100
+
+99
+
+98
+
+97
+95
+
+94
+
+Sigma=0.01
+
+92
+
+Sigma=0.05
+
+90
+
+Sigma=0.10
+
+Accuracy
+
+Accuracy
+
+96
+
+88
+
+93
+91
+
+Sigma=0.01
+
+89
+
+Sigma=0.05
+
+87
+
+Sigma=0.10
+
+85
+
+86
+
+83
+1
+
+2
+
+3
+
+4
+
+5
+
+1
+
+Maximum Order of Features
+
+Generated by 2nd-Order Markov Model
+Training set size = 400
+100
+
+99
+
+98
+
+97
+
+5
+
+95
+
+94
+
+Sigma=0.01
+
+92
+
+Sigma=0.05
+
+90
+
+Sigma=0.10
+
+Accuracy
+
+Accuracy
+
+4
+
+Generated by 3rd-Order Markov Model
+Training set size = 400
+
+96
+
+88
+
+93
+91
+
+Sigma=0.01
+
+89
+
+Sigma=0.05
+
+87
+
+Sigma=0.10
+
+85
+83
+
+86
+1
+
+2
+3
+Maximum Order of Features
+
+4
+
+1
+
+5
+
+99
+
+98
+
+97
+
+96
+
+95
+Sigma=0.01
+
+92
+
+Sigma=0.05
+
+90
+
+Sigma=0.10
+
+Accuracy
+
+100
+
+94
+
+2
+3
+Maximum Order of Features
+
+4
+
+5
+
+Generated by 3rd-Order Markov Model
+Training set size = 500
+
+Generated by 2nd-Order Markov Model
+Training set size = 500
+
+Accuracy
+
+2
+3
+Maximum Order of Features
+
+88
+
+93
+91
+
+Sigma=0.01
+
+89
+
+Sigma=0.05
+
+87
+
+Sigma=0.10
+
+85
+83
+
+86
+1
+
+2
+3
+Maximum Order of Features
+
+4
+
+1
+
+5
+
+2
+3
+Maximum Order of Features
+
+4
+
+5
+
+Figure 2: Accuracy of high-order CRFs as a function of maximum order on synthetic data
+sets.
+
+that in general, if the observations are closely coupled with the states (in the sense that
+different states correspond to very different observations), then feature engineering on the
+observations is generally enough to perform well, and it is less important to use high-order
+features to capture label correlations. On the other hand, when such coupling is not clear, it
+becomes important to capture the label correlations, and high-order features can be useful.
+We also study the effects of spurious, rare high-order patterns, and show that such
+patterns in the training or test set do not significantly impair performance of high-order
+CRFs in our experiments. For this purpose, we tabulate the proportion of fourth-order
+patterns (i.e., length 5 patterns) exclusive to the training or test sets in Table 2. The
+statistics show that around 10% of the patterns are exclusive to the training or test data.
+On the other hand, the results in Figure 2 show that when these patterns are used in the
+fourth-order model, the performance only drops slightly. Even if we increase the number of
+spurious, rare high-order patterns (by reducing the training data size), there is no significant
+drop in accuracies for high-order CRFs.
+989
+
+Cuong, Ye, Lee and Chieu
+
+Size
+
+300
+
+400
+
+500
+
+Order
+
+Train
+
+Test
+
+Train
+
+Test
+
+Train
+
+Test
+
+2
+3
+
+16/173
+34/393
+
+13/170
+58/417
+
+17/175
+37/406
+
+12/170
+48/417
+
+17/177
+42/424
+
+10/170
+35/417
+
+Table 2: Proportions of length 5 patterns exclusive to training and test data where the data
+sets are generated by 2nd -order and 3rd -order Markov models. For each proportion,
+the denominator shows the number of patterns in the data set, and the numerator
+shows the number of patterns exclusive to it. Nearly all of these patterns occur for
+less than 5 times (mostly once or twice). Note that the labels are first generated
+independently of σ in our data sets, thus the statistics are the same for all σ values.
+
+In practical problems, regularization may work well as a means for avoiding overfitting
+spurious high-order features. But this depends on how heavily the training process is
+regularized, and some tuning may be needed. For example, for a regularizer like Gaussian
+λ2
+regularizer i 2σ2i , the parameter σreg is often determined using a validation data set or
+reg
+cross-validation on the training data.
+3.1.2 Handwriting Recognition
+We used the handwriting recognition data set (Taskar et al., 2004), consisting of around 6100
+handwritten words with an average length of around 8 characters. The data was originally
+collected by Kassel (1995) from around 150 human subjects. The words were segmented
+into characters, and each character was converted into an image of 16 by 8 binary pixels.
+In this labeling problem, each xi is the image of a character, and each yi is a lower-case
+letter. The experimental setup is the same as that used by Taskar et al. (2004): the data
+set was divided into 10 folds with each fold having approximately 600 training and 5500
+test examples and the zero-th order features for a character are the pixel values.
+For high-order features, we again used all indicator features that appeared in the training
+data up to a maximum order. The average accuracies over the 10 folds are shown in Figure 3,
+where strong improvements are observed as the maximum order increases. Figure 3 also
+shows the number of label patterns, the total training time, and the running time per
+iteration of the L-BFGS algorithm (which requires computation of the gradient and value
+of the function at each iteration). Both the number of patterns and the running time appear
+to grow no more than linearly with the maximum order of the features for this data set.
+3.2 Experiments with High-order Semi-CRFs
+We now show that high-order semi-CRFs are also practically useful by evaluating their performance on three different sequence labeling tasks: relation argument detection, punctuation prediction in movie transcripts, and bibliography extraction. We compare high-order
+semi-CRFs with CRFs of different orders on the same tasks. In our tables, C k and SC k
+990
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+Handwritten Character Recognition
+98
+96
+94
+92
+Accuracy
+
+90
+88
+86
+84
+82
+80
+78
+76
+1
+
+2
+
+3
+
+4
+
+5
+
+Maximum Order of Features
+
+Runtimes for Character Recognition Training
+
+Number of Patterns for
+Character Recognition
+
+90
+
+3000
+
+70
+
+1000
+
+2500
+
+600
+
+50
+
+2000
+
+40
+
+1500
+
+Time (s)
+
+60
+
+800
+
+Time (s)
+
+Number of Patterns
+
+3500
+
+80
+
+1200
+
+30
+
+400
+
+1000
+20
+
+200
+
+Per Iteration Time (Left Axis)
+Total Time (Right axis)
+
+10
+
+0
+
+0
+
+2
+
+3
+
+4
+
+5
+
+2
+
+Maximum Order of Features
+
+500
+0
+
+3
+
+4
+
+5
+
+Maximum Order of Features
+
+Figure 3: Accuracy (top), number of label patterns (bottom left), and running time (bottom
+right) as a function of maximum order for the handwriting recognition data set.
+
+refer to k th -order CRF and semi-CRF respectively. We also give the number of segment
+label patterns and the running time of high-order semi-CRFs on the tasks.
+To test if the results obtained by high-order semi-CRFs are significantly better than
+lower order ones in terms of F1-measure, we perform the randomization tests described
+by Noreen (1989) and Yeh (2000). In such tests, we shuffle the responses by randomly
+reassigning the outputs of two systems we are comparing, and see how likely such a shuffle
+produces a difference in the metric of interest (in our case, the F1-measure). An exact
+randomization test will iterate through all possible shuffles, but due to the large data sizes,
+we use an approximate randomization test where for each comparison, we perform 10000
+random shuffles, and we repeat this for 999 times. It can be shown (Noreen, 1989; Yeh, 2000)
+that the significance level p is at most p = (nc +1)/(nt +1), where nc is the number of trials
+in which the difference between the F1-measures is greater than the original difference, and
+nt is the total number of iterations (in our case, 999). In Table 4, 7, and 9, we summarize
+the p obtained in the significance tests. We will comment on these results for each of the
+three data sets in the following sections.
+991
+
+Cuong, Ye, Lee and Chieu
+
+3.2.1 Relation Argument Detection
+In this experiment, we consider the problem of relation argument detection, which identifies
+and labels arguments of relations in English sentences. More specifically, we construct the
+label sequence for each sentence as follows: If a word in a sentence is the first argument of
+a relation, we label it as Arg1. If it is the second argument, we label it as Arg2. If the word
+is the first argument of a relation and it is also the second argument of another relation
+of the same type, we label it as Arg1Arg2. Otherwise, we label it as O, which means the
+word is not part of any relation. For example, in the labeled sentence “Peter/Arg1 is/O
+working/O for/O IBM/Arg2 ./O”, Peter and IBM are arguments of a relation.
+It is important to note that if a sentence contains many Arg1 ’s and Arg2 ’s, we do
+not know which pairs of Arg1 and Arg2 would be the actual arguments of a relation.
+Furthermore, the matching of Arg1 ’s and Arg2 ’s is not one-to-one either, since a word
+may participate in many different relations of the same type. Thus, to actually extract the
+relations in a sentence, we would need a separate classifier to determine which pairs of Arg1
+and Arg2 are the true mentions of a relation. In this experiment, however, we only focus
+and report on the sentence labeling task.
+The relation argument detection problem can be thought of as part of the relation
+extraction task, which requires extracting some prespecified relationships between named
+entity mentions. For example, if a person works for an organization, then the person and
+the organization form an organization-affiliation relation. Previous works on the relation
+extraction problem usually involve building a classifier to decide whether two named entity
+mentions are the actual arguments of the relation (GuoDong et al., 2005; Zhang et al.,
+2006). It may also be beneficial for the classifiers if they can make use of the information
+obtained from relation argument detection.
+We compared the models on the English portion of the Automatic Content Extraction
+(ACE) 2005 corpus (Walker et al., 2006). The corpus contains articles from six source
+domains and we group the labeled relations into six types. For the experiment, we trained
+a separate tagger for each type of relations. The training set contains 70% of the sentences
+from each source domain. The remaining 30% of the sentences are used for testing. Most
+sentences do not contain a relation and they make the trained tagger less likely to predict an
+argument. Hence, we randomly sampled from these negative examples so that the numbers
+of positive and negative examples are the same. We also assumed the manually annotated
+named entity mentions are known.
+For linear-chain CRF, the zeroth-order features are: surrounding words before and after
+the current word and their capitalization patterns; letter n-grams in words; surrounding
+named entity mentions, part-of-speeches before and after the current word and their combinations. The first-order features are: transitions without any observation, transitions
+with the current or previous words or combinations of their capitalization patterns. The
+high-order CRFs and semi-CRFs include additional high-order Markov and high-order semiMarkov transition features.
+From the results in Table 3, SC 2 gives an improvement of 5.52% on F1 score when
+compared to SC 1 on average. SC 3 further improves the performance of SC 2 by 0.75%
+F1 score. High-order CRFs show significant improvement on all except for PHYS, which
+has arguments located further apart compared to other relations. In Table 4, we see that
+992
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+C1
+
+C2
+
+C3
+
+SC 1
+
+SC 2
+
+SC 3
+
+Part-Whole
+Phys
+Org-Aff
+Gen-Aff
+Per-Soc
+Art
+
+38.68
+33.24
+60.56
+31.00
+53.67
+40.30
+
+41.41
+33.60
+63.28
+35.84
+58.62
+43.80
+
+46.52
+35.20
+64.93
+40.16
+58.31
+46.35
+
+38.57
+33.35
+60.77
+31.19
+53.46
+40.61
+
+42.56
+42.04
+63.72
+35.85
+57.66
+49.21
+
+44.30
+42.46
+64.86
+38.09
+57.07
+48.78
+
+Average
+
+42.91
+
+46.09
+
+48.58
+
+42.99
+
+48.51
+
+49.26
+
+Type
+
+Table 3: F1 scores of different CRF taggers for relation argument detection on six types of
+relations.
+
+C1
+C2
+C3
+SC 1
+SC 2
+
+C2
+
+C3
+
+SC 1
+
+SC 2
+
+SC 3
+
+0.001<
+–
+–
+–
+–
+
+0.001<
+0.001<
+–
+–
+–
+
+0.226<
+0.001>
+0.001>
+–
+–
+
+0.001<
+0.001<
+0.441>
+0.001<
+–
+
+0.001<
+0.001<
+0.074<
+0.001<
+0.017<
+
+Table 4: The values of p obtained in the statistical significance tests comparing CRFs and
+semi-CRFs of different orders in the relation argument detection task, where the
+p-value of the significance test is smaller than p . Figures in bold are where the
+difference is statistically significant at the 1% confidence level. The symbol <
+(respectively >) at position (i, j) means that the system on row i performs worse
+(respectively better) than the system on column j.
+
+for this task, first-order semi-CRF does not perform significantly better than simple linearchain CRF. We also observe that SC 3 outperforms C 1 , C 2 , and SC 1 significantly, while it
+outperforms C 3 and SC 2 with p-values at most 7.4% and 1.7% respectively. Figure 4 shows
+the average number of segment label patterns and the average running time of high-order
+semi-CRFs as a function of the maximum order.
+The CRFs in Table 3 do not use begin-inside-outside (BIO) encoding of the labels. In
+the labeling protocol described above for this problem, although the label O indicates the
+outside of any argument, we do not differentiate between the beginning and the insides of
+an argument. In Table 5, we report the F1 scores of C 1 , C 2 , and C 3 using BIO encoding
+(C 1 -BIO, C 2 -BIO, and C 3 -BIO respectively). We use Arg1-B, Arg2-B, and Arg1Arg2-B to
+indicate the beginning of an argument and use Arg1-I, Arg2-I, and Arg1Arg2-I to indicate
+the insides of an argument. The scores are computed after removing the B and I suffixes
+in the labels. From the results in Table 5, BIO encoding does not help C 1 -BIO and C 2 BIO much, but it helps to improve C 3 -BIO substantially. Overall, C 3 -BIO achieves the
+best average F1 score (51.11%) for the relation argument detection problem. Comparing
+C 3 -BIO and SC 3 on each individual relation, we note that SC 3 is useful for PHYS where
+993
+
+Cuong, Ye, Lee and Chieu
+
+Average Number of Patterns for
+Relation Argument Detection
+
+Average Runtimes for Relation
+Argument Detection
+3000
+
+160000
+
+140
+
+Per Iteration Time (Left axis)
+
+140000
+
+Total Time (Right axis)
+
+120
+
+120000
+
+2000
+
+100
+Time (s)
+
+Number of Patterns
+
+2500
+
+80
+60
+
+100000
+
+1500
+
+80000
+60000
+
+1000
+
+40
+
+Time (s)
+
+160
+
+40000
+
+20
+
+500
+
+0
+
+0
+
+2
+
+3
+
+4
+
+5
+
+20000
+0
+2
+
+Maximum Order of Features
+
+3
+
+4
+
+5
+
+Maximum Order of Features
+
+Figure 4: Average number of segment label patterns (left) and average running time (right)
+of high-order semi-CRFs as a function of maximum order for relation argument
+detection.
+
+C1
+
+C2
+
+C3
+
+SC 3
+
+C 1 -BIO
+
+C 2 -BIO
+
+C 3 -BIO
+
+Part-Whole
+Phys
+Org-Aff
+Gen-Aff
+Per-Soc
+Art
+
+38.68
+33.24
+60.56
+31.00
+53.67
+40.30
+
+41.41
+33.60
+63.28
+35.84
+58.62
+43.80
+
+46.52
+35.20
+64.93
+40.16
+58.31
+46.35
+
+44.30
+42.46
+64.86
+38.09
+57.07
+48.78
+
+38.66
+33.81
+61.33
+30.38
+55.07
+40.62
+
+41.23
+34.77
+64.33
+35.03
+58.50
+43.01
+
+50.30
+36.88
+67.50
+43.37
+59.37
+49.25
+
+Average
+
+42.91
+
+46.09
+
+48.58
+
+49.26
+
+43.31
+
+46.15
+
+51.11
+
+Type
+
+Table 5: F1 scores of different (non-semi) CRF taggers for relation argument detection using
+BIO encoding of the labels (C 1 -BIO, C 2 -BIO, and C 3 -BIO). The scores of C 1 , C 2 ,
+C 3 , and SC 3 are copied from Table 3 for comparison.
+
+the arguments are located further apart. C 3 -BIO, on the other hand, is useful for other
+relations where the arguments are located near to each other.
+3.2.2 Punctuation Prediction
+In this experiment, we evaluated the performance of high-order semi-CRFs on the punctuation prediction task. This task is usually used as a post-processing step for automatic
+speech recognition systems to add punctuations to the transcribed conversational speech
+texts (Liu et al., 2005; Lu and Ng, 2010). Previous evaluations on the IWSLT corpus (Paul,
+2009) have shown that capturing long-range dependencies is useful for the task (Lu and Ng,
+2010). In the experiment, we used high-order CRFs and high-order semi-CRFs to capture
+long-range dependencies in the labels and showed that they outperform linear-chain CRF
+and first-order semi-CRF on movie transcripts data, which contains 5450 conversational
+speech texts with annotated punctuations from various movie transcripts online. We used
+994
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+C1
+
+C2
+
+C3
+
+SC 1
+
+SC 2
+
+SC 3
+
+Comma
+Period
+QMark
+
+59.29
+75.37
+58.18
+
+59.70
+75.37
+59.54
+
+59.90
+75.46
+60.57
+
+61.13
+75.03
+57.61
+
+60.89
+78.97
+74.05
+
+60.35
+78.82
+73.56
+
+All
+
+66.21
+
+66.53
+
+66.85
+
+66.73
+
+70.85
+
+70.47
+
+Tag
+
+Table 6: F1 scores for punctuation prediction task.
+averaged scores.
+
+C1
+C2
+C3
+SC 1
+SC 2
+
+The last row contains the micro-
+
+C2
+
+C3
+
+SC 1
+
+SC 2
+
+SC 3
+
+0.155<
+–
+–
+–
+–
+
+0.048<
+0.153<
+–
+–
+–
+
+0.043<
+0.289<
+0.378>
+–
+–
+
+0.001<
+0.001<
+0.001<
+0.001<
+–
+
+0.001<
+0.001<
+0.001<
+0.001<
+0.044>
+
+Table 7: The values of p obtained in the statistical significance tests comparing CRFs and
+semi-CRFs of different orders in the punctuation prediction task, where the p-value
+of the significance test is smaller than p . Figures in bold are where the difference
+is statistically significant at the 1% confidence level. The symbol < (respectively
+>) at position (i, j) means that the system on row i performs worse (respectively
+better) than the system on column j.
+
+60% of the texts for training and the remaining 40% for testing. The punctuation and case
+information are removed, and the words are tagged with different labels.
+Originally, there are 4 labels: None, Comma, Period, and QMark, which respectively
+indicate that no punctuation, a comma, a period, or a question mark comes immediately
+after the current word. To help capture the long-range dependencies, we added 6 more
+labels: None-Comma, None-Period, None-QMark, Comma-Comma, QMark-QMark, and
+Period-Period. The left parts of these labels serve the same purpose as the original four
+labels. The right parts of the labels indicate that the current word is the beginning of a text
+segment which ends in comma, period, or question mark. This part is used to capture useful
+information at the beginning of the segment. For example, the sentence “no, she is working.”
+would be labeled as “no/Comma-Comma she/None-Period is/None working/Period”. In
+this case, she is working is a text segment (with length 3) that ends with a period. This
+information is marked in the label of the word working and the right part of the label of
+the word she. The text segment no (with length 1) is also labeled in a similar way.
+We reported the F1 scores of the models in Table 6. We used the combinations of words
+and their positions relatively to the current position as zeroth-order features. For first-order
+features, we used transitions without any observation, and transitions with the current or
+previous words, as well as their combinations. C k uses k th -order Markov features, while
+995
+
+Cuong, Ye, Lee and Chieu
+
+Runtimes for Punctuation Prediction
+2000
+
+120000
+
+1600
+
+1800
+
+Per Iteration Time (Left axis)
+
+1400
+
+1600
+
+Total Time (Right axis)
+
+1200
+
+1400
+
+1000
+800
+
+1000
+600
+400
+
+200
+
+200
+
+0
+
+0
+4
+
+60000
+
+800
+
+400
+
+3
+
+80000
+
+1200
+
+600
+
+2
+
+40000
+20000
+0
+2
+
+5
+
+Maximum Order of Features
+
+100000
+
+Time (s)
+
+Time (s)
+
+Number of Patterns
+
+Number of Patterns for
+Punctuation Prediction
+
+3
+4
+Maximum Order of Features
+
+5
+
+Figure 5: Number of segment label patterns (left) and running time (right) of high-order
+semi-CRFs as a function of maximum order for the punctuation prediction data
+set.
+
+SC k uses k th -order semi-Markov transition features with the observed words in the last
+segment.
+The scores reported in Table 6 are lower than those of the IWSLT corpus (Lu and Ng,
+2010) because online movie transcripts are usually annotated by different people, and they
+tend to put the punctuations slightly differently. Besides, in movies, people sometimes use
+declarative sentences as questions. Hence, the punctuations are harder to predict. Nevertheless, the results have clearly shown that high-order semi-CRFs can capture long-range
+dependencies with the help of additional labels and can achieve more than 3.6% improvement in F1 score compared to the CRFs and first-order semi-CRF. SC k also outperforms
+C k for all k. For this task, using third-order semi-Markov features decrease the performance
+of SC 3 slightly compared to SC 2 . From Table 7, we see that the p-value of the statistical
+significance test comparing SC 2 and SC 3 is at most 4.4%, while both SC 2 and SC 3 significantly outperform the other models. Figure 5 shows the number of segment label patterns
+and the running time of high-order semi-CRFs as a function of the maximum order.
+3.2.3 Bibliography Extraction
+In this experiment, we consider the problem of bibliography extraction in scientific papers.
+For this problem, we need to divide a reference, such as those appearing in the References
+section of this paper, into the following 13 types of segments: Author, Booktitle, Date,
+Editor, Institution, Journal, Location, Note, Pages, Publisher, Tech, Title, or Volume. The
+problem can be naturally considered as a sequence labeling problem with the above labels.
+We evaluated the performance of high-order semi-CRFs and CRFs on the bibliography
+extraction problem with the Cora Information Extraction data set.4 In the data set, there
+are 500 instances of references. We used 300 instances for training and the remaining 200
+instances for testing.
+We reported in Table 8 the F1 scores of the models. In C 1 , zeroth-order features include
+the surrounding words at each position and letter n-grams, and first-order features include
+4. The data set is available at http://people.cs.umass.edu/~mccallum/data.html.
+
+996
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+C1
+
+C2
+
+C3
+
+SC 1
+
+SC 2
+
+SC 3
+
+Author
+Booktitle
+Date
+Editor
+Institution
+Journal
+Location
+Note
+Pages
+Publisher
+Tech
+Title
+Volume
+
+94.21
+73.05
+95.67
+68.57
+68.57
+78.08
+70.33
+66.67
+84.82
+84.62
+77.78
+89.62
+66.23
+
+91.65
+75.00
+96.68
+72.73
+64.71
+78.32
+69.66
+57.14
+87.83
+84.62
+80.00
+85.42
+75.68
+
+93.67
+72.39
+94.36
+66.67
+64.71
+78.32
+68.13
+57.14
+85.34
+83.54
+80.00
+86.73
+72.60
+
+93.97
+75.74
+95.19
+57.14
+70.27
+77.55
+68.13
+57.14
+85.96
+84.62
+77.78
+90.18
+71.90
+
+94.74
+78.11
+95.43
+58.82
+70.27
+77.55
+67.39
+66.67
+86.96
+86.08
+77.78
+92.23
+72.37
+
+94.00
+76.47
+95.70
+54.55
+64.86
+75.68
+65.22
+66.67
+87.18
+86.08
+77.78
+90.95
+75.00
+
+All
+
+85.34
+
+85.47
+
+84.77
+
+85.67
+
+86.67
+
+86.07
+
+Tag
+
+Table 8: F1 scores for bibliography extraction task. The last row contains the microaveraged scores.
+
+C1
+C2
+C3
+SC 1
+SC 2
+
+C2
+
+C3
+
+SC 1
+
+SC 2
+
+SC 3
+
+0.393<
+–
+–
+–
+–
+
+0.174>
+0.073>
+–
+–
+–
+
+0.198<
+0.351<
+0.095<
+–
+–
+
+0.004<
+0.019<
+0.002<
+0.003<
+–
+
+0.095<
+0.161<
+0.030<
+0.200<
+0.025>
+
+Table 9: The values of p obtained in the statistical significance tests comparing CRFs and
+semi-CRFs of different orders in the bibliography extraction task, where the pvalue of the significance test is smaller than p . Figures in bold are where the
+difference is statistically significant at the 1% confidence level. The symbol <
+(respectively >) at position (i, j) means that the system on row i performs worse
+(respectively better) than the system on column j.
+
+transitions with words at the current or previous positions. C k and SC k (1 ≤ k ≤ 3) use
+additional k th -order Markov and semi-Markov transition features.
+From Table 8, high-order semi-CRFs perform generally better than high-order CRFs
+and first-order semi-CRF. SC 2 achieves the best overall performance with 86.67% F1 score.
+From Table 9, SC 2 outperforms C 2 and SC 3 with a p-value at most 1.9% and 2.5% respectively, while it outperforms other models significantly. Figure 6 shows the number of
+segment label patterns and the running time of high-order semi-CRFs as a function of the
+maximum order.
+997
+
+Cuong, Ye, Lee and Chieu
+
+Runtimes for Bibliography Extraction
+
+Number of Patterns for
+Bibliography Extraction
+700
+
+5500
+
+220000
+
+5000
+
+198000
+
+4500
+
+176000
+
+4000
+
+154000
+
+3500
+
+132000
+
+3000
+
+110000
+
+2500
+
+88000
+
+400
+300
+
+2000
+
+Time (s)
+
+500
+Time (s)
+
+Number of Patterns
+
+600
+
+66000
+
+200
+1500
+
+100
+
+1000
+
+0
+
+500
+
+2
+
+3
+
+4
+
+Per Iteration Time (Left axis)
+Total Time (Right axis)
+
+Maximum Order of Features
+
+22000
+0
+
+2
+
+5
+
+44000
+
+3
+4
+Maximum Order of Features
+
+5
+
+Figure 6: Number of segment label patterns (left) and running time (right) of high-order
+semi-CRFs as a function of maximum order for the bibliography extraction data
+set.
+
+3.3 Discussions
+From Figures 4, 5, and 6, the number of segment label patterns of high-order features
+grows about linearly in the maximum order of features. The running time of high-order
+semi-CRFs on the bibliography extraction task is also nearly linear in the maximum order
+of the features, while the running times on the relation argument detection task and the
+punctuation prediction task grow more than linearly in the maximum order of features. We
+also note that from the time complexity discussions in Section 2.5 and the setup for these
+experiments, the time complexity of our algorithm is O(|Z|2 ), where |Z| is the number of
+segment label patterns.
+From Tables 6 and 8, there is a drop in F1 scores for the punctuation prediction task
+and the bibliography extraction task when we increase the order of the semi-CRFs from
+2 to 3. For the punctuation task, the drop is not very significant and the third-order
+semi-CRF still performs significantly better than the CRFs or the first-order semi-CRFs.
+For the bibliography extraction task, there is a big drop in the F1 scores for some of the
+labels and the third-order semi-CRF does not significantly outperform the other models.
+However, it does not indicate that the third-order semi-CRF is not useful for this task since
+we fixed the regularization parameter σreg = 1 for all the models in this experiment. If we
+set σreg = 10 for the third-order semi-CRF, it can achieve 87.45% F1 score and outperform
+all the other models. In practice, if we have enough data, we can choose a suitable σreg for
+each individual model using a validation data set or cross-validation on the training data.
+We can also allow different regularizers for features of different orders5 and use a validation
+set to determine the most suitable combination of regularizers.
+An important question in practice is which features (or equivalently, label patterns)
+should be included in the model. In our experiments, we used all the label patterns that
+appear in the training data. This simple approach is usually reasonable with a suitable
+value of the regularization parameter σreg . For applications where the pattern sparsity
+assumption is not satisfied, but certain patterns do not appear frequently enough and are
+5. This would require a slight change to our regularized log-likelihood function.
+
+998
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+not really important, then it is useful to see how we can select a subset of features with few
+distinct label patterns automatically. One possible approach would be to use boosting type
+methods (Dietterich et al., 2004) to sequentially select useful features.
+For high-order CRFs, it should be possible to use kernels within the approach here. On
+the handwritten character problem, Taskar et al. (2004) reported substantial improvement
+in performance with the use of kernels. Use of kernels together with high-order features
+may lead to further improvements. However, we note that the advantage of the higher
+order features may become less substantial as the observations become more powerful in
+distinguishing the classes. Whether the use of higher order features together with kernels
+brings substantial improvement in performance is likely to be problem dependent.
+
+4. Related Work
+A commonly used inference algorithm for CRFs is the clique tree algorithm (Huang and
+Darwiche, 1996). Defining a feature depending on k (not necessarily consecutive) labels
+will require forming a clique of size k, resulting in a clique-tree with tree-width greater or
+equal to k. Inference on such a clique tree will be exponential in k. For sequence models, a
+feature of order k can be incorporated into a k th -order Markov chain, but the complexity
+of inference is again exponential in k. Under the label pattern sparsity assumption, our
+algorithm achieves efficiency by maintaining only information related to a few occurred
+patterns, while previous algorithms maintain information about all (exponentially many)
+possible patterns.
+Long distance dependencies can also be captured using hierarchical models such as
+Hierarchical Hidden Markov Model (HHMM) (Fine et al., 1998) or Probabilistic Context
+Free Grammar (PCFG) (Heemskerk, 1993). The time complexity of inference in an HHMM
+is O(min{nl3 , n2 l}) (Fine et al., 1998; Murphy and Paskin, 2002), where n is the number of
+states and l is the length of the sequence. Discriminative versions such as hierarchical semiCRF have also been studied (Truyen et al., 2008). Inference in PCFG and its discriminative
+version can also be efficiently done in O(ml3 ) where m is the number of productions in
+the grammar (Jelinek et al., 1992). These methods are able to capture dependencies of
+arbitrary lengths, unlike k th -order Markov chains. However, to do efficient learning with
+these methods, the hierarchical structure of the examples needs to be provided. For example,
+if we use PCFG to do character sequence labeling, we need to provide the parse trees for
+efficient learning; providing the labels for each character is not sufficient. Hence, a training
+set that has not been labeled with hierarchical labels will need to be relabeled before it
+can be trained efficiently. Alternatively, methods that employ hidden variables can be used
+(e.g., to infer the hidden parse tree) but the optimization problem is no longer convex
+and local optima can sometimes be a problem. The high-order semi-CRF presented in
+this paper allows us to capture a different class of dependencies that does not depend
+on hierarchical structures in the data, while keeping the high-order semi-CRF objective a
+convex optimization problem.
+Another work on using high-order features for CRFs was independently done by Qian
+et al. (2009). Their work applies to a larger class of CRFs, including those requiring
+exponential time for inference, and they did not identify subclasses for which inference is
+guaranteed to be efficient. For sequence labeling with high-order features, Qian and Liu
+999
+
+Cuong, Ye, Lee and Chieu
+
+(2012) developed an efficient decoding algorithm under the assumption that all the highorder features have non-negative weights. Their decoding algorithm requires quadratic
+running time on the number of high-order features in the worst case.
+There are other models similar to the high-order CRF with pattern sparsity assumption
+(Ye et al., 2009), a special case of the high-order semi-CRF presented in this paper. They
+include the CRFs that use the sparse higher-order potentials (Rother et al., 2009) or the
+pattern-based potentials (Komodakis and Paragios, 2009). Rother et al. (2009) proposed a
+method for minimization of sparse higher order energy functions by first transforming them
+into a quadratic functions and then employing efficient inference algorithms to minimize
+these resulting functions. For the pattern-based potentials, Komodakis and Paragios (2009)
+derived an efficient message-passing algorithm for inference. The algorithm is based on the
+master-slave framework where the original high-order optimization problem is decomposed
+into smaller subproblems that can be solved easily. Other tractable inference algorithms
+with high-order potentials include the α-expansion and αβ-swap algorithms for the P n
+Potts model (Kohli et al., 2007) and the MAP message passing algorithm for cardinality
+and order potentials (Tarlow et al., 2010). A special case of the order potentials, the
+before-after potential (Tarlow et al., 2010), can also be used to capture some semi-Markov
+structures in the data labelings.
+
+5. Conclusion
+The label pattern sparsity assumption often holds in real applications, and we give efficient
+inference algorithms for CRFs using high-order dependencies between labels or segments
+when the pattern sparsity assumption is satisfied. This allows high-order features to be
+explored in feature engineering for real applications. We studied the conditions that are
+favorable for using high-order features in CRFs with a synthetic data set, and demonstrated
+that using simple high-order features can lead to performance improvement on a handwriting
+recognition problem. We also demonstrated that high-order semi-CRFs outperform highorder CRFs and first-order semi-CRF in segmentation problems like relation argument
+detection, punctuation prediction, and bibliography extraction.
+
+Acknowledgments
+This material is based on research sponsored by DSO under grant DSOCL11102 and by
+the Air Force Research Laboratory, under agreement number FA2386-09-1-4123. The U.S.
+Government is authorized to reproduce and distribute reprints for Governmental purposes
+notwithstanding any copyright notation thereon. The views and conclusions contained
+herein are those of the authors and should not be interpreted as necessarily representing
+the official policies or endorsements, either expressed or implied, of the Air Force Research
+Laboratory or the U.S. Government. The authors also would like to thank Sumit Bhagwani for his help with the HOSemiCRF package and the anonymous reviewers for their
+constructive comments.
+1000
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+Appendix A. Correctness of the Forward and Backward Algorithms
+In this appendix, we will prove the correctness of the forward and backward algorithms
+described in Section 2. We shall prove two lemmas and then provide the proofs for the
+correctness of the forward and backward algorithms as well as the marginal computation.
+Lemma 1 below gives the key properties that can be used in an inductive proof. Lemma
+1(a) shows that we can partition the segmentations using the forward states. Lemma 1(bc) show that considering all (pk , y) : pi ≤sP pk y is sufficient for obtaining the sum over
+all sequences pi ≤sP zy, while Lemma 1(d) is used to show that the features are counted
+correctly.
+Lemma 1 Let s be a segmentation for a prefix of x. Let ω(s, t) = exp( m
+k=1 λk fk (x, s, t))
+|s|
+|s|
+m
+and ω(s) = exp( k=1 t=1 λk fk (x, s, t)) = t=1 ω(s, t).
+(a) For any segment label sequence z, there exists a unique pi ∈ P such that pi ≤sP z.
+(b) For any segment label sequence z and y ∈ Y, if pk ≤sP z and pi ≤sP pk y, then pi ≤sP zy.
+(c) For any za ∈ Z, y ∈ Y, and any segment label sequence z, if za ≤s zy, and pk ≤sP z,
+then za ≤s pk y.
+(d) Let s = ((u1 , v1 , y1 ), . . . , (u|s| , v|s| , y|s| )) and let pkt ≤sP y1 y2 . . . yt for t = 1, . . . , |s|. Then
+ω(s) =
+
+|s|
+kt−1 y )
+t
+t=1 Ψx (ut , vt , p
+
+= ω(s1:|s|−1 )Ψx (u|s| , v|s| , pk|s|−1 y|s| ).
+
+A.1 Proof of Lemma 1
+(a) The intersection of P and the set of prefixes of z contains at least one element , and
+is finite.
+(b) We have pi ≤s pk y ≤s zy. Furthermore, if pj ≤s zy, then we have pj1:|pj |−1 ≤s z. Thus,
+pj1:|pj |−1 ≤s pk since pk ≤sP z. Hence, pj = pj1:|pj |−1 y ≤s pk y. Since pi ≤sP pk y, we
+have pj ≤s pi . Therefore, pi ≤sP zy.
+(c) Since za1:|za |−1 ≤s z and pk ≤sP z, we have za1:|za |−1 ≤s pk . Thus, za ≤s pk y.
+(d) Straightforward from part (c) and definition of Ψx .
+Lemma 2 below serves the same purpose as Lemma 1 for showing correctness.
+i
+Lemma 2 Let s be a segmentation for a suffix of x. Let ω(s, t|si ) = exp( m
+k=1 λk fk (x, s, t|s ))
+|s|
+|s|
+i
+i
+and ω(s|si ) = exp( m
+t=1 λk fk (x, s, t|s )) =
+t=1 ω(s, t|s ).
+k=1
+i
+k
+(a) For all s ∈ S and y ∈ Y, there exists a unique s ∈ S such that sk ≤sS si y.
+(b) For any za ∈ Z and any segment label sequences z1 , z2 , if za ≤s z1 z2 , and si ≤sS z1 ,
+then za ≤s si z2 .
+(c) If sk ≤sS si y, and (u, v, y) · s is a segmentation for xu:|x| , then ω((u, v, y) · s|si ) =
+Ψx (u, v, si y)ω(s|sk ).
+
+A.2 Proof of Lemma 2
+(a) Note that y ∈ S and y ≤s si y and the number of suffixes of si y is finite.
+1001
+
+Cuong, Ye, Lee and Chieu
+
+(b) This is clearly true if za is not longer than z2 . If za is longer than z2 , let p be the
+prefix of za obtained by stripping off the suffix z2 . Then p is a suffix of z1 and p ∈ S.
+Since si is the longest suffix of z1 in S, p is a suffix of si , thus za = pz2 is a suffix of
+si z2 .
+(c) From part (b), we have ω(s|si y) = ω(s|sk ). Thus, ω((u, v, y)·s|si ) = Ψx (u, v, si y)ω(s|si y) =
+Ψx (u, v, si y)ω(s|sk ).
+A.3 Correctness of the Forward Algorithm
+Given the forward variables αx (j, pi ) as defined in Section 2
+m
+
+αx (j, pi ) =
+
+|s|
+
+exp(
+s∈pj,pi
+
+ω(s),
+
+λk fk (x, s, t)) =
+s∈pj,pi
+
+k=1 t=1
+
+we prove that the following recurrence can be used to compute αx (j, pi )’s by induction on
+j,
+L−1
+
+αx (j, pi ) =
+
+Ψx (j − d, j, pk y)αx (j − d − 1, pk ).
+d=0
+
+(2)
+
+(pk ,y):pi ≤sP pk y
+
+Base case: If j = 1, for any pi ∈ P, we can initialize the values of αx (1, pi ) such that
+m
+i
+
+αx (1, p ) =
+
+|s|
+
+exp(
+s∈p1,pi
+
+λk fk (x, s, t)) =
+
+ω(s).
+s∈p1,pi
+
+k=1 t=1
+
+Inductive step: Assume that for all j < j and pi ∈ P, we have
+m
+i
+
+αx (j , p ) =
+
+|s|
+
+exp(
+s∈pj
+
+,pi
+
+λk fk (x, s, t)) =
+
+ω(s).
+s∈pj
+
+k=1 t=1
+
+,pi
+
+Then, using Lemma 1,
+αx (j, pi ) =
+=
+=
+=
+=
+
+s∈pj,pi
+L−1
+d=0
+L−1
+d=0
+L−1
+d=0
+L−1
+d=0
+
+ω(s)
+ω(s · (j − d, j, y))
+
+(pk ,y):pi ≤sP pk y
+
+s∈pj−d−1,pk
+
+(pk ,y):pi ≤sP pk y
+
+s∈pj−d−1,pk [Ψx (j
+
+|s|
+t=1 ω(s, t)]
+|s|
+t=1 ω(s, t)
+s∈pj−d−1,pk
+k
+(j − d − 1, p ).
+
+− d, j, pk y)
+
+(pk ,y):pi ≤sP pk y
+
+Ψx (j − d, j, pk y)
+
+(pk ,y):pi ≤sP pk y
+
+Ψx (j − d, j, pk y)αx
+
+Hence, by induction, Recurrence (2) correctly computes the forward variables αx (j, pi )’s.
+1002
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+A.4 Correctness of the Backward Algorithm
+Given the backward variables βx (j, si ) as defined in Section 2
+m
+i
+
+βx (j, s ) =
+
+|s|
+
+λk fk (x, s, t|si )) =
+
+exp(
+s∈sj
+
+ω(s|si ),
+s∈sj
+
+k=1 t=1
+
+we prove that the following recurrence can be used to compute βx (j, si )’s by induction on
+j,
+L−1
+
+βx (j, si ) =
+
+Ψx (j, j + d, si y)βx (j + d + 1, sk ).
+
+(3)
+
+d=0 (sk ,y):sk ≤sS si y
+
+Base case: If j = |x|, for any si ∈ S, we can initialize the values of βx (|x|, si ) such that
+m
+i
+
+βx (|x|, s ) =
+
+|s|
+
+λk fk (x, s, t|si )) =
+
+exp(
+s∈s|x|
+
+ω(s|si ).
+s∈s|x|
+
+k=1 t=1
+
+Inductive step: Assume that for all j > j and si ∈ S, we have
+m
+i
+
+βx (j , s ) =
+
+|s|
+
+λk fk (x, s, t|si )) =
+
+exp(
+s∈sj
+
+ω(s|si ).
+s∈sj
+
+k=1 t=1
+
+Then, using Lemma 2,
+βx (j, si ) =
+=
+=
+=
+
+s∈sj
+L−1
+d=0
+L−1
+d=0
+L−1
+d=0
+
+ω(s|si )
+(sk ,y):sk ≤sS si y
+
+s∈sj+d+1
+
+ω((j, j + d, y) · s|si )
+
+(sk ,y):sk ≤sS si y
+
+s∈sj+d+1
+
+Ψx (j, j + d, si y)ω(s|sk )
+
+(sk ,y):sk ≤sS si y
+
+Ψx (j, j + d, si y)βx (j + d + 1, sk ).
+
+Hence, by induction, Recurrence (3) correctly computes the backward variables βx (j, si )’s.
+A.5 Correctness of the Marginal Computation
+Consider a segmentation s such that the segment label sequence of s contains z as a subsequence with the last segment of z having boundaries (u, v). Suppose s = s1 · (u, v, y) · s2
+and let y1 be the segment label sequence of s1 . If pi ≤sP y1 , then we have pi y ≤sS y1 y. In
+this case, it can be verified that ω(s) = ω(s1 )Ψ(u, v, pi y)ω(s2 |pi y). The marginal formula
+thus follows easily.
+
+Appendix B. An Example for the Algorithms
+In this appendix, we give an example to illustrate our algorithms. For simplicity, we use the
+second-order CRF as our model. Extensions to higher-order CRFs or semi-CRFs should
+be straightforward by respectively expanding the set of segment label patterns or summing
+over all the possible lengths d of the segments.
+1003
+
+Cuong, Ye, Lee and Chieu
+
+i
+
+fi (x, s, t)
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+
+xt = P eter ∧ st = P
+xt = goes ∧ st = O
+xt = to ∧ st = O
+xt = Britain ∧ st = L
+xt = and ∧ st = O
+xt = F rance ∧ st = L
+xt = annually ∧ st = O
+xt = . ∧ s t = O
+st−2 st−1 st = LOL
+
+Table 10: List of features for the example in Appendix B.
+
+t\z
+
+P
+
+O
+
+L
+
+LOL
+
+1
+2
+3
+4
+5
+6
+7
+8
+
+1
+0
+0
+0
+0
+0
+0
+0
+
+0
+1
+1
+0
+1
+0
+1
+1
+
+0
+0
+0
+1
+0
+1
+0
+0
+
+0
+0
+0
+0
+0
+1
+0
+0
+
+Table 11: The values of
+
+i:zi =z λi gi (x, ut , vt )
+
+=
+
+i:zi =z λi gi (x, t, t).
+
+In this example, let x be the sentence “Peter goes to Britain and France annually.”.
+Assume there are 9 binary features defined by Boolean predicates as in Table 10, and each
+λi = 1. The label set is {P, O, L} where P represents Person, L represents Location and
+O represents Others. Note that for second-order CRFs, the length of all the segments is 1
+and thus st = yt for all t.
+The segment label pattern set is Z = {P, O, L, LOL}. Table 11 shows the sum of the
+weights for features with the same segment label pattern at each position. We have P =
+{ , P, O, L, LO} and S = {P, O, L, P P, P O, P L, OP, OO, OL, LP, LO, LL, LOP, LOO, LOL}.
+The tables for ln αx and ln βx are shown in Table 12 and Table 13 respectively.
+In Figure 7, we give a diagram to show the messages passed from step j − 1 to step j
+to compute the forward variables αx . We also give a diagram in Figure 8 to show some
+messages passed from step j + 1 to step j to compute the backward variables βx .
+We illustrate the computation of αx with αx (6, L). The condition (pk , y) : pi ≤sP pk y
+with pi = L gives us the following 5 pairs as (pk , y): {( , L), (P, L), (O, L), (L, L), (LO, L)}.
+Thus,
+αx (6, L) = αx (5, )Ψx (6, 6, L) + αx (5, P )Ψx (6, 6, P L) + αx (5, O)Ψx (6, 6, OL) +
+αx (5, L)Ψx (6, 6, LL) + αx (5, LO)Ψx (6, 6, LOL)
+= 0Ψx (6, 6, L) + αx (5, P )e + αx (5, O)e + αx (5, L)e + αx (5, LO)e2 .
+1004
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+D x ( j  1, İ )
+
+D x ( j  1, P)
+
+D x ( j  1, O)
+
+D x ( j  1, L)
+
+D x ( j  1, LO )
+
+D x ( j, İ)
+
+D x ( j, P)
+
+D x ( j, O)
+
+D x ( j , L)
+
+D x ( j , LO )
+
+Figure 7: Messages passed from step j − 1 to step j in order to compute the forward
+variables. For example, αx (j, O) is computed from αx (j − 1, ), αx (j − 1, P ),
+αx (j − 1, O), and αx (j − 1, LO).
+
+...
+
+E x ( j , L)
+
+...
+
+E x ( j , PL)
+
+...
+
+...
+
+E x ( j , OL)
+
+E x ( j  1, LP )
+
+...
+
+E x ( j  1, LO )
+
+E x ( j , LL)
+
+...
+
+E x ( j  1, LL)
+
+...
+
+E x ( j , LOL)
+
+...
+
+Figure 8: Some messages passed from step j + 1 to step j in order to compute the backward variables. In this example, all the variables βx (j, L), βx (j, P L), βx (j, OL),
+βx (j, LL), and βx (j, LOL) are computed from βx (j + 1, LP ), βx (j + 1, LO), and
+βx (j + 1, LL).
+
+j\pi
+1
+2
+3
+4
+5
+6
+7
+8
+
+-∞
+-∞
+-∞
+-∞
+-∞
+-∞
+-∞
+-∞
+
+P
+
+O
+
+L
+
+LO
+
+1.00
+1.55
+3.10
+4.65
+6.21
+7.76
+9.60
+11.14
+
+0.00
+2.31
+3.87
+4.42
+6.35
+7.52
+9.45
+11.91
+
+0.00
+1.55
+3.12
+5.65
+6.21
+9.21
+9.59
+11.14
+
+-∞
+1.00
+2.55
+3.10
+6.65
+6.21
+10.21
+10.59
+
+Table 12: The values of ln αx (j, pi ).
+
+We also have Zx = αx (8, ) + αx (8, P ) + αx (8, O) + αx (8, L) + αx (8, LO) = e12.696 .
+We now illustrate the computation of βx with βx (5, OL). The condition (sk , y) : sk ≤sS si y
+with si = OL gives us the following 3 pairs as (sk , y): {(LP, P ), (LO, O), (LL, L)}. Thus,
+βx (5, OL) = βx (6, LP )Ψx (5, 5, OLP ) + βx (6, LO)Ψx (5, 5, OLO) +
+βx (6, LL)Ψx (5, 5, OLL)
+= βx (6, LP )e0 + βx (6, LO)e + βx (6, LL)e0 .
+The values of the marginals P (j, j, z|x) are shown in Table 14. We illustrate the
+computation of P (6, 6, LOL|x) from the forward and backward variables. The condition
+1005
+
+Cuong, Ye, Lee and Chieu
+
+j\si
+1
+2
+3
+4
+5
+6
+7
+8
+
+P
+
+O
+
+L
+
+PP
+
+PO
+
+PL
+
+OP
+
+OO
+
+OL
+
+LP
+
+LO
+
+LL
+
+LOP LOO LOL
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.66
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.66
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.66
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+5.34
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.66
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.21
+4.65
+3.10
+1.55
+
+12.70
+11.14
+9.59
+8.04
+6.66
+4.65
+3.10
+1.55
+
+Table 13: The values of ln βx (j, si ).
+
+(pi , y) : z ≤s pi y with z = LOL gives us the only pair (LO, L) as (pi , y). Hence,
+P (6, 6, LOL|x) =
+=
+
+j\z
+1
+2
+3
+4
+5
+6
+7
+8
+
+αx (5, LO)βx (7, LOL)Ψx (6, 6, LOL)
+Zx
+αx (5, LO)βx (7, LOL)e2
+.
+Zx
+P
+
+O
+
+L
+
+LOL
+
+0.58
+0.21
+0.21
+0.16
+0.16
+0.16
+0.21
+0.21
+
+0.21
+0.58
+0.58
+0.16
+0.68
+0.16
+0.58
+0.58
+
+0.21
+0.21
+0.21
+0.68
+0.16
+0.68
+0.21
+0.21
+
+0.00
+0.00
+0.03
+0.08
+0.01
+0.39
+0.01
+0.08
+
+Table 14: The marginals P (j, j, z|x).
+
+References
+Aron Culotta, David Kulp, and Andrew McCallum. Gene prediction with conditional
+random fields. Technical Report UM-CS-2005-028, University of Massachusetts, Amherst,
+2005.
+Thomas G. Dietterich, Adam Ashenfelter, and Yaroslav Bulatov. Training conditional random fields via gradient tree boosting. In Proceedings of the 21st International Conference
+on Machine Learning, 2004.
+Richard Durbin. Biological Sequence Analysis: Probabilistic Models of Proteins and Nucleic
+Acids. Cambridge University Press, 1998.
+Shai Fine, Yoram Singer, and Naftali Tishby. The hierarchical hidden Markov model:
+analysis and applications. Machine Learning, 32(1):41–62, 1998.
+1006
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+Zhou GuoDong, Su Jian, Zhang Jie, and Zhang Min. Exploring various knowledge in
+relation extraction. In Proceedings of the 43rd Annual Meeting of the Association for
+Computational Linguistics, pages 427–434, 2005.
+Jos´ee S. Heemskerk. A probabilistic context-free grammar for disambiguation in morphological parsing. In Proceedings of the 6th Conference of the European Chapter of the
+Association for Computational Linguistics, pages 183–192, 1993.
+Cecil Huang and Adnan Darwiche. Inference in belief networks: a procedural guide. International Journal of Approximate Reasoning, 15(3):225–263, 1996.
+Sorin Istrail. Statistical mechanics, three-dimensionality and NP-completeness: I. Universality of intractability for the partition function of the Ising model across non-planar
+lattices. In Proceedings of the 32nd Annual ACM Symposium on Theory of Computing,
+pages 87–96, 2000.
+Frederick Jelinek, John D. Lafferty, and Robert L. Mercer. Basic methods of probabilistic context free grammars. In Speech Recognition and Understanding. Recent Advances,
+Trends, and Applications. Springer, 1992.
+Robert H. Kassel. A Comparison of Approaches to On-line Handwritten Character Recognition. PhD thesis, Massachusetts Institute of Technology, 1995.
+Pushmeet Kohli, M. Pawan Kumar, and Philip H. S. Torr. P3 & beyond: solving energies with higher order cliques. In IEEE Conference on Computer Vision and Pattern
+Recognition, pages 1–8, 2007.
+Nikos Komodakis and Nikos Paragios. Beyond pairwise energies: efficient optimization for
+higher-order MRFs. In IEEE Conference on Computer Vision and Pattern Recognition,
+pages 2985–2992, 2009.
+John Lafferty, Andrew McCallum, and Fernando C.N. Pereira. Conditional random fields:
+probabilistic models for segmenting and labeling sequence data. In Proceedings of the
+18th International Conference on Machine Learning, 2001.
+Dong C. Liu and Jorge Nocedal. On the limited memory BFGS method for large scale
+optimization. Mathematical Programming, 45(3):503–528, 1989.
+Yang Liu, Andreas Stolcke, Elizabeth Shriberg, and Mary Harper. Using conditional random
+fields for sentence boundary detection in speech. In Proceedings of the 43rd Annual
+Meeting of the Association for Computational Linguistics, pages 451–458, 2005.
+Wei Lu and Hwee Tou Ng. Better punctuation prediction with dynamic conditional random fields. In Proceedings of the Conference on Empirical Methods in Natural Language
+Processing, pages 177–186, 2010.
+Andrew McCallum and Wei Li. Early results for named entity recognition with conditional
+random fields, feature induction and web-enhanced lexicons. In Proceedings of the 7th
+Conference on Computational Natural Language Learning, pages 188–191, 2003.
+1007
+
+Cuong, Ye, Lee and Chieu
+
+Kevin P. Murphy and Mark A. Paskin. Linear-time inference in hierarchical HMMs. In
+Advances in Neural Information Processing Systems, pages 833–840, 2002.
+Viet Cuong Nguyen, Nan Ye, Wee Sun Lee, and Hai Leong Chieu. Semi-Markov conditional random field with high-order features. In ICML Workshop on Structured Sparsity:
+Learning and Inference, 2011.
+Eric W. Noreen. Computer Intensive Methods for Testing Hypotheses: An Introduction.
+Wiley, 1989.
+Michael Paul. Overview of the IWSLT 2009 evaluation campaign. In Proceedings of the
+International Workshop on Spoken Language Translation, pages 3–27, 2009.
+Xian Qian and Yang Liu. Sequence labeling with non-negative weighted higher order features. In Proceedings of the 26th Conference on Artificial Intelligence, 2012.
+Xian Qian, Xiaoqian Jiang, Qi Zhang, Xuanjing Huang, and Lide Wu. Sparse higher order
+conditional random fields for improved sequence labeling. In Proceedings of the 26th
+International Conference on Machine Learning, pages 849–856, 2009.
+Lawrence R. Rabiner. A tutorial on hidden Markov models and selected applications in
+speech recognition. Proceedings of the IEEE, 77(2):257–286, 1989.
+Carsten Rother, Pushmeet Kohli, Wei Feng, and Jiaya Jia. Minimizing sparse higher order
+energy functions of discrete variables. In IEEE Conference on Computer Vision and
+Pattern Recognition, pages 1382–1389, 2009.
+Sunita Sarawagi and William W. Cohen. Semi-Markov conditional random fields for information extraction. In Advances in Neural Information Processing Systems, pages 1185–
+1192, 2004.
+Fei Sha and Fernando Pereira. Shallow parsing with conditional random fields. In Proceedings of the Human Language Technology Conference of the North American Chapter of
+the Association for Computational Linguistics, pages 134–141, 2003.
+Daniel Tarlow, Inmar E. Givoni, and Richard S. Zemel. HOP-MAP: efficient message
+passing with high order potentials. In International Conference on Artificial Intelligence
+and Statistics, pages 812–819, 2010.
+Ben Taskar, Carlos Guestrin, and Daphne Koller. Max-margin Markov networks. In Advances in Neural Information Processing Systems, 2004.
+Tran T. Truyen, Dinh Q. Phung, Hung H. Bui, and Svetha Venkatesh. Hierarchical semiMarkov conditional random fields for recursive sequential data. In Advances in Neural
+Information Processing Systems, pages 1657–1664, 2008.
+Ioannis Tsochantaridis, Thomas Hofmann, Thorsten Joachims, and Yasemin Altun. Support
+vector machine learning for interdependent and structured output spaces. In Proceedings
+of the 21st International Conference on Machine Learning, 2004.
+1008
+
+CRF with High-order Dependencies for Sequence Labeling and Segmentation
+
+Christopher Walker, Stephanie Strassel, Julie Medero, and Kazuaki Maeda. ACE 2005
+multilingual training corpus. Linguistic Data Consortium, Philadelphia, 2006.
+Nan Ye, Wee Sun Lee, Hai Leong Chieu, and Dan Wu. Conditional random fields with
+high-order features for sequence labeling. In Advances in Neural Information Processing
+Systems, pages 2196–2204, 2009.
+Alexander Yeh. More accurate tests for the statistical significance of result differences. In
+Proceedings of the 18th International Conference on Computational Linguistics, pages
+947–953, 2000.
+Min Zhang, Jie Zhang, and Jian Su. Exploring syntactic features for relation extraction
+using a convolution tree kernel. In Proceedings of the Human Language Technology Conference of the North American Chapter of the Association for Computational Linguistics,
+pages 288–295, 2006.
+
+1009
+
+

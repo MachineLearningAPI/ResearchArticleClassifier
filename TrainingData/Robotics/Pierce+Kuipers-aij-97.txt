@@ -1,0 +1,3142 @@
+Map Learning with Uninterpreted Sensors and Effectors£
+David Pierce and Benjamin Kuipers
+Department of Computer Sciences
+University of Texas at Austin, Austin, TX 78712 USA
+dmpierce@cs.utexas.edu, kuipers@cs.utexas.edu
+Artificial Intelligence 92: 169–229, 1997.
+
+Abstract
+This paper presents a set of methods by which a learning agent can learn a sequence of increasingly abstract and
+powerful interfaces to control a robot whose sensorimotor apparatus and environment are initially unknown. The
+result of the learning is a rich hierarchical model of the robot’s world (its sensorimotor apparatus and environment).
+The learning methods rely on generic properties of the robot’s world such as almost-everywhere smooth effects
+of motor control signals on sensory features. At the lowest level of the hierarchy, the learning agent analyzes the
+effects of its motor control signals in order to define a new set of control signals, one for each of the robot’s degrees
+of freedom. It uses a generate-and-test approach to define sensory features that capture important aspects of the
+environment. It uses linear regression to learn models that characterize context-dependent effects of the control
+signals on the learned features. It uses these models to define high-level control laws for finding and following paths
+defined using constraints on the learned features. The agent abstracts these control laws, which interact with the
+continuous environment, to a finite set of actions that implement discrete state transitions. At this point, the agent
+has abstracted the robot’s continuous world to a finite-state world and can use existing methods to learn its structure.
+The learning agent’s methods are evaluated on several simulated robots with different sensorimotor systems and
+environments.
+
+Keywords: spatial semantic hierarchy, map learning, cognitive maps, feature learning, abstract interfaces, action
+models, changes of representation.
+
+£ This work has taken place in the Qualitative Reasoning Group at the Artificial Intelligence Laboratory, The University of Texas at Austin.
+Research of the Qualitative Reasoning Group is supported in part by NSF grants IRI-9216584 and IRI-9504138, by NASA grants NCC 2-760 and
+NAG 2-994, and by the Texas Advanced Research Program under grant no. 003658-242.
+
+1
+
+Pierce & Kuipers, AIJ, 1997
+
+2
+
+Sensory input
+
+Control
+
+Figure 1: The learning problem addressed in this paper is illustrated by this interface between a learning agent and a teleoperated
+robot in an unknown environment. The learning agent’s problem is to learn a model of the robot and its environment with no initial
+knowledge of the meanings of the sensors or the effects of the control signals (except that nothing changes when the control signals
+are all zero).
+
+1 Introduction
+Suppose a creature emerges into an unknown environment, with no knowledge of what its sensors are sensing or what
+its effectors are effecting. How can such a creature learn enough about its sensors and effectors to learn about the
+nature of its environment? What primitive capabilities are sufficient to support such a learning process?
+This problem is idealized to clarify the goals and results of our research. A real robot embodies knowledge
+designed and programmed in by engineers who select sensors and effectors appropriate to the environment, and implement control laws appropriate to the goals of the robot. A real biological organism embodies knowledge, acquired
+through evolution, that matches the sensorimotor capabilities of the organism to the demands of the environment. We
+idealize both of these to the problem faced by an individual learning agent with very little domain-specific knowledge,
+but with the ability to apply a number of sophisticated, domain-independent learning methods. In addition to its scientific value, this idealized learning agent would be of considerable practical value in allowing a newly-designed robot
+to learn the properties of its own sensorimotor system. We report here on one learning agent that solves a specific instance of this problem, along with several variations that begin to explore the range of possible solutions to the general
+problem.
+Henceforth, we make a distinction between the learning agent and the robot. The robot is a machine (physical or
+simulated) that the learning agent must learn how to use. The robot’s sensorimotor apparatus is comprised of a set of
+sensors and effectors. The sensorimotor apparatus is uninterpreted, meaning that the agent that is learning how to use
+the robot has no a priori knowledge of the meaning of the sensors, of the structure of the sensory system, or of the
+effects of the motor’s control signals. From the learning agent’s perspective, the sensorimotor apparatus is represented
+as a raw sense vector s and a raw motor control vector u. The former is a vector of real numbers giving the current
+values of all of the sensors. The latter is a vector of real numbers, called control signals, produced by the learning
+agent and sent to the robot’s motor apparatus. The learning agent’s situation is illustrated in Figure 1.
+This paper solves the learning problem by presenting a set of methods that the learning agent can use to learn (1) a
+model of the robot’s set of sensors, (2) a model of the robot’s motor apparatus, and (3) a set of behaviors that allow the
+learning agent to abstract the robot’s continuous world to a discrete world of places and paths. These methods have
+been demonstrated on a simulated mobile robot with a ring of distance sensors.
+These learning methods comprise a body of knowledge that is given to the learning agent a priori. They incorporate a knowledge of basic mathematics, multivariate analysis, and control theory. The learning methods are domain
+independent in that they are not based on a particular set of sensors or effectors and do not make assumptions about
+the structure or even the dimensionality of the robot’s environment.
+In the rest of this paper, we describe a number of learning methods and show how they are used by a learning agent
+as it develops an understanding of a robot’s world by defining a sequence of increasingly powerful abstract interfaces
+to the robot. The learning agent’s problem and solution are given below:
+Problem
+
+Pierce & Kuipers, AIJ, 1997
+
+3
+
+Given: a robot with an uninterpreted, almost-everywhere approximately linear sensorimotor apparatus in a
+continuous, static environment.
+Learn: descriptions of the structure of the robot’s sensorimotor apparatus and environment and an abstract
+interface to the robot suitable for prediction and navigation.
+Solution
+Representation: a hierarchical model. At the bottom of the hierarchy are egocentric models of the robot’s
+sensorimotor apparatus. At the top of the hierarchy is a discrete abstraction of the robot’s environment defined
+by a set of discrete views and actions.
+Method: a sequence of statistical and generate-and-test methods for learning the objects of the hierarchical
+model.
+An almost-everywhere approximately linear sensorimotor apparatus satisfies the following: The derivatives with respect to time of the sensor values can be approximated by linear functions of the motor control vector. A continuous
+world (which includes both the robot and its environment) is one whose state can be represented by a vector x of
+continuous, real-valued state variables. A discrete world, on the other hand, is represented by a finite set of states. The
+primary example in this paper1 is a mobile robot in a continuous world with three state variables: two for its position
+(e.g., longitude and latitude) and one for its orientation (i.e., the direction in which it is facing). A static world is one
+whose state does not change except as the result of a nonzero motor control vector. A static world exhibits no inertia.
+When the motor controls go to zero, the robot comes to an immediate stop. In a static world, there are no active agents
+(e.g., pedestrians) besides the robot itself.
+The learning agent’s goal is to understand its world, that is, to learn a model of it suitable for prediction and
+navigation. Prediction refers to the ability to predict the effects of the motor control signals. Navigation refers
+to the ability to move efficiently from one place to another. These definitions do not apply perfectly to the learning agent’s world: places do not exist a priori — they must be discovered or invented by the learning agent itself.
+The raw sense vector and the raw motor control vectors are at the wrong level of abstraction for describing the
+global structure of a world. People do not understand their world in terms of sequences of visual images — they
+use abstractions from visual scenes to places and objects. In order to understand its continuous world, the learning
+agent must also use abstractions. Instead of trying to make predictions based on the raw sense vector, it needs to
+learn high-level features and behaviors. Understanding the world thus requires a hierarchy of features, behaviors,
+and accompanying descriptions. The hierarchy that the learning agent uses is called the spatial semantic hierarchy
+[Kuipers and Byun, 1988, Kuipers and Byun, 1991, Kuipers and Levitt, 1988, Kuipers, 1996].
+
+1.1 The spatial semantic hierarchy
+The spatial semantic hierarchy (SSH) is a hierarchical structure for a substantial body of commonsense knowledge,
+showing how a cognitive map can be built on sensorimotor interaction with the world. The cognitive map is the
+body of knowledge an agent has about the large-scale spatial structure of its environment. (“Large-scale” here means
+significantly larger than the sensory horizon of the agent, meaning that the map must be constructed by integrating
+observations over time as the agent travels through its environment.) Since we already have an SSH-based solution for
+the cognitive mapping problem for a simulated robot with a ring of distance sensors, we focus on learning the sensory
+features and control strategies necessary to support that solution. The result we obtained was successful, but at the
+same time revealed some subtle but important changes required to the SSH approach to cognitive mapping.2
+The spatial semantic hierarchy is comprised of five levels: sensorimotor, control, causal, topological, and metrical.
+At the sensorimotor level, the abstract interface to the robot is defined by the raw sense vector, a set of primitive
+actions (one for each degree of freedom of the robot, Section 3), and a set of learned features. At the control level,
+action models are learned in order to predict the context-dependent effects of motor control vectors on features. Local
+state variables are learned and behaviors for homing and path-following are defined (Section 5). The abstract interface
+1 Experiments
+2 The
+
+with other robots are described in connection with particular learning methods.
+most important change is the use of local state variables (Section 4).
+
+Pierce & Kuipers, AIJ, 1997
+
+4
+
+to the robot is defined by the set of local state variables, homing behaviors, and path-following behaviors. At the
+causal level, sense vectors are abstracted to a finite set of views and behaviors are abstracted to a finite set of actions
+(Section 7). The abstract interface gives the current view and the set of currently applicable actions.
+The contribution of this paper is a set of methods for learning these first three levels. This paper’s work is complementary to the work done by Kuipers and Byun [Kuipers and Byun, 1988, Kuipers and Byun, 1991] in which all levels
+of the descriptive ontology were engineered by hand, and the focus of the learning agent was on learning the structure
+of the environment. The agent selected appropriate control laws from a fixed set to form the control level, which was
+abstracted to the topological and metrical levels. At the topological level, perceptual ambiguities (in which multiple
+states map to the same view) are resolved and a global representation of the world’s structure as a finite-state graph
+is learned. At the metrical level, the topological map is supplemented with distances, directions, and other metrical
+information.
+By showing how to learn the first three levels of the spatial semantic hierarchy, this paper lays the groundwork for
+building a learning agent that can learn the entire spatial semantic hierarchy using only domain-independent knowledge.
+
+1.2 Overview
+Sections 2 through 7 describe a sequence of methods for learning a model of a robot’s sensorimotor apparatus and a
+set of behaviors that allow the learning agent to abstract the robot’s continuous world to a discrete world of places and
+paths. Figure 30 summarizes the entire set of representations, learning methods, and resulting behaviors, after they
+have been described in detail in the rest of the paper.
+Section 2 describes a method for learning a model of the structure of the robot’s sensory apparatus. Section 3
+describes a method for learning a model of the structure of the robot’s motor apparatus. Section 4 describes a method
+for learning a set of variables suitable for representing the local state of the robot. Section 5 describes a method for
+learning a set of robust, repeatable behaviors for navigation through the robot’s state space. Section 6 describes a
+number of experiments (in addition to those described in the previous sections) that demonstrate the generality and
+some limitations of these learning methods. Finally, Section 7 shows how to define an abstract interface that abstracts
+from the continuous sensorimotor apparatus to a discrete sensorimotor apparatus.
+These learning methods provide a particular solution to the learning problem described in Section 1. This particular
+solution is an instance of the more general solution outlined below:
+1. Apply a generate-and-test algorithm to produce a set of scalar features.
+2. Try to learn how to control the generated scalar features. Those that can be controlled are identified as local
+state variables.
+3. Define homing behaviors — behaviors that move a local state variable to a target value.
+4. Define path-following behaviors — behaviors that move the robot while keeping a local state variable at its
+target value.
+The set of learning methods that are presented in this paper does not represent the final word on the problem of
+learning to use an uninterpreted sensorimotor apparatus. Instead it is one path to the goal. Clearly, there are other
+ways to instantiate the above sequence of steps. Future work will involve both improving the current set of methods
+and identifying alternate paths to the solution.
+The learning methods and experimental results are interleaved throughout the paper: each section describes a
+learning method, the representations or objects produced by the method, the source of information used by the method,
+and one or more demonstrations of the method applied to a simulated robot.
+
+1.3 Contributions
+The results of this research are the following:
+
+Pierce & Kuipers, AIJ, 1997
+
+5
+
+1. the demonstration of a learning agent that can solve a nontrivial instance of the learning problem;
+2. the identification of a plausible though not unique set of primitive capabilities that a robot must have to support
+such a learning agent;
+3. the identification of a set of learning methods and intermediate representations that enable the learning agent to
+go from no domain-specific knowledge to useful cognitive maps of complex environments.
+These learning methods are interesting in their own right. First, each one identifies a source of information available
+through experimentation with an uninterpreted sensorimotor apparatus and, second, each provides a method for exploiting that information to give the learning agent a new way of understanding the robot’s sensory input or a new way
+of interacting with the robot’s environment.
+The result of this work is an existence proof, demonstrating one path from the beginning to the end of an idealized but important learning problem. We hope that this result can support further work to establish minimal sets of
+primitives, necessary conditions for success, and the limits of this heterogeneous bootstrapping method for learning.
+As intended, the learned set of features and control laws are specific to the robot and the type of environment
+used for these experiments. The learning method itself also has some degree of dependence on the type of robot
+and environments used. We used three methods to move towards generality in these results. First, as we needed to
+add primitive inference capabilities, we required that they be independent of the choice of robot or environment, and
+that they be plausible to implement using low-level symbolic or neural-net mechanisms.3 Second, we attempted to
+minimize, and then make explicit, the assumptions our inference methods make about the nature of the robot or the
+environment. For example, several feature generators require almost-everywhere temporal and spatial continuity of the
+sensory inputs. 4 Third, we tested the generality of several key steps in our learning method empirically by applying
+them to different robot sensorimotor systems and different environments. These results are shown throughout the
+paper. Naturally, the generality we are able to establish by these means remains limited.
+In spite of the limitations of an existence proof, we believe that the approach we have demonstrated is important.
+First, it shows how a heterogeneous set of learning methods can be used to construct a deep hierarchy of sensory features and control laws. Only a very few previous learning methods such as AM [Lenat, 1977] (see also [Shen, 1990])
+have constructed similarly deep concept hierarchies. Second, the knowledge contained in this hierarchy shows how a
+foundational domain of symbolic commonsense knowledge can be grounded in continuous sensorimotor interaction
+with a continuous world.
+
+2 Learning a model of the sensory apparatus
+The learning agent’s first step is to learn a model of the robot’s sensory apparatus. The output of the learning method
+used in this step (i.e., the learned model of the sensory apparatus) is a set of groups of related sensors and a description
+of the physical layout of the sensors. The source of information for this step is the sequence of values produced by the
+robot’s sensors while the agent wanders by choosing motor control vectors randomly. The rest of this section describes
+the learning method in detail and demonstrates the method on two very different simulated robots.
+
+2.1 A simulated robot
+For concreteness, the learning methods are illustrated with a particular robot and environment. The robot’s world is
+simulated as a rectangular room of dimensions 6 meters by 4 meters. The room has a number of walls and obstacles
+and
+in it. The robot itself is modeled as a point. The robot has 29 sensors. Each sensor’s value lies between
+. Collectively, these define the raw sense vector s, which is the input from the robot to the learning agent. The
+first 24 elements of the raw sense vector give the distances to the nearest objects in each of 24 directions. These
+
+½¼
+
+¼¼
+
+3 We did not always follow this restriction in the implementation itself. For example, we use a fairly sophisticated method called principal
+component analysis [Krzanowski, 1988] as a feature identification method. However, principal component analysis may be implemented as a
+neural network [Oja, 1982].
+4 Real sonar sensors may not satisfy this requirement due to specular reflection, a property of sonar sensors that makes them difficult to use, even
+in systems that are engineered by hand.
+
+Pierce & Kuipers, AIJ, 1997
+
+6
+
+have a maximum value of 1.0, which they take on when the nearest object is beyond one meter away. The sonars
+are numbered clockwise from the front. The 21st element is defective and always returns a value of 0.2. The 25th
+element is a sensor giving the battery’s voltage, which decreases slowly from an initial value of 1.0. The 26th through
+29th elements comprise a digital compass. The element with value 1 corresponds to the direction (E, N, W, or S) in
+which the robot is most nearly facing. There is no sensor noise. The robot has a “tank-style” motor apparatus. Its
+two motor control signals ¼ and ½ tell how fast to move the right and left treads. Moving the treads together at the
+same speed produces pure forward or backward motion; moving them in opposition at the same speed produces pure
+rotation. Moving the treads at different speeds causes the robot to move in a circular arc. The learning agent does not
+know what any of these sensors or effectors do. The learning agent only knows that that robot’s raw sense vector has
+29 elements and its raw motor control vector has two elements.
+
+2.2 A language of features
+The learning agent develops an understanding of the robot’s sensory apparatus by learning new features. A feature, as
+defined in this paper, is a function over time whose current value is completely determined by the history of current
+and past values of the robot’s raw sense vector. The type of the feature is determined by the type of that function’s
+value (thus a vector feature is one whose value at any point in time is a vector.) The types of features used in this
+paper are the following: scalar, vector, group, matrix, scalar field (or image), image element, focused image, vector
+field, and vector field element. Scalar, vector, and matrix features are based on standard mathematical constructs. The
+group feature (a type of vector feature) is defined in Section 2.3. The image and image-element features are defined in
+Section 2.4. The focused-image feature is defined in Section 4.1.1. The vector-field and vector-field-element features
+are defined in Section 3.2. Examples of features are the raw sense vector (a vector feature) and the elements of the raw
+sense vector (scalar features). The learning agent produces new features using feature generators. A feature generator
+is a rule that creates a new feature or set of features based on already existing features.
+
+2.3 Discovering related sensory subgroups
+A sensory apparatus may contain a structured array of similar sensors. Examples of such arrays are a ring of distance
+sensors, an array of photoreceptors in a video camera, and an array of touch sensors. The learning agent uses the
+group-feature generator to recognize such arrays of similar sensors. A group feature is a vector feature, Ü, whose
+elements, Ü , are all related in some way (e.g., all correspond to sensors in an array of similar sensors).
+The group-feature generator is based on the following observation. Given a well engineered array of sensors (e.g.,
+a ring of distance sensors) that measure a property that typically varies continuously with sensor position (e.g., the
+distance between the robot and nearby objects), the following holds: Sensors that are physically close together in
+the array “behave similarly.” Two sensors are said to behave similarly if (1) the two sensors’ values at each instant
+in time tend to be similar and (2) the two sensors’ frequency distributions are similar. Given a scalar feature Ü, the
+×Ø Ü is an Ò-element vector that gives, for each of Ò subintervals in the variable’s domain,
+frequency distribution
+the percentage of time that the variable assumes a value in that subinterval.
+Corresponding to these two criteria are two distance metrics (examples of matrix features) that are used by the
+group-feature generator.
+
+´
+
+¯
+
+µ
+
+The first metric ½ is based on the principle that in a continuous world, adjacent sensors generally have similar
+values. The metric is defined, for vector feature Ü, as a matrix feature:
+½
+
+´µ
+
+´Ø µ
+
+½
+Ø·½
+
+Ø
+
+Ü
+¼
+
+´ µ Ü ´ µ
+
+Here, ½ Ø is the distance between sensors Ü and Ü measured at time Ø. The variable
+ranging from 0 to Ø.
+
+¯
+
+is a time index
+
+The second metric ¾ is based on the observation that sensors in a homogeneous array have similar frequency
+distributions. For example, an array of binary touch sensors can be distinguished from an array of photoreceptors
+
+Pierce & Kuipers, AIJ, 1997
+
+7
+
+by the fact that the different types of sensors have radically different frequency distributions. Binary touch
+sensors can assume value 0 or 1 whereas photoreceptors can assume any value from a continuous range. ¾ is
+proportional to the sum over the distribution intervals of absolute differences in frequency for elements and :
+
+½
+¾
+
+¾
+
+´
+
+Ð
+
+×Ø Ü µÐ   ´ ×Ø Ü
+
+µÐ
+
+where Ð ranges over the subintervals of the frequency distributions. In the implementation, the frequency distributions use 50 subintervals uniformly distributed over the range [-1, 1].
+This generator computes these two distance metrics over a period of several minutes while the learning agent moves
+the robot using the following strategy: choose a random motor control vector; execute it for one second (10 time
+steps); repeat.5 The values of the distance metrics, ½ and ¾ , after the example robot has explored for 5 minutes (3000
+observations) are given in Figure 2.
+
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0
+
+1
+0.5
+0
+
+25
+20
+15
+10
+5
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+20
+15
+10
+
+25
+
+5
+0
+
+½
+
+5
+
+10
+
+15
+
+20
+
+25
+
+½
+
+and ¾ , between the Ø and Ø elements of the raw sensory feature after the
+robot has wandered for five minutes. The coordinates are indices and .
+
+Figure 2: Two measures of dissimilarity,
+
+½
+
+The group-feature generator exploits these distance metrics in two steps: (1) formation of subgroups of sensors
+that are similar according to all of the distance metrics, and (2) taking the transitive closure of the similarity relation
+to form close groups of related sensors.
+1. Formation of subgroups of similar sensors. The group-feature generator’s first step is to use the distance metrics
+to form subgroups of similar sensors. Elements and are similar, written
+, if they are similar according to
+each distance metric :
+
+«
+
+The definition of
+requires the use of a threshold. One way to define this threshold, that has proven to be more
+robust than the use of a constant, is this:
+¯
+
+¾ÑÒ
+
+Each element has its own threshold based on the minimum distance from to any of its neighbors. Elements and
+are considered similar if and only if both
+¯ and
+¯ , that is if is close to from ’s perspective and
+vice versa. Combining these constraints gives
+
+ÑÒ ¯
+
+¯
+
+5 Our experiments have shown that this strategy is more effective for efficiently exploring a large subset of the robot’s state space than choosing
+motor control vectors randomly at each time step.
+
+Pierce & Kuipers, AIJ, 1997
+
+8
+
+2. Formation of closed subgroups. The group-feature generator’s second step is to take the transitive closure of the
+similarity relation to produce the related-to relation . Consider again the ring of distance sensors. Adjacent sensors
+tend to be very similar according to the distance metric, but sensors on opposite sides of the ring may be dissimilar
+(according to ½ ) since they detect information from distinct and uncorrelated regions of the environment. In spite
+of this fact, the entire array of distance sensors should be grouped together. This is accomplished by defining the
+related-to relation as the transitive closure of the similarity relation . Two elements and are related to each
+, if
+or if there exists some other element such that
+and
+:
+other, written
+
+«
+
+´
+
+µ ´
+
+µ
+
+The related-to relation is clearly reflexive, symmetric, and transitive and is therefore an equivalence relation. Computing the relation for and given the relation is straightforward (e.g., [Cormen et al., 1990]). An equivalence
+class of the relation , if not a singleton, is described as a group feature of ×.
+For the example robot, the raw sensory feature has 29 elements. In order, these are: 24 distance sensors (one of
+which is defective), a battery-voltage sensor, and a four-element digital compass. The distance metric is computed
+while the robot wanders randomly for 3000 steps. For each of the elements of the raw sensory feature, the set of
+is computed and shown below:
+similar elements
+(0 1 2 22 23) (0 1 2 3 23) (0 1 2 3 4) (1 2 3 4 5) (2 3 4 5 6) (3 4 5 6 7) (4 5 6 7) (5 6 7 8 9) (7 8 9 10)
+(7 8 9 10 11) (8 9 10 11 12) (9 10 11 12 13) (10 11 12 13 14) (11 12 13 14 15) (12 13 14 15 16)
+(13 14 15 16 17) (14 15 16 17 18) (15 16 17 18 19) (16 17 18 19) (17 18 19 21) (20) (19 21 22 23)
+(0 21 22 23) (0 1 21 22 23) (24) (25) (26) (27) (28).
+Notice that the distance sensors are grouped together into groups of neighboring sensors. For example, the group
+(0 1 2 22 23) contains two elements on each side of element 0. The related-to relation is obtained by taking the
+transitive closure of the similarity relation and is described by the following equivalence classes:
+(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 21 22 23)
+(20) defective
+(24) battery voltage
+(25) east
+(26) north
+(27) west
+(28) south
+The distance sensors have all been grouped together into a group containing no other sensors.
+
+2.4 A structural model of the sensory apparatus
+The grouping of the sensors into subgroups is a first step but it tells nothing about the relative positions of the sensors
+in the array. This is accomplished by the image-feature generator. The image-feature generator is a rule that takes
+a group feature and associates a position vector with each element of the group feature in order to produce an image
+feature (which represents the structure of the group of sensors). An image feature is a function over time, completely
+determined by the current and past values of the raw sense vector, whose value at any given time is an image. An
+image is an ordered list of image elements. An image element is a scalar with an associated position vector (a vector
+of Ò real numbers that represents a position in a continuous, Ò-dimensional space). An example of the use of an image
+feature is to represent the pattern of light intensities hitting the photoreceptors in a camera.
+The task of the image-feature generator is to find an assignment of positions to elements that captures the structure
+of an array of sensors as reflected in the distance metric ½ . This means that the distance between the positions of
+any two elements in the image should be equal to the distance between those elements according to the metric ½ .
+Expressed mathematically, image feature Ý should satisfy
+
+´
+
+µ
+
+´pos Ý µ   ´pos Ý µ
+
+½
+
+where pos Ý is the position vector associated with the Ø element in the image and
+Euclidean distance between the positions of the Ø and Ø elements.
+
+´pos Ý µ   ´pos Ý µ
+
+is the
+
+Pierce & Kuipers, AIJ, 1997
+
+9
+
+Finding a set of positions satisfying the above equation is a constraint-satisfaction problem. If the group feature
+Ü has Ò elements, then the metric ½ provides Ò Ò  
+constraints.6 Specifying the positions of Ò points in Ò  
+dimensions requires Ò Ò  
+parameters: 0 for the first point, which is placed at the origin; 1 for the second, which
+is placed somewhere on the Ü axis; 2 for the third, which is placed somewhere on the Ü-Ý plane; etc. Thus, to satisfy
+the constraints, Ò position vectors of dimension Ò   are required. Solving for the position vectors given the distance
+constraints can be done using a technique called metric scaling [Krzanowski, 1988].7
+The problem remains that Ò points of dimension Ò   are inconvenient to use, if not meaningless, for large Ò.
+In general, sensory arrays are 1-, 2-, or 3-dimensional objects. What is needed is a method for finding the smallest
+number of dimensions that are needed to satisfy the given constraints without excessive error, where the error is given
+by the equation
+
+´
+
+´
+
+½µ ¾
+
+½µ ¾
+
+½
+
+½
+
+½
+
+½
+¾
+
+´ ´pos Ý µ   ´pos Ý µ   µ
+
+¾
+
+Metric scaling helps by ordering the dimensions according to their contribution toward minimizing the error term.
+Ignoring all but the first dimension (i.e., using only the first element of the position vectors), yields a rough
+description of the sensory array with large error (unless the array really is a one-dimensional object). Using all Ò  
+dimensions yields a description that has zero error but contains a lot of useless information. Statisticians use a graph
+called a “scree diagram” (Figure 3a) that shows the amount of variance in the data that is accounted for by each
+dimension, to subjectively choose the right number of dimensions. The image-feature generator chooses the number
+where ¾ Ñ is the variance
+of dimensions to be equal to Ñ where Ñ maximizes the expression ¾ Ñ   ¾ Ñ
+Ø
+. The set of two-dimensional positions found
+in the data accounted for by the Ñ dimension. For the example, Ñ
+by metric scaling for the group of distance sensors is shown in Figure 3b.
+
+½
+
+´ µ
+¾
+
+Metric scaling eigenvalues
+3.5
+3
+2.5
+2
+1.5
+1
+0.5
+0
+1 2 3 4 5 6 7 8 9 10
+
+a
+
+9 8
+10
+11
+12
+13
+14
+15
+16
+17
+1819
+
+7 6
+
+5
+
+4
+
+3
+2
+1
+0
+23
+21 22
+
+´ · ½µ
+
+´ µ
+
+9 8 7 6 5
+10
+4
+11
+3
+12
+13
+2
+14
+1
+15
+16
+0
+17
+23
+1819
+21 22
+
+b
+
+c
+
+Figure 3: Learning a structural model of a ring of distance sensors. (a) The scree diagram gives the amount of variance (vertical
+axis) accounted for by each dimension (horizontal axis) and shows that the first two dimensions account for most of the variance.
+(b) Metric scaling is used to assign positions to elements of the group of distance sensors. The 22-dimensional position vectors are
+projected onto the first two dimensions to produce the representation shown above. (c) A relaxation algorithm is used to find a set
+of two-dimensional positions for the group of distance sensors that best satisfies the constraints p p
+(The usefulness of
+the relaxation algorithm is more obvious in the example of the next section.) Notice the gap corresponding to the defective distance
+sensor. The element with index 0 corresponds to the robot’s forward sensor.
+
+ 
+
+´ ½µ
+
+The set of Ò  -dimensional position vectors optimally describe the structure of a group, but when these positions
+are projected onto a subspace of lower dimensionality, the resulting description is no longer optimal. Elements that
+were the right distance apart in Ò   dimensions are generally too close together in the two-dimensional projection.
+To compensate for this, a relaxation algorithm is used to find the best set of positions in a small-dimension space to
+approximate the given distances in Ò   dimensions.The relaxation algorithm is an iterative process. On each iteration,
+
+½
+
+½
+
+ 
+
+metric can be represented as a symmetric matrix with zeros on the diagonal. Such a matrix has Ò´Ò ½µ ¾ free parameters.
+seems plausible that metric scaling could be implemented using a neural net analogous to that used to implement principal component
+analysis (Oja, 1982) since in both cases the main computation is the decomposition of an input matrix into a set of eigenvectors.
+6 The
+7 It
+
+Pierce & Kuipers, AIJ, 1997
+
+10
+
+each position vector is adjusted slightly in a direction that reduces the value of the error term E (defined above). The
+process continues until the error is very small or ceases to decrease appreciably on each iteration. 8
+The relaxation algorithm could be used without metric scaling by simply initializing the vector of positions randomly. Metric scaling provides two benefits. It shows how many dimensions are needed for the image feature, and
+it provides a starting point for the relaxation algorithm, decreasing the chance that the algorithm finds a local but not
+global minimum of the error function. The application of the relaxation algorithm to the group of distance sensors is
+illustrated in Figure 3c.
+To summarize, the image-feature generator takes a group feature Ü and produces an image feature Ý whose position
+vectors p are found using metric scaling and a relaxation algorithm so that they approximately satisfy the constraints
+p
+
+ p
+
+Ø
+
+´ µ   Ü ´Øµ
+
+Ü Ø
+
+while keeping the dimensionality of the position vectors p small. The result of the experiment is a structural description of the robot’s ring of distance sensors (Figure 3c) that is used later to analyze the robot’s motor apparatus.
+
+2.5 Learning a sensory model of the roving eye
+The learning methods are further demonstrated using a more fanciful robot called a “roving eye.” Its primary sensory
+array is a retina of photoreceptors.
+This robot is a simulation of a small camera mounted on the movable platform of an X-Y plotter, pointing down
+at a square picture 10 centimeters on a side. The camera sees one square centimeter of the picture at a time. The robot
+has 3 degrees of freedom (translation in two directions and rotation) and its state space is described by three state
+variables (two for position and one for orientation). The robot’s structure is shown in Figure 4a. The actual picture
+
+Picture
+
+θ
+
+y
+
+Camera
+image
+
+x
+
+a
+
+b
+
+Figure 4: (a) The robot is a “roving eye” that can see a 1 centimeter wide image that is part of a picture that is 10 centimeters wide.
+(b) The picture used for the roving-eye experiment is a close-up view of the Oregon coast.
+
+used is shown in Figure 4b. The sensory system is as before except that the ring of distance sensors has been replaced
+by a 5 by 5 retinal array looking down on a picture. The motor control vector of this robot has three elements: rotate,
+slip (for motion to the left or right), and slide (for motion forward or backward).
+The results parallel those of the previous experiment. The group-feature generator identified seven equivalence
+classes: six singletons and one candidate for application of the image-feature generator. Metric scaling produces the
+scree diagram of Figure 5a indicating that the sensory array is best modeled as a two-dimensional object. Metric
+scaling assigns positions to each element of the group feature. Projecting these positions onto the first two dimensions
+8 See
+
+Pierce (1995) p. 65 for a description of the algorithm.
+
+Pierce & Kuipers, AIJ, 1997
+
+Metric scaling eigenvalues
+1.8
+1.6
+1.4
+1.2
+1
+0.8
+0.6
+0.4
+0.2
+0
+1 2 3 4 5 6 7 8 9 10
+
+a
+
+11
+
+4
+2 1
+43
+0
+9 8 7
+6
+5
+1413 12
+11
+19
+10
+18 17
+24
+15
+23 22 16
+20
+21
+
+b
+
+14
+19
+24
+
+2
+
+3
+
+9
+
+1
+
+0
+
+8
+
+7
+
+6
+
+13
+
+12
+
+11
+
+18
+23
+
+17
+22
+
+5
+
+16
+21
+
+10
+15
+
+20
+
+c
+
+Figure 5: (a) The metric-scaling scree diagram for the group of photoreceptors indicates that the sensors are organized in a
+two-dimensional array. (b) The 2-D projection of the set of positions produced by metric scaling for the group of photoreceptors
+provides an initial approximation of the grid structure of the array of photoreceptors. (c) The final set of positions are produced
+using the constraint-satisfaction relaxation algorithm, with the previous set of positions as initial values.
+
+produces the mapping shown in Figure 5b. The set of positions produced by metric scaling is improved by the
+relaxation algorithm so that the distances in the resulting image more closely match the distance metric ½ . The
+resulting set of positions is shown in Figure 5c.
+
+3 Learning a model of the motor apparatus
+Using its learned model of the robot’s sensory system, the learning agent’s second step is to learn a model of the
+robot’s motor apparatus. The result of the learning is a new abstract interface to the robot that identifies the types of
+motion that the robot’s motor apparatus is capable of producing and that tells how to produce each type of motion.
+The source of information for this step is the sequence of values of a learned motion feature (a type of field feature,
+defined in Section 3.2) as the agent wanders by choosing motor control vectors randomly. In the simulations, if the
+robot is touching a wall, it is capable of turning but cannot change its position unless it is facing away from the wall.9
+The image feature makes it possible to define spatial attributes of the sensory input, in terms of the locations of
+sensors in the image. With spatial attributes, it is possible to define spatial as well as temporal derivatives, so motion
+features can be defined, even without knowledge of the physical structure of the environment. The learning agent uses
+the new motion feature to analyze its motor apparatus using the following steps:
+1. Sample the space of motor control vectors. The robot’s infinite space of motor control vectors is discretized
+into a finite set of representative vectors, Ù .
+2. Compute average motion vector fields (amvf ’s). The agent repeatedly executes each representative control
+vector many times in different locations and measures the average value of the resulting motion feature. It is
+this average value that characterizes the effect of that control vector.
+3. Apply principal component analysis (PCA). The set of computed amvf ’s is a representation of the effects that
+the motor apparatus is capable of producing. PCA is used to decompose this set into a basis set of principal
+eigenvectors, a set of representative amvf ’s from which all amvf ’s may be produced by linear combination.
+4. Identify primitive actions. Each principal eigenvector is matched against the amvf ’s produced by the representative control vectors to find a control vector that produces that effect or its opposite. Such a motor control
+vector, if it exists, is identified as a primitive action and can be used to produce motion for one of the robot’s
+degrees of freedom.
+9 The
+
+use of a physical robot would require a provision such as an innate obstacle-avoidance behavior to prevent the robot from damaging itself.
+
+Pierce & Kuipers, AIJ, 1997
+
+12
+
+5. Define a new abstract interface. For each degree of freedom, a new control signal is defined that allows the
+agent to specify the amount of motion for that degree of freedom.
+The result of the learning is a new abstract interface to the robot comprised of a new set of control signals, one per
+degree of freedom of the robot. The new interface hides the details of the motor apparatus. For example, whether
+a mobile robot’s motor apparatus uses tank-style treads or a synchro-drive mechanism, the learned interface presents
+the agent with two control signals: one for rotating and one for advancing. These learned control signals are used to
+further characterize the robot’s motor apparatus using the static and dynamic action models (Sections 4 and 5). Steps
+1 through 5 are explained in detail in the rest of this section.
+
+3.1 Sample the space of motor control vectors
+The choice of the set of representative motor control vectors must satisfy two criteria: first, they must adequately cover
+the space of possible motor control vectors so that the space of possible effects (amvf ’s) is adequately represented.
+Second, the distribution of motor control vectors must be dense enough so that, given a desired effect (e.g., an amvf
+that corresponds to one of the robot’s degrees of freedom), a motor control vector that produces that effect can be
+found.
+Since we have already made the assumption that the motor apparatus is approximately linear, it suffices to characterize the effects of a uniformly distributed set of unit motor control vectors. (A unit vector has a magnitude of 1
+where its magnitude is equal to the square root of the sum of squares of its elements.) For two- and three-dimensional
+spaces of motor control vectors, respectively, 32 and 100 vectors have been found to be adequate. For the 2-D case,
+it is easy to find a set of vectors that are uniformly distributed on the unit circle. The Ø of Ò vectors has value
+Ò
+Ò For the 3-D case, a set of vectors uniformly distributed on the unit sphere is found using
+the relaxation algorithm of Section 2.4. The vectors are constrained to lie on the unit sphere (i.e., to have magnitude
+1), and the target distance between any pair of points is much larger than 2. The resulting configuration of vectors
+is analogous to a collection of electrons on a charged sphere — each vector is as far from its neighbors as possible.
+These vectors are used as the representative motor control vectors for sampling the continuous space of average motion
+vector fields. This method generalizes to any dimension.
+
+´ Ó×´¾
+
+µ × Ò´¾
+
+µµ
+
+3.2 Compute average motion vector fields
+A vector field feature is a function over time, completely determined by the current and past values of the raw sense
+vector, whose value at any given time is a vector field. A field is an ordered list of vector field elements. A vector
+field element is a vector with an associated position vector. Given image feature Ü, motion Ü denotes a vector-field
+feature (specifically, a motion vector-field feature) whose elements measure the amount of motion detected at the
+corresponding points in the image.
+To understand what this feature is measuring, suppose that, corresponding to an object in the robot’s environment,
+there is a property of the image feature (e.g., a local minimum or discontinuity) that changes location from one image
+element to another on subsequent time steps due to the motion of the robot. A vector from the position of the first
+image element to the position of the second represents the motion of that object and is an example of a local motion
+vector. A list of local motion vectors, one for each image element, is a motion vector field.
+The detection of these motion vectors does not require sophisticated object recognition. It simply requires spatial
+and temporal information, both of which are provided by an image feature. The spatial information is provided by the
+positions of the elements of the image; the temporal information is provided by the derivatives of the elements’ values
+with respect to time. A temporal sequence of images, represented as vectors of values and associated positions, can be
+viewed as an intensity function Ô Ø that maps image positions to values, called intensities, as a function of time.
+Such a function has both a spatial derivative, Ô and a temporal derivative, Ø . The spatial derivative Ô , also called
+the gradient of , is a vector in image-position coordinates that gives the direction in which the intensity increases
+most rapidly.
+A large gradient in an image detected by a robot’s sensory array corresponds to a detectable property of the
+environment such as the edge of an object. If the object moves relative to a robot’s sensory array (or vice versa), the
+edges detected in the image will move. This motion results in a change in intensity. A point in the image with a large
+
+´
+
+´ µ
+
+µ
+
+Pierce & Kuipers, AIJ, 1997
+
+13
+
+gradient will, in the presence of motion, also have a large temporal derivative. This is an informal motivation for the
+optical flow constraint equation [Horn, 1986], which defines the optical flow at a point in an image to have magnitude
+  Ø Ô and direction Ô :
+Ô
+Ú   Ø
+  Ø Ô¾
+Ô
+Ô
+Ô
+Here,
+Ô is the magnitude of the vector Ô , equal to the square root of the sum of squares of the elements of Ô .
+A problem with this formulation is that if the magnitude of Ô is small (or zero), then the calculation is prone to
+error (or is undefined). Since the goal here is to measure average motion over time and since the measurement of the
+optical flow is more precise at edges or, in general, when the gradient Ô is large, we have found it useful to weight
+¾
+the expression using the term
+Ô and measure the value of:
+
+Ú
+
+ 
+
+Ô
+
+Ø
+
+In most computer vision applications, images are represented as regularly spaced arrays of pixels (picture elements). With such a representation, it is straightforward to define an approximation for the spatial derivative at a point
+in the image. The images as defined here, however, do not have such a regular structure so we use a different approach
+to defining what we call the sensory flow field. The sensory flow measured at element is taken to be a weighted sum
+of local motion vectors Ú in the direction from element to element where ranges over all of the elements close
+to element (as defined in Section 2.3). The weight is inversely proportional to the distance between elements and .
+The precise definition of the motion operator is given below, where pos Ü denotes the vector of positions associated
+with feature Ü, and val Ü denotes the vector of values associated with feature Ü.
+
+´
+
+´
+
+µ
+
+´
+
+µ
+´val´motion Üµµ
+pos motion Ü
+
+µ
+
+pos Ü
+
+Ú
+
+p
+
+´pos Ü µ   ´pos Ü µ
+
+p
+
+ 
+
+Ú
+
+Ø
+
+´
+
+p
+
+µ
+
+val Ü
+Ø
+val Ü
+
+Ø
+
+´´
+
+p
+
+µ   ´val Üµ µ
+p
+
+p
+p
+
+Here, p is the distance in the image between the positions of elements and ; Ø is the temporal derivative of
+the intensity function for element ; and p is the component of gradient Ô at element in the direction toward
+element .
+Using the motion operator, the definition of the amvf associated with the Ø representative motor control vector
+Ù is
+motion Ü
+uÙ
+amvf
+
+´´
+
+µ ´
+
+µµ
+
+where Ü is the image feature that has already been learned (Section 2.4), u is the motor control vector used to control
+the motor apparatus, and is an operator that computes the average value of its argument. In this case, the average
+value is taken over all time steps during which Ù was taken. Examples are shown in Figure 6. These are obtained after
+the learning agent has wandered for 20 minutes using the exploration strategy of randomly choosing a representative
+motor control vector and executing it for one second (ten time steps).
+
+3.3 Apply principal component analysis
+The goal of this step is to find a basis set for the space of effects of the motor apparatus, i.e., a set of representative
+motion vector fields from which all of the motion vector fields may be produced by linear combination. This type of
+decomposition may be performed using principal component analysis (PCA). (See Mardia et al. [Mardia et al., 1979]
+
+Pierce & Kuipers, AIJ, 1997
+
+14
+
+(1.00 -0.01)
+
+(0.74 0.68)
+
+(-0.05 1.00)
+
+(-0.72 0.69)
+
+(-1.00 0.01)
+
+(-0.74 -0.68)
+
+(0.05 -1.00)
+
+(0.72 -0.69)
+
+Figure 6: Examples of average motion vector fields (amvf ’s) (represented as collections of line segments) and associated motor
+control vectors (shown in the lower-left corner of each picture). An amvf associates an average local motion vector with each
+position in an image (see Figure 3). Each line segment represents the position, direction, and magnitude of one of these average
+local motion vectors.
+
+for an introduction. Oja [Oja, 1982] discusses how a neural network can function as a Principal Component Analyzer.
+Ritter et al. [Ritter et al., 1992] show that self-organizing maps [Kohonen, 1988] can be seen as a generalization of
+PCA.)
+Principal component analysis of a set of values for a variable y produces a set of orthogonal unit vectors Ú ,
+called eigenvectors, that may be viewed as a basis set for the variable y. The Ø principal component of y is the
+dot product of y and eigenvector Ú . In practice, y may be approximated as a linear combination of the first few
+eigenvectors while throwing the remaining ones away.10 Principal component analysis may be performed using a
+technique called singular value decomposition [Press et al., 1988], which identifies the eigenvectors and computes the
+standard deviation of each principal component. The relative magnitudes of the standard deviations tell how important
+each eigenvector is for the purposes of approximating the sample values for y. The first four eigenvectors obtained in
+the experiment are shown in Figure 7.
+
+1.61
+
+Ù¼ = (-0.66 0.74)
+
+0.35
+
+0.27
+
+0.15
+
+Ù½ = (0.74 0.68)
+
+Figure 7: The first four eigenvectors and the standard deviations of the associated principal components for the space of average
+motion vector fields. The first corresponds to a pure rotation motion and the second corresponds to a forward translation motion.
+In these diagrams, the top-left element is associated with the robot’s front sensor. The robot’s motor apparatus can produce the first
+two effects directly using the motor control vectors shown.
+10 The principal components are ordered according to their standard deviations. This means that the first eigenvector accounts for the most
+variance in the set of observed values for y, and so forth.
+
+Pierce & Kuipers, AIJ, 1997
+
+15
+
+3.4 Identify primitive actions
+In the previous step, principal component analysis was used to determine a basis set of effects for the motor apparatus,
+namely, the set of eigenvectors. The goal of this step is to discover which motor control vectors can be used to
+produce those effects. This is accomplished by matching the eigenvectors with the amvf ’s of all of the representative
+between the Ø eigenvector
+motor control vectors. The matching involves computing, for each and , the angle
+Ø
+amvf . This angle is defined by the equation
+Ú ¡ amvf where the vector fields Ú and amvf are
+and the
+treated as simple vectors by flattening their Ò Ñ-dimensional local motion vectors into a single ÒÑ-dimensional vector
+and ignoring the positions of the local motion vectors. An angle near zero indicates that the amvf is similar to the
+eigenvector. An angle near 180 degrees indicates that the amvf is similar to the opposite of the eigenvector. If any
+amvf ’s match the Ø eigenvector to within 45 degrees, then action Ù · is defined to be the motor control vector whose
+amvf is most collinear with the Ø eigenvector and Ù   is defined to be the motor control vector whose amvf is most
+anti-linear.11 The definitions of control laws (Section 5) assume that the robot’s motor apparatus is linear, implying
+that Ù ·  Ù   . In the case that Ù ·  Ù   , they can be approximated by plus and minus Ù , respectively, where
+½
+Ù
+Ù ·   Ù   . Subsequently, this will be used as the definition of the Ø primitive action. The values of Ù are
+¾
+shown in Figure 7. The analogous results for the roving-eye experiment are shown in Figure 8.
+
+´
+
+µ
+
+0.43
+
+(-0.17 -0.99 -0.05)
+
+0.37
+
+0.21
+
+(0.03 0.03 -1.00)
+
+0.04
+
+(-0.99 0.13 0.04)
+
+Figure 8: The first four principal eigenvectors and associated singular values for the roving-eye robot. The first two correspond
+to pure translation motions and the third corresponds to a pure rotation motion. The robot’s motor apparatus can produce the first
+three effects directly using the motor control vectors shown.
+
+3.5 Define a new abstract interface
+The goal of this step is to define a new interface to the robot that abstracts away the details of the motor apparatus.
+For each of the robot’s degrees of freedom, a new control signal is defined for producing motion along that degree of
+freedom. Negative values of the control signal move the robot in the opposite direction. For the robot of the example,
+there are two control signals, one for turning (left and right) and one for advancing (forward and backward). The effect
+of the control signals is defined by the following equation:
+u
+
+Ù¼ Ù¼
+
+·Ù Ù
+½
+
+½
+
+where Ù¼ and Ù½ (which range from -1 to 1) are the new control signals and
+corresponding to the first two principal eigenvectors.
+
+Ù¼
+
+and
+
+Ù½
+
+are the primitive actions
+
+3.6 Discussion
+The learning methods described in this section have also been applied to a simulated synchro-drive robot for which
+the motor control signals directly specify how fast to turn and advance, respectively. The details of that experiment are
+given in [Pierce, 1991b]. The synchro-drive and tank-style robots demonstrate two different motor apparatuses with
+identical capabilities. The learned abstract interface, since it is grounded in sensory effects rather than motor control
+11 This matching criterion is more restrictive than it appears. In a high-dimensional space such as the space of amvf ’s, it is highly unlikely that
+two random vectors will define an angle less than 45 degrees.
+
+Pierce & Kuipers, AIJ, 1997
+
+16
+
+signals, is the same for both: it abstracts away the details of the motor apparatus, providing a new set of control signals,
+one for each of the robot’s degrees of freedom.
+The learning methods described in this section build on the sensory image structure learned in the previous section.
+The result is a new abstract interface whose control signals are used in Section 5 to define behaviors for navigation.
+
+4 Local state variables
+The result of the agent’s learning so far is an abstract interface that includes a model of the robot’s sensorimotor
+apparatus. The model of the sensory apparatus is the description of its physical structure represented primarily by the
+positions of the elements of the learned image feature. The model of the motor apparatus is the set of learned primitive
+actions that tells the agent how many degrees of freedom it has, and how to produce motion in each.
+The agent’s ultimate goal is to abstract the continuous world of the robot to a cognitive map by which the world
+is viewed as a discrete set of recognizable places with well-defined paths connecting them. The cognitive map gives
+the learning agent the ability to predict the effects of high-level behaviors and to navigate among a set of recognizable
+places. Learning the cognitive map requires that the agent learn path-following behaviors for moving the robot through
+its state space. In order to be useful for prediction, these behaviors must be repeatable in the sense that executing a
+behavior from a given initial state always moves the robot to the same final state. The following paragraph gives a few
+examples of such path-following behaviors.
+If the learning agent has a feature that gives the distance from the robot to the wall and it knows how to make the
+robot move while keeping this feature constant, then it can make the robot follow the wall. For a robot with a retina
+(Section 2.5), a feature as simple as the sum of all of the inputs could be used to define a path-following behavior.
+Moving while keeping the feature constant would correspond to following a path of constant intensity. A more complex
+feature based on the retina is a line detector, which could be used as the basis for a line-following behavior. For a robot
+with a continuous compass giving the robot’s heading, a path-following behavior based on the compass’s value would
+move the robot in a constant direction. Finally, consider a robot with an omni-directional photo-sensor responding to a
+light mounted on the robot and suppose that the robot is in a dark room with white walls. The amount of light detected
+by the robot’s sensor would decrease with distance from the nearest wall. A wall-following behavior could be based
+on an error signal that was the difference between the light level detected by the sensor and a nominal value (e.g., a
+value in the middle of the sensor’s range of values).
+In this section and the next, we describe the following three-step method for learning path-following behaviors:
+(1) find a set of features that the learning agent can control, called local state variables and use them to define error
+signals; (2) learn behaviors for minimizing the error signals; and (3) learn behaviors that move the robot while keeping
+the errors near zero. This section shows how to learn local state variables. Section 5 shows how to use them to define
+path-following behaviors.
+What is required of a local state variable is that it be controllable, i.e., the learning agent must know how its control
+signals affect it. A feature is controllable if it meets the following definition:
+Let Ù be the vector of control signals Ù . A scalar feature Ý is a local
+state variable if the effect of the control signals on Ý can be approximated locally by
+
+Ý
+
+Ñ ¡Ù
+
+´
+
+Ñ Ù
+
+µ
+
+(1)
+
+where Ñ is nonzero.
+Determining whether a feature is a local state variable while learning the context-dependent value of Ñ is the job of
+the static action model (Section 4.2). The source of information for this step is the set of learned features produced
+while the learning agent wanders by using its learned primitive actions.
+Local state variables are analogous to state variables in the following sense. If Ü is a state variable, then the
+reduces the dimensionality of the robot’s state space by one. If Ý is a local state variable, then the
+constraint Ü
+
+¼
+
+Pierce & Kuipers, AIJ, 1997
+
+17
+
+¼
+
+reduces the dimensionality of the robot’s motor control vector space by one.12 In other words, the
+constraint Ý
+constraint reduces the robot’s degrees of freedom by one. Since the learning agent does not have access to the robot’s
+state space, it defines local state variables using its knowledge of motor control vector space to which it does have
+access. They are called local state variables because they are not required to be defined everywhere in the robot’s state
+space.
+An important feature of local state variables is that they are controllable: feature Ý may be moved to a target value
+Ý £ using a simple control law. This fact is exploited in the definition of the homing behaviors (Section 5.2). The
+discovery of local state variables has two components: generating new features (Section 4.1), and testing each feature
+to see if it satisfies the definition of local state variable (Section 4.2).
+
+4.1 Generating new features
+If a sensory system does not directly provide useful features, it may be possible to generate features that are useful.
+A generate-and-test approach is demonstrated in the following experiment using the tank-style mobile robot in which
+the agent learns new scalar features that are better candidates for local state variables than are the elements of the raw
+sense vector.
+4.1.1 A set of feature generators
+In this paper, we identify a small set of feature generators that are used to produce new features as candidates for local
+state variables. Our feature generators are essentially a special case of the functional transformations of [Shen, 1990].
+These feature generators are appropriate for a robot with a rich sensorimotor apparatus and are, as we will demonstrate,
+sufficient for a particular set of environments and sensorimotor apparatuses. We do not claim that this particular set
+of feature generators is necessary for the robots described in this paper nor that it is sufficient for all robots and
+environments.
+The generated features are based on a set of generic mathematical constructs (e.g., scalars, vectors, matrices,
+scalar fields, and vector fields) rather than on a human-generated list of salient properties of a robot’s environment.
+The feature generators used for the experiments described in this paper are described below:
+
+¯
+¯
+¯
+¯
+¯
+
+¯
+12 If
+
+splitter takes a vector feature of length Ò and produces Ò scalar features.
+vmin and vmax apply to vector features of length greater than 1. They provide two different ways to reduce a
+vector feature to a scalar feature.
+group and image (described in Section 2) identify useful structure in the sensory apparatus. Group and image
+features are not scalar features and thus are not able to serve as local state variables, but they do serve as the
+basis for higher-level features that may turn out to be useful.
+lmin (local-min) and lmax (local-max) apply to image features. They produce focused-image features. A
+focused-image feature is a (scalar field, boolean field) pair where the boolean field is used to mask the scalar
+field. It can be viewed as an image feature for which each element has an associated weight (0 or 1). The
+weights focus attention on particular properties of an image, e.g., local minima or maxima.
+tracker applies to focused-image features and produces image-element features (single value-position pairs).
+From the focused image produced by the lmin generator, the tracker generator produces one image-element
+feature for each local minimum in the image. The tracker implements a form of focus of attention, abstracting
+away small changes in value and position of an image element in order to produce a feature that tracks an
+interesting property of the robot’s environment such as the minimum distance to a nearby object.
+val extracts a scalar value feature from an image-element feature.
+Ý
+
+¼,
+
+then by Equation 1,
+
+Ù must lie in the subspace perpendicular to vector Ñ .
+
+Pierce & Kuipers, AIJ, 1997
+
+18
+
+This set of feature generators has proven successful for the robot with a ring of distance sensors. To handle the “roving
+eye” robot, we would augment this set with generators for features based on a variety of convolution masks and
+other two-dimensional image-processing operators. An interesting open problem is to define a general set of feature
+generators appropriate to learning mobile robots, analogous to the small and general set of functional transformations
+used by Shen [Shen, 1990] to replicate the performance of AM [Lenat, 1977]. We conjecture that a reasonably sized
+set of feature generators will apply to a broad class of mobile robots and that such a set of feature generators can be
+discovered by developing solutions for a small subset of that class: initially, each new robot would require one or more
+new feature generators; eventually the set of feature generators would converge to a generally applicable set.
+4.1.2 Generating and testing features
+The generate-and-test process of learning potentially useful features executes the following steps in a continuous loop.
+Initially, there is only one feature, the raw sensory feature. This feature is marked as new.
+1. Each generator is applied to each new feature to which it is applicable.
+2. The features that were new are marked as old, and the features just generated are marked as new.
+In generate-and-test approaches to learning, controlling the search through a large space of possibilities is an important
+concern. Without any constraints, the number of features generated on each iteration of the generate-and-test loop
+may grow exponentially. There are several ways to constrain a search algorithm. One way is to limit the depth of the
+search. In the current implementation of the generate-and-test algorithm, it is possible to set a limit on the number of
+generations of new features that are created. A second way is to limit the breadth of the search. This method is used in
+genetic algorithms where population size is constrained to a certain number. This method requires a fitness measure
+to tell which members of the population are worthy of survival. Such a fitness measure can be defined as a feature
+tester, though this has not been done here. A third way to constrain a search space is to limit the branching factor. For
+the feature-learning problem, this is the average number of new features that are generated for each old feature at each
+step of the generate-and-test process. The branching factor for the feature learning problem is limited in two ways:
+the total number of generators is kept reasonably small and the number of generators that apply to any given feature is
+kept small by using strongly typed generators (e.g., the image-feature generator only applies to group features).
+4.1.3 An experiment
+In the experiments described in this paper, the combinatorial explosion of features has not been an issue. The generators form deep but narrow hierarchies with a tractable set of features. To study this, we devised an experiment in
+which the agent explores by randomly choosing unit motor control vectors and executing them for one second (10
+time steps) each. Figure 9 shows the complete hierarchy of features and generators for the learning agent’s featurelearning process. At the top of the figure is the raw sense vector ×. We refer to each feature using a name derived from
+the sequence of feature generators used to produce that feature (where g=group, im=image, tr=tracker, val=value).
+Thus, for example, s-g-vmin results from applying the vmin generator to the feature produced by applying the group
+feature generator to the raw sense vector ×. The features shown in the figure are, from top to bottom and from left
+to right: s, s-g, s-vmin, s-vmax, ×¼ , ×½ , , ×¾ , s-g-im, s-g-vmin, s-g-vmax, s-g-im-lmin, s-g-im-lmax, s-g-im-lmin-tr,
+s-g-im-lmax-tr, s-g-im-lmin-tr-val, and s-g-im-lmax-tr-val. Notice that, depending on the robot’s position, there may
+be multiple s-g-im-lmin-tr-val or s-g-im-lmax-tr-val features. Each of the generated scalar features (the leaves of the
+tree of generated features) is tested (Section 4.2) to see if it can serve as a local state variable.
+
+4.2 The static action model
+The purpose of the static action model (a set of equations of the form given in Equation 1 of Section 4) is to predict the
+behavior of each scalar feature. The learning of the static action model for a feature proceeds in three steps. In the first
+step, the learning agent tries to predict the behavior of the feature without taking into account which primitive action
+is being used. If it fails, then it tries to predict the behavior of the feature as a function of the action being taken. If
+this fails for a primitive action, then the agent tries to predict the context-dependent effect of that action on the feature.
+
+Pierce & Kuipers, AIJ, 1997
+
+19
+
+vector
+vmin
+vmax
+
+group
+
+group
+
+splitter
+
+scalar
+image
+vmin, vmax
+
+image
+
+lmin
+
+lmax
+
+focused
+image
+
+tracker
+
+tracker
+
+image
+element
+value
+
+scalar
+
+Figure 9: The complete hierarchy of features and generators in the learning agent’s feature-learning process used to produce
+candidate local state variables. The feature generators are shown in bold face; the feature types are shown in italics.
+
+Pierce & Kuipers, AIJ, 1997
+
+20
+
+If a feature is action dependent and is predictable in all contexts, then it can serve as a local state variable.13 With the
+information contained in the static action model, it is a simple matter to define homing behaviors for moving the robot
+so that the local state variable moves toward a target value.
+When trying to predict the effects of actions on features, the learning agent looks for approximately linear relationships between action magnitudes and feature derivatives because the control laws used to define path-following
+behaviors (Section 5) are based on the assumption that these relationships are approximately linear.
+4.2.1 An action-independent model
+The first step toward modeling the behavior of a feature Ý is to see if it is possible to predict its behavior independently
+of the motor control vector being used. The agent explores by repeatedly choosing a primitive action and executing it
+for one second (ten time steps). It analyzes the behavior of the feature using a device that we call a correlator. This
+produces a set of statistics based on the plot of the feature’s value as a function of time (Figure 10). The coordinate for
+
+¡×
+
+¼
+
+vs.
+
+¡Ø
+
+¡×
+
+¾
+
+vs.
+
+¡Ø
+
+lmin vs.
+
+¡Ø
+
+Figure 10: Plots of ¡Ý (vertical axis) vs. ¡Ø (horizontal axis), used by the learning agent to try to predict the behavior of feature
+Ý independently of the motor control vector. Whenever a new motor control vector is used, ¡Ý and ¡Ø are reset to 0 (at the
+center of each plot). From the sets of ´¡Ø ¡Ý µ points, statistics Ñ , Ö , and ­ are computed (see text). The numbers shown are
+the correlations Ö between ¡Ý and ¡Ø. From these statistics the learning agent concludes that features ×¼ and ÐÑ Ò (short for
+s-g-im-lmin-tr-val) are unpredictable (­ is large and Ö is small) and that ×¾ is constant (­ ¼ ¼¼½).
+
+¡
+
+the horizontal axis is Ø Ø   Ø¼ where Ø¼ is the last time the motor control vector changed. The vertical axis gives
+Ý
+Ý Ø   Ý Ø¼ .
+The statistics are Ñ , Ö , and ­ . The value of Ñ is the slope of the line that best fits the set of Ø Ý points.
+The value of Ö is the correlation between variables Ý and Ø. The value of ­ is the ratio of the standard deviations
+of Ý and Ø. It is a measure of how fast the feature changes as a function of time. A number of properties are
+. It is increasing if Ö
+; decreasing if
+defined in terms of these statistics. The feature is constant if ­
+Ö
+  . It is predictable if any of these properties holds. Otherwise, it is unpredictable and the learning agent tries
+to predict the behavior of the feature using an action-dependent model.
+For the running example, the features s-vmin, s-vmax, ×¾¼ (the broken distance sensor), ×¾ (the battery voltage),
+and s-g-vmax are all diagnosed as constant and are thus not suitable for use as local state variables. The rest are
+candidates for the next step in the learning of the static action model.
+
+¡
+
+´µ
+
+¡
+
+´ µ
+
+¡
+
+¡
+
+´¡ ¡ µ
+
+¡
+
+¼ ¼¼½
+
+¼
+
+¼
+
+4.2.2 An action-dependent model
+If the previous step failed to produce a model that predicts the behavior of a feature Ý , then the learning agent uses
+one correlator for each primitive action to analyze its effect on the feature. In this case, the correlator characterizes
+the relationship between Ù Ø and Ý where Ø and Ý are defined as before. The agent continues to explore by
+randomly selecting primitive actions and executing them for a second at a time. It computes the statistics Ñ (the slope
+
+¡
+
+¡
+
+¡
+
+¡
+
+13 One could use a less constrained definition of local state variable: if a feature is action dependent and predictable in a given context, then it is a
+local state variable for that context. We have chosen the more constraining definition because it results in more robust control laws.
+
+Pierce & Kuipers, AIJ, 1997
+
+21
+
+´ ¡ ¡ µ
+¡ ¡
+
+¡
+
+¡
+
+of the line that best fits the set of Ù Ø Ý points), Ö (the correlation between Ù Ø and Ý ), and ­ (the ratio
+­ . The
+of the standard deviations of Ù Ø and Ý ). A feature is labeled constant for control signal Ù if ­
+properties increasing, decreasing, and predictable for control signal Ù are defined as before. For each predictable
+feature-control signal pair, a rule of the form
+
+Ý
+
+Ñ Ù
+
+is added to the static action model. If a feature is predictable for all of the primitive actions, then the feature itself is
+
+¡×
+
+¼
+
+¡
+
+¡×
+
+vs. Ù¼ Ø
+
+Figure 11: Plots of ¡Ý vs. Ù
+
+¼
+
+¡
+
+vs. Ù½ Ø
+
+¡ÐÑ Ò vs. Ù ¡Ø
+¼
+
+¡ÐÑ Ò vs. Ù ¡Ø
+½
+
+¡
+
+Ø for two features and two primitive actions. These are used to see if it is possible to predict the
+behavior of the feature as a function of the motor control vector. Feature ×¼ is unpredictable for action Ù¼ (Ö is small and ­ is large)
+but predictable for action Ù½ (Ö is large). Feature ÐÑ Ò is constant for action Ù¼ (­
+) but unpredictable for action Ù½ (Ö is
+small and ­ is large).
+
+¼ ¼¼½
+
+predictable.
+For the running example (Figure 11), all of the distance sensors are found to be unpredictable for primitive action
+Ù¼ (rotating). The effect of Ù½ (advancing) is to decrease features ×¼ , ×½ , ×¾ , ×¿ , and ×¾¿ ; to increase features × through
+×½ . Its effect is unpredictable for features × –× , ×½ –×½ , ×¾½ , and ×¾¾ . The discrete compass sensors ×¾ through ×¾
+are unpredictable for Ù¼ and constant for Ù½ . The features s-g-vmin and s-g-im-lmin-tr-val (a.k.a. lmin) are constant
+for Ù¼ and unpredictable for Ù½ . Feature s-g-im-lmax-tr-val (a.k.a. lmax) is unpredictable for both primitive actions.
+One might guess that lmax would be constant for Ù¼ . In fact, lmax, which is only defined when the robot is in a corner,
+fluctuates too rapidly with small turns to be diagnosed as constant.
+4.2.3 A context-dependent model
+If Ù has an effect on Ý that is unpredictable, then the learning agent tries to find a partition of sensory space into a
+discrete set of contexts so that the relationship can be approximated by a linear equation for each context. 14 In general,
+a context feature Þ , for local state variable Ý and control signal Ù , is an integer-valued feature that takes on a finite
+set of values. This set defines a partition of the robot’s state space into a finite set of contexts defined by the predicates
+Þ
+. One way to define a context feature is to first choose a feature Ü and divide its range of values into a finite
+iff
+set of intervals, Á , where each interval defines its own context. The context feature is then defined by Þ
+Ü ¾ Á . Using feature Ü to define a set of contexts is appropriate if the value of Ü is a good predictor of the effect of
+the control signal Ù on the feature Ý . To test the hypothesis that Ü is a good predictor for the effect of Ù on Ý , a
+.
+correlator can be used to determine Ù ’s effect on Ý for each context defined by the predicate Þ
+Testing each of a large set of features to see if they improve the predictability of a control signal’s effect is expensive. Heuristics can be used to guide the search for relevant features to use in defining contexts. For example, it
+makes sense to first look at features that are closely related to the feature being analyzed, in the sense that they are
+close together in the tree of features produced by the generate-and-test process.
+Currently, only one such heuristic is implemented: if a feature is based on the value of a element of an image, then
+use the position of that element in the image to define the context. Since there is a discrete set of possible positions
+for an image-element feature, it is trivial to break the space of possible positions into a discrete set of contexts. For
+14 This
+
+approach is analogous to Drescher’s marginal attribution [Drescher, 1991].
+
+Pierce & Kuipers, AIJ, 1997
+
+22
+
+example, in the case of the lmin and lmax features, there are 23 possible positions and these can be used to break
+where Þ is an integer feature
+sensory space into a partition of 23 contexts each defined by the predicate Þ
+whose value is between 0 and 22 and identifies the position associated with the local minimum or maximum.
+, a correlator is used to try to predict the effect of Ù on Ý given that the robot is in that
+For each context Þ
+context. The agent continues to explore randomly while computing the statistics Ñ , Ö , and ­ . The properties
+constant , increasing , decreasing , and predictable are defined as before. For each predictable context, a rule of the
+form
+
+Ý
+
+Ñ
+
+Ù , if Þ
+
+is added to the static action model. If Ñ is 0, then the predicate Þ
+defines a “constant context” (which is
+useful for defining path-following behaviors). If the primitive action’s effect on the feature is predictable for every
+context, then the feature is predictable for that action.
+For the running example, the only features with associated context features are lmin and lmax.
+
+¯
+¯
+¯
+¯
+
+lmin is already predictable (constant) for control signal Ù¼ .
+The effect of Ù½ on lmin is predictable for every context. Its effect is to decrease lmin for contexts 0–5 and
+19–22, and to increase it for contexts 7–17. For contexts 6 and 18 (in which the robot’s heading is parallel to the
+wall), lmin is constant (see Figure 12).
+The effect of Ù¼ on lmax is unpredictable for almost every context.
+The effect of Ù½ is to decrease lmax for contexts 0–5 and 20–22 and to increase it for contexts 8–16. The effect
+is unpredictable for contexts 6, 7, 17, and 18.
+
+=0
+
+=6
+
+=12
+
+Figure 12: Example plots of ¡Ý vs. Ù½ ¡Ø for the s-g-im-lmin-tr-val feature for three different contexts. These are used to see if
+it is possible to predict the behavior of the feature as a function of the motor control vector and the current context. For action Ù½ ,
+feature ÐÑ Ò is decreasing, constant, and increasing for contexts 0, 6, and 12, respectively.
+At this point the only feature that is both predictable and action-dependent (and is thus a local state variable) is lmin.
+Ñ ½ Ù½ where is the current value of the context feature Þ that
+Its behavior can be modeled by the equation Ý
+represents the location of the local minimum in the image feature. The feature lmin was produced by the tracker
+generator. This generator actually produces multiple lmin features, one for each local minimum in the input image
+feature. The number of local state variables depends on the robot’s location. There are two local state variables in the
+neighborhood of a corner, three in the neighborhood of a T-intersection, but just one if only a single wall is within
+range.
+
+5 Learning control laws
+The goal of this step is to learn a suitable set of homing and path-following behaviors using the results of the preceding
+sections, specifically, the set of local state variables and the set of primitive actions. Recall that for the robot of the
+
+Pierce & Kuipers, AIJ, 1997
+
+23
+
+running experiment, the local state variables are the lmin features, the only features identified as controllable by the
+learning agent. The sources of information for this step are the learned static action model (Section 4.2) and dynamic
+action model (Section 5.3.2).
+A behavior, as the term is used in this paper, is an object with four components, called output, app, done, and
+init. The output component is a function that returns a vector of motor control signals. The app component is a
+scalar function whose value indicates whether the behavior is currently applicable. The value of this feature may be
+0 (indicating that the behavior is not applicable) or 1 (indicating that the behavior is applicable) or some number in
+between (indicating a certainty less than 100% that the behavior is applicable). The done signal is a Boolean function
+that tells when the behavior has finished. The init signal is an input signal that tells the behavior to initialize itself (in
+case it has internal state information that needs to be reset).
+Path-following behaviors are learned in three steps: (1) continuous error signals are defined; (2) behaviors are
+learned for minimizing the error signals; (3) behaviors are learned for moving while keeping the error signals near
+zero.
+
+5.1 Defining error signals for control laws
+The learning agent’s approach to exploration, mapping, and navigation uses path-following behaviors in which the
+robot moves while maintaining an error signal near zero. An example of a path-following behavior based on an error
+Ý £   Ý where Ý is the distance from the
+signal involves a person walking down a corridor. The error signal is
+£
+person to the right side of the corridor (left in Britain) and Ý is a constant that depends on the person, his mood, and
+the number of other people in the corridor. The error signal is used in a control law for moving along the corridor.
+If the error is positive, the person moves to the left (away from the wall) while walking; if it is negative, he moves
+to the right. The control law is efficient and repeatable: by using the control law, the person follows an efficient (i.e.,
+straight) path from one end of the corridor to the other, and each time the person follows the path, he ends up in the
+same place.
+In this example, Ý is a local state variable. The agent’s approach to defining path-following behaviors is to first
+Ý £   Ý for each local state variable Ý .15
+define error signals of the form
+
+´
+
+µ
+
+5.2 Learning homing behaviors
+The purpose of a homing behavior is to move an error signal toward zero so that path-following behaviors based on
+that error signal will become applicable. While it would be possible to use reinforcement-learning methods to learn a
+homing behavior given an error signal [Pierce and Kuipers, 1991, Lin and Hanson, 1993], most of the relevant learning
+has already been done. The homing behavior can be defined as an instance of the generic, domain-independent control
+law in Figure 13, drawing on the knowledge in the static action model.
+For each local state variable Ý and control signal Ù , a homing behavior is defined for reducing the error
+for which the static action model includes a rule of the form
+Ý £   Ý . It is applicable in every context Þ
+Ý
+Ñ Ù where Ñ is nonzero. It is done when the error is close to zero. Its output is given by a simple control
+law. The definition is based on the partition of sensory space used by the static action model to characterize the effects
+. The components of the homing behavior (app,
+of Ù on Ý . This partition is described by the set of contexts
+output, and done) are defined for each possible context (Figure 13). A homing behavior that the agent learns for the
+mobile robot is illustrated in Figure 14.
+
+5.3 Learning path-following behaviors
+The previous section presented a method for learning homing behaviors that minimize a given error signal. In this
+section, a method is presented for moving while minimizing the error signal. The result is a path-following behavior.
+Learning a path-following behavior involves two steps: 1) learning how to move in the general direction that keeps the
+15 Choosing an optimal target value Ý £ for a feature Ý is beyond the scope of this paper. The implemented learning agent chooses a value equal
+to half the feature’s maximum value.
+
+Pierce & Kuipers, AIJ, 1997
+
+24
+
+For each context Þ
+
+,
+
+´µ
+´µ
+
+Ñ Ü ¼ ¾Ö  ½
+
+ÔÔ
+ÓÙØÔÙØ
+
+Ù u
+Ý£   Ý
+Ý£
+
+ÓÒ
+
+¼½
+
+where
+
+¾
+
+Ù
+
+·Ñ
+
+Ñ
+Ý£   Ý
+
+¾
+
+Ø
+
+Figure 13: A homing behavior is defined for each local state variable Ý and for each primitive action Ù to achieve the goal
+Ý
+Ý £ . The applicability and output are defined as functions of the current context as defined by the context feature Þ . The
+applicability has a maximum value of 1.0 if the correlation Ö between Ù and Ý has a magnitude of 1.0 and a minimum value of
+zero if the correlation has a magnitude of 0.5 or less. The output is given by a proportional-integral (PI) control law with parameters
+,
+(see [Kuo, 1982]) that minimizes the difference between Ý and Ý £ . The behavior is done when this difference
+is close to zero. The init function resets the value of the integral of the error to zero.
+
+½¼
+
+¼¼
+
+y=y*
+
+Figure 14: An example of a homing behavior for the mobile robot with distance sensors and tank-style motor apparatus. The
+agent’s static action model predicts that in this context the second primitive action Ù½ decreases the value of local state variable Ý .
+This information is used in the definition of a homing behavior that is (a) applicable in this context, (b) uses primitive action Ù½ to
+move the robot so as to minimize the error
+Ý £ Ý , and (c) is done when Ý Ý £ .
+
+ 
+
+error near zero and 2) learning the necessary feedback for error correction to avoid straying off the path defined by the
+minimum of the error signal.
+The learning agent uses its static action model to determine which primitive action to use to provide motion along
+a path. It learns a dynamic action model to tell how to use the remaining primitive actions to provide error correction.
+5.3.1 Learning open-loop path-following behaviors
+The static action model does not give the agent enough information to define closed-loop path-following behaviors
+with error correction, but it does give the agent enough information to define open-loop path-following behaviors.16
+An open-loop path-following behavior lacks error correction but is useful for learning the dynamic action model,
+which is in turn useful for defining path-following behaviors with error correction. Recall that the static action model
+in which primitive action Ù has no effect on local state variable Ý .
+identifies constant contexts Þ
+, two open-loop behaviors
+For each local state variable Ý and primitive action Ù , for each constant context Þ
+are defined, one for each direction of motion. The behaviors’ outputs are given by
+u
+16 In
+
+Ù¬ ·
+
+Æ
+
+ÙÆ ÙÆ
+
+a closed-loop control law, an error signal is used as feedback to determine a motor control vector that minimizes that error.
+
+Pierce & Kuipers, AIJ, 1997
+
+25
+
+½
+
+. The ÙÆ components are used in learning the dynamic action model. The purpose of
+where Ù¬ ¦Ù and ÙÆ
+an open-loop path-following behavior is to allow the agent to learn the effects of the orthogonal control signals on the
+feature while motor control vector Ù¬ is used.17 With this knowledge, it is possible to use the other control signals
+for error correction. The definition of open-loop path-following behaviors is summarized in Figure 15. A behavior is
+
+Ý£   Ý
+Ý£
+
+ÔÔ
+ÓÙØÔÙØ
+
+Ù¬ ·
+
+Æ
+
+Ý£   Ý
+Ý£
+
+ÓÒ
+
+¼½
+
+Þ
+
+ÙÆ ÙÆ
+
+¼
+
+(a new behavior becomes applicable)
+Figure 15: An open-loop path-following behavior is defined for each local state variable Ý , for each primitive action (or opposite)
+Ù¬ , and for each constant context Þ
+. The predicate Þ
+defines a constant context if it implies that Ù¬ maintains Ý
+constant according to the static action model. The behavior is applicable when the error signal Ý £   Ý is small. The output has
+
+two components: a base motor control vector and a small orthogonal component. During learning of the dynamic action model, the
+orthogonal component changes every 3 seconds. Only one of the ÙÆ ’s is nonzero at a time. The behavior is done when the error
+signal is too large or a new behavior becomes applicable.
+
+done when the robot strays too far off the path or when a new behavior becomes applicable indicating that the agent
+has a choice to make: to continue the current behavior or start a new one.
+For the mobile robot of the running example, there is an open-loop path-following behavior based on Ù¼ (for
+Ý £ since, according to the
+turning) for each local state variable Ý (see Figure 16a). It is applicable whenever Ý
+
+y=y*
+
+(a)
+
+(b)
+
+Figure 16: Two examples of open-loop path-following behaviors. (a) A behavior based on Ù¼ (for turning) and constraint Ý
+Ý£
+£
+¼
+½
+is applicable whenever Ý
+Ý since Ù never changes the value of Ý . (b) A behavior based on primitive action Ù (advancing)
+and constraint Ý
+Ý £ is applicable whenever Ý
+Ý £ and the robot’s heading is parallel to the wall on its left (i.e., Þ
+½)
+½
+£
+since in this context Ù keeps the error
+Ý   Ý near zero.
+static action model, turning has no effect on Ý . There is also an open-loop path-following behavior based on Ù½
+(for advancing) for each feature Ý (see Figure 16b). It is applicable when the robot is facing parallel to the object
+being detected by Ý (that is, when context feature Þ has value 6 or 18). Figure 20b shows a trace of the behavior of
+the robot that results as the learning agent uses its learned open-loop path-following behaviors to explore the robot’s
+environment.
+5.3.2 The dynamic action model
+The static action model predicts the context-dependent effects of a control signal on the local state variables. The
+dynamic action model predicts the context-dependent effects of control signals on the local state variables while an
+open-loop path-following behavior is being executed.
+17 The
+
+primitive actions are orthogonal to each other in the sense that their amvf ’s are orthogonal to each other (see Section 3.3).
+
+Pierce & Kuipers, AIJ, 1997
+
+26
+
+The dynamic action model tells, for each open-loop path-following behavior, the effect of each orthogonal action
+(each primitive action other than the path-following behavior’s base action), on the local state variable that is used
+in the definition of the path-following behavior’s error signal. To learn the dynamic action model, an exploration
+behavior is used that randomly chooses applicable homing and open-loop path-following behaviors. A behavior runs
+until it is no longer applicable, or a new path-following behavior becomes applicable. Linear regression is used to
+learn the relationships between the orthogonal actions ÙÆ and the features Ý in the context of running the open-loop
+. While it is running,
+path-following behavior based on feature Ý , motor control vector Ù¬ ¦Ù , and context Þ
+Ñ Æ½ ÙÆ and Ý
+Ñ Æ¾ ÙÆ by computing the correlations Ö ÆÒ between
+linear regressors test the hypotheses Ý
+ÙÆ and Ý ´Òµ . If Ö Æ½ Ö Æ¾ and Ö Æ½
+, then the rule
+
+¼
+
+Ý
+
+Ñ
+
+Æ½ ÙÆ
+
+Þ
+
+is added to the dynamic action model. Otherwise, if Ö
+
+Ý
+
+Ñ
+
+Æ¾ ÙÆ
+
+Þ
+
+u
+Æ¾
+
+¼
+
+¦Ù · ÙÆ ÙÆ
+
+, then the rule
+u
+
+¦Ù · ÙÆ ÙÆ
+
+is added to the dynamic action model. Otherwise, the relationship between ÙÆ and Ý is either zero or unpredictable.18
+Suppose that the mobile robot of the running experiment has a wall to its left and that its heading is parallel to
+the wall (Figure 16b). In this context, primitive action Ù½ (advancing) maintains the distance to the wall, Ý , constant
+). Therefore, the open-loop path-following behavior based on Ù½ and Ý is applicable. While executing
+(Ñ
+this behavior, the effects of other control signals (i.e., Ù¼ ) can be diagnosed. In this example, Ù¼ affects the second
+Ñ ½ ¼ ¾ Ù¼ This is because turning changes the robot’s direction of motion relative to
+derivative of the feature: Ý
+the wall and this direction determines how fast the robot moves toward or away from the wall as it advances. Examples
+of the linear regressors used to learn the dynamic action model for the robot of the running example are illustrated
+in Figure 17.19 According to the dynamic action model, Ù¼ has a predictable effect on Ý while any of the open-loop
+behaviors based on Ù½ is executing. For the open-loop path-following behaviors based on Ù¼ , the effect of Ù½ on Ý is
+unpredictable.
+
+¼
+
+¼¼¼½½
+
+¼¼¼½¾
+
+¼½ ¼½
+
+¼½ ¼¾
+
+Figure 17: Plots illustrating the relationships measured by the linear regressors used in learning the dynamic action model. The
+labels under the plots give the values of , , , Æ , and Ò, where Ò is the number of the derivative of Ý being tested. The first
+two plots show the effect of Ù½ (advancing) on Ý¼ and Ý¼ respectively while an open-loop path-following behavior based on Ù¼ is
+executed. Here Ý¼ is one of the local state variables (instances of lmin) produced by the tracker generator. The second two plots
+show the effect of Ù¼ (turning) on Ý¼ and Ý¼ respectively while an open-loop path-following behavior based on Ù½ is executed in
+context Þ¼ ½
+. This is the context in which the robot heading parallel to a wall on its right.
+
+Ù
+
+18 For the dynamic action model, it is necessary to consider both first and second derivatives of the features. Informally, this is because Æ may
+affect the derivative of Ñ in the equation Ý
+Ñ Ù , that is, Ñ
+Ñ Æ ÙÆ . Together, these give Ý
+Ñ Ù
+Ñ Æ ÙÆ Ù
+Ñ Æ¾ ÙÆ ,
+using the product rule and the fact that Ù is constant for a path-following behavior.
+19 The linear regressors operate on filtered versions of Ý and Ù to remove noise that would otherwise hide the relationship between the signals.
+The signals are filtered using a moving average taken over several seconds.
+
+Pierce & Kuipers, AIJ, 1997
+
+27
+
+Figure 18: Defining closed-loop path-following behaviors. The learning agent uses the dynamic action model to add error correction to an open-loop path-following behavior in order to obtain a closed-loop path-following behavior. In this example, a small
+turning motion is used to keep the robot on the path as it advances.
+
+5.3.3 Learning closed-loop path-following behaviors
+The final step in learning path-following behaviors is to add error correction to the open-loop path-following behaviors
+in order to define closed-loop path-following behaviors. A closed-loop behavior is one that receives feedback from the
+environment in the form of an error signal which it uses to modify its motor control signals so as to minimize the error.
+Consider again the case where the robot is facing parallel to a wall on its left. In this context, the learning agent knows,
+because of its static action model, that primitive action Ù½ leaves feature Ý (the distance to the wall) approximately
+constant. Moreover, the agent knows, because of its dynamic action model, how control signal Ù¼ (turning) affects
+Ý while Ù½ is being taken. Together, this information is sufficient to define a closed-loop path-following behavior
+that robustly moves the robot along the wall. If Ý goes below its target value (i.e., if the robot gets too close to the
+wall), then the agent knows to increase the value of Ù¼ (i.e., to turn right as shown in Figure 18). Because of the
+error correction implemented using control signal Ù¼ , the path-following behavior is robust in the face of noise in
+the sensorimotor apparatus, small perturbations in the shape of the wall, and even inaccuracies in the action models
+themselves.
+A closed-loop path-following behavior is defined using the generic template in Figure 19 for each constraint y =
+Ý£ , for each primitive action or opposite Ù¬ ¦Ù , and for each constant context z k. The predicate z k (where
+z is a vector of context features Þ and k is a vector of context values ) defines a constant context if for each Þ ¾ z
+defines a constant context for Ý and Ù according to the static action model. The variable Ö ÆÒ
+and ¾ k, Þ
+´Òµ
+is the correlation between ÙÆ and Ý while motor control vector Ù¬ is used in context . The behavior is applicable
+when all of the elements of y are near their target values (i.e., y Ý£ ) and when z k indicating that the static action
+model predicts that motor control vector Ù¬ keeps the error vector Ý£   y near zero. The behavior is done when a
+new path-following behavior becomes applicable indicating that the agent now has a choice — to continue the current
+path-following behavior or to choose a new one.
+For the example robot, the set of path-following behaviors contains behaviors for turning in place as well as for
+following walls. For the behavior based on Ù½ (advancing), the effect of the orthogonal primitive action Ù¼ on the
+local state variables is predictable and thus it can be used for error correction. For the behaviors based on Ù¼ (turning),
+no error correction is used since the effect of Ù½ is unpredictable.20
+Figure 20 shows the behavior of the robot at three different stages as the agent learns the set of path-following
+behaviors. Section 6 demonstrates the learning of the set of homing and path-following behaviors for a rectangular
+environment containing a number of obstacles and a T-shaped environment. In Section 7, the path-following behaviors
+learned in this section are used as the basis for an exploration and mapping strategy that allows the agent to develop a
+discrete abstraction of the robot’s continuous world.
+
+6 Additional Experiments
+The previous sections have demonstrated a set of learning methods that a learning agent may use to learn the sensorimotor and control levels of the spatial semantic hierarchy. The purpose of this section is to describe a number
+of experiments (in addition to those described in the previous sections) that demonstrate the generality and some
+limitations of the methods for learning the sensorimotor and control levels.
+20 The implemented learning agent learns a context-dependent static action model. An extension would be to learn a context-dependent dynamic
+action model for each open-loop path-following behavior. In this way the effect of ½ could become predictable and the action could be used for
+error correction in a context-dependent control law.
+
+Ù
+
+Pierce & Kuipers, AIJ, 1997
+
+28
+
+ÔÔ
+
+Ý
+
+Ù¬ ·
+
+ÓÙØÔÙØ
+ÓÒ
+
+Ý
+
+Ý£   Ý
+Ý£
+
+¾y
+
+¼½
+
+Þ
+
+¾ z ´Þ
+
+µ
+
+ÙÆ ÙÆ
+
+Æ
+
+Ý£   Ý
+Ý£
+
+¾y
+
+¼
+
+(a new behavior becomes applicable)
+where
+
+ÙÆ
+ÙÆ
+ÙÆ
+ÙÆ
+
+Ý ¾y
+
+ÙÆ
+
+¾
+
+Ñ
+
+¾
+
+Ñ
+
+¼
+
+Ý
+
+Æ½
+Æ¾
+
+·Ñ
+· ¾
+Ñ
+
+¾
+
+Ø
+
+Æ½
+Æ¾
+
+if Ö
+
+Æ½
+
+Ö
+
+Æ¾
+
+¼
+
+if Ö
+
+Æ¾
+
+Ö
+
+Æ½
+
+¼
+
+otherwise
+
+£
+
+ Ý
+
+Figure 19: Definition of a closed-loop path-following behavior. Here, y is a vector of local state variables Ý ; Ý£ is the corresponding vector of target values; Ù¬ ¦Ù is one of the primitive actions or their opposites; z is a vector of context features Þ , one for
+each local state variable Ý ; and k is the corresponding vector of context values . The equation z k defines a context in which
+Ù¬ maintains y constant according to the static action model. The values of Ñ ÆÒ and Ö ÆÒ are taken from the dynamic action
+model. Simple PI and PD (proportional-derivative) controllers are used (see [Kuo, 1982]) depending on whether the primary effect
+of ÙÆ is on Ý or Ý , respectively. Again, =1.0, =0.05.
+
+(a)
+
+(b)
+
+(c)
+
+Figure 20: Exploring a simple world at three levels of competence. (a) The robot wanders randomly while learning a model of its
+sensorimotor apparatus. (b) The robot explores by randomly choosing applicable homing and open-loop path-following behaviors
+based on the static action model while learning the dynamic action model. (c) The robot explores by randomly choosing applicable
+homing and closed-loop path-following behaviors based on the dynamic action model.
+
+Pierce & Kuipers, AIJ, 1997
+
+29
+
+The learning methods are first demonstrated for the mobile robot in a cluttered room. Then, to demonstrate that
+the learned model of the sensorimotor apparatus applies beyond the particular environment in which the model was
+learned, the learning agent is transferred to a new, T-shaped environment after its control-level learning has been
+erased. Here it re-learns the control level and demonstrate a set of learned path-following behaviors. Finally, to
+demonstrate that the learning of the control level applies beyond the particular environment in which it was learned,
+the learning agent is transferred to an empty room where it again demonstrates the learned path-following behaviors.
+Sections 6.4 and 6.5 describe two experiments in which various of the learning methods failed and explain why
+they failed. Section 6.4 describes an experiment in which the image-feature generator fails to produce a ring-shaped
+representation of the structure of the ring of distance sensors. Section 6.5 describes an experiment in which the learning
+agent fails to discover any local state variables. Section 6.6 summarizes the ways in which the learning methods can
+fail. Finally, Section 6.7 identifies a number of ways in which the learning methods can be improved.
+
+6.1 A cluttered room
+The environment used in this experiment is a rectangular room with dimensions six meters by four meters, containing
+four rectangular obstacles (Figure 23). The simulated mobile robot used throughout this section is the same as that
+described in Section 2.1.
+6.1.1 Modeling the sensory apparatus
+The first step in modeling the robot’s sensory apparatus is to apply the group-feature generator. The learning agent
+computes distance metrics ½ and ¾ after wandering for 20 minutes. Their values are qualitatively similar to those
+shown in Figure 2. The group-feature generator identifies the same groups as those in Section 2.3. The second step in
+modeling the robot’s sensory apparatus is to apply the image-feature generator. The learning agent computes distance
+metric ½ for the group of 23 related sensors after wandering for 40 minutes.21 The outputs of the metric scaling and
+relaxation algorithm are qualitatively similar to those shown in Figure 3.
+6.1.2 Modeling the motor apparatus
+The first step in modeling the robot’s motor apparatus is to characterize the effects of each of a large set of representative motor control vectors. In this experiment, 100 representative motor control vectors of unit magnitude are chosen.
+Eight example amvf ’s and their associated motor control vectors are shown in Figure 21. These were obtained while
+the learning agent wandered for 60 minutes, repeatedly choosing a representative motor control vector at random and
+executing it for one second (ten time steps). The first four eigenvectors produced by principal component analysis
+from are shown in Figure 22. The first corresponds to a pure rotation motion and the second corresponds to a pure
+translation motion. The two motor control vectors identified as primitive actions are shown above under the two principal eigenvectors. None of the other eigenvectors match any of the amvf ’s. Notice that the primitive actions identified
+here very closely match those shown in Figure 7. The result of the analysis is that the robot’s motor apparatus has two
+degrees of freedom and that the above primitive actions can be used to produce motion for each degree of freedom.
+6.1.3 Learning behaviors
+As described in Section 4, the learning agent identifies the set of local-minimum features (s-g-im-lmin-tr-val) as local
+state variables (they are the only generated features that are identified as both action dependent and predictable).
+The learned static and dynamic action models are qualitatively similar to those learned in Sections 4 and 5. In this
+experiment, the learning agent again discovers that it can use the first (turning) primitive action for error correction
+while executing an open-loop path-following behavior based on the second (advancing) primitive action. It uses this
+information to define closed-loop path-following behaviors. Figure 23 shows a trace of a random exploration behavior
+demonstrating the learning agent’s learned behaviors.
+21 We use fairly long wandering periods so that the robot adequately explores its state space. For the uncluttered, rectangular room, shorter periods
+were used because the group- and image-feature generators quickly converged. See Section 6.7 for a discussion of improved feature generators that
+automatically detect when they have converged.
+
+Pierce & Kuipers, AIJ, 1997
+
+30
+
+(1.00 -0.00)
+
+(0.69 0.73)
+
+(0.00 1.00)
+
+(-0.73 0.69)
+
+(-1.00 0.00)
+
+(-0.69 -0.73)
+
+(-0.00 -1.00)
+
+(0.73 -0.69)
+
+Figure 21: Example amvf ’s and associated motor control vectors for the cluttered-room experiment.
+
+1.40
+
+Ù¼ = (-0.706 0.707)
+
+1.10
+
+0.27
+
+0.22
+
+Ù½ = (0.728 0.683)
+
+Figure 22: The first four eigenvectors and the primitive actions for the cluttered-room experiment.
+
+Figure 23: The path taken by the robot while the learning agent randomly selects learned homing and path-following behaviors.
+When no other behavior is applicable, it randomly selects primitive actions. The robot is initially in the middle. The learning agent
+begins by using a homing behavior to move toward the long obstacle and then using a path-following behavior to move along it.
+The diagonal trajectories in the corners are the results of homing behaviors that move the robot from a wall to a path.
+
+Pierce & Kuipers, AIJ, 1997
+
+31
+
+Figure 24: Re-learning behaviors in a T-shaped room. Path-following behaviors based on the advancing primitive action produce
+the straight-line trajectories that are parallel to the walls. Path-following behaviors based on the turning primitive action leave the
+robot in the same place while changing the robot’s heading. The homing behaviors based on the advancing action produce most
+of the rest of the trajectories shown in the picture. A few of the trajectories are produced by a random wandering behavior that is
+used whenever none of the other behaviors are applicable. (The learning agent selects its behaviors stochastically and occasionally
+selects a random wandering behavior even when other behaviors are applicable.)
+
+6.2 Re-learning the behaviors in a T-shaped room
+For this experiment, the robot was moved from the cluttered room to a T-shaped environment and the learning agent’s
+control-level learning (i.e., static action model, dynamic action model, and learned behaviors) was erased. Its task
+was to begin with an intact model of the robot’s sensorimotor apparatus and learn an appropriate set of homing and
+path-following behaviors. The environment used in this experiment consists of two corridors connected to form a T.
+The corridor forming the top of the T is 6 meters long and 1.5 meters wide. The shorter corridor is 4.5 meters long
+and 1.5 meters wide.
+The learning agent successfully learns the open-loop and closed-loop path-following behaviors. Figure 24 shows a
+trace of a random exploration behavior demonstrating the learned behaviors. This experiment demonstrates that both
+the set of features and the model of the sensorimotor apparatus that were learned in the first environment are applicable
+in the second environment.
+
+6.3 Using the behaviors in an empty room
+For this experiment, the robot was moved from the T-shaped environment to an empty rectangular room (of dimensions
+6 meters by 4 meters). The learning agent’s model of the robot’s sensorimotor apparatus and its set of learned behaviors
+were left intact. Figure 25 shows a random exploration behavior demonstrating that the learned behaviors do not apply
+only to the environment in which they were learned.
+
+6.4 A long and narrow room
+This experiment demonstrates an instance in which the image-feature generator does not produce a ring-shaped representation of the structure of the ring of distance sensors. The environment used in this experiment is a long, narrow,
+rectangular room. The room is six meters long and one half meter wide. This environment was designed to confuse
+the image-feature generator. Since the room is so narrow, the values of distance sensors on opposite sides of the ring
+are often similar: If a sensor detects the distance to one of the long walls of the room, then the sensor opposite to it
+
+Pierce & Kuipers, AIJ, 1997
+
+32
+
+Figure 25: Using the learned homing and path-following behaviors in an empty room.
+Metric scaling eigenvalues
+2
+1.8
+1.6
+1.4
+1.2
+1
+0.8
+0.6
+0.4
+0.2
+0
+1 2 3 4 5 6 7 8 9 10
+
+9
+109 8
+2122
+11
+7
+23
+12 19
+0
+6
+13 18
+5 1
+1417
+4 32
+15
+16
+
+10
+11
+12
+13
+14
+15
+16
+
+8
+7
+6
+5
+4
+3
+
+17
+
+21
+22
+23
+0
+1
+2
+
+18 19
+
+Figure 26: The outputs of the metric-scaling and relaxation algorithms for the narrow-room experiment.
+detects the distance to the wall on the opposite side of the room. Both sensors produce a small value (less than 0.5).
+On the other hand, if a sensor returns a large value, then there is a good chance that the sensor opposite to it will also
+return a large value.
+If opposite sensors return similar values, on average, then the image-feature generator will place them close together in the image feature. It is unlikely, in this case, that the image feature will capture the ring structure of the array
+of distance sensors.
+6.4.1 Modeling the sensory apparatus
+The result of the group-feature generator is the same as before: The distance sensors are all grouped together. The
+outputs of the metric scaling and relaxation algorithm are shown in Figure 26. According to the metric-scaling scree
+diagram on the left, the structure of the array of sensors is best captured by a four-dimensional representation – there is
+no arrangement of points in fewer than four dimensions for which the distance between any two points approximates
+the distance between corresponding sensors as measured by distance metric ½ . The middle figure below shows the
+projection onto two dimensions of the set of points generated by the metric-scaling algorithm. The figure on the right
+shows the results of the relaxation algorithm.22 Notice that sensors that are adjacent in the ring of sensors are close
+together in the image. 23
+22 The metric-scaling algorithm, the relaxation algorithm, and the definition of the image and motion features can all handle images of arbitrary
+dimension. However, in the current implementation, we have constrained the image feature to be two-dimensional. A goal for future research is to
+remove this artificial constraint and test the methods on sensory arrays that are genuinely three-dimensional.
+23 Though the results are not shown here, we have also run the relaxation algorithm for this distance metric in three dimensions. In that case the
+resulting pattern of sensors resembles the pattern of stitching on a baseball.
+
+Pierce & Kuipers, AIJ, 1997
+
+1.36
+Ù¼ = (-0.723 0.680)
+
+33
+
+0.83
+Ù½ =(-0.532 -0.837)
+
+0.30
+Ù¾ = (-0.877 -0.481)
+
+0.27
+
+Figure 27: The first four eigenvectors and the primitive actions for the narrow-room experiment.
+
+1.11
+Ù¼ = (-0.746 0.659
+
+0.71
+Ù½ = (0.765 0.632)
+
+0.24
+
+0.21
+
+Figure 28: The first four eigenvectors and the primitive actions for the circular-room experiment.
+6.4.2 Modeling the motor apparatus
+The first four principal eigenvectors for the space of average motion vector fields are shown in Figure 27. The method
+actually identifies the turning motor control vector correctly. The second primitive action is primarily an advancing action but has a significant turning component to it. The method erroneously identifies three primitive actions.
+The second and third primitive actions are both poor approximations of a motor control vector that produces a pure
+advancing motion.
+
+6.5 A circular room
+This experiment demonstrates an instance in which the learning agent fails to discover any local state variables. The
+robot’s environment is a circular room three meters in diameter. The results of the learning of the sensorimotor
+apparatus are summarized by the set of principal eigenvectors and primitive actions shown in Figure 28. The learning
+agent identifies two primitive actions corresponding to turning and advancing, but fails to discover any local state
+variables. The following analysis explains why this happened.
+For a feature to be a local state variable, it must be both action-dependent and predictable. For a feature to
+be predictable, the effects of the primitive actions on the feature must be known for all possible contexts. In the
+rectangular and T-shaped environments, the local-minimum features (which give distances from the robot to nearby
+objects or walls) were identified as local state variables. Here is a summary of what was learned by the learning agent
+(and represented in the static action model) for the robot in the rectangular environment:
+
+¯
+¯
+
+The first primitive action (turning) does not affect the local-minimum features. The effects of the primitive
+action are thus predictable for all contexts.
+The effect of the second primitive action (advancing) is context dependent:
+– When the robot is facing toward a wall, the primitive action reliably decreases the value of the localminimum feature.
+
+Pierce & Kuipers, AIJ, 1997
+
+34
+
+– When the robot is facing away from a wall, the primitive action reliably increases the value of the localminimum feature.
+– When the robot is facing parallel to the wall (in either direction), the primitive action leaves the value of
+the feature constant.
+For this experiment (with the circular environment), the learning agent’s learned static action model is identical
+to that described above, but with the following exception: When the robot is facing parallel to the wall, the effect of
+the second primitive action on the local-minimum feature is unpredictable. Here is an explanation for the difference.
+When facing parallel to a straight wall, a robot can move for many steps without changing the distance to the wall
+significantly. This is why it is possible for the linear regression tester that analyzes the effect of the primitive action to
+conclude that its effect is, to a good approximation, zero in this context. In the circular world, on the other hand, the
+robot can only advance a few steps without changing the distance to the wall. The only conclusion that the learning
+agent is able to draw from the linear regression tester is that the effect of advancing is unpredictable in this context.
+
+6.6 Failure modes
+Sections 6.4 and 6.5 gave two examples of cases in which the learning agent failed to learn a set of homing and pathfollowing behaviors. This section provides a more exhaustive list of ways in which the learning methods described in
+this paper can fail. The next section discusses how the learning methods may be improved.
+Modeling the sensory apparatus. If there is no structured array of sensors, then the group-feature generator will
+produce only small or singleton groups and the image-feature generator will not apply. If there is an array of sensors but
+the sensors do not adequately sample a continuous property of the environment, then the group and image features will
+fail to produce a representation of the structure of those sensors. For example, if there are only four distance sensors,
+then the values of adjacent sensors may not be similar enough for the group-feature generator to group them together.
+If the environment is large and the learning agent does not adequately explore the environment before applying the
+group- and image-feature generators, then the measured inter-sensor distance metrics may not accurately reflect the
+structure of the sensory apparatus.
+Representing motion. The motion-feature generator requires an image feature (either learned, as is the case here, or
+given a priori by the robot’s designer). If there is no image feature, then the motion-feature generator will not apply.
+If the robot’s motion is so fast that successive image-feature values are unrelated, then the motion feature will fail to
+produce meaningful results.
+Modeling the motor apparatus. The matching process that identifies primitive actions (i.e., motor control vectors
+whose amvf ’s match the principal eigenvectors) can fail to correctly identify a primitive action if the amvf ’s have not
+converged (i.e., if the learning agent has not wandered long enough and the values of the amvf ’s are still fluctuating
+with time). This is one possible explanation for the failure to identify just two primitive actions in Section 6.4.2.
+Generating candidate local state variables. The discovery of local state variables may fail if the language of
+features and feature generators is not general enough. In such a case, none of the generated scalar features would
+satisfy the definition of local state variable (as in the experiment described in Section 6.5). On the other hand, if
+the language of features and generators is too general, the learning agent will quickly become bogged down in a
+combinatorial explosion of mostly useless features. In this paper, we identified a small set of feature generators that
+are appropriate for a robot with a rich sensorimotor apparatus and then demonstrated that they are sufficient for a
+particular set of environments and sensorimotor apparatuses.
+Learning action models. The learning agent will fail to correctly learn the static and dynamic action models if it
+does not explore long enough for the linear-regression calculations to converge. In the case that the learning agent
+must learn the relationships between a motor control vector and a feature for a large number of contexts, the method
+requires that the learning agent experiment with the motor control vector in each of those contexts.
+
+Pierce & Kuipers, AIJ, 1997
+
+35
+
+Learning path-following behaviors. The learning of path-following behaviors can depend on the set of learned
+primitive actions. If none of the primitive actions can be used to maintain any of the local state variables constant, then
+no path-following behaviors will be learned.
+In the experiments described in this paper, each learning method builds on the results of the preceding methods,
+which means that one source of failure for a method is the failure of a preceding method. This observation, if left
+unqualified, sells the learning methods short. First, the methods are interesting in their own right (for example, the
+modeling of the motor apparatus could be applied to a sensory system whose structure was given by the robot’s
+designer rather than being learned). Second, the sequential nature of the learning is partially an artifact of our particular
+learning problem. For example, the discovery of local state variables does not, in general, depend on the success of
+the image-feature generator but is instead the result of an independent process of generate and test.
+
+6.7 Future work
+Section 6.6 identified a number of ways in which the learning methods can fail. This section provides suggestions for
+improvements to the learning methods.
+Improved feature testers. One way that several of the learning methods can fail is by jumping to a conclusion prematurely. For example, if the group-feature generator uses a distance metric before the distance metric has converged,
+then the output of the generator may be incorrect. If primitive actions are identified before the amvf ’s have converged,
+then the model of the motor apparatus may be incorrect.
+In these examples, the distance metrics and the amvf ’s are examples of feature testers — features that are used to
+characterize other features. A solution to the problem of drawing premature conclusions is to have each feature tester
+tell when its output is meaningful. It can do this by providing a measure of confidence in addition to its output value.
+For example, the confidence level for a tester might be close to 1 if the tester’s output is stable (changing slowly) and
+close to 0 if the tester’s output is still fluctuating.
+For a linear regression tester, the confidence level should be a function of the set of inputs it has received. Consider,
+for example, how the static action model uses linear regression testers. It uses a separate linear regression tester for
+each feature, primitive action, context triple. If the robot is never in a given context, then the confidence level for any
+linear regression tester based on that context should be zero. The confidence level for a linear regression tester might
+be defined in terms of the 90% confidence interval24 for the correlation between the input variables. The smaller the
+confidence interval, the greater the tester’s confidence level. Associating confidence levels with features could improve
+all of the learning steps listed in the previous section by reducing the chance of producing inaccurate or incomplete
+models.
+An improved static action model. The learning agent uses the static action model to define a set of open-loop pathfollowing behaviors — behaviors that move the robot while maintaining a local state variable constant. In the current
+implementation, open-loop path-following behaviors are based on primitive actions. If a primitive action maintains a
+local state variable constant, according to the static action model, then it can be used as the “base action” for a pathfollowing behavior. Using only primitive actions as base actions is a limitation of the current implementation. The
+method for learning path-following behaviors would be improved if the static action model could predict the effects of
+arbitrary motor control vectors, not just the primitive actions. With a more comprehensive static action model, more
+path-following behaviors could be defined. For example, in the circular room, a path-following behavior could be
+based on a motor control vector with a large advancing component and a small turning component.
+One approach to improving the static action model would be to discretize the space of all motor control vectors
+into a set of representative motor control vectors and then to learn models of all of these instead of just the primitive
+actions. Another approach would be to use a neural network [Jordan and Rumelhart, 1992] to learn to predict the
+context-dependent effects of arbitrary actions. The network could then serve as the static action model and could be
+used to find base actions for path-following behaviors.
+24 See,
+
+for example, [Krzanowski, 1988, p. 415].
+
+Pierce & Kuipers, AIJ, 1997
+
+36
+
+Reinforcement learning. It may be possible to use reinforcement learning [Chapman and Kaelbling, 1990, Lin, 1993,
+Ring, 1994, Sutton, 1990, Williams, 1987] to learn homing and path-following behaviors without the need for the
+primitive actions or explicit action models. An advantage of such an approach is that it does not presume that a particular model of the sensorimotor apparatus has been learned. A disadvantage is that it is difficult to train more than one
+behavior at a time [Whitehead et al., 1993] whereas it is possible to learn action models for a large number of features
+simultaneously.
+Learning composite primitive actions. Consider a robot that is capable of rotating and advancing and that has a
+ring of distance sensors that is always oriented in the same direction. The learning methods of Section 2 will succeed
+in identifying the structure of the ring of sensors. The first three steps of Section 3 will succeed in identifying two
+basic motions: one for translating in one direction, and one for translating in a perpendicular direction. The fourth step
+of Section 3, as currently implemented, will fail to identify two corresponding primitive actions since the robot is not
+capable of directly translating in two directions.
+This suggests a topic for future research: to extend the learning of primitive actions to allow for composite actions
+(action sequences). In the example of the robot with the fixed sensor ring, a primitive action could be composed of a
+turn to a particular direction followed by an advance. An alternate solution is that of the preceding section: to learn
+homing and path-following behaviors directly using reinforcement learning without first learning primitive actions.
+This example illustrates that it is more difficult to learn a model of a sensorimotor apparatus for which an important
+action has no immediate effect on the sensors.
+
+7 From continuous world to finite-state world
+The learning agent has made the transition from raw senses and motor control vectors to local state variables and
+high-level behaviors (which comprise the control level of the spatial semantic hierarchy). The goal of the next step is
+to abstract from the continuous sensorimotor apparatus to a discrete sensorimotor apparatus by defining finite sets of
+views and actions. The source of information for this step is the set of learned behaviors (including the knowledge of
+when each is applicable).
+For any given state of the robot, there is a finite set of homing and path-following behaviors. These behaviors are
+the actions of the discrete sensorimotor apparatus. Executing one of the actions involves running the corresponding
+behavior until it terminates. The set of states in which actions terminate is also finite. These states are named via
+a mapping from sense vectors to symbols called views. In our experiments, this mapping is implemented using a
+matching predicate: two sense vectors are judged to be similar if their Euclidean distance is less than a small constant.
+If the current sense vector is new then a new view is created and associated with it. If the current sense vector matches
+one previously seen, it is associated with the same view as the previous sense vector.
+This interface abstracts from continuous time to discrete time. While a path-following behavior is executing, the
+interface is undefined. When the behavior terminates, the interface identifies the current view and lists the current set
+of applicable behaviors. Figure 29 demonstrates this interface. Initially (Ú ), no wall is within sensor range and the
+only available action is the wandering behavior. When the wandering behavior terminates (Ú ), a homing behavior
+is applicable. Selecting this behavior leads to view Ú where two path-following behaviors based on Ù¼ (turning) are
+applicable. Selecting the first leads to view Ú . Selecting it again leads to view Ú . At this point, two 1-degree-offreedom path-following behaviors based on Ù½ (advancing) are applicable. Choosing the first leads to Ú . The figure
+shows the behavior of the robot during a user-guided exploration that leads it to Ú . The rest of the exploration around
+the room (not shown) eventually returns the robot to the southeast corner. Using its matching predicate, the learning
+Î
+agent recognizes that it has returned to view Ú . The robot’s experience is represented as a collection of Î
+triples, called schemas. This knowledge is the basis for the causal level of the spatial semantic hierarchy.
+
+½
+
+¾
+
+¿
+
+½¾
+
+´
+
+µ
+
+8 Learning the topology of the environment
+In Section 1.1, we described the spatial semantic hierarchy, which is comprised of five levels: sensorimotor, control,
+causal, topological, and metrical. We have demonstrated a learning agent that has learned the first three levels: The
+
+Pierce & Kuipers, AIJ, 1997
+
+37
+
+v8
+v12
+
+v9
+
+v11
+v10
+
+v2 v1
+v7
+
+v3
+v4
+
+a
+
+v5
+
+v6
+
+b
+
+Figure 29: A demonstration of the discrete abstract interface. We used the abstract interface of the discrete sensorimotor apparatus
+to select appropriate behaviors to drive it around the room. At each step, the interface provides the view name (e.g., v1) that identifies
+the current state, and a finite set of applicable homing and path-following behaviors. The dotted arrows represent behaviors based
+on left turn motor control vectors (Ù¼
+). The solid arrows represent behaviors based on forward advance motor control vectors
+(Ù½
+). During this exploration, the robot identifies the 12 unique views shown in the figure on the right.
+
+¼
+
+¼
+
+sensorimotor level was learned in Sections 2 and 3. The control level was learned in Sections 4 and 5. The causal level
+was learned in Section 7. We now describe how the result of the agent’s learning could be used to learn the remaining
+levels of the spatial semantic hierarchy.
+The robot’s path-following behaviors constrain its motion to a one-dimensional subspace of the robot’s complete
+state space. This 1-D skeleton is the basis for an abstraction of the robot’s environment as a graph (a set of nodes and
+a set of edges connecting the nodes together). The edges correspond to paths — trajectories in the robot’s state space
+produced by path-following behaviors. The nodes correspond to states where paths terminate, that is, states where a
+new path-following behavior becomes applicable and the agent stops to choose one of the currently applicable paths.
+The agent’s goal is to construct this graph.
+In the case where views uniquely identify states, the problem is straightforward. The agent keeps track, for each
+state it has seen, of all the actions applicable at that state. Each time it takes an action, , that takes it from view Î
+to Î , it adds the edge Î
+Î to the graph. It continues to explore (intelligently or randomly) until there are no
+state-action pairs that it has not explored.
+In the case that views do not uniquely identify states, a more sophisticated exploration strategy is required. Such
+strategies are generally based on the following idea: If the current view does not uniquely identify the current state,
+the agent supplements the current sense vector with the sense vectors of nearby states. With enough information about
+the surrounding area, the current state can be uniquely identified.
+Finally, metrical information can be added to the topological representation by recording the time taken to traverse
+each path. With this information, navigation including shortest-path planning is possible.
+To summarize, the learning agent has made a critical change of representation by abstracting a continuous sensorimotor apparatus to a discrete sensorimotor apparatus with a finite set of sense values and actions. Understanding a
+continuous world is very difficult. Our learning agent demonstrates a way to reduce the problem of understanding a
+continuous world to the problem of understanding a discrete world, a problem that has been extensively studied (see
+Section 9.1).
+
+´
+
+µ
+
+9 Related Work
+The work mentioned in this section deals with the general problem of learning a model of an environment. A complete
+model of an environment is a description that is sufficient for predicting the input/output behavior of the environment,
+i.e., for predicting the sensory input that will be received from the environment in response to any sequence of actions.
+In some cases, learning a complete model is impractical, in which case a partial model may be learned.
+Methods for learning a model of an environment can be divided into two types: those that deal with finite-state
+worlds and those that deal with continuous worlds. Examples of the first type are given in Section 9.1. Examples of
+
+Pierce & Kuipers, AIJ, 1997
+
+38
+
+the second type are given in Section 9.2. Our contribution has been to show how a learning agent can abstract a robot’s
+continuous world to a finite-state world to which finite-state learning methods may be applied.
+
+9.1 Inferring the structure of finite-state worlds
+The task of inferring the structure of a finite-state environment is the task of finding a finite-state automaton that accurately captures the input-output behavior of the environment. In the case that the learning agent is passively given
+examples of the environment’s input/output behavior, it has been shown that finding the smallest automaton consistent with the behavior is NP-complete [Angluin, 1978, Gold, 1978]. With active learning, in which the agent actively
+chooses its actions, the problem becomes tractable. Kuipers [Kuipers, 1978] describes the TOUR model, a method for
+understanding discrete spatial worlds based on a theory of cognitive maps. Dudek, et al. [Dudek et al., 1991] generalize Kuipers and Byun’s [Kuipers and Byun, 1988, Kuipers and Byun, 1991] strategy for topological map-learning and
+provide algorithms for discriminating perceptually identical states. Angluin [Angluin, 1987] gives a polynomial-time
+algorithm using active experimentation and passively received counterexamples. Rivest & Schapire [Rivest and Schapire, 1993]
+improve on Angluin’s algorithm and give a version that does not require the reset operation (returning to the start state
+after each experiment).
+Dean et al. [Dean et al., 1992] have extended Rivest and Schapire’s theory to handle stochastic FSA’s. They assume that actions are deterministic but that the output function mapping states to senses is probabilistic. The key to
+their method is “going in circles” until the uncertainty washes out. Dean, Basye, and Kaelbling [Dean et al., 1993]
+give a good review of learning techniques for a variety of stochastic automata. Drescher’s schema mechanism
+[Drescher, 1991] employs a statistical learning method called marginal attribution. Schemas emphasize sensory effects
+of actions rather than state transitions and are ideal for representing partial knowledge in stochastic worlds.
+Wei-Min Shen’s LIVE system [Shen, 1994] learns the structure of a finite-state environment from experience (and
+experimentation) within it. His complementary discrimination learning algorithm exploits observed counterexamples
+to a hypothesized concept definition to refine the boundary between positive and negative examples of the concept.
+When the environment is only partially observable, LIVE uses locally distinguishing experiments to test the hypothesized properties of unobserved state variables.
+A primary focus of the work of Shen and other constructive inductionists [Hiraki, 1994, Matheus, 1991, Shen, 1990,
+Shen and Simon, 1989] is the learning of new features. At this level of description, our approach and Shen’s are similar. However, in terms of the actual methods used and the domains of applicability, the two approaches are very
+different and are in fact complementary.
+We focus on feature-learning methods applicable to robots with continuous-valued sensors and control signals
+situated in a 2-dimensional approximation of a 3-dimensional world. We provide a language of features and generators
+especially suitable for robots with structured arrays of sensors. Our emphasis is on learning of sensory features and
+continuous control laws. Shen, on the other hand, focuses on learning rules (consisting of conditions, actions, and
+predictions) that are expressed symbolically. The conditions and predictions are expressed in terms of “percepts,”
+which are high-level, symbolic descriptions (e.g., ON(disk, peg)). The actions may have continuous parameters (e.g.,
+ÖÓØ Ø
+), but each action is atomic rather than continuous.
+The two approaches might be combined in the following way: a learning agent first uses our methods to learn to
+navigate using its continuous sensorimotor apparatus, viewing the world in terms of discrete states and actions. It then
+uses Shen’s methods to learn relationships expressed in terms of these states and actions and to acquire nonspatial
+knowledge such as the effects of pushing objects, flipping switches, or opening doors.
+A more specific example of a potential combination of the two approaches is the use of Shen’s complementary
+discrimination learning in learning context-dependent action models (see Section 4.2.3). We currently use a bruteforce method for determining whether a control signal Ù has a predictable effect on a given feature Ü. The method
+involves testing a large set of features to see if any can be used to define a partition of the robot’s state space as a set
+of contexts such that in each context there is a simple, linear relationship between Ù and Ü. We expect that methods
+such as Shen’s complementary discrimination learning could be used to generate such partitions more efficiently and
+more intelligently.
+
+´µ
+
+Pierce & Kuipers, AIJ, 1997
+
+39
+
+9.2 Inferring the structure of continuous worlds
+Applying finite-state automaton learning methods to the real world or a continuous simulation of it requires an abstraction from a continuous environment to a discrete representation. Kuipers and Byun [Kuipers and Byun, 1988,
+Kuipers and Byun, 1991] demonstrate an engineered solution to the continuous-to-discrete abstraction problem for
+the NX robot. NX’s distinctive places correspond to discrete states and its local control strategies correspond to state
+transitions. These constructs have to be manually redesigned in order to apply to a robot with a different sensorimotor
+apparatus. Mataric [Mataric, 1991, Mataric, 1992] and Kortenkamp & Weymouth [Kortenkamp and Weymouth, 1994]
+have engineered similar solutions on physical robots.
+Lin and Hanson [Lin and Hanson, 1993] use a physical robot, called Ratbot, with 16 sonar sensors and 16 infrared
+sensors to demonstrate learning of a topological map of locally distinctive places. Their work is inspired by the work
+of Kuipers and Byun, but they use reinforcement learning25 to train the local control strategies, rather than engineering
+them by hand. The target behaviors (e.g., corridor following) are specified by a human teacher. For example, when
+learning the corridor-following behavior, the robot is rewarded when it moves along the corridor without running into
+obstacles.
+Our approach [Pierce, 1991a, Pierce, 1991b, Pierce, 1995, Pierce and Kuipers, 1994] is complementary to that of
+Lin and Hanson. They specify the desirable behaviors by defining appropriate reward signals and then letting the robot
+learn on its own how to gain the rewards. Our learning agent, on the other hand, specifies its own target behaviors,
+eliminating the need for the human teacher. It does this by first learning a set of local state variables and then using them
+to define a set of error signals. Homing and path-following behaviors are then specified as behaviors that minimize the
+error signals or move the robot while maintaining them near zero. All of this is accomplished in a domain-independent
+manner — the robot does not need to be given any knowledge about corridors or corridor-following behaviors.
+Once the error signals are defined, there are a number of ways in which the homing and path-following behaviors
+might be learned. Reinforcement learning is one approach.26 The approach used in this paper is to learn static and
+dynamic action models that characterize the effects of actions on the local state variables and then to use these models
+to directly define the homing and path-following behaviors. This approach does require that the learning agent be given
+some knowledge of control theory, but the required knowledge consists of domain-independent templates. It would be
+interesting to combine our approach with that used by Lin & Hanson’s Ratbot to produce a learning method that uses
+neither domain-dependent knowledge nor a knowledge of control theory. The error signals would be defined as for our
+learning agent and a neural-net version of Q learning would be used to learn the local control strategies based on those
+error signals. The control laws would be implemented as mappings from sensory inputs to motor control signals. If
+the sensory inputs include the error signals, their derivatives, and their integrals, then the set of control laws that can
+be defined in this way includes the PI and PD control laws used by our implemented learning agent.
+An important difference between our approach and that of Lin and Hanson is that our approach handles context
+dependence at the feature level rather than at the behavior level: Our learning agent learns, given the current context,
+the effects of each primitive action on each feature. Lin and Hanson’s learning agent learns, given the current context,
+which action to take in order to produce a particular behavior. There are two advantages to learning at the feature level.
+First, what is learned about one feature may be used to define multiple behaviors, e.g., a homing behavior (in which
+a primitive action is used to increase or decrease the value of the feature) and a path-following behavior (in which
+a primitive action is used to move while maintaining the feature constant). Second, the learning agent can learn the
+effects of motor control signals on multiple features simultaneously, whereas it is only possible for Lin and Hanson’s
+learning agent to learn one behavior at a time.
+
+10 Discussion
+10.1 What is the value of an existence proof?
+As discussed in Section 1.3, the results presented here are an existence proof, demonstrating one path from the beginning to the end of a complex learning problem. Once a single path has been demonstrated, however narrow, future
+25 The
+26 In
+
+reinforcement-learning algorithm is a neural-network version of Q learning [Watkins, 1989, Lin, 1993].
+earlier work we explored the use of reinforcement learning to learn homing behaviors [Pierce and Kuipers, 1991].
+
+Pierce & Kuipers, AIJ, 1997
+
+40
+
+research can broaden the way and find alternate routes.
+We have made some progress toward assessing the width and solidity of the path, first by applying the same
+learning methods to a significantly different robot (Section 2.5), and second by applying our methods to a variety of
+different environments systematically designed to demonstrate both success and failure of the methods (Section 6).
+This is a step toward determining how much and what type of sensory input a robot must have to learn a meaningful
+cognitive map of a continuous environment, and how observable and predictable the environment must be for the robot
+to be able to comprehend it.
+The existence proof demonstrates that a hard and interesting learning problem may have a heterogeneous solution,
+combining the strengths of several focused learning algorithms. While this solution does rely on a number of assumptions about the sensorimotor system and the environment (Section 6.6), we believe that several of those assumptions
+can be eliminated by future research (Section 6.7). An irreducible minimum set of assumptions would be a significant
+scientific result.
+
+10.2 Why learn what can be programmed directly?
+This paper has shown, among other things, how a learning agent can learn a model of its sensorimotor apparatus.
+There are several reasons why it is worthwhile to take the trouble to learn what could be directly programmed by a
+robot’s designer.
+Sensor variation and failure. Direct programming does not take sensor failure into consideration. For example, if
+one of a set of distance sensors fails, the learning methods will accommodate the failure with no additional human
+intervention. These methods will also accommodate random variation in the position or direction of distance sensors.
+Such variation is inevitable if robots are mass produced.
+Generality. Ideally, one learning algorithm applies to many different types of sensorimotor apparatuses and thus can
+replace the process of designing a particular solution for each sensorimotor apparatus.
+A deeper understanding of the problem domain. The design of the learning agent required the identification of
+sources of information that could be exploited by the learning agent and the development of general-purpose learning algorithms to exploit that information. These sources of information and learning algorithms comprise a deeper
+understanding of the problem domain.27
+
+10.3 What about innate goals?
+We have characterized a robot in terms of its set of sensors and effectors, without concern for its innate goals (e.g.,
+survival, curiosity, pain avoidance). The learning methods we have developed function by observing the sensory effects
+of actions, either during a random walk through the environment (as described in this paper) or during goal-directed
+behavior.
+Reactive behavior in pursuit of innate goals can support the learning methods described here. With a goal such as
+pain avoidance, for example, a learning agent might quickly learn a reflexive behavior for obstacle avoidance. Such
+a behavior would help keep the learning agent out of danger as it applies the higher-level learning methods. On the
+other hand, by operating in the background of goal-directed behavior, the learning agent could receive a biased set of
+experiences and observations of the environment.
+Conversely, the learned methods can serve as a foundation for goal-directed learning. When the agent has learned
+higher-level sensorimotor primitives, it can search for behaviors in an action space of larger granularity, describing
+the environment at a higher level (see Figure 20), and making it easier to achieve innate goals such as survival and
+curiosity.
+27 Of course, designing a learning agent does not guarantee a deeper understanding of the problem domain. An opaque method such as neural
+net or genetic algorithm learning could conceivably learn a model of its sensorimotor apparatus without teaching us anything about perception,
+behavior, or map building.
+
+Pierce & Kuipers, AIJ, 1997
+
+41
+
+10.4 How general are the learning methods?
+This paper has identified and demonstrated a number of generic methods for modeling and using an uninterpreted
+sensorimotor apparatus. This section lists several examples where a generic object or method is used that subsumes a
+more specific object or method but is more general because it makes fewer assumptions.
+The learned features are based on a set of generic mathematical constructs (e.g., scalars, vectors, matrices, scalar
+fields, and vector fields) rather than on a human-generated list of salient properties of a robot’s environment. The
+method for identifying the structure of a sensory apparatus uses generic distance metrics that make no assumptions
+about what the sensors are sensing (for example, the method does not assume that the sensors measure distances
+to objects). The method for characterizing the effects of motor control vectors is based on spatial and temporal
+derivatives, not motion of objects (which would require the identification and tracking of objects). The local state
+variables learned by the learning agent in the example are defined in terms of the purely generic concept of local
+minimum, rather than the concept of distance-to-wall, which is only meaningful to the robot’s designer. The learned
+control laws are based on error signals derived from the learned local state variables – the learning agent of the example
+needed no concept of wall when defining its path-following behaviors. The path-following behaviors are implemented
+using generic control laws. The parameters used in the control laws are found by analyzing relationships between
+control signals and local state variables without any understanding of the meanings of the control signals or local
+state variables. The views of the learning agent’s discrete abstract interface are the terminal states of path-following
+behaviors, as opposed to places meaningful only to the robot’s designer.
+Related to the concept of generality is the concept of extensibility. The current implementation may be extended
+by adding new types of features and feature generators. For example, new distance metrics could be used with the
+group-feature generator to capture new ways of distinguishing different types of sensors; the method for generating
+and recognizing local state variables could be made more general by adding new feature generators.
+
+10.5 Changes of representation
+Each abstract interface that the agent learns provides a new representation to reason with.
+
+¯
+
+At the sensorimotor level, the group and image-feature generators analyze inter-sensor correlations to produce
+the image feature, which has substantially more structure than the raw sense vector.
+The learned set of primitive actions provide a new representation of the robot’s motor capabilities that is
+grounded in sensory effects.
+
+¯
+¯
+
+At the control level, behaviors and features are learned that are no longer purely egocentric. Whereas the
+primitive actions are grounded in sensory effects averaged over time, the homing and path-following behaviors
+are grounded in the structure of the external environment as reflected by the local state variables.
+At the causal level, the continuous state space is reduced to a finite set of states and trajectories, which can then
+be represented as the nodes and edges of a graph in the topological map.
+
+11 Summary
+This paper has presented a sequence of learning methods sufficient for learning a cognitive map of a robot’s continuous
+world in the absence of domain-dependent knowledge of the robot’s sensorimotor apparatus or of the structure of its
+world. The reader may object that the sequence is tenuous: if any method failed, then the subsequent methods would
+not even apply. While this is true, we maintain that each of the learning methods is interesting in its own right
+and is applicable beyond the particular learning problem investigated here. Each learning method identifies a source
+of information available through experimentation with an uninterpreted sensorimotor apparatus and each provides a
+method for exploiting that information to give the learning agent a new way of understanding the robot’s sensory input
+or a new way of interacting with the robot’s environment.
+The learning methods are summarized below and in Figure 30. Section 2 showed how to use the group and imagefeature generators to learn a structural model of a sensory apparatus. They exploit the fact that, in a well engineered
+
+Pierce & Kuipers, AIJ, 1997
+
+42
+
+Sensorimotor Level
+Raw senses and actions
+
+Sensory Structure
+
+Motion detection
+
+Primitive actions
+
+a1
+
++
+
++
+
+a0
+
+−
+
+−
+u1
+
+Static
+Action
+Model
+
+Local
+State
+Variables
+
+u0
+
+Dynamic
+Action
+Model
+
+Control Level
+Homing behaviors
+
+Open−loop
+path−following
+behaviors
+
+Closed−loop
+path−following
+behaviors
+
+y=y*
+
+Causal Level
+Discrete Abstract Interface
+< Vi, Aj, Vk >
+
+Figure 30: A graphical summary of the learning methods used in this paper, showing the objects learned at each of the first three
+levels of the spatial semantic hierarchy.
+
+Pierce & Kuipers, AIJ, 1997
+
+43
+
+array of sensors sampling an almost-everywhere continuous property of the environment, the layout of the sensors
+may be reconstructed based on inter-sensor similarities. Section 3 showed how to use this structural knowledge to
+first define motion detectors and then use them to characterize the capabilities of a motor apparatus using a set of
+primitive actions, one for each of the robot’s degrees of freedom. Section 4 showed how to recognize local state
+variables — scalar features whose derivatives can be approximated by context-dependent linear functions of the motor
+control signals. The effects of the primitive actions on the local state variables are captured by the static action
+model. Section 5 showed how to use the static action model to define homing and open-loop path-following behaviors,
+how to learn a dynamic action model to predict the effects of the primitive actions on the local state variables while
+open-loop path-following behaviors execute, and how to use the dynamic action model to define robust, closed-loop
+path-following behaviors. Finally, Section 7 showed how to use the homing and path-following behaviors to define
+a discrete abstract interface that allows the learning agent to abstract its continuous world to a finite-state world. By
+using the finite-state automaton as the target abstraction, the learning agent inherits a powerful set of methods for
+inferring the structure of its world.
+In the biological world, the newly hatched organism embodies a great deal more knowledge than our learning
+agent. However, we hope that an exploration like that reported here will shed light on the structure and learnability of
+fundamental knowledge about an agent’s relationship with its world. If so, it could provide insights into the evolution,
+development, and learning of spatial knowledge in biological organisms.
+The potential for application of these methods to mechanical robots is much more direct. New robots, with new
+sensors and effectors, are being designed and built all the time. Robots will one day be sent into environments
+that humans have never directly experienced (e.g., the deep ocean floor or the surface of another planet). For a
+newly-created robot to be able to orient itself to its sensorimotor system and its environment through autonomous
+experimentation would be of substantial value. We believe that the methods presented here are a step in that direction.
+
+A
+
+Computational Complexity
+
+This appendix summarizes the complexities of the various learning methods described in this paper. The overall
+complexity of the sequence of learning methods is potentially exponential in the size of the raw sense vector and the
+depth of the tree of generated features. In our experience, this level of complexity can be drastically reduced by using
+an appropriate set of feature generators as is explained in Section A.3.
+
+A.1 Modeling the sensory apparatus
+Computing the distance metric ½ (used by both the group-feature generator and the image-feature generator) is of
+complexity Ç Ò¾ Ì where Ò is the number of elements in the raw sense vector and Ì is the number of time steps
+taken before the group-feature generator is applied. Computing the distance metric ¾ (used by the group-feature
+computation for each element of the raw sense vector at each time step (to update the
+generator) requires an Ç
+frequency distributions) and an Ç Ò¾ computation when the group-feature generator is applied for a total complexity
+of Ç ÒÌ Ò¾ .
+Identifying similar subgroups is an Ç Ò¾ computation. Using transitive closure to identify closed subgroups is an
+Ç Ò¿ computation. The metric-scaling is performed with an iterative algorithm for which each iteration involves an
+Ç Ò¿ computation. The relaxation algorithm is also iterative with each iteration being Ç Ò¾ . Since the dependence
+of the number of iterations on Ò is unknown, these are lower limits on the actual complexities. In our experiments, Ì
+is much greater than Ò so the overall complexity of the sensory-modeling step can be approximated by Ç Ò¾ Ì .28
+
+´
+
+µ
+
+´½µ
+
+´ µ
+
+´ · µ
+´ µ
+´ µ
+
+´ µ
+
+´ µ
+
+´
+
+µ
+
+A.2 Modeling the motor apparatus
+
+´ µ
+
+The calculation of the motion feature requires an Ç Ò¾ computation at each time step. The calculation of the amvf ’s
+is thus of complexity Ç Ò¾ Ì . The principal component analysis algorithm is of complexity Ç Ò¿ . Again, since Ì
+is much greater than Ò, the overall complexity can be approximated by Ç Ò¾ Ì .
+
+´
+
+28 An
+
+µ
+
+´
+
+µ
+
+open problem is to predict the value of T for each learning method that requires an exploration phase.
+
+´ µ
+
+Pierce & Kuipers, AIJ, 1997
+
+44
+
+A.3 Identifying local state variables
+The first step in identifying local state variables is to generate new features. If every subset of the current set of
+defined features can be used to produce a new set of features, then the complexity of generating and testing features
+will be at least Ç Ò where Ò is the number of elements of the raw sense vector. In our experience, this potential
+combinatorial explosion can be avoided by using an appropriate set of feature generators (e.g., generators that collapse
+many input features into a small set of output features, or that only apply to certain types of features). For example,
+the group generator does not create arbitrary subsets of the raw sense vector – it creates at most Ò non-overlapping
+group features.
+The second step in identifying local state variables is to compute the static action model. The complexity of the
+computation of the action-dependent model is Ç ×Ì where × is the number of singleton features that have been
+learned and Ì is the number of time steps over which the model is learned. The complexity of the computation of the
+action-independent model is Ç ×Ì where is the number of primitive actions, The complexity of the computation
+where is the average number of contexts associated with each feature.
+of the context-dependent model is Ç ×Ì
+
+´¾ µ
+
+´ µ
+
+´
+
+µ
+´
+
+µ
+
+A.4 Learning control laws
+
+´ µ
+
+The number of open-loop path-following behaviors is Ç Ú
+where Ú is the number of learned local state variables,
+is the number of primitive actions, and is the average number of contexts associated with each local state variable.
+The complexity of the computation of the dynamic action model is Ç Ú Ì   . The number of generated closed. In practice, the number of path-following behaviors can be
+loop path-following behaviors (worst-case) is Ç Ú
+made much less than this upper bound. For example, the terms Ú and can be replaced by Ú ¿ and ¿ by only defining
+path-following behaviors whose error vectors are based on at most three local state variables.
+In our experiments, the number of path-following behaviors is kept reasonable by the following facts: (1) the
+number of learned local state variables is small and (2) the number of contexts in which a primitive action maintains
+a local state variable constant is small relative to the total number of contexts. In our example, Ú is at most 3 and is
+around 20.
+
+´¾ ¾ µ
+
+¾
+
+´
+¾
+
+´ ½µµ
+
+B Acknowledgments
+The authors would like to thank Rick Froom, Wan Yik Lee, Risto Miikkulainen, Ray Mooney, Lyn Pierce, Mark Ring,
+Boaz Super, and two anonymous reviewers for their technical, editorial, and moral support.
+
+References
+[Angluin, 1978] Angluin, D. (1978). On the complexity of minimum inference of regular sets. Information and
+Control, 39:337–350.
+[Angluin, 1987] Angluin, D. (1987). Learning regular sets from queries and counterexamples. Information and
+Computation, 75:87–106.
+[Chapman and Kaelbling, 1990] Chapman, D. and Kaelbling, L. P. (1990). Learning from delayed reinforcement in a
+complex domain. Tech. Report TR-90-11, Teleos Research, Palo Alto, California.
+[Cormen et al., 1990] Cormen, T. H., Leiserson, C. E., and Rivest, R. L. (1990). Introduction to Algorithms. MIT
+Press/McGraw-Hill Book Company, Cambridge, MA.
+[Dean et al., 1992] Dean, T., Angluin, D., Basye, K., Engelson, S., Kaelbling, L., Kokkevis, E., and Maron, O. (1992).
+Inferring finite automata with stochastic output functions and an application to map learning. In Proceedings, Tenth
+National Conference on Artificial Intelligence, pages 208–214, San Jose, CA. AAAI Press/MIT Press.
+
+Pierce & Kuipers, AIJ, 1997
+
+45
+
+[Dean et al., 1993] Dean, T., Basye, K., and Kaelbling, L. (1993). Uncertainty in graph-based map learning. In
+Connell, J. H. and Mahadevan, S., editors, Robot Learning, pages 171–192. Kluwer Academic Publishers, Boston.
+[Drescher, 1991] Drescher, G. L. (1991). Made-Up Minds: A Constructivist Approach to Artificial Intelligence. MIT
+Press, Cambridge, MA.
+[Dudek et al., 1991] Dudek, G., Jenkin, M., Milios, E., and Wilkes, D. (1991). Robotic exploration as graph construction. IEEE Transactions on Robotics and Automation, 7(6):859–865.
+[Gold, 1978] Gold, E. M. (1978). Complexity of automaton identification from given data. Information and Control,
+37:302–320.
+[Hiraki, 1994] Hiraki, K. (1994). Abstraction of sensory-motor features. In Proceedings of the Sixteenth Annual
+Conference of the Cognitive Science Society, Hillsdale, NJ. Lawrence Erlbaum Associates.
+[Horn, 1986] Horn, B. K. P. (1986). Robot Vision. MIT Press, Cambridge, MA.
+[Jordan and Rumelhart, 1992] Jordan, M. I. and Rumelhart, D. E. (1992). Forward models: Supervised learning with
+a distal teacher. Cognitive Science, 16:307–354.
+[Kohonen, 1988] Kohonen, T. (1988). Self-Organization and Associative Memory. Springer-Verlag, Berlin, second
+edition.
+[Kortenkamp and Weymouth, 1994] Kortenkamp, D. and Weymouth, T. (1994). Topological mapping for mobile
+robots using a combination of sonar and vision sensing. In Proceedings of the Twelfth National Conference on
+Artificial Intelligence (AAAI-94).
+[Krzanowski, 1988] Krzanowski, W. J. (1988). Principles of Multivariate Analysis: A User’s Perspective. Oxford
+Statistical Science Series. Clarendon Press, Oxford.
+[Kuipers, 1978] Kuipers, B. J. (1978). Modeling spatial knowledge. Cognitive Science, 2:129–153.
+[Kuipers, 1996] Kuipers, B. J. (1996). An ontological hierarchy for spatial knowledge. In Proc. 10th Int. Workshop
+on Qualitative Reasoning About Physical Systems, Fallen Leaf Lake, California, USA.
+[Kuipers and Byun, 1988] Kuipers, B. J. and Byun, Y.-T. (1988). A robust, qualitative method for robot spatial learning. In Proceedings of the National Conference on Artificial Intelligence (AAAI-88), pages 774–779.
+[Kuipers and Byun, 1991] Kuipers, B. J. and Byun, Y.-T. (1991). A robot exploration and mapping strategy based on
+a semantic hierarchy of spatial representations. Journal of Robotics and Autonomous Systems, 8:47–63.
+[Kuipers and Levitt, 1988] Kuipers, B. J. and Levitt, T. S. (1988). Navigation and mapping in large-scale space. AI
+Magazine, 9(2):25–43.
+[Kuo, 1982] Kuo, B. C. (1982). Automatic Control Systems. Prentice-Hall, Inc., Englewood Cliffs, N.J., 4 edition.
+[Lenat, 1977] Lenat, D. B. (1977). On automated scientific theory formation: A case study using the AM program. In
+Hayes, J. E., Michie, D., and Mikulich, L. I., editors, Machine Intelligence 9, pages 251–286. Halsted Press, New
+York.
+[Lin, 1993] Lin, L.-J. (1993). Reinforcement Learning for Robots Using Neural Networks. PhD thesis, Carnegie
+Mellon University, Pittsburgh, PA.
+[Lin and Hanson, 1993] Lin, L.-J. and Hanson, S. J. (1993). On-line learning for indoor navigation: Preliminary
+results with RatBot. In NIPS93 Robot Learning Workshop.
+[Mardia et al., 1979] Mardia, K. V., Kent, J. T., and Bibby, J. M. (1979). Multivariate Analysis. Academic Press, New
+York.
+
+Pierce & Kuipers, AIJ, 1997
+
+46
+
+[Mataric, 1991] Mataric, M. J. (1991). Navigating with a rat brain: A neurobiologically-inspired model for robot
+spatial representation. In Meyer, J.-A. and Wilson, S. W., editors, From Animals to Animats: Proceedings of
+The First International Conference on Simulation of Adaptive Behavior, pages 169–175, Cambridge, MA. MIT
+Press/Bradford Books.
+[Mataric, 1992] Mataric, M. J. (1992). Integration of representation into goal-driven behavior-based robots. IEEE
+Transactions on Robotics and Automation, 8(3):304–312.
+[Matheus, 1991] Matheus, C. J. (1991). The need for constructive induction. In Birnbaum, L. A. and Collins, G. C.,
+editors, Machine Learning: Proceedings of the Eighth International Workshop (ML91), pages 173–177, San Mateo,
+CA. Morgan Kaufmann Publishers, Inc.
+[Oja, 1982] Oja, E. (1982). A simplified neuron model as a principal component analyzer. Journal of Mathematical
+Biology, 15:267–273.
+[Pierce, 1991a] Pierce, D. (1991a). Learning a set of primitive actions with an uninterpreted sensorimotor apparatus. In Birnbaum, L. A. and Collins, G. C., editors, Machine Learning: Proceedings of the Eighth International
+Workshop (ML91), pages 338–342, San Mateo, CA. Morgan Kaufmann Publishers, Inc.
+[Pierce, 1991b] Pierce, D. (1991b). Learning turn and travel actions with an uninterpreted sensorimotor apparatus.
+In Proceedings IEEE International Conference on Robotics and Automation, pages 246–251, Los Alamitos, CA.
+IEEE Computer Society Press.
+[Pierce, 1995] Pierce, D. (1995). Map Learning with Uninterpreted Sensors and Effectors. PhD thesis, University of
+Texas at Austin. (http: //ftp.cs.utexas.edu /pub /qsim /papers /Pierce-PhD-95.ps.Z).
+[Pierce and Kuipers, 1991] Pierce, D. and Kuipers, B. (1991). Learning hill-climbing functions as a strategy for
+generating behaviors in a mobile robot. In Meyer, J.-A. and Wilson, S. W., editors, From Animals to Animats:
+Proceedings of The First International Conference on Simulation of Adaptive Behavior, pages 327–336, Cambridge,
+MA. MIT Press/Bradford Books. Also University of Texas at Austin, AI Laboratory TR AI91-137.
+[Pierce and Kuipers, 1994] Pierce, D. and Kuipers, B. (1994). Learning to explore and build maps. In Proceedings of
+the National Conference on Artificial Intelligence (AAAI-94), Cambridge, MA. AAAI/MIT Press.
+[Press et al., 1988] Press, W. H., Teukolsky, S. A., Vetterling, W. T., and Flannery, B. P. (1988). Numerical Recipes
+in C. Cambridge University Press.
+[Ring, 1994] Ring, M. (1994). Continual Learning in Reinforcement Environments. PhD thesis, University of Texas
+at Austin.
+[Ritter et al., 1992] Ritter, H. J., Martinez, T., and Schulten, K. J. (1992). Neural Computation and Self-Organizing
+Maps: An Introduction. Addison-Wesley, Reading, Massachusetts.
+[Rivest and Schapire, 1993] Rivest, R. L. and Schapire, R. E. (1993). Inference of finite automata using homing
+sequences. Information and Computation, 103(2):299–347.
+[Shen, 1990] Shen, W.-M. (1990). Functional transformations in AI discovery systems. Artificial Intelligence,
+41(3):257–272.
+[Shen, 1994] Shen, W.-M. (1994). Autonomous Learning from the Environment. W. H. Freeman and Company.
+[Shen and Simon, 1989] Shen, W.-M. and Simon, H. A. (1989). Rule creation and rule learning through environmental exploration. In Proceedings IJCAI-89, pages 675–680.
+[Sutton, 1990] Sutton, R. S. (1990). Integrated architectures for learning, planning, and reacting based on approximating dynamic programming. In Porter, B. W. and Mooney, R. J., editors, Proceedings of the Seventh International
+Conference on Machine Learning, pages 216–224. Morgan Kaufmann Publishers, Inc.
+
+Pierce & Kuipers, AIJ, 1997
+
+47
+
+[Watkins, 1989] Watkins, C. (1989). Learning from Delayed Rewards. PhD thesis, King’s College, Cambridge.
+[Whitehead et al., 1993] Whitehead, S., Karlsson, J., and Tenenberg, J. (1993). Learning multiple goal behavior via
+task decomposition and dynamic policy merging. In Connell, J. H. and Mahadevan, S., editors, Robot Learning,
+pages 45–78. Kluwer Academic Publishers, Boston.
+[Williams, 1987] Williams, R. J. (1987). Reinforcement-learning connectionist systems. Technical Report NU-CCS87-3, College of Computer Science, Northeastern University.
+
+

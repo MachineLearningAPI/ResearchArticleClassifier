@@ -1,0 +1,2664 @@
+Journal of Machine Learning Research 15 (2014) 565-593
+
+Submitted 11/12; Revised 10/13; Published 2/14
+
+Link Prediction in Graphs with Autoregressive Features
+Emile Richard
+
+emileric@stanford.edu
+
+Department of Electrical Engineering
+Stanford University - Packard 239
+Stanford, CA 94304
+
+Stéphane Gaïffas
+
+stephane.gaiffas@cmap.polytechnique.fr
+
+CMAP - Ecole Polytechnique
+Route de Saclay
+91128 Palaiseau Cedex, France
+
+Nicolas Vayatis
+
+nicolas.vayatis@cmla.ens-cachan.fr
+
+CMLA - ENS Cachan
+UMR CNRS No. 8536
+61, avenue du Président Wilson
+94 235 Cachan cedex, France
+
+Editor: Tong Zhang
+
+Abstract
+In the paper, we consider the problem of link prediction in time-evolving graphs. We assume
+that certain graph features, such as the node degree, follow a vector autoregressive (VAR)
+model and we propose to use this information to improve the accuracy of prediction. Our
+strategy involves a joint optimization procedure over the space of adjacency matrices and
+VAR matrices. On the adjacency matrix it takes into account both sparsity and low rank
+properties and on the VAR it encodes the sparsity. The analysis involves oracle inequalities
+that illustrate the trade-offs in the choice of smoothing parameters when modeling the
+joint effect of sparsity and low rank. The estimate is computed efficiently using proximal
+methods, and evaluated through numerical experiments.
+Keywords: graphs, link prediction, low-rank, sparsity, autoregression
+
+1. Introduction
+Forecasting systems behavior with multiple responses has been a challenging issue in many
+contexts of applications such as collaborative filtering, financial markets, or bioinformatics, where responses can be, respectively, movie ratings, stock prices, or activity of genes
+within a cell. Statistical modeling techniques have been widely investigated in the context
+of multivariate time series either in the multiple linear regression setup by Breiman and
+Friedman (1997) or with autoregressive models by Tsay (2005). More recently, kernel-based
+regularized methods have been developed for multitask learning by Evgeniou et al. (2005)
+and Andreas et al. (2007). These approaches share the use of the correlation structure
+among input variables to enrich the prediction on every single output. Often, the correlation structure is assumed to be given or it is estimated separately. A discrete encoding of
+correlations between variables can be modeled as a graph so that learning the dependence
+c 2014 Emile Richard, Stéphane Gaïffas and Nicolas Vayatis.
+
+Richard, Gaïffas and Vayatis
+
+structure amounts to performing graph inference through the discovery of uncovered edges
+on the graph. The latter problem is interesting per se and it is known as the problem of
+link prediction where it is assumed that only a part of the graph is actually observed, see
+the paper by Liben-Nowell and Kleinberg (2007) and Kolar and Xing (2011). This situation
+occurs in various applications such as recommender systems, social networks, or proteomics,
+and the appropriate tools can be found among matrix completion techniques, see for instance the papers by Srebro et al. (2005), Candès and Tao (2009) and Abernethy et al.
+(2009). In the realistic setup of a time-evolving graph, matrix completion was also used and
+adapted by Richard et al. (2010) to take into account the dynamics of the features of the
+graph. The estimation of a VAR model for node degrees (that are linear graph features) has
+been considered by Zhang et al. (2011) and successfully applied to customer valuation, and
+to measure network effect in user generated content market places. Note also that sparse
+autoregressive models are also considered by Davis et al. (2012) and Nardi and Rinaldo
+(2011).
+In this paper, we study the prediction problem where the observation is a sequence of
+graphs represented through their adjacency matrices (At )0≤t≤T and the goal is to predict
+AT +1 . This prediction problem arises in recommender systems, where the purchases or
+preference declarations are registered over time. In this context, users and products can be
+modeled as the nodes of a bipartite graph, while purchases or clicks are modeled as edges. In
+functional genomics and systems biology, estimating regulatory networks in gene expression
+can be performed by modeling the data as graphs. In this setting, fitting predictive models
+is a natural way for estimating evolving networks in these contexts, see the paper by Shojaie
+et al. (2011). A large variety of methods for link prediction only consider prediction from
+a single instantaneous snapshot of the graph. This includes heuristics: measures of node
+neighbourhoods are considered by Liben-Nowell and Kleinberg (2007), Lü and Zhou (2011)
+and Sarkar et al. (2010), matrix factorization by Koren (2008), diffusion by see Myers and
+Leskovec (2010) and probabilistic methods by Taskar et al. (2003). More recently, some
+works have investigated the use of sequences of observations of the graph to improve the
+prediction, such as regression on features extracted from the graphs by Richard et al. (2010),
+matrix factorization by Koren (2010), continuous-time regression by Vu et al. (2011) or nonparametric models by Sarkar et al. (2012). An hybrid approach to dynamic link prediction
+is considered by Huang and Lin (2009), based on a mixture of the static approach by LibenNowell and Kleinberg (2007) and an individual ARIMA modeling of the links evolution.
+The framework of the current paper is somehow related to compressed sensing introduced
+by Donoho (2006) and Candès and Wakin (2008). In fact, due to stationarity assumptions,
+the amount of available information is very small compared to the task of predicting the
+quadratically many potential edges of the graph. Therefore penalization terms that encourage both sparsity and low-rank of related matrices are used to recover the edges of the
+graph. In the static setup, these two effects have been previously combined by Richard
+et al. (2012b) for the estimation of sparse and low-rank matrices, the rationale being that
+graphs containing cliques have block-diagonal adjacency matrices that are simultaneously
+sparse and low-rank. Key elements in deriving theoretical results are tools from the theory of
+compressed sensing, developed by Candès and Tao (2005), Bickel et al. (2009), Koltchinskii
+et al. (2011) and in particular the Restricted Eigenvalue of Koltchinskii (2009a), Koltchinskii
+(2009b) and Bickel et al. (2009). Our main results are oracle inequalities under the general
+566
+
+Link Prediction in Graphs with Autoregressive Features
+
+assumption that the innovation process of the VAR is a martingale increment sequence with
+sub-gaussian tails. These oracle inequalities prove that our procedure achieves a trade-off
+in the calibration of smoothing parameters that balances the sparsity and the rank of the
+adjacency matrix. A preliminary version of this work can be found in a previous work by
+Richard et al. (2012a).
+The rest of this paper is organized as follows. In Section 2, we describe the general
+setup of this study with the main assumptions. In Section 2.3, we formulate a regularized
+optimization problem which aims at jointly estimating the autoregression parameters and
+predicting the graph. In Section 3, we provide theoretical guarantees for the joint estimationprediction by providing oracle inequalities. In Section 4 we provide an efficient algorithm for
+solving the optimization problem and show empirical results that illustrate our approach.
+The proofs are provided in Appendix.
+
+2. Modeling Low-Rank Graphs Dynamics with Autoregressive Features
+We first introduce the main notations used in the paper.
+Matrix norms and entrywise matrix operations. Denote by A a matrix. In the sequel, the
+notations A F , A p , A ∞ , A ∗ and A op stand, respectively, for the Frobenius norm
+of A, the entry-wise p norm, the entry-wise ∞ norm, the trace-norm (or nuclear norm,
+given by the sum of the singular values) and operator norm (the largest singular value) of
+A. Given matrices A and B, we denote by A, B = tr(A B) the Euclidean matrix product.
+A vector in Rd is always understood as a d × 1 matrix. We denote by A 0 the number of
+non-zero elements of A. The product A ◦ B between two matrices with matching dimensions
+stands for the entry-wise product between A and B (also called Hadamard product). The
+matrix |A| contains the absolute values of entries of A. The matrix (M )+ is the entry-wise
+positive part of the matrix M, and sign(M ) is the sign matrix associated to M with the
+convention sign(0) = 0.
+SVD and projections. If A is a n × n matrix with rank r, we write its Singular Value
+r
+Decomposition (SVD) as A = U ΣV =
+j=1 σj uj vj where Σ = diag(σ1 , . . . , σr ) is a
+r × r diagonal matrix containing the non-zero singular values of A in decreasing order, and
+U = [u1 , . . . , ur ], V = [v1 , . . . , vr ] are n × r matrices with columns given by the left and right
+singular vectors of A. The projection matrix onto the space spanned by the columns (resp.
+rows) of A is given by PU = U U (resp. PV = V V ). The operator PA : Rn×n → Rn×n
+given by PA (B) = PU B + BPV − PU BPV is the projector onto the linear space spanned by
+the matrices uk x and yvk for 1 ≤ j, k ≤ r and x, y ∈ Rn . The projector onto the orthogonal
+space is given by PA⊥ (B) = (I − PU )B(I − PV ). We also use the notation a ∨ b = max(a, b).
+2.1 Working Assumptions
+Our approach is based on a number of beliefs which we translate into mathematical assumptions:
+• Low-rank of adjacency matrices At
+This reflects the presence of highly connected groups of nodes such as communities in
+social networks, or product categories and groups of loyal/fanatic users in a market
+place data, and is sometimes motivated by the small number of factors that explain
+567
+
+Richard, Gaïffas and Vayatis
+
+nodes interactions. We will not make an explicit assumption in the paper but the
+results we obtain will be meaningful in the specific case where rank is small compared
+to the dimension.
+• Autoregressive linear features (VAR models)
+We assume that intrinsic features of the graph can explain most of the information
+contained in the graph, and that these features are evolving with time. Our approach
+considers the simplest assumption on the dynamics over time of these features and we
+assume a Vector Autoregressive Linear Regression model that is described in the next
+subsection.
+• Sub-gaussian noise process
+A probabilistic framework is considered in order to describe performance under the
+form of oracle inequalities and we propose to specify the distribution of the discrepancy between the VAR model and the actual observations with a a sub-gaussian tail
+behavior. This assumption will be formulated below in Section 3.
+The first two items correspond to modeling assumptions which partly capture observations made on real-life data. The third item is a technical assumption used in the proofs.
+2.2 An Autoregressive Linear Model for Graph Features
+Feature map. We consider a list of graph features encoded through a linear map of the
+adjacency matrix with ω : Rn×n → Rd defined by:
+ω(A) =
+
+Ω1 , A , · · · , Ωd , A
+
+,
+
+(1)
+
+where {Ωi }1≤i≤d is a set of n × n matrices. These matrices could be either deterministic or
+random in our theoretical analysis, but we take them deterministic for the sake of simplicity.
+An example of linear features is the vector of node degrees, that is, the number of edges
+connected to each node. The degree can be computed from the adjacency matrix using
+the linear function ω : A → A1 or ω : A → A 1 respectively for the right and left
+nodes degrees, where 1 denotes the vector with all coordinates equal to 1 of the appropriate
+length. Other (linear) measures of popularity are considered in social and e-commerce
+networks, such as the sum of the weights of incident edges if there is some graduation in
+the strength of connection between nodes. Note that nonlinear features, such as the count
+of the number of cycles of length k (k = 3, 4, · · · ) through each node, may be relevant in
+real world applications. Such features involve, for instance, the diagonal elements of Ak . An
+extensive study of this very interesting case is beyond the scope of the present paper.
+VAR model. We consider a linear model for the evolution of ω(A) over time.
+Assumption 1 The vector time series {ω(At )}t≥0 has autoregressive dynamics, given by a
+VAR (Vector Auto-Regressive) model:
+ω(At+1 ) = W0 ω(At ) + Nt+1 ,
+where W0 ∈ Rd×d is an unknown sparse matrix and {Nt }t≥0 is a sequence of noise vectors
+in Rd .
+568
+
+Link Prediction in Graphs with Autoregressive Features
+
+In the sequel, we shall use the following compact notations:
+XT −1 = ω(A0 ), . . . , ω(AT −1 )
+
+and XT = ω(A1 ), . . . , ω(AT )
+
+,
+
+which are both T × d matrices, we can write this model in matrix form:
+XT = XT −1 W0 + NT ,
+where NT = [N1 , . . . , NT ] .
+2.3 Simultaneous Prediction and Estimation through Regularized Optimization
+Optimization problem formulation. We now introduce the optimization problem which will
+account for both the prediction task (anticipate the appearance of new edges in the graph)
+and the modeling choices which are supposed to reflect phenomena observed on real data
+(smooth evolution of graph features). We consider that snapshots of the graph (and therefore
+also the corresponding features) are available at times 1, . . . , T and we want to predict links
+which will appear at the next instant T + 1. In order to fulfill this double objective, we
+combine two regularized problems in an additive fashion based on two terms:
+1. First objective - data-fitting term for weight vector W with sparsity-enforcing penalty
+J1 (W ) =
+
+1
+XT − XT −1 W
+T
+
+2
+F
+
++κ W
+
+1,
+
+(2)
+
+where κ > 0 is a smoothing parameter.
+2. Second objective - data-fitting term for the features of the adjacency matrix A with
+mixed penalty enforcing both sparsity and low-rank
+J2 (A, W ) =
+
+1
+ω(A) − W ω(AT )
+d
+
+2
+2
+
++τ A
+
+∗
+
++ γ A 1,
+
+where τ, γ > 0 are smoothing parameters.
+The resulting penalized criterion will be the main topic of the present paper. It is the sum
+of the two partial objectives J1 and J2 , and is jointly convex with respect to A and W :
+. 1
+L(A, W ) =
+XT − XT −1 W
+T
+
+2
+F
+
++κ W
+
+1
+
++
+
+1
+ω(A) − W ω(AT )
+d
+
+2
+2
+
++τ A
+
+∗
+
++ γ A 1 . (3)
+
+Rationale. As shown by the introduction of the two functionals, our approach pursues
+a double goal. On the one hand, the data-fitting term on W in J1 aims at an estimate
+on the past data of the weight factor in the autoregressive modeling setup according to
+Assumption 1 and under a sparsity constraint. On the other hand, the link prediction
+goes through the estimation of a matrix A = AT +1 which should be sparse and low-rank
+simultaneously. Hence, the second functional J2 involves a mixed penalty of the form A →
+τ A ∗ + γ A 1 , with τ , γ smoothing parameters. Such a combination of 1 and trace-norm
+was already studied by Gaïffas and Lecué (2011) for the matrix regression model, and by
+Richard et al. (2012b) for the prediction of an adjacency matrix. This mixed norm combines
+the benefits of each of the two norms and is well suited for estimating simultaneously sparse
+569
+
+Richard, Gaïffas and Vayatis
+
+Figure 1: Unit balls for the trace norm (left), 1 (middle) and the mixed X → X ∗ + X 1
+norm (right). The norms where computed on the set of 2 × 2 symmetric matrices
+that can be identified to R3 .
+
+and low-rank matrices. In Figure 1 we illustrated the unit balls for the three norms 1 ,
+trace-norm and the 1 + trace norm. The key observation is that the ball of the mixed
+norm has singularities at the points where each of the two other balls are singular, but the
+singularities get sharper at points where both norms are singular, namely on the matrices
+that are sparse and low-rank at the same time.
+The set of sparse and low-rank matrices obtained by minimizing an objective including
+this mixed norm contains matrices that can be written in a block-diagonal or overlapping
+block-diagonal form, up to permutations of rows and columns. These matrices can be
+interpreted as adjacency matrices of networks containing highly connected groups of nodes
+and therefore are of particular interest for prediction and denoising applications in graph
+data and in covariance matrix estimation. Here we extend the approach developed by
+Richard et al. (2012b) for the time-dependent setting by considering data-fitting measures
+which ensure that the features of the next graph ω(AT +1 ) are close to W ω(AT ).
+Search space and general scheme of the estimation procedure. We shall consider the case
+where the optimization domain consists of the cartesian product of convex cones A and W
+such that A ⊂ Rn×n and W ⊂ Rd×d . The joint estimation-prediction procedure is then
+defined by
+ˆ W
+ˆ ) ∈ arg min L(A, W ).
+(A,
+(4)
+(A,W )∈A×W
+
+It is natural to take W = Rd×d and A = (R+ )n×n since there is no a priori on the values
+of the true VAR model matrix W0 , while the entries of the matrix AT +1 must be positive.
+Table 1 summarizes the methodology in a scheme where the symbols ↓ω represent the feature
+extraction procedure through the map ω : Rn×n → Rd . The prediction in the feature space is
+represented by →W , and is handled in practice by the least squares regression on W . Finally,
+the symbol ↑ that maps the predicted feature vector ω(AT +1 ) to AT +1 represents the inverse
+problem that is solved through the regression penalized by the mixed penalization.
+2.4 An Overview of Main Results
+The central contribution of our work is to provide bounds on the prediction error under
+a Restricted Eigenvalue (RE) assumption on the feature map. The main result can be
+summarized as follows: the prediction error and the estimation error can be simultaneously
+bounded by the sum of three terms that involve homogeneously (a) the sparsity, (b) the
+570
+
+Link Prediction in Graphs with Autoregressive Features
+
+A0
+↓ω
+ω(A0 )
+
+A1
+↓ω
+ω(A1 )
+
+···
+···
+
+AT
+↓ω
+ω(AT )
+
+→
+W
+
+Observed adjacency matrices ∈ Rn×n
+
+AT +1
+↑
+ω(AT +1 )
+
+Features vectors ∈ Rd
+
+Table 1: General scheme of our method for prediction in dynamic graph sequences through
+a feature map ω.
+
+rank of the true adjacency matrix AT +1 , and (c) the sparsity of the true VAR model matrix
+W0 .
+Namely, we prove oracle inequalities for the mixed prediction-estimation error which is
+given, for any A ∈ Rn×n and W ∈ Rd×d , by
+1
+. 1
+E(A, W )2 =
+(W − W0 ) ω(AT ) − ω(A − AT +1 ) 22 +
+XT −1 (W − W0 ) 2F .
+d
+T
+We point out that an upper-bound on E implies upper-bounds on each of its two components.
+It entails in particular an upper-bound on the feature estimation error XT −1 (W − W0 ) F
+that makes (W − W0 ) ω(AT ) 2 smaller and consequently controls the prediction error over
+the graph edges through ω(A − AT +1 ) 2 .
+We obtain upper bounds that are reminiscent of the bounds obtained for the Lasso by
+Bickel et al. (2009) for instance, and that are of the following order:
+log d
+log n
+log n
+W0 0 +
+AT +1 0 +
+rank AT +1 .
+T
+d
+d
+This upper bound, formalized in Theorem 3, exhibits the dependence of the accuracy of
+estimation and prediction on the number of features d, the number of edges n and the
+number T of observed graphs in the sequence. It indicates, in particular, that an optimal
+choice for the number d of features is of order T log n. The positive constants C1 , C2 , C3
+are proportional to the noise level σ. The interplay between the rank and the sparsity
+constraints on AT +1 are reflected in the observation that the values of C2 and C3 can be
+changed as long as their sum remains constant. The precise formulation of these results is
+given in the next section.
+
+3. Oracle Inequalities
+This section contains the main theoretical results ot the paper. Complete proofs and technical details are provided in the Appendix section at the end of the paper.
+3.1 A General Oracle Inequality
+We recall from subsection 2.2 that the noise sequence in the VAR model is denoted by
+{Nt }t≥0 . We now introduce the noise processes as
+1
+M =−
+d
+
+d
+
+(NT +1 )j Ωj
+j=1
+
+1
+and Ξ =
+T
+571
+
+T
+t=1
+
+1
+ω(At−1 )Nt + ω(AT )NT +1 ,
+d
+
+Richard, Gaïffas and Vayatis
+
+which are, respectively, n × n and d × d random matrices. The source of randomness comes
+from the noise sequence {Nt }t≥0 .
+Now, if these noise processes are controlled, we can prove oracle inequalities for procedure (4). The first result is an oracle inequality of slow type, that holds in full generality.
+ˆ W
+ˆ ) be given by (4) and suppose that
+Theorem 1 Under Assumption 1, let (A,
+τ ≥ 2α M
+
+op ,
+
+γ ≥ 2(1 − α) M
+
+and κ ≥ 2 Ξ
+
+∞
+
+(5)
+
+∞
+
+for some α ∈ (0, 1). Then, we have
+E(A, W )2 ≤
+
+E(A, W )2 + 2τ A
+
+inf
+(A,W )∈A×W
+
+∗
+
++ 2γ A
+
+1
+
++ 2κ W
+
+1
+
+.
+
+3.2 Restricted Eigenvalue Condition and Fast Oracle Inequalities
+For the proof of oracle inequalities, the restricted eigenvalue (RE) condition introduced by
+Bickel et al. (2009) and Koltchinskii (2009a,b) is of importance. As explained by van de Geer
+and Bühlmann (2009), this condition is acknowledged to be one of the weakest to derive
+fast rates for the Lasso. Matrix version of these assumptions are introduced by Koltchinskii
+et al. (2011). Below is a version of the RE assumption that fits in our context. First, we
+need to introduce the two restriction cones.
+The first cone is related to the W 1 term used in procedure (4). If W ∈ Rd×d , we denote
+d×d
+by ΘW = sign(W ) ∈ {0, ±1}d×d the signed sparsity pattern of W and by Θ⊥
+W ∈ {0, 1}
+d×d
+the complementary sparsity pattern. For a fixed matrix W ∈ R
+and c > 0, we introduce
+the cone
+.
+C1 (W, c) = W ∈ W : Θ⊥
+W ◦ W 1 ≤ c ΘW ◦ W 1 .
+This cone contains the matrices W that have their largest entries in the sparsity pattern
+of W .
+The second cone is related to the mixture of the terms A ∗ and A 1 in procedure (4).
+For a fixed A ∈ Rn×n and c, β > 0, we introduce
+.
+C2 (A, c, β) = A ∈ A : PA⊥ (A )
+
+∗
+
++ β Θ⊥
+A ◦A
+
+1
+
+≤c
+
+PA (A )
+
+∗
+
++ β ΘA ◦ A
+
+.
+
+1
+
+This cone consist of the matrices A with large entries close to that of A and that are “almost
+aligned” with the row and column spaces of A. The parameter β quantifies the interplay
+between these two notions.
+Assumption 2 (Restricted Eigenvalue (RE) condition) For W ∈ W and c > 0, we
+have
+µ
+µ1 (W, c) = inf µ > 0 : ΘW ◦ W F ≤ √ XT −1 W F , ∀W ∈ C1 (W, c) < +∞ .
+T
+For A ∈ A and c, β > 0, we introduce
+µ2 (A, W, c, β) = inf µ > 0 :
+
+PA (A )
+
+F
+
+∨ ΘA ◦ A
+
+F
+
+µ
+≤ √ W ω(AT ) − ω(A )
+d
+
+2
+
+∀W ∈ C1 (W, c), ∀A ∈ C2 (A, c, β) < +∞ .
+572
+
+Link Prediction in Graphs with Autoregressive Features
+
+Under this assumption, we can obtain refined oracle inequalities as shown in the next
+theorem.
+ˆ W
+ˆ ) be given by (4) and suppose
+Theorem 2 Under Assumption 1 and Assumption 2, let (A,
+that
+τ ≥ 3α M op , γ ≥ 3(1 − α) M ∞ and κ ≥ 3 Ξ ∞
+(6)
+for some α ∈ (0, 1). Then, we have
+E(A, W )2 ≤
+
+E(A, W )2 +
+
+inf
+(A,W )∈A×W
+
+25
+25
+µ2 (A, W )2 τ 2 rank A + γ 2 A 0 ) + κ2 µ1 (W )2 W
+18
+36
+
+0
+
+,
+
+where µ1 (W ) = µ1 (W, 5) and µ2 (A, W ) = µ2 (A, W, 5, γ/τ ) (see Assumption 2).
+The proofs of Theorems 1 and 2 use tools introduced by Koltchinskii et al. (2011) and
+Bickel et al. (2009). Note that the residual term from this oracle inequality combines the
+sparsity of A and W via the terms rank A, A 0 and W 0 . It says that our mixed penalization procedure provides an optimal trade-off between fitting the data and complexity,
+measured by both sparsity and low-rank. To our knowledge, this is the first result of this
+nature to be found in literature.
+3.3 Probabilistic Versions
+We introduce the following natural hypothesis on the noise process.
+Assumption 3 We assume that {Nt }t≥0 satisfies E[Nt |Ft−1 ] = 0 for any t ≥ 1 and that
+there is σ > 0 such that for any λ ∈ R and j = 1, . . . , d and t ≥ 0:
+E[eλ(Nt )j |Ft−1 ] ≤ eσ
+
+2 λ2 /2
+
+.
+
+Moreover, we assume that for each t ≥ 0, the coordinates (Nt )1 , . . . , (Nt )d are independent.
+The latter statement assumes that the noise is driven by time-series dynamics (a martingale
+increment), where the coordinates are independent (meaning that features are independently
+corrupted by noise), with a sub-gaussian tail and variance uniformly bounded by a constant
+σ 2 . In particular, no independence assumption between the Nt is required here.
+In the next result (Theorem 3), we obtain convergence rates for the procedure (4) by
+combining Theorem 2 with controls on the noise processes. We introduce the following
+quantities:
+2
+vΩ,op
+=
+
+1
+d
+
+d
+
+Ωj Ωj
+j=1
+
+2
+σω2 = max σω,j
+,
+j=1,...,d
+
+op
+
+∨
+
+1
+d
+
+d
+
+Ωj Ωj
+
+op
+
+j=1
+
+2
+where σω,j
+=
+
+1
+T
+
+,
+
+2
+vΩ,∞
+=
+
+1
+d
+
+d
+
+Ωj ◦ Ωj
+j=1
+
+∞
+
+,
+
+(7)
+
+T
+
+ωj (At−1 )2 + ωj (AT )2 ,
+t=1
+
+which are the (observable) variance terms that naturally appear in the upper bounds of the
+noise processes. We also introduce :
+T
+
+2
+= 2 max log log σω,j
+∨
+j=1,...,d
+
+573
+
+1
+2 ∨e ,
+σω,j
+
+(8)
+
+Richard, Gaïffas and Vayatis
+
+which is a small (observable) technical term that comes out of our analysis of the noise
+process Ξ. This term is a small price to pay for the fact that no independence assumption
+is required on the noise sequence {Nt }t≥0 , but only a martingale increment structure with
+sub-gaussian tails.
+We consider the following calibration of smoothing parameters as a function of noise
+process parameters:
+√
+τ = 3 2ασvΩ,op
+
+x + log(2n)
+,
+d
+2(x + 2 log n)
+,
+γ = 3(1 − α)σvΩ,∞
+d
+2e(x + 2 log d + T )
+κ = 6σσω
++
+T
+
+2e(x + 2 log d +
+d
+
+T)
+
+.
+
+In the next Theorem 3 and Corollary 4, we fix the smoothing parameters to the latter
+values. These two results convey the main message of the paper as it was announced in
+Section 2.4.
+Theorem 3 Under Assumption 1, Assumption 2 and Assumption 3, consider the procedure
+ˆ W
+ˆ ) given by (4) applied with the calibration of smoothing parameters shown above for
+(A,
+some α ∈ (0, 1) and a fixed confidence level x > 0. Then, we have, with probability larger
+than 1 − 17e−x :
+E(A, W )2 ≤
+
+E(A, W )2 + C1 W
+
+inf
+(A,W )∈A×W
+
+0 (x
+
++ C2 A
+
++ 2 log d +
+0
+
+T)
+
+1
+1
++ 2
+T
+d
+
+x + log(2n)
+x + 2 log n
++ C3 rank A
+d
+d
+
+where
+C1 = 100eµ1 (W )2 σ 2 σω2 ,
+
+2
+C2 = 50µ2 (A, W )2 (1−α)2 σ 2 vΩ,∞
+,
+
+2
+C3 = 50µ2 (A, W )2 α2 σ 2 vΩ,op
+,
+
+and RE constants µ1 (W ) and µ2 (A, W ) are taken as in Theorem 2.
+The proof of Theorem 3 follows directly from Theorem 2 together with noise control assumptions. In the next result, we propose more explicit upper bounds for both the individual
+estimation of W0 and the prediction of AT +1 .
+Corollary 4 Under the same assumptions as in Theorem 3 and the same choice of smoothing parameters, for any x > 0 the following inequalities hold with probability larger than
+1 − 17e−x :
+• Feature prediction error:
+1
+ˆ − W0 )
+X T (W
+T
++ inf
+
+A∈A
+
+2
+F
+
+≤
+
+25 2
+κ µ1 (W0 )2 W0
+36
+
+1
+ω(A) − ω(AT +1 )
+d
+
+2
+2
+
++
+
+574
+
+0
+
+25
+µ2 (A, W0 )2 τ 2 rank A + γ 2 A 0 )
+18
+
+(9)
+
+Link Prediction in Graphs with Autoregressive Features
+
+• VAR parameter estimation error:
+ˆ − W0
+W
++6
+
+1
+
+≤ 5κµ1 (W0 )2 W0
+
+W0 0 µ1 (W0 ) inf
+
+A∈A
+
+0
+
+1
+ω(A) − ω(AT +1 )
+d
+
+2
+2
+
++
+
+25
+µ2 (A, W0 )2 τ 2 rank A + γ 2 A 0 )
+18
+(10)
+
+• Link prediction error:
+Aˆ − AT +1
+
+∗
+
+≤ 5κµ1 (W0 )2 W0
+
+× inf
+
+A∈A
+
+0
+
++ µ2 (AT +1 , W0 )(6
+
+1
+ω(A) − ω(AT +1 )
+d
+
+2
+2
+
++
+
+rank AT +1 + 5
+
+γ
+τ
+
+AT +1 0 )
+
+25
+µ2 (A, W0 )2 τ 2 rank A + γ 2 A 0 ) . (11)
+18
+
+4. Algorithms and Data Modeling
+In this section, we explore how the proposed strategy of regularized optimization for simultaneously estimating the feature dynamics and predicting the forthcoming links can be
+implemented in practice.
+4.1 Incremental Proximal-Gradient Algorithm for Minimizing L
+The objective to be minimized in our problem can be written as:
+L= +R ,
+where we have set the loss function :
+: (A, W ) →
+
+1
+XT − XT −1 W
+T
+
+2
+F
+
++
+
+1
+ω(A) − W ω(AT )
+d
+
+2
+2
+
+,
+
+and the regularizer R:
+R : (A, W ) → κ W
+
+1
+
++τ A
+
+∗
+
++γ A
+
+1
+
+.
+
+We propose to develop an algorithm for solving this optimization problem based on
+proximal gradient methods. Proximal algorithms (Beck and Teboulle, 2009; Combettes
+and Pesquet, 2011) have been designed for solving convex optimization problems where
+functionals have the following structure : L = + R , where is convex, differentiable with
+a Lipschitz gradient and R is convex and not differentiable. This is exactly our case. In the
+classical setup, it is assumed that R has an explicit (or fast to compute) proximal operator,
+defined by:
+1
+proxR (X) = arg min
+X − Y 2F + R(Y ) .
+2
+Y
+It has been proved by Beck and Teboulle (2009) that the sequence
+Xk+1 = proxθR (Xk − θ∇ (Xk ))
+575
+
+Richard, Gaïffas and Vayatis
+
+converges after O(1/ ) steps to a ball of radius of the minimizer of L. The step size θ is
+usually taken of the order of magnitude of the inverse of the Lipschitz constant L of ∇ . An
+√
+accelerated algorithm (FISTA) that reaches the optimal convergence rate O(1/ ) in the
+sense of Nesterov (2005) can be written using an auxiliary sequence, are described by Beck
+and Teboulle (2009) and Tseng (2008). The intuition behind the design of these algorithms
+relies on the linear expansion of around the point Xk and the quadratic term L2 X − Xk 2F
+that controls the closeness of the next step point Xk+1 from Xk . Namely, we can write
+L(X) ≈ (Xk ) + ∇ (Xk ) (X − Xk ) + R(X) +
+1
+1
+(X − Xk ) + ∇ (Xk )
+2
+L
+1
+1
+X − (Xk − ∇ (Xk ))
+=L
+2
+L
+
+=L
+
+2
+F
+2
+F
+
+L
+X − Xk
+2
+
+2
+F
+
+1
+1
+1
+∇ (Xk ) 2F +
+(Xk ) + R(X)
+2L2
+L
+L
+1
++ R(X) + constant.
+L
+
+−
+
+It follows that the point Xk+1 = prox 1 R (Xk − L1 ∇ (Xk )) is a fair approximation of the
+L
+minimizer of L around Xk . The detailed analysis and extensions can be found in the paper
+by Tseng (2008).
+In our case, the presence of the sum of two simple regularizers ( 1 and trace norm)
+applied to the same object A makes the situation slightly more complicated, since the
+proximal operator of this sum is non-explicit. We propose to use an incremental algorithm
+to address this complication. Indeed, the proximal operators of each term are available.
+First, it is known that the proximal operator of the trace norm is given by the spectral
+shrinkage operator: if X = U diag(σ1 , · · · , σn )V is the singular value decomposition of X,
+we have
+proxτ · ∗ (X) = U diag((σi − τ )+ )V .
+For the
+
+1 -norm,
+
+the proximal operator is the entrywise soft-thresholding defined by
+proxγ
+
+·
+
+1
+
+(X) = sgn(X) ◦ (|X| − γ)+ ,
+
+where we recall that ◦ denotes the entry-wise product. The algorithm converges under very
+mild conditions when the step size θ is smaller than 2/L, where L is the operator norm of
+the joint quadratic loss.
+The algorithm is described below (see Algorithm 1). It is inspired from the method
+proposed by Bertsekas (2011) Section 2 and conducts to the minimization our objective
+function. The order in which proximal mappings are performed is chosen in order to compute
+the SVD on a sparse matrix Z, for computational efficiency. If a sparse output is desired,
+an extra soft-thresholding step can be performed at the end. Note that this algorithm
+is preferable to the method previously introduced by Richard et al. (2010) as it directly
+minimizes L jointly in (A, W ) rather than alternately minimizing in W and A.
+4.2 A Generative Model for Graphs with Linearly Autoregressive Features
+In order to prepare the setup for empirical evaluation of the algorithm, we now explain how
+synthetic data can be generated from the statistical model with linear autoregressive features.
+Let V0 ∈ Rn×r be a sparse matrix, V0† its pseudo-inverse such that V0† V0 = V0 V0 † = Ir .
+576
+
+Link Prediction in Graphs with Autoregressive Features
+
+Algorithm 1 Incremental Proximal-Gradient to Minimize L
+Initialize A, Z1 , Z2 , W
+repeat
+Compute (GA , GW ) = ∇A,W (A, W ).
+Compute Z = proxθγ · 1 (A − θGA )
+Compute A = proxθτ · ∗ (Z)
+Set W = proxθκ · 1 (W − θGW )
+until convergence
+return (A, W ) minimizing L
+Fix two sparse matrices K0 ∈ Rr×r and U0 ∈ Rn×r . Now define the sequence of matrices
+{At }t≥0 for t = 1, 2, · · · by
+Ut = Ut−1 K0 + Nt
+and
+At = U t V 0
+for a sequence of i.i.d sparse noise matrices {Nt }t≥0 , which means that for any pair of indices
+(i, j), we have (Nt )i,j = 0 with a high probability. We consider the vectorization operator
+A → vec(A) that stacks the columns of A into a single column, and define the linear feature
+map
+.
+ω(A) = vec(AΨ),
+where we set for short Ψ = (V0 )† , so that V0 Ψ = Ir . Let us notice that
+1. The sequence {ω(At )}t = {vec(Ut )}t follows the linear autoregressive relation
+ω(At ) = (K0 ⊗ In )ω(At−1 ) + vec(Nt ),
+where vec(Nt ) is a zero-mean noise process and ⊗ is the Kronecker product.
+2. For any time index t, the matrix At is close to Ut V0 that has rank at most r
+3. The matrices At and Ut are both sparse by construction.
+4. The dimension of the feature space is d = nr
+n2 , so W0 = K0 ⊗ In ∈ Rnr×nr . The
+feature map can be written in standard form, see Equation (1), after vectorization by
+using the design matrices
+Ω(l−1)n+i = ei (Ψ )l,·
+for 1 ≤ l ≤ r, 1 ≤ i ≤ n, where the n × n design matrix ei (Ψ )l,· contains a copy of
+the l-th column of Ψ at its i-th row and zeros elsewhere. The standard form of the
+feature map is then given by the vector
+ω(A) = [ A, Ω(l−1)n+i : 1 ≤ l ≤ r, 1 ≤ i ≤ n] .
+As a consequence, we can compute the variance terms vΩ,∞ and vΩ,op from Equation (7)
+as functions of Ψ. By using
+ei (Ψ )l,· Ψ·,l ei = Ψ·,l 22 ei ei
+
+and Ψ·,l ei ei (Ψ )l,· = Ψ·,l (Ψ )l,· ,
+577
+
+Richard, Gaïffas and Vayatis
+
+we get respectively by summation over indices i and l,
+r
+
+n
+
+r
+
+n
+
+ei Ψl,· Ψl,· ei =
+
+Ψl,·
+
+l=1 i=1
+
+2
+2
+
+ei ei
+
+2
+F In
+
+= Ψ
+
+i=1
+
+l=1
+
+and Equation (7) gives us the values of the variance terms
+vΩ,op =
+
+1
+nr
+
+r
+
+Ψ·,l (Ψ·,l )
+
+op
+
+l=1
+
+∨ Ψ
+
+2
+F
+
+and vΩ,∞ =
+
+where the (∞, 2)-norm is defined by the maximum
+maxj X·,j 2 .
+
+2 -norm
+
+1
+Ψ
+n
+
+2
+∞,2 ,
+
+of the columns, X
+
+∞,2
+
+.
+=
+
+4.3 Beyond the First-Order Autoregressive Model
+The theory developed in Sections 2 and 4 considers the VAR model of order p = 1 for the
+sake of simplicity. However, our approach is flexible, since we may use any other time-series
+modelling. To give a simple illustration of this fact, we consider below an extension to the
+second-order VAR model. Indeed, we don’t want the VAR order p to be too large, since
+the number of parameters scales as d2 × p (forgetting about sparsity assumptions). In our
+experiments (see Section 5 below), we consider and compare both first order and second
+order VAR models.
+Let us define the (T − 1) × d time-series matrices
+XT = ω(A2 ), . . . , ω(AT )
+XT −2 = ω(A0 ), . . . , ω(AT −2 )
+
+,
+
+XT −1 = ω(A1 ), . . . , ω(AT −1 )
+
+,
+
+.
+
+We consider the following order 2 extension of the features VAR model:
+XT = XT −1 W1 + XT −2 W2 + NT ,
+where NT = [N2 , . . . , NT ] denotes the centered noise vector, and W1 , W2 are VAR model
+parameters. In this case the Lasso objective is
+J1 (W1 , W2 ) =
+
+1
+XT − XT −1 XT −2
+T
+
+W1
+W2
+
+2
+F
+
++κ
+
+W1
+W2
+
+1
+
+and the Lasso estimator is defined by
+(W1 , W2 ) = arg min J1 (W1 , W2 ).
+W1 ,W2
+
+In the same spirit as in Section 2.3 we define the objective
+L(A, W1 , W2 ) = J1 (W1 , W2 ) +
+
+1
+ω(A) − ω(AT ) W1 − ω(AT −1 ) W2
+d
+578
+
+2
+2
+
++τ A
+
+∗
+
++ γ A 1.
+
+Link Prediction in Graphs with Autoregressive Features
+
+The gradients of the quadratic loss are given by
+1 ∇W 1
+2 ∇W 2
+
+=
+
+1 XT −1
+W1
+XT −1 XT −2
+− XT
+X
+W2
+T
+T −2
+1 ω(AT )
+W1
+ω(AT ) ω(AT −1 )
++
+− ω(A)
+W2
+d ω(AT −1 )
+
+,
+
+and
+1
+∇A
+2
+
+1
+=
+d
+
+d
+
+ω(A)j − (ω(AT ) W1 + ω(AT −1 ) W2 )j Ωj ,
+j=1
+
+where Ωj ∈ Rn×n is the j-th design matrix. We implemented the second order autoregressive
+model with three different types of penalties. We used:
+1. Ridge Regression using κ W1
+
+2
+F
+
++ κ W2
+
+2
+F
+
+as the penalty term
+
+2. the Lasso estimator, that is, the minimizer of J1
+3. the estimator suggested in this work.
+
+5. Empirical Evaluation
+In Section 5.1 we assess our algorithms on synthetic data, generated as described in Section 4.2. In Section 5.2 we use our algorithm for the prediction of sales volume for webmarketing data
+5.1 Experiments with Synthetic Data
+Data generator. In our experiments, the noise matrices Mt are built by soft-thresholding
+i.i.d. noise N (0, σ 2 ). We took as input T = 10 successive graph snapshots on n = 50 nodes
+graphs of rank r = 5. We used d = 10 linear features, and finally the noise level was set to
+σ = .5. Since the matrix V0 defining the linear map ω is unknown we consider the feature
+map ω(A) = vec(AV ) where AT = U ΣV is the SVD of AT .
+Competitors. The competing methods for our problem, as considered in this paper, are:
+• Nearest Neighbors, that scores pairs of nodes with the number of common friends
+between them, which is given by A2 where A is the cumulative graph adjacency matrix
+AT = Tt=0 At ;
+• Static sparse and low-rank, that is the link prediction algorithm suggested by Richard
+et al. (2012b), which is obtained by minimizing the objective X − AT 2F + τ X ∗ +
+γ X 1 . It is the closest static version of our method;
+• Autoregressive low-rank and Static low-rank, that are regularized using only by the
+trace-norm (corresponding to γ = 0);
+• Katz scores pairs of nodes i and j by the sum of number of paths of length l connecting
+l
+l
+i and j, weighted by an exponentially decreasing coefficient β l : ∞
+l=1 β A i,j ;
+579
+
+Richard, Gaïffas and Vayatis
+
+AUC
+
+Link prediction performance
+0.98
+
+2
+
+0.99
+
+0.96
+
+0.98
+0.94
+
+4
+
+0.97
+
+0.92
+
+0.96
+6
+0.95
+T
+
+AUC
+
+0.9
+
+0.88
+
+0.94
+
+8
+
+0.93
+0.86
+
+Autoregressive Sparse and Low−rank
+Autoregressive Low−rank
+Static Sparse and Low−rank
+Static Low−rank
+Nearest−Neighbors
+Katz
+Adamic Adar
+Prefferential Attachment
+
+0.84
+
+0.82
+
+0.92
+
+10
+
+0.91
+0.9
+
+12
+
+0.8
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+0
+
+T
+
+10
+
+20
+
+30
+rank A
+
+40
+
+50
+
+60
+
+70
+
+T+1
+
+Figure 2: Left: performance of algorithms in terms of Area Under the ROC Curve, average
+and confidence intervals over 50 runs. Right: Phase transition diagram.
+
+• Adamic Adar is the score ν∈N (i)∩N (j) 1/ log(dν ), where dν is the degree of the node
+ν which is a common neighbor of i and j;
+• Preferential attachment only takes popularity into account and scores an edge ij by
+the product of their degrees di dj . See the papers by Liben-Nowell and Kleinberg
+(2007) and Lü and Zhou (2011) for details on Katz, Adamic-Adar and Preferential
+Attachment.
+We also point out that other methods could possibly be adapted for the problem of link
+prediction as stated in the present paper. We mainly refer to the works by Liben-Nowell
+and Kleinberg (2007), Lü and Zhou (2011), Sarkar et al. (2012), Huang and Lin (2009),
+Nardi and Rinaldo (2011) and Davis et al. (2012). However, they were introduced either
+in a different setup, such as the one where multiple observations of a given edge occur, as
+described by Liben-Nowell and Kleinberg (2007) and Lü and Zhou (2011), or in the feature
+prediction problem of Nardi and Rinaldo (2011) and Davis et al. (2012), or they would
+involve tuning complex subroutines, such as the ones of Huang and Lin (2009), leading us
+far beyond the scope of the present work.
+Performance assessment for validation and test. We compare our methods to standard
+baselines in link prediction by comparing predictions Aˆ to the adjacency matrix AT +1 = A,
+which is binary, at step T + 1. Since the score matrix Aˆ outputs scalar values, we use a
+threshold parameter t to build a link predictor I{Aˆi,j > t} on the edge (i, j). The quality of
+our estimation is then measured by considering all possible values of the threshold parameter
+t which leads to the ROC curve as the plot of the proportion of hits (pairs (i, j) such
+that Aij · I{Aˆi,j > t} = 1) versus the proportion of false detection (pairs (i, j) such that
+Aij · I{Aˆi,j > t} = 0). Our criterion is the AUC for this particular definition of the ROC
+curve. In this approach of assessment, the size of the coefficients of Aˆ accounts for the
+strength of the prediction. We report empirical results averaged over 50 runs with confidence
+intervals in Figure 2. The parameters τ and γ are chosen by a 10-fold cross validation for
+580
+
+Link Prediction in Graphs with Autoregressive Features
+
+3
+
+10
+
+Sales Volume
+
+2
+
+10
+
+1
+
+10
+
+0
+
+10
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+35
+
+40
+
+45
+
+50
+
+Time (week)
+
+Figure 3: Sales volumes of 20 top-sold items weekly sales over the year.
+each of the methods separately. The validation set is the upwards sliding time window
+when learning from the past. The right-hand side of Figure 2 is a phase transition diagram
+showing the impact of both rank and time on the accuracy of estimation of the adjacency
+matrix. The results are clearly better as we gain historical depth and the lower the rank of
+the adjacency matrix.
+Comparison with the baselines. This experiment shows the benefits of using a temporal
+approach when one can handle the feature extraction task. The left-hand plot shows that if
+few snapshots are available (T ≤ 4 in these experiments), then static approaches are to be
+preferred, whereas feature autoregressive approaches outperform them as soon as a sufficient
+number T of graph snapshots are available (see the Phase transition diagram from Figure 2).
+The decreasing performance of static algorithms can be explained by the fact that they use
+as input a mixture of different graphs observed at different time steps, whereas they require
+a single simple graph as input.
+5.2 Experiments with Real Data: Predicting Sales Volumes
+Motivations. Predicting the popularity of products is of major interest for marketers and
+product managers as it allows to anticipate or even create trends that diffuse in networks.
+A useful observation when dealing with sales volumes is that when modeling purchases by
+edges in the bipartite graph of users and products, the sales volumes can be seen as the
+degrees of the product nodes. We use two VAR models of order 1 and 2, as described in
+Section 4.3, in order to show the flexibility of our approach. We consider the linear feature
+map ω(A) = A 1 that computes the columns degree vector. The dimension of the feature
+space d equals the number of columns of the matrix in this case. If the input matrix At is
+the users × products matrix of sales at time period t then the degree of each product equals
+the sales volume of the product during that period, and it can be used as a fair popularity
+indicator for the product. It is in addition common to consider a regular evolution of such
+features, see the paper by Rogers (1962). Note that the suggested approach is valid for a
+similar activity indicator in any other network, such as users activity on a social network
+581
+
+Richard, Gaïffas and Vayatis
+
+Error
+T = 10
+T = 15
+T = 20
+T = 25
+
+Ridge
+0.9524
+0.6394
+0.3419
+0.3777
+
+AR(1)
+Lasso
+1.1344
+0.5389
+0.3111
+0.6238
+
+Our
+0.9730
+0.5336
+0.4878
+0.5689
+
+Ridge
+1.0037
+0.6010
+0.3310
+0.3356
+
+AR(2)
+Lasso
+1.0110
+0.5304
+0.2972
+0.3286
+
+Our
+0.9416
+0.5401
+0.3086
+0.3279
+
+Table 2: Relative quadratic error of the prediction of sales volume for three regularized VAR
+models: one based on ridge regression penalty, one base don LASSO penalty, and
+one based on our strategy with both sparse and low-rank regularizers.
+
+or protein activity on a protein-protein interaction network. A last remark is that the prior
+knowledge in the case of e-commerce data suggests that groups of highly related items exist,
+which makes the adjacency matrix low-rank in addition to be sparse. In fact the adjacency
+matrix of a fully clustered graph would be block-diagonal, and we expect the matrix of
+interest to be close to such a matrix.
+Protocol and description of data sets. We performed our experiments on the sales volumes
+time series of the n = 200 top sold books over T = 25 consecutive weeks excluding the
+Christmas period in 2009 of 31972 users.1 The weekly sales of each book corresponds to the
+degree of the corresponding node. The books catalogue contains several book categories,
+which motivates the low-rank matrix assumption. In Figure 3 we plot the time series of the
+top 20 items from the catalogue. From this observation, the stationary assumption seems
+plausible. More precisely, we observed that the time window allowing accurate predictions
+(a window in which the data is stationary) is, among the range of values we used in our
+experiments, equal to 20 weeks.
+Comparison with other methods and performance metric. We compare estimators of the
+degrees based on Ridge and Lasso penalization using the objective J1 only, see Equation (2),
+with our procedure based on joint minimization of (3). For choosing the tuning parameters
+κ, τ, γ we use the data collected from the same market a year before the test set to form the
+training and validation sets. For testing the quality of our predictor, we used the parameters
+performing the best predictions over the validation set. As data are abundant we can collect
+past data easily for this step. On the other hand, as seasonality effects may harm the
+method if cross-validation is performed on data taken from a different period of the year,
+this is the best way to proceed for splitting the data onto training validation and test sets.
+We evaluated the results in terms of relative quadratic error
+Relative quadratic error =
+
+ω(A) − ω(AT +1 )
+ω(AT +1 ) 2
+
+2
+
+over the prediction of the sales volumes. The results are reported in Table 2.
+Comments on the results. From this experiment we conclude the following. The order of
+the VAR is an important factor. We provided theoretical results for the VAR of order 1,
+1. The data was provided by the company 1000mercis.
+
+582
+
+Link Prediction in Graphs with Autoregressive Features
+
+but fitting a higher order VAR in practice may result in better performance. This is also a
+parameter that should ideally be chosen using the past data in a cross-validation process.
+Moreover, the size of the time window T should be chosen according to the data. A small
+value of T leads to poor result due to absence of enough signal. As opposite, a too large value
+of T harms the quality of prediction due to the nonstationary trends in too large windows
+of time. Note that in our synthetic data experiments only the first effect was observed: the
+performance is increasing as the time parameter T increases. This is due to the stationarity
+in synthetically generated data.
+5.3 Discussion
+Trading convexity for scalability. In the numerical experiments, for better scalability, one
+can replace the penalty on A by a sparsity inducing penalty on the factors of A. Namely if
+A = U V is a factorization of A, one can replace the term τ A ∗ + γ A 1 by λ U 1 V 1 .
+This penalty leads to a non-convex problem, nevertheless it allows better scalability than
+the convex penalty both in terms of memory requirement and computational complexity,
+when evaluating the proximal. Another practical advantage of this change of variable is that
+we need to tune only one real parameter λ instead of two (γ and τ ). The maximum rank of
+A = U V (number of columns of U and V ) replaces the low-rank inducing effect of τ .
+Generalization of the regression method. In this paper, we consider only an autoregressive
+process of order 1 and 2. For better prediction accuracy, one could consider more general
+models, such as vector ARMA models, and use model-selection techniques for the choice of
+the orders of the model. A general modelling based on state-space model could be developed
+as well.
+Choice of the feature map ω. In this work, we have used the projection onto the vector space
+of the top-r singular vectors of the cumulative adjacency matrix as the linear map ω, and this
+choice has shown empirical superiority to other choices. The question of choosing the best
+measurement / representation to summarize graph information as in compress sensing seems
+to have both theoretical and application potential. In our work the map ω was applied to
+a single matrix At . One can consider a mapping taking as input several successive matrices
+At , At+1 , At+2 . This idea has been used by Zhang et al. (2011) in order to distinguish the
+effect of new and returning customers in a marketplace. Moreover, a deeper understanding of
+the connections of our problem with compressed sensing, for the construction and theoretical
+validation of the feature map, is an important point that needs several developments. An
+extension to nonlinear graph features such as the distribution of triangles or other nonlinear
+patterns of interest is also to be considered.
+
+6. Conclusion
+In this work, we studied the link prediction problem under structural hypotheses on the
+graph generation process (sparse low-rank adjacency and autoregressive features). Our
+work establishes a connection between the link prediction problem and compressed sensing through the use of common tools in the model and in the theoretical analysis. Empirical
+experiments show the benefit of adopting such a point of view. In fact, compared to the
+existing heuristics, this approach offers a principled search method in the hypothesis space
+through the regularization and convex optimization formulation. The flexibility of our ap583
+
+Richard, Gaïffas and Vayatis
+
+proach and its connections with several active areas of research makes it very attractive and
+reveals several interesting directions of investigation for future work.
+
+Appendix A. Proofs of the Main Results
+From now on, we use the notation (A, a) 2F = A 2F + a 22 and (A, a), (B, b) = A, B +
+a, b for any A, B ∈ RT ×d and a, b ∈ Rd .
+Let us introduce the linear mapping Φ : Rn×n × Rd×d → RT ×d × Rd given by
+1
+1
+Φ(A, W ) = √ XT −1 W, √ (ω(A) − W ω(AT )) .
+T
+d
+Using this mapping, the objective (3) can be written in the following reduced way:
+2
+1
+√ XT , 0 − Φ(A, W ) + γ A 1 + τ A ∗ + κ W 1 .
+L(A, W ) =
+F
+T
+Recalling that the error writes, for any A and W :
+1
+1
+E(A, W )2 =
+(W − W0 ) ω(AT ) − ω(A − AT +1 ) 22 +
+XT −1 (W − W0 ) 2F ,
+d
+T
+we have
+E(A, W )2 = Φ(A − AT +1 , W − W0 ) 2F .
+Let us introduce also the empirical risk
+2
+1
+√ XT , 0 − Φ(A, W ) .
+F
+T
+The proofs of Theorem 1 and 2 are based on tools developed by Koltchinskii et al. (2011)
+and Bickel et al. (2009). However, the context considered here is very different from the
+setting considered in these papers, so our proofs require a different scheme.
+
+Rn (A, W ) =
+
+A.1 Proof of Theorem 1
+First, note that
+ˆ W
+ˆ ) − Rn (A, W )
+Rn (A,
+ˆ W
+ˆ)
+= Φ(A,
+
+2
+F
+
+− Φ(A, W )
+
+2
+F
+
+1
+ˆ − W) .
+− 2 ( √ XT , 0), Φ(Aˆ − A, W
+T
+
+Since
+ˆ W
+ˆ)
+Φ(A,
+
+2
+F
+
+− Φ(A, W ) 2F
+ˆ W
+ˆ )2 − E(A, W )2 + 2 Φ(Aˆ − A, W
+ˆ − W ), Φ(AT +1 , W0 ) ,
+= E(A,
+
+we have
+ˆ W
+ˆ ) − Rn (A, W )
+Rn (A,
+ˆ W
+ˆ )2 − E(A, W )2 + 2 Φ(Aˆ − A, W
+ˆ − W ), Φ(AT +1 , W0 ) − ( √1 XT , 0)
+= E(A,
+T
+1
+1
+ˆ W
+ˆ )2 − E(A, W )2 + 2 Φ(Aˆ − A, W
+ˆ − W ), (− √ NT , √ NT +1 ) .
+= E(A,
+T
+d
+The next Lemma will come in handy several times in the proofs.
+584
+
+Link Prediction in Graphs with Autoregressive Features
+
+Lemma 5 For any A ∈ Rn×n and W ∈ Rd×d we have
+1
+1
+( √ NT , − √ NT +1 ), Φ(A, W ) = (M, Ξ), (A, W ) = W, Ξ + A, M .
+T
+d
+This Lemma follows from a direct computation, and the proof is thus omitted. This Lemma
+entails, together with (4), that
+ˆ W
+ˆ )2 ≤ E(A, W )2 + 2 W
+ˆ − W, Ξ + 2 Aˆ − A, M
+E(A,
++ τ( A
+
+∗
+
+− A ∗ ) + γ( A
+
+1
+
+− A 1 ) + κ( W
+
+1
+
+− W
+
+1 ).
+
+Now, using Hölder’s inequality and the triangle inequality, and introducing α ∈ (0, 1), we
+obtain
+ˆ W
+ˆ )2 ≤ E(A, W )2 + 2α M
+E(A,
+
+op
+
++ 2(1 − α) M
++ 2 Ξ
+
+∞
+
+Aˆ
+
+−τ
+
+−κ
+
+∞
+
+∗
+
+Aˆ
+
+−γ
+
+ˆ
+W
+
+1
+
++ 2α M
+1
+
+op
+
++τ
+
+A
+
++ 2(1 − α) M
+
++ 2 Ξ
+
+∞
+
++κ
+
+W
+
+∗
+∞
+
++γ
+
+A
+
+1
+
+1,
+
+which concludes the proof of Theorem 1, using (5).
+A.2 Proof of Theorem 2
+Let A ∈ Rn×n and W ∈ Rd×d be fixed, and let A = U diag(σ1 , . . . , σr )V be the SVD
+of A. Recalling that ◦ is the entry-wise product, we have A = ΘA ◦ |A| + Θ⊥
+A ◦ A, where
+n×n is the orthogonal
+ΘA ∈ {0, ±1}n×n is the entry-wise sign matrix of A and Θ⊥
+∈
+{0,
+1}
+A
+sparsity pattern of A.
+ˆ W
+ˆ ) is equivalent to the fact that one can find G
+ˆ ∈ ∂L(A,
+ˆ W
+ˆ)
+The definition (4) of (A,
+ˆ W
+ˆ )) that belongs to the normal cone of A × W
+(an element of the subgradient of L at (A,
+ˆ
+ˆ
+ˆ
+at (A, W ). This means that for such a G, and any A ∈ A and W ∈ W, we have
+ˆ (Aˆ − A, W
+ˆ − W ) ≤ 0.
+G,
+Any subgradient of the function g(A) = τ A
+Z = τ Z∗ + γZ1 = τ U V
+
+∗
+
++γ A
+
+1
+
+(12)
+
+writes
+
++ PA⊥ (G∗ ) + γ ΘA + G1 ◦ Θ⊥
+A
+
+for some G∗ op ≤ 1 and G1 ∞ ≤ 1 (see for instance the paper by Lewis (1995)). So, if
+ˆ we have, by monotonicity of the sub-differential, that for any Z ∈ ∂g(A)
+Zˆ ∈ ∂g(A),
+ˆ Aˆ − A = Zˆ − Z, Aˆ − A + Z, Aˆ − A ≥ Z, Aˆ − A ,
+Z,
+and, by duality, we can find Z such that
+Z, A − A = τ U V , A − A + τ PA⊥ (A)
+585
+
+∗
+
++ γ ΘA , A − A + γ Θ⊥
+A ◦ A 1.
+
+Richard, Gaïffas and Vayatis
+
+By using the same argument with the function W → W 1 and by computing the gradient
+of the empirical risk (A, W ) → Rn (A, W ), Equation (12) entails that
+2 Φ(A − AT +1 , W − W0 ), Φ(A − A, W − W )
+1
+1
+≤ 2 ( √ NT , − √ NT +1 ), Φ(A − A, W − W ) − τ U V , A − A − τ PA⊥ (A)
+T
+d
+⊥
+− γ ΘA , A − A − γ Θ⊥
+A ◦ A 1 − κ ΘW , W − W − κ ΘW ◦ W 1 .
+
+∗
+
+(13)
+Using Pythagora’s theorem, we have
+ˆ − W0 ), Φ(A − A, W − W )
+2 Φ(A − AT +1 , W
+ˆ − W0 ) 2 + Φ(A − A, W − W )
+= Φ(A − AT +1 , W
+2
+
+2
+2
+
+− Φ(A − AT +1 , W − W0 ) 22 .
+(14)
+
+It shows that if Φ(A − AT +1 , W − W0 ), Φ(A − A, W − W ) ≤ 0, then Theorem 2 trivially
+holds. Let us assume that
+Φ(A − AT +1 , W − W0 ), Φ(A − A, W − W ) > 0.
+
+(15)
+
+Using Hölder’s inequality, we obtain
+| U V , Aˆ − A | = | U V , PA (Aˆ − A) | ≤ U V
+| ΘA , Aˆ − A | = | ΘA , ΘA ◦ (Aˆ − A) | ≤ ΘA
+
+PA (Aˆ − A) ∗ = PA (Aˆ − A) ∗ ,
+ΘA ◦ (Aˆ − A) 1 = ΘA ◦ (Aˆ − A) 1 ,
+
+op
+∞
+
+ˆ − W | ≤ ΘW ◦ (W
+ˆ − W ) 1 . So, when (15) holds, we
+and the same is done for | ΘW , W
+obtain by rearranging the terms of (13):
+τ PA⊥ (A−A)
+
+⊥
++ γ Θ⊥
+A ◦ (A − A) 1 + κ ΘW ◦ (W − W ) 1
+ˆ − W)
+≤ τ PA (Aˆ − A) ∗ + γ ΘA ◦ (Aˆ − A) 1 + κ ΘW ◦ (W
+1
+1
++ 2 ( √ NT , − √ NT +1 ), Φ(A − A, W − W ) .
+T
+d
+∗
+
+1
+
+(16)
+
+Using Lemma 5, together with Hölder’s inequality, we have for any α ∈ (0, 1):
+1
+1
+ˆ −W
+( √ NT , − √ NT +1 ), Φ(A − A, W − W ) = M, Aˆ − A + Ξ, W
+T
+d
+≤ α M op PA (Aˆ − A) ∗ + α M op PA⊥ (Aˆ − A) ∗
++ (1 − α) M ∞ ΘA ◦ (Aˆ − A) 1 + (1 − α) M ∞ Θ⊥ ◦ (Aˆ − A)
+A
+
++ Ξ
+
+∞(
+
+ΘW
+
+ˆ − W)
+◦ (W
+
+1
+
+Θ⊥
+W
+
++
+
+(17)
+1
+
+ˆ − W ) 1) .
+◦ (W
+
+Now, using (16) together with (17), we obtain
+τ − 2α M
+
+PA⊥ (Aˆ − A)
+
+op
+
++ κ−2 Ξ
+
+∞
+
+Θ⊥
+W
+
+∗
+
++ γ − 2(1 − α) M
+
+ˆ − W)
+◦ (W
+
+∞
+
+1
+
+1
+
+PA (Aˆ − A) ∗ + γ + 2(1 − α) M
+ˆ − W) 1
++ κ + 2 Ξ ∞ ΘW ◦ (W
+
+≤ τ + 2α M
+
+ˆ
+Θ⊥
+A ◦ (A − A)
+
+op
+
+586
+
+∞
+
+ΘA ◦ (Aˆ − A)
+
+1
+
+Link Prediction in Graphs with Autoregressive Features
+
+which proves, using (6), that
+τ PA⊥ (Aˆ − A)
+
+∗
+
+ˆ
++ γ Θ⊥
+A ◦ (A − A)
+
+1
+
+≤ 5τ PA (Aˆ − A)
+
+∗
+
++ 5γ ΘA ◦ (Aˆ − A) 1 .
+
+This proves that Aˆ − A ∈ C2 (A, 5, γ/τ ). In the same way, using (16) with A = Aˆ together
+ˆ − W ∈ C1 (W, 5).
+with (17), we obtain that W
+Now, using together (13), (14) and (17) , and the fact that the Cauchy-Schwarz inequality entails
+√
+√
+PA (Aˆ − A) ∗ ≤ rank A PA (Aˆ − A) F , | U V , Aˆ − A | ≤ rank A PA (Aˆ − A) F ,
+ΘA ◦ (Aˆ − A) 1 ≤
+A 0 ΘA ◦ (Aˆ − A) F , | ΘA , Aˆ − A | ≤
+A 0 ΘA ◦ (Aˆ − A) F .
+ˆ − W , we arrive at
+and similarly for W
+ˆ − W0 ) 22 + Φ(A − A, W − W ) 22 − Φ(A − AT +1 , W − W0 ) 22
+Φ(A − AT +1 , W
+√
+≤ 2α M op + τ rank A PA (Aˆ − A) F + 2α M op − τ PA⊥ (Aˆ − A) ∗
++ 2α M ∞ + γ
+A 0 ΘA ◦ (Aˆ − A) F + 2α M ∞ − γ Θ⊥ ◦ (Aˆ − A)
++ 2α Ξ
+
+∞
+
++κ
+
+W
+
+0
+
+ˆ − W)
+ΘW ◦ (W
+
+F
+
++ 2α Ξ
+
+∞
+
+A
+Θ⊥
+W
+
+−κ
+
+1
+
+ˆ − W ) 1,
+◦ (W
+
+which leads, using (6), to
+ˆ − W0 ) 22 + Φ(A − A, W − W ) 22 − Φ(A − AT +1 , W − W0 ) 22
+Φ(A − AT +1 , W
+5τ √
+5γ
+5κ
+ˆ − W)
+≤
+rank A PA (Aˆ − A) F +
+A 0 ΘA ◦ (Aˆ − A) F +
+W 0 ΘW ◦ (W
+3
+3
+3
+
+F.
+
+ˆ − W ∈ C1 (W, 5), we obtain using Assumption 2 and
+Since Aˆ − A ∈ C2 (A, 5, γ/τ ) and W
+2
+2
+ab ≤ (a + b )/2:
+ˆ − W0 )
+Φ(A − AT +1 , W
+
+2
+2
+
++ Φ(A − A, W − W ) 22
+25
+≤ Φ(A − AT +1 , W − W0 ) 22 + µ2 (A, W )2 rank Aτ 2 + A 0 γ 2 )
+18
+25
+2
+2
++ µ1 (W ) W 0 κ + Φ(A − A, W − W ) 22 ,
+36
+which concludes the proof of Theorem 2.
+A.3 Proof of Corollary 4
+ˆ − W0 ) 2 ≤ E(A,
+ˆ W
+ˆ )2 and use
+For the proof of (9), we simply use the fact that T1 XT −1 (W
+F
+Theorem 3. Then we take W = W0 in the infimum over A, W .
+ˆ − W0 ∈ C1 (W0 , 5), we have (see the Proof of
+For (10), we use the fact that since W
+Theorem 2),
+ˆ − W0
+W
+
+1
+
+ˆ − W0 )
+ΘW ◦ (W
+ˆ − W0 )
+XT −1 (W
+
+≤6
+
+W0
+
+0
+
+≤6
+
+W0
+
+0
+
+≤6
+
+ˆ W
+ˆ ),
+W0 0 E(A,
+
+F
+F/
+
+√
+T
+
+and then use again Theorem 3. The proof of (11) follows exactly the same scheme.
+587
+
+Richard, Gaïffas and Vayatis
+
+A.4 Concentration Inequalities for the Noise Processes
+The control of the noise terms M and Ξ is based on recent results on concentration inequalities for random matrices, developed by Tropp (2012). Moreover, the assumption on
+the dynamics of the features’ noise vector {Nt }t≥0 is quite general, since we only assumed
+that this process is a martingale increment. Therefore, our control of the noise Ξ rely in
+particular on martingale theory.
+Proposition 6 Under Assumption 3, the following inequalities hold for any x > 0. We
+have
+d
+1
+2(x + log(2n))
+≤ σvΩ,op
+(NT +1 )j Ωj
+(18)
+d
+d
+op
+j=1
+
+with a probability larger than 1 − e−x . We have
+d
+
+1
+d
+
+(NT +1 )j Ωj
+
+∞
+
+j=1
+
+≤ σvΩ,∞
+
+2(x + 2 log n)
+d
+
+(19)
+
+with a probability larger than 1 − 2e−x , and finally
+1
+T
+
+T
+t=1
+
+1
+ω(At−1 )Nt + ω(AT )NT +1
+d
+
+∞
+
+≤ σσω
+
+2e(x + 2 log d +
+
+with a probability larger than 1 − 15e−x , where we recall that
+
+T
+
+T)
+
+1
+1
+√ +
+d
+T
+
+(20)
+
+is given by (8).
+
+Proof For the proofs of Inequalities (18) and (19), we use the fact that (NT +1 )1 , . . . , (NT +1 )d
+are independent (scalar) sub-gaussian random variables.
+From Assumption 3, we have for any n × n deterministic self-adjoint matrices Xj that
+E[exp(λ(NT +1 )j Xj )] exp(σ 2 λ2 Xj2 /2), where
+stands for the semidefinite order on selfadjoint matrices. Using Corollary 3.7 by Tropp (2012), this leads for any x > 0 to
+d
+
+P λmax
+
+(NT +1 )j Xj
+j=1
+
+d
+
+x2
+≥ x ≤ n exp − 2 ,
+2v
+
+2
+
+where v = σ
+
+2
+
+Xj2
+j=1
+
+op
+
+.
+
+(21)
+
+Then, following Tropp (2012), we consider the dilation operator ∆ : Rn×n → R2n×2n given
+by
+0 Ω
+∆(Ω) =
+.
+Ω∗ 0
+We have
+d
+
+d
+
+(NT +1 )j Ωj
+j=1
+
+op
+
+d
+
+= λmax ∆
+
+(NT +1 )j Ωj
+
+= λmax
+
+j=1
+
+(NT +1 )j ∆(Ωj )
+j=1
+
+and an easy computation gives
+d
+
+d
+
+∆(Ωj )
+j=1
+
+2
+op
+
+=
+
+d
+
+Ωj Ωj
+j=1
+
+588
+
+op
+
+∨
+
+Ωj Ωj
+j=1
+
+op
+
+.
+
+Link Prediction in Graphs with Autoregressive Features
+
+So, using (21) with the self-adjoint Xj = ∆(Ωj ) gives
+d
+
+(NT +1 )j Ωj
+
+P
+j=1
+
+op
+
+≥ x ≤ 2n exp −
+
+d
+
+x2
+2v 2
+
+where v 2 = σ 2
+
+d
+
+Ωj Ωj
+j=1
+
+op
+
+∨
+
+Ωj Ωj
+j=1
+
+op
+
+which leads easily to (18).
+Inequality (19) comes from the following standard bound on the sum of independent
+sub-gaussian random variables:
+
+P
+
+d
+
+1
+d
+
+(NT +1 )j (Ωj )k,l ≥ x ≤ 2 exp −
+j=1
+
+x2
+2σ 2 (Ωj )2k,l
+
+together with an union bound on 1 ≤ k, l ≤ n.
+Inequality (20) is based on a classical martingale exponential argument together with a
+peeling argument. We denote by ωj (At ) the coordinates of ω(At ) ∈ Rd and by Nt,k those of
+Nt , so that
+T
+
+T
+
+ω(At−1 )Nt
+t=1
+
+j,k
+
+=
+
+ωj (At−1 )Nt,k .
+t=1
+2 2
+
+We fix j, k and denote for short εt = Nt,k and xt = ωj (At ). Since E[exp(λεt )|Ft−1 ] ≤ eσ λ /2
+for any λ ∈ R, we obtain by a recursive conditioning with respect to FT −1 , FT −2 , . . . , F0 ,
+that
+T
+
+εt xt−1 −
+
+E exp θ
+t=1
+
+σ2 θ2
+2
+
+T
+
+x2t−1
+
+≤ 1.
+
+t=1
+
+Hence, using Markov’s inequality, we obtain for any v > 0:
+T
+
+T
+
+x2t−1 ≤ v ≤ inf exp(−θx + σ 2 θ2 v/2) = exp −
+
+εt xt−1 ≥ x,
+
+P
+t=1
+
+θ>0
+
+t=1
+
+x2
+,
+2σ 2 v
+
+that we rewrite in the following way:
+T
+
+√
+εt xt−1 ≥ σ 2vx,
+
+P
+t=1
+
+T
+
+x2t−1 ≤ v ≤ e−x .
+t=1
+
+Let us denote for short VT = Tt=1 x2t−1 and ST = Tt=1 εt xt−1 . We want to replace v by
+VT from the previous deviation inequality, and to remove the event {VT ≤ v}. To do so, we
+use a peeling argument. We take v = T and introduce vk = vek so that the event {VT > v}
+is decomposed into the union of the disjoint sets {vk < VT ≤ vk+1 }. We introduce also
+T
+
+= 2 log log
+
+T
+t=1
+
+T
+
+x2t−1
+
+∨
+
+T
+T
+t=1
+
+x2t−1
+
+∨e .
+589
+
+,
+
+Richard, Gaïffas and Vayatis
+
+This leads to
+P ST ≥ σ
+
+2eVT (x +
+
+T ), VT
+
+P ST ≥ σ
+
+>v =
+
+2eVT (x +
+
+T ), vk
+
+< VT ≤ vk+1
+
+k≥0
+
+P ST ≥ σ
+
+=
+
+2vk+1 (x + 2 log log(ek ∨ e)), vk < VT ≤ vk+1
+
+k≥0
+
+≤ e−x (1 +
+
+k −2 ) ≤ 3.47e−x .
+k≥1
+
+On {VT ≤ v} the proof is the same: we decompose onto the disjoint sets {vk+1 < VT ≤ vk }
+where this time vk = ve−k , and we arrive at
+P ST ≥ σ
+
+2eVT (x +
+
+T ), VT
+
+≤ v ≤ 3.47e−x .
+
+This leads to
+T
+
+T
+
+ωj (At−1 )2 (x +
+
+ωj (At−1 )Nt,k ≥ σ 2e
+
+P
+t=1
+
+1/2
+T,j )
+
+≤ 7e−x
+
+t=1
+
+for any 1 ≤ j, k ≤ d, where we introduced
+T,j
+
+= 2 log log
+
+T
+2
+t=1 ωj (At−1 )
+
+T
+
+∨
+
+T
+T
+2
+t=1 ωj (At−1 )
+
+∨e .
+
+The conclusion follows from an union bound on 1 ≤ j, k ≤ d, and from the use of the same
+argument for the term ω(AT )NT +1 . This concludes the proof of Proposition 6.
+
+References
+J. Abernethy, F. Bach, T. Evgeniou, and J.-P. Vert. A new approach to collaborative
+filtering: Operator estimation with spectral regularization. Journal of Machine Learning
+Research, 10:803–826, 2009.
+A. Andreas, M. Pontil, Y. Ying, and C. A. Micchelli. A spectral regularization framework
+for multi-task structure learning. In Advances in Neural Information Processing Systems
+(NIPS), pages 25–32, 2007.
+A. Beck and M. Teboulle. A fast iterative shrinkage-thresholding algorithm for linear inverse
+problems. SIAM Journal of Imaging Sciences, 2(1):183–202, 2009.
+D. P. Bertsekas. Incremental gradient, subgradient, and proximal methods for convex optimization: a survey. Optimization for Machine Learning, page 85, 2011.
+P. J. Bickel, Y. Ritov, and A. B. Tsybakov. Simultaneous analysis of lasso and Dantzig
+selector. Ann. Statist., 37(4):1705–1732, 2009.
+590
+
+Link Prediction in Graphs with Autoregressive Features
+
+L. Breiman and J. H. Friedman. Predicting multivariate responses in multiple linear regression. Journal of the Royal Statistical Society (JRSS): Series B (Statistical Methodology),
+59:3–54, 1997.
+E. J. Candès and T. Tao. Decoding by linear programming. In Proceedings of the 46th
+Annual IEEE Symposium on Foundations of Computer Science (FOCS), 2005.
+E. J. Candès and T. Tao. The power of convex relaxation: Near-optimal matrix completion.
+Information Theory, IEEE Transactions on, 56(5), 2009.
+E. J. Candès and M. Wakin. An introduction to compressive sampling. IEEE Signal Processing Magazine, 12(51):21–30, 2008.
+P. L. Combettes and J. C. Pesquet. Proximal splitting methods in signal processing. FixedPoint Algorithms for Inverse Problems in Science and Engineering, pages 185–212, 2011.
+R. A. Davis, P. Zang, and T. Zheng. Sparse vector autoregressive modeling. arXiv preprint
+arXiv:1207.0520, 2012.
+D. L. Donoho. Compressed sensing. Information Theory, IEEE Transactions on, 52(4):
+1289–1306, 2006.
+T. Evgeniou, C. A. Micchelli, and M. Pontil. Learning multiple tasks with kernel methods.
+Journal of Machine Learning Research, 6:615–637, 2005.
+S. Gaïffas and G. Lecué. Sharp oracle inequalities for high-dimensional matrix prediction.
+Information Theory, IEEE Transactions on, 57(10):6942 –6957, oct. 2011.
+Z. Huang and D. K. J. Lin. The time-series link prediction problem with applications in
+communication surveillance. INFORMS J. on Computing, 21(2):286–303, 2009.
+M. Kolar and E. P. Xing. On time varying undirected graphs. In International Conference
+on Artificial Intelligence and Statistics, pages 407–415, 2011.
+V. Koltchinskii. Sparsity in penalized empirical risk minimization. Ann. Inst. Henri Poincaré
+Probab. Stat., 45(1):7–57, 2009a.
+V. Koltchinskii. The Dantzig selector and sparsity oracle inequalities. Bernoulli, 15(3):
+799–828, 2009b.
+V. Koltchinskii, K. Lounici, and A. B. Tsybakov. Nuclear-norm penalization and optimal
+rates for noisy low-rank matrix completion. Ann. Statist., 39(5):2302–2329, 2011.
+Y. Koren. Factorization meets the neighborhood: a multifaceted collaborative filtering
+model. In Proceedings of the 14th ACM SIGKDD International Conference on Knowledge
+Discovery and Data Mining, pages 426–434. ACM, 2008.
+Y. Koren. Collaborative filtering with temporal dynamics. Communications of the ACM,
+53(4):89–97, 2010.
+591
+
+Richard, Gaïffas and Vayatis
+
+A. S. Lewis. The convex analysis of unitarily invariant matrix functions. J. Convex Anal.,
+2(1-2):173–183, 1995.
+D. Liben-Nowell and J. Kleinberg. The link-prediction problem for social networks. Journal
+of the American Society for Information Science and Technology, 58(7):1019–1031, 2007.
+L. Lü and T. Zhou. Link prediction in complex networks: A survey. Physica A: Statistical
+Mechanics and its Applications, 390(6):1150–1170, 2011.
+S. A. Myers and J. Leskovec. On the convexity of latent social network inference. In Advances
+in Neural Information Processing Systems (NIPS), 2010.
+Y. Nardi and A. Rinaldo. Autoregressive process modeling via the lasso procedure. Journal
+of Multivariate Analysis, 102(3):528–549, 2011.
+Y. Nesterov. Smooth minimization of non-smooth functions. Mathematical Programming,
+103(1):127–152, 2005.
+E. Richard, N. Baskiotis, T. Evgeniou, and N. Vayatis. Link discovery using graph feature
+tracking. In Advances in Neural Information Processing Systems (NIPS), 2010.
+E. Richard, S. Gaiffas, and N. Vayatis. Link prediction in graphs with autoregressive features.
+In Advances in Neural Information Processing Systems (NIPS), 2012a.
+E. Richard, P.-A. Savalle, and N. Vayatis. Estimation of simultaneously sparse and low-rank
+matrices. In Proceedings of 29th Annual International Conference on Machine Learning,
+2012b.
+E. M. Rogers. Diffusion of Innovations. London: The Free Press, 1962.
+P. Sarkar, D. Chakrabarti, and A. W. Moore. Theoretical justification of popular link
+prediction heuristics. In International Conference on Learning Theory (COLT), pages
+295–307, 2010.
+P. Sarkar, D. Chakrabarti, and M. I. Jordan. Nonparametric link prediction in dynamic
+networks. In Proceedings of 29th Annual International Conference on Machine Learning,
+2012.
+A. Shojaie, S. Basu, and G. Michailidis. Adaptive thresholding for reconstructing regulatory
+networks from time course gene expression data. Statistics In Biosciences, 2011.
+N. Srebro, J. D. M. Rennie, and T. S. Jaakkola. Maximum-margin matrix factorization. In
+Advances in Neural Information Processing Systems (NIPS). 2005.
+B. Taskar, M. F. Wong, P. Abbeel, and D. Koller. Link prediction in relational data. In
+Advances in Neural Information Processing Systems (NIPS), 2003.
+J. A. Tropp. User-friendly tail bounds for sums of random matrices. Foundations of Computational Mathematics, 12(4):389–434, 2012.
+R. S. Tsay. Analysis of Financial Time Series. Wiley-Interscience; 3rd edition, 2005.
+592
+
+Link Prediction in Graphs with Autoregressive Features
+
+P. Tseng. On accelerated proximal gradient methods for convex-concave optimization.
+Preprint, 2008.
+S. A. van de Geer and P. Bühlmann. On the conditions used to prove oracle results for the
+Lasso. Electron. J. Stat., 3:1360–1392, 2009.
+D. Q. Vu, A. Asuncion, D. Hunter, and P. Smyth. Continuous-time regression models for
+longitudinal networks. In Advances in Neural Information Processing Systems (NIPS),
+2011.
+K. Zhang, T. Evgeniou, V. Padmanabhan, and E. Richard. Content contributor management
+and network effects in a ugc environment. Marketing Science, 2011.
+
+593
+
+

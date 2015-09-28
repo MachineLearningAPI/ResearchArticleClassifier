@@ -1,0 +1,1583 @@
+Journal of Machine Learning Research 15 (2014) 921-947
+
+Submitted 11/08, revised 9/13; Published 3/14
+
+An Extension of Slow Feature Analysis for
+Nonlinear Blind Source Separation
+Henning Sprekeler∗
+Tiziano Zito
+Laurenz Wiskott†
+
+h.sprekeler@eng.cam.ac.uk
+tiziano.zito@bccn-berlin.de
+laurenz.wiskott@ini.rub.de
+
+Institute for Theoretical Biology and Bernstein Center for Computational Neuroscience Berlin
+Humboldt-Universit¨
+at zu Berlin
+Unter den Linden 6
+10099 Berlin, Germany
+
+Editor: Aapo Hyv¨
+arinen
+
+Abstract
+We present and test an extension of slow feature analysis as a novel approach to nonlinear
+blind source separation. The algorithm relies on temporal correlations and iteratively reconstructs a set of statistically independent sources from arbitrary nonlinear instantaneous
+mixtures. Simulations show that it is able to invert a complicated nonlinear mixture of two
+audio signals with a high reliability. The algorithm is based on a mathematical analysis
+of slow feature analysis for the case of input data that are generated from statistically
+independent sources.
+Keywords: slow feature analysis, nonlinear blind source separation, statistical independence, independent component analysis, slowness principle
+
+1. Introduction
+Independent Component Analysis (ICA) as a technique for blind source separation (BSS)
+has attracted a fair amount of research activity over the past three decades. By now a number of techniques have been established that reliably reconstruct the underlying sources
+from linear mixtures (Hyv¨
+arinen et al., 2001). The key insight for linear BSS is that the
+statistical independence of the sources is usually sufficient to constrain the unmixing function up to trivial transformations like permutation and scaling. Therefore, linear BSS is
+essentially equivalent to linear ICA.
+An obvious extension of the linear case is the task of reconstructing the sources from
+nonlinear mixtures. Unfortunately, the problem of nonlinear BSS is much harder than linear BSS, because the statistical independence of the instantaneous values of the estimated
+sources is no longer a sufficient constraint for the unmixing (Hyv¨arinen and Pajunen, 1999).
+For example, arbitrary point-nonlinear distortions of the sources are still statistically independent. Additional constraints are needed to resolve these ambiguities.
+∗. H.S. is now also at the Computational and Biological Learning Laboratory, Department of Engineering,
+University of Cambridge, UK.
+†. L.W. is now at the Institut f¨
+ur Neuroinformatik, Ruhr-Universit¨
+at Bochum, Germany.
+c 2014 Henning Sprekeler, Tiziano Zito and Laurenz Wiskott.
+
+Sprekeler, Zito and Wiskott
+
+One approach is to exploit the temporal structure of the sources (e.g., Harmeling et al.,
+2003; Blaschke et al., 2007). Blaschke et al. (2007) have proposed to use the tendency of
+nonlinearly distorted versions of the sources to vary more quickly in time than the original
+sources. A simple illustration of this effect is the frequency doubling property of a quadratic
+nonlinearity when applied to a sine wave. This observation opens the possibility of finding
+the original source (or a good representative thereof) among all the nonlinearly distorted
+versions by choosing the one that varies most slowly in time. An algorithm that has been
+specifically designed for extracting slowly varying signals is Slow Feature Analysis (SFA,
+Wiskott, 1998; Wiskott and Sejnowski, 2002). SFA is intimately related to ICA techniques
+like TDSEP (Ziehe and M¨
+uller, 1998; Blaschke et al., 2006) and differential decorrelation
+(Choi, 2006) and is therefore an interesting starting point for developing nonlinear BSS
+techniques.
+Here, we extend a previously developed mathematical analysis of SFA (Franzius et al.,
+2007) to the case where the input data are generated from a set of statistically independent
+sources. The theory makes predictions as to how the sources are represented by the output
+signals of SFA, based on which we develop a new algorithm for nonlinear blind source
+separation. Because the algorithm is an extension of SFA, we refer to it as xSFA.
+The structure of the paper is as follows. In Section 2, we introduce the optimization
+problem for SFA and give a brief sketch of the SFA algorithm. In Section 3, we develop
+the theory that underlies the xSFA algorithm. In Section 4, we present the xSFA algorithm
+and evaluate its performance. Limitations and possible reasons for failures are discussed in
+section 5. Section 6 discusses the relation of xSFA to other nonlinear BSS algorithms. We
+conclude with a general discussion in Section 7.
+
+2. Slow Feature Analysis
+In this section, we briefly present the optimization problem that underlies slow feature
+analysis and sketch the algorithm that solves it.
+2.1 The Optimization Problem
+Slow Feature Analysis is based on the following optimization task: For a given multi-dimensional input signal we want to find a set of scalar functions that generate output signals
+that vary as slowly as possible. To ensure that these signals carry significant information
+about the input, we require them to be uncorrelated and have zero mean and unit variance.
+Mathematically, this can be stated as follows:
+Optimization problem 1: Given a function space F and an N -dimensional input
+signal x(t), find a set of J real-valued input-output functions gj (x) ∈ F such that the output
+signals yj (t) := gj (x(t)) minimize
+∆(yj ) = y˙ j2 t
+(1)
+under the constraints
+yj
+
+t
+2
+yj t
+
+∀i < j : yi yj
+
+t
+
+= 0
+
+(zero mean) ,
+
+(2)
+
+= 1
+
+(unit variance) ,
+
+(3)
+
+= 0
+
+(decorrelation and order) ,
+
+(4)
+
+922
+
+Extending SFA for Nonlinear BSS
+
+with · t and y˙ indicating temporal averaging and the derivative of y, respectively.
+Equation (1) introduces the ∆-value, which is small for slowly varying signals y(t). The
+constraints (2) and (3) avoid the trivial constant solution. The decorrelation constraint (4)
+forces different functions gj to encode different aspects of the input. Note that the decorrelation constraint is asymmetric: The function g1 is the slowest function in F, while the
+function g2 is the slowest function that fulfills the constraint of generating a signal that is
+uncorrelated to the output signal of g1 . The resulting sequence of functions is therefore
+ordered according to the slowness of their output signals on the training data.
+It is important to note that although the objective is the slowness of the output signal,
+the functions gj are instantaneous functions of the input, so that slowness cannot be achieved
+by low-pass filtering. As a side effect, SFA is not suitable for inverting convolutive mixtures.
+2.2 The SFA Algorithm
+If F is finite-dimensional, the problem can be solved efficiently by the SFA algorithm
+(Wiskott and Sejnowski, 2002; Berkes and Wiskott, 2005). The full algorithm can be split
+in two parts: a nonlinear expansion of the input data, followed by a linear generalized
+eigenvalue problem.
+For the nonlinear expansion, we choose a set of functions fi (x) that form a basis of the
+function space F. The optimal functions gj can then be expressed as linear combinations
+of these basis functions: gj (x) = i Wji fi (x). By applying the basis functions to the input
+data x(t), we get a new and generally high-dimensional set of signals zi (t) = fi (x(t)). Without loss of generality, we assume that the functions fi are chosen such that the expanded
+signals zi have zero mean on the input data x. Otherwise, this can be achieved easily by
+subtracting the mean.
+After the nonlinear expansion, the coefficients Wji for the optimal functions can be
+found from a generalized eigenvalue problem:
+˙
+CW
+= CWΛ .
+
+(5)
+
+˙ is the matrix of the second moments of the temporal derivative z˙i of the expanded
+Here, C
+signals: C˙ ij = z˙i (t)z˙j (t) t . C is the covariance matrix C = zi (t)zj (t) t of the expanded
+signals (since z has zero mean), W is a matrix that contains the weights Wji for the
+optimal functions and Λ is a diagonal matrix that contains the generalized eigenvalues on
+the diagonal.
+If the function space F is the set of linear functions, the algorithm reduces to solving
+the generalized eigenvalue problem (5) without nonlinear expansion. Therefore, the second
+step of the algorithm is in the following referred to as linear SFA.
+
+3. Theoretical Foundations
+In this section we extend previous analytical results for SFA to the case of nonlinear blind
+source separation, more precisely, to the case where the input data x(t) are generated
+from a set of statistically independent sources s(t) by means of a nonlinear, instantaneous,
+and invertible (or at least injective) function: x(t) = F(s(t)). For readers that are more
+interested in the algorithm than in its mathematical foundations, a summary of the relevant
+theoretical results can be found at the end of the section.
+923
+
+Sprekeler, Zito and Wiskott
+
+3.1 SFA With Unrestricted Function Spaces
+The central assumption of the theory is that the function space F that SFA can access
+is unrestricted apart from the necessary mathematical requirements of integrability and
+differentiability.1 This has important conceptual consequences.
+3.1.1 Conceptual Consequences of an Unrestricted Function Space
+Let us for the moment assume that the mixture x = F(s) has the same dimensionality as
+the source vector. Let g be an arbitrary function g ∈ F, which generates an output signal
+y(t) = g(x(t)) when applied to the mixture x(t). Then, for every such function g, there is
+another function g˜ = g ◦ F that generates the same output signal y(t) when applied to the
+sources s(t) directly. Because the function space F is unrestricted, this function g˜ is also
+an element of the function space F. Because this is true for all functions g ∈ F, the set of
+output signals that can be generated by applying the functions in F to the mixture x(t) is
+the same as the set of output signals that can be generated by applying the functions to
+the sources s(t) directly. Because the optimization problem of SFA is formulated purely in
+terms of output signals, the output signals when applying SFA to the mixture are the same
+as when applied directly to the sources. In other words: For an unrestricted function space,
+the output signals of SFA are independent of the structure of the mixing function F. This
+statement can be generalized to the case where the mixture x has a higher dimensionality
+than the sources, as long as the mixing function F is injective.
+Given that the output signals are independent of the mixture, we can make analytical
+predictions about the dependence of the output signals on the sources, when the input
+signals are not a mixture, but the sources themselves. These predictions generalize to the
+case where the input signals are a nonlinear mixture of the sources instead.
+Of course, an unrestricted function space cannot be implemented in practice. Therefore,
+in any application the output signals depend on the mixture and on the function space used.
+Nevertheless, the idealized case provides important theoretical insights, which we use as the
+basis for the blind source separation algorithm presented later.
+3.1.2 Earlier Results for SFA with an Unrestricted Function Space
+In a previous article (Franzius et al., 2007, Theorems 1-5), we have shown that the optimal
+functions gj (x) for SFA in the case of an unrestricted function space are given by the
+solutions of an eigenvalue equation for a partial differential operator D
+Dgj (x) = λj gj (x)
+with von Neumann boundary conditions
+nα px (x)Kαβ (x)∂β gj (x) = 0 .
+αβ
+
+1. More precisely, we assume that the function space F is the Sobolev space of functions for which both
+the functions themselves as well as all their partial derivatives with respect to the input signals are
+square-integrable with respect to the probability measure of the input signals.
+
+924
+
+Extending SFA for Nonlinear BSS
+
+Here, D denotes the operator
+D=−
+
+1
+px (x)
+
+∂α px (x)Kαβ (x)∂β ,
+
+(6)
+
+α,β
+
+px (x) is the probability density of the input data x (which we assumed to be non-zero
+within the range of x) and ∂α the partial derivative with respect to the α-th component xα
+of the input data. Kαβ (x) = x˙ α x˙ β x|x
+is the matrix of the second moments of the velocity
+˙
+˙
+distribution p(x|x)
+of the input data, conditioned on their value x and nα (x) is the α-th
+component of the normal vector on the boundary point x. Note that the partial derivative
+∂α acts on all terms to its right, so that D is a partial differential operator of second order.
+The optimal functions for SFA are the J eigenfunctions gj with the smallest eigenvalues λj .
+3.2 Factorization Of The Optimal Functions
+As discussed above, the dependence of the output signals on the sources can be studied by
+using the sources themselves as input data. However, because the sources are assumed to be
+statistically independent, we have additional knowledge about their probability distribution
+and consequently also about the matrix Kαβ . The joint probability density for the sources
+and their derivatives factorizes:
+ps,˙s (s, s˙ ) =
+
+psα ,s˙α (sα , s˙ α ) .
+α
+
+Clearly, the marginal probability density ps also factorizes into the individual probability
+densities pα (sα )
+ps (s) =
+pα (sα ) ,
+(7)
+α
+
+and the matrix Kαβ of the second moments of the velocity distribution of the sources is
+diagonal
+(8)
+Kαβ (s) := s˙ α s˙ β s˙ |s = δαβ Kα (sα ) with Kα (sα ) := s˙ 2α s˙α |sα .
+The latter is true, because the mean temporal derivative of 1-dimensional stationary and
+continuously differentiable stochastic processes vanishes for any sα for continuity reasons
+(for a mathematical argument see Appendix), so that Kαβ is not only the matrix of the
+second moments of the derivatives, but actually the conditional covariance matrix of the
+derivatives of the sources given the sources. As the sources are statistically independent,
+their derivatives are uncorrelated and Kαβ has to be diagonal.
+We can now insert the specific form (7,8) of the probability distribution ps and the
+matrix Kαβ into the definition (6) of the operator D. A brief calculation shows that this
+leads to a separation of the operator D into a sum of operators Dα , each of which depends
+on only one of the sources:
+D(s) =
+Dα (sα )
+α
+
+with
+
+1
+∂α pα Kα ∂α .
+(9)
+pα
+This has the important implication that the solution to the full eigenvalue problem for D
+can be constructed from the 1-dimensional eigenvalue problems for the individual sources:
+Dα = −
+
+925
+
+Sprekeler, Zito and Wiskott
+
+Figure 1: Schematic ordering of the optimal functions for SFA. For an unrestricted function
+space and statistically independent sources, the optimal functions for SFA are
+products of harmonics, each of which depends on one of the sources only. In the
+case of two sources, the optimal functions can therefore be arranged schematically
+on a 2-dimensional grid, where every grid point represents one function and its
+coordinates in the grid are the indices of the harmonics that are multiplied to
+form the function. Because the 0-th harmonic is the constant, the functions on
+the axes are simply the harmonics themselves and therefore depend on one of the
+sources only. Moreover, the grid points (1,0) and (0,1) are monotonic functions of
+the sources and therefore a good representative thereof. It is these solutions that
+the xSFA algorithm is designed to extract. Note that the scheme also contains
+an ordering by slowness: All functions to the upper right of a given function have
+higher ∆-values and therefore vary more quickly.
+
+Theorem 1 Let gαi (i ∈ N) be the normalized eigenfunctions of the operators Dα , that is,
+the set of functions gαi that fulfill the eigenvalue equations
+Dα gαi = λαi gαi
+
+(10)
+
+pα Kα ∂α gαi = 0
+
+(11)
+
+with the boundary conditions
+and the normalization condition
+2
+(gαi , gαi )α := gαi
+
+sα
+
+= 1.
+
+Then, the product functions
+gi (s) :=
+
+gαiα (sα )
+α
+
+form a set of (normalized) eigenfunctions to the full operator D with the eigenvalues
+λi =
+
+λαiα
+α
+
+926
+
+Extending SFA for Nonlinear BSS
+
+and thus those gi with the smallest eigenvalues λi are the optimal functions for SFA. Here,
+i = (i1 , ..., iS ) ∈ NS denotes a multi-index that enumerates the eigenfunctions of the full
+eigenvalue problem.
+In the following, we assume that the eigenfunctions gαi are ordered by their eigenvalue
+and refer to them as the harmonics of the source sα . This is motivated by the observation
+that in the case where pα and Kα are independent of sα , that is, for a uniform distribution,
+the eigenfunctions gαi are harmonic oscillations whose frequency increases linearly with i
+(see below). Moreover, we assume that the sources sα are ordered according to slowness, in
+this case measured by the eigenvalue λα1 of their lowest non-constant harmonic gα1 . These
+eigenvalues are the ∆-values of the slowest possible nonlinear point transformations of the
+sources.
+The key result of theorem 1 is that in the case of statistically independent sources,
+the output signals are products of harmonics of the sources. Note that the constant function gα0 (sα ) = 1 is an eigenfunction with eigenvalue 0 to all the eigenvalue problems (10).
+As a consequence, the harmonics gαi of the single sources are also eigenfunctions to the full
+operator D (with the index i = (0, ..., 0, iα = i, 0, ..., 0)) and can thus be found by SFA.
+Importantly, the lowest non-constant harmonic of the slowest source (i.e., g(1,0,0,...) = g11 )
+is the function with the smallest overall ∆-value (apart from the constant) and thus the
+first function found by SFA. In the next sections, we show that the lowest non-constant
+harmonics gα1 reconstruct the sources up to a monotonic and thus invertible point transformation and that in the case of sources with Gaussian statistics they even reproduce the
+sources exactly.
+3.3 The First Harmonic Is A Monotonic Function Of The Source
+The eigenvalue problem (10,11) has the form of a Sturm-Liouville problem (Courant and
+Hilbert, 1989) and can easily be rewritten to have the standard form for these problems:
+∂α pα Kα ∂α gαi + λαi pα gαi
+with pα Kα ∂α gαi
+
+(10,9)
+
+=
+
+(11)
+
+=
+
+0,
+0
+
+(12)
+for
+
+sα ∈ {a, b} .
+
+(13)
+
+Here, we assume that the source sα is bounded and takes on values on the interval sα ∈ [a, b].
+Note that both pα and pα Kα are positive for all sα . Sturm-Liouville theory states that (i) all
+eigenvalues are positive (Courant and Hilbert, 1989), (ii) the solutions gαi , i ∈ N0 of this
+problem are oscillatory and (iii) gαi has exactly i zeros on ]a, b[ if the gαi are ordered by
+increasing eigenvalue λαi (Courant and Hilbert, 1989, Chapter VI, §6). In particular, gα1
+has only one zero ξ ∈]a, b[. Without loss of generality we assume that gα1 < 0 for sα < ξ
+and gα1 > 0 for sα > ξ. Then Equation (12) implies that
+∂α pα Kα ∂α gα1 = −λα pα gα1 < 0
+=⇒
+(13)
+
+pα Kα ∂α gα1
+
+for sα > ξ
+
+is monotonically decreasing on ]ξ, b]
+
+=⇒
+
+pα Kα ∂α gα1 > 0 on ]ξ, b[
+
+=⇒
+
+∂α gα1 > 0 on ]ξ, b[ , because pα Kα > 0
+
+⇐⇒ gα1
+
+is monotonically increasing on ]ξ, b[ .
+927
+
+Sprekeler, Zito and Wiskott
+
+A similar consideration for s < ξ shows that gα1 is also monotonically increasing on ]a, ξ[.
+Thus, gα1 is monotonic and invertible on the whole interval [a, b]. Note that the monotony
+of gα1 is important in the context of blind source separation, because it ensures that not
+only some of the output signals of SFA depend on only one of the sources (the harmonics),
+but that there should actually be some (the lowest non-constant harmonics) that are very
+similar to the source itself.
+3.4 Gaussian Sources
+We now consider the situation that the sources are reversible Gaussian stochastic processes,
+(i.e., that the joint probability density of s(t) and s(t + dt) is Gaussian and symmetric with
+respect to s(t) and s(t + dt)). In this case, the instantaneous values of the sources and their
+temporal derivatives are statistically independent, that is, ps˙α |sα (s˙ α |sα ) = ps˙α (s˙ α ). Thus,
+Kα is independent of sα , that is, Kα (sα ) = Kα = const. Without loss of generality we
+assume that the sources have unit variance. Then the probability density of the source is
+given by
+1
+2
+pα (sα ) = √ e−sα /2
+2π
+and the eigenvalue Equations (12) for the harmonics can be written as
+2
+
+∂α e−sα /2 ∂α gαi +
+
+λαi −s2α /2
+e
+gαi = 0 .
+Kα
+
+This is a standard form of Hermite’s differential equation (see Courant and Hilbert, 1989,
+Chapter V, § 10). Accordingly, the harmonics gαi are given by the (appropriately normalized) Hermite polynomials Hi of the sources:
+gαi (sα ) = √
+
+1
+2i i!
+
+Hi
+
+s
+√α
+2
+
+.
+
+The Hermite polynomials can be expressed in terms of derivatives of the Gaussian distribution:
+2
+2
+Hn (x) = (−1)n ex ∂xn e−x .
+It is clear that Hermite polynomials fulfill the boundary condition
+lim Kα pα ∂α gαi = 0 ,
+
+sα →∞
+
+because the derivative of a polynomial is again a polynomial and the Gaussian distribution
+decays faster than polynomially as |sα | → ∞. The eigenvalues depend linearly on the
+index i:
+λαi = iKα .
+(14)
+The most important consequence
+√ is that√the lowest non-constant harmonics simply reproduce the sources: gα1 (sα ) = 1/ 2H1 (sα / 2) = sα . Thus, for Gaussian sources, some of the
+output signals of SFA with an unrestricted function space reproduce the sources exactly.
+928
+
+Extending SFA for Nonlinear BSS
+
+3.5 Uniformly Distributed Sources
+Another canonical example for which the eigenvalue Equation (10) can be solved analytically is the case of uniformly distributed sources, that is, the case where the probability
+distribution ps,s˙ is independent of s on a finite interval and zero elsewhere. Consequently,
+neither pα (sα ) nor Kα (sα ) can depend on sα , that is, they are constants. Note that such a
+distribution may be difficult to implement by a real differentiable process, because the velocity distribution should be different at boundaries that cannot be crossed. Nevertheless, this
+case provides an approximation to cases, where the distribution is close to homogeneous.
+Let sα take values in the interval [0, Lα ]. The eigenvalue Equation (12) for the harmonics
+is then given by
+Kα ∂α2 gαi + λαi gαi = 0
+and readily solved by harmonic oscillations:
+gαi (sα ) =
+
+√
+
+2 cos iπ
+
+sα
+Lα
+
+.
+
+The ∆-value of these functions is given by
+∆(gαi ) = λαi = Kα
+
+π
+i
+Lα
+
+2
+
+.
+
+Note the similarity of these solutions with the optimal free responses derived by Wiskott
+(2003b).
+3.6 Summary: Results Of The Theory
+The following key results of the theory form the basis of the xSFA algorithm:
+• For an unrestricted function space, the output signals generated by the optimal functions of SFA are independent of the nonlinear mixture, given the same original sources.
+• The optimal functions of SFA are products of functions gαi (sα ), each of which depends
+on only one of the sources. We refer to the function gαi as the i-th harmonic of the
+source sα .
+• The slowest non-constant harmonic is a monotonic function of the associated source.
+It can therefore be considered a good representative of the source.
+• If the sources have stationary Gaussian statistics, the harmonics are Hermite polynomials of the sources. In particular, the lowest harmonic is then simply the source
+itself.
+• The slowest function found by SFA is the lowest harmonic of the slowest source and
+therefore a good representative thereof.
+929
+
+Sprekeler, Zito and Wiskott
+
+4. An Algorithm For Nonlinear Blind Source Separation
+According to the theory, some of the output signals of SFA should be very similar to the
+sources. Therefore, the problem of nonlinear BSS can be reduced to selecting those output
+signals of SFA that correspond to the first non-constant harmonics of the sources. In this
+section, we propose and test an algorithm that should ideally solve this problem. In the
+following, we sometimes refer to the first non-constant harmonics simply as the “sources”,
+because they should ideally be very similar.
+4.1 The xSFA Algorithm
+The extraction of the slowest source is rather simple: According to the theory, it is well
+represented by the first (i.e., slowest) output signal of SFA. Unfortunately, extracting the
+second source is more complicated, because higher order harmonics of the first source may
+vary more slowly that the second source.
+The idea behind the algorithm we propose here is that once we know the first source,
+we also know all its possible nonlinear transformations, that is, its harmonics. We can thus
+remove all aspects of the first source from the SFA output signals by projecting the latter
+to the space that is uncorrelated to all nonlinear versions of the first source. In the grid
+arrangement shown in Figure 1, this corresponds to removing all solutions that lie on one
+of the axes. The remaining signals must have a dependence on the second or even faster
+sources. The slowest possible signal in this space is then generated by the first harmonic
+of the second source, which we can therefore extract by means of linear SFA. Once we
+know the first two sources, we can proceed by calculating all the harmonics of the second
+source and all products of the harmonics of the first and the second source and remove
+those signals from the data. The slowest signal that remains then is the first harmonic of
+the third source. Iterating this scheme should in principle yield all the sources.
+The structure of the algorithm is the following (see also Figure 2):
+1. Start with the first source: i = 1.
+2. Apply a polynomial expansion of degree N SFA to the mixture to obtain the expanded
+mixture z.
+3. Apply linear SFA to the expanded mixture z and store the slowest output signal as
+an estimate s˜i of source i.
+4. Stop if the desired number of sources has been extracted (i = S).
+5. Apply a polynomial expansion of degree N nl to the estimated sources s˜1,...,i and whiten
+the resulting signals. We refer to the resulting nonlinear versions of the first sources
+as nk , k ∈ {1, ..., N exp }, where N exp denotes the dimension of a polynomial expansion
+of degree N nl of i signals.
+6. Remove the nonlinear versions of the first i sources from the expanded mixture z
+N exp
+
+zj (t) ← zj (t) −
+
+cov(zj , nk ) nk (t)
+k=1
+
+930
+
+Extending SFA for Nonlinear BSS
+
+Figure 2: Illustration of the xSFA algorithm. The mixture of the input signals is first
+subjected to a nonlinear expansion that should be chosen sufficiently powerful to
+allow (a good approximation of) the inversion of the mixture. An estimate of
+the first source is then obtained by applying linear SFA to the expanded data.
+The remaining sources are estimated iteratively by removing nonlinear versions
+of the previously estimated sources from the expanded data and reapplying SFA.
+If the number of sources is known, the algorithm terminates when estimates of
+all sources have been extracted. If the number of sources is unknown, other
+termination criteria might be more suitable (not investigated here).
+
+and remove principal components with a variance below a given threshold .
+7. To extract the next source, increase i by one and go to step 2, using the new expanded
+signals z.
+Note that the algorithm is a mere extension of SFA in that it does not include new objectives
+or constraints. We therefore term it xSFA for eXtended SFA.
+4.2 Simulations
+We test the algorithm on two different tasks. The first one is the separation of two audio
+signals that are subject to a rather complicated mixture. In the second task, we test if the
+algorithm is able to separate more than two sources.
+931
+
+Sprekeler, Zito and Wiskott
+
+4.2.1 Sources
+Audio signals: We first evaluated the performance of the algorithm on two different test sets
+of audio signals. Data set A consists of excerpts from 14 string quartets by B´ela Bart´ok.
+Note that these sources are from the same CD and the same composer and contain the same
+instruments. They can thus be expected to have similar statistics. Differences in the ∆values should mainly be due to short-term nonstationarities. This data set provides evidence
+that the algorithm is able to distinguish between signals with similar global statistics based
+on short-term fluctuations in their statistics.
+Data set B consists of 20 excerpts from popular music pieces from various genres, ranging
+from classical music over rock to electronic music. The statistics of this set is more variable
+in their ∆-values, in particular they remain different even for long sampling times.
+All sources were sampled at 44,100 Hz and 16 bit, that is, with CD-quality. The length
+of the samples was varied to assess how the amount of training data affects the performance
+of the algorithm.
+Artificial data: To test how the algorithm would perform in tasks where more than two
+sources need to be extracted, we generated 6 artificial source signals with different temporal
+statistics. The sources were colored noise, generated by (i) applying a fast Fourier transform
+to white noise signals of length T , (ii) multiplying the resulting signals with exp(−f 2 /2σi2 )
+(where f denotes the frequency) and (iii) inverting the Fourier transform. The parameter σi
+controls the ∆-values of the
+(∆ ≈ σi2 ) and was chosen such that the ∆-values were
+√ sources
+T
+roughly equidistant: σi = i 50 + 1.
+4.2.2 Nonlinear Mixtures
+Audio signals: We subjected all possible pairs of sources within a data set to a nonlinear
+invertible mixture that was previously used by Harmeling et al. (2003) and Blaschke et al.
+(2007):
+x1 (t) = (s2 (t) + 3s1 (t) + 6) cos(1.5πs1 (t)) ,
+x2 (t) = (s2 (t) + 3s1 (t) + 6) sin(1.5πs1 (t)) .
+
+(15)
+
+Figure 3 illustrates the spiral-shaped structure of this nonlinearity. This mixture is only
+invertible if the sources are bounded between -1 and 1, which is the case for the audio data
+we used. The mixture (15) is not symmetric in s1 and s2 . Thus, for every pair of sources,
+there are two possible mixtures and we have tested both for each source pair.
+We have also tested the other nonlinearities that Harmeling et al. (2003) have applied to
+two sources, as well as post-nonlinear mixtures, that is, linear mixture followed by a point
+nonlinearity. The performance was similar for all mixtures tested without any tuning of
+parameters (data not shown). Moreover, the performance remained practically unchanged
+when we used linear mixtures or no mixture at all. This is in line with the argument that
+the mixture should be irrelevant to SFA if the function space F is sufficiently rich (see
+section 3).
+Separation of more than two sources: For the simulations with more than two sources, we
+created a nonlinear mixture by applying a post-nonlinear mixture twice. The basic postnonlinear mixture is generated by first applying a random rotation Oij to the sources si
+and then applying a point-nonlinearity to each of the linearly mixed signals. We used an
+932
+
+Extending SFA for Nonlinear BSS
+
+Figure 3: The spiral-shaped structure of the nonlinear mixture. Panel A shows a scatter
+plot of two sources from data set A. Panel B shows a scatter plot of the nonlinear
+mixture we used to test the algorithm.
+
+arctangent as a nonlinearity:
+
+
+
+
+
+
+Mi (s) = arctan ζ −1 
+
+Oij sj  ,
+j
+
+with a parameter ζ that controls the strength of the nonlinearity. We normalized the sources
+to have zero mean and unit variance to ensure that the degree of nonlinearity is roughly
+the same for all combinations of sources and chose ζ = 2.
+This nonlinearity was applied twice, with independently generated rotations, and a
+normalization step to zero mean and unit variance before each application.
+4.2.3 Simulation Parameters
+There are three parameters in the algorithm: the degree N SFA of the expansion used for the
+first SFA step, the degree N nl of the expansion for the source removal and the threshold
+for the removal of directions with negligible variance.
+Degree of the expansion in the first SFA step: For the simulations with two sources, we
+used a polynomial expansion of degree N SFA = 7, because it has previously been shown
+that this function space is sufficient to invert the mixture (15) (Blaschke et al., 2007). For
+2-dimensional input signals, this expansion generates a 35-dimensional function space. We
+kept all J = 35 output signals of SFA. It is worth noting that the success rate of the
+algorithm is practically unchanged when polynomials of higher order are used. From the
+theoretical perspective, this is not surprising, because once the function space is sufficiently
+rich to extract the first harmonics of the sources, the system performs just as good as it
+could with an unrestricted function space.
+933
+
+Sprekeler, Zito and Wiskott
+
+For the simulations with more than two sources, we used a polynomial expansion of
+degree N SFA = 3.
+Degree of the expansion for source removal: For the simulations with two sources, we
+expanded the estimate for the first source in polynomials of degree N nl = 20, that is, we
+projected out 20 nonlinear versions of the first source. Using fewer nonlinear versions does
+not alter the results significantly, as long as the expansion is sufficiently complex to remove
+those harmonics of the first source that have smaller ∆-values than the second source. Using
+higher expansion degrees sometimes leads to numerical instabilities, which we accredit to
+the extremely sparse distribution that results from the application of very high monomials.
+For the separation of more than two sources, all polynomials of degree N nl = 4 of the
+already estimated sources were projected out.
+Variance threshold: After the removal of the nonlinear versions of the first source, there
+is at least one direction with vanishing variance. To avoid numerical problems caused
+by singularities in the covariance matrices, directions with variance below = 10−7 were
+removed. For almost all source pairs, the only dimension that had a variance below after
+the removal was the trivial direction of the first estimated source.
+The simulations were done in Python using the modular toolkit for data processing
+(MDP) developed by Zito et al. (2008). The xSFA algorithm is included in the current
+version of MDP (http://mdp-toolkit.sourceforge.net).
+4.2.4 Performance Measure
+For stationary Gaussian sources, the theory predicts that the algorithm should reconstruct
+the sources exactly. In most applications, however, the sources are neither Gaussian nor
+stationary (at least not on the time scales we used for training). In this case the algorithm
+cannot be expected to find the sources themselves, but rather a nonlinearly transformed
+version of the sources, ideally their lowest harmonics. Thus, the correlation between the
+output signals of the algorithm and the sources is not necessarily the appropriate measure for
+the quality of the source separation. Therefore, we also calculated the lowest harmonics gα1
+of the sources by applying SFA with a polynomial expansion of degree 11 to the individual
+sources separately and then calculated the correlations between the output signals of the
+algorithm and both the output signals of the harmonics yα1 (t) = gα1 (sα (t)) and the sources
+themselves. In addition to the correlation coefficient, we also calculated the signal-to-noise
+ratio.
+4.2.5 Simulation Results
+Figure 4 shows the performance of the algorithm depending on the duration of the training
+data. To provide an idea of the statistics of the performance, we plot the median as well
+as the 25th and 75th percentile of the distribution of the correlation coefficient and the
+signal-to-noise ratio. For data set A, the algorithm requires on the order of 0.5s of training
+data to extract the first source with a median signal-to-noise ratio (SNR) of about 18
+(corresponding to a correlation coefficient (CC) larger than 0.99) and the second source
+with a median SNR of about 13 (CC> 0.95). Although the median performance increases
+slowly as the duration of the training data increases to several seconds, the growing distance
+between the percentiles indicates a larger inhomogeneity in the results, suggesting that for
+934
+
+Extending SFA for Nonlinear BSS
+
+A
+
+B
+0.999
+
+0.999
+
+source 1
+
+0.9
+0
+0.5
+
+dataset A, sources
+0
+
+1
+2
+3
+4
+training data duration [s]
+
+SNR [dB]
+
+SNR [dB]
+
+source 2
+
+10
+
+20
+0.99
+10
+0.9
+0
+0.5
+
+dataset A, harmonics
+5
+
+0
+
+C
+
+1
+2
+3
+4
+training data duration [s]
+
+5
+
+D
+0.999
+
+0.999
+
+0.9
+0
+0.5
+
+dataset B, sources
+0
+
+2
+4
+6
+8
+training data duration [s]
+
+SNR [dB]
+
+10
+
+20
+
+0.99
+
+10
+0.9
+0
+0.5
+
+correlation coefficient
+
+0.99
+
+correlation coefficient
+
+20
+SNR [dB]
+
+correlation coefficient
+
+0.99
+
+correlation coefficient
+
+20
+
+dataset B, harmonics
+0
+
+10
+
+2
+4
+6
+8
+training data duration [s]
+
+10
+
+Figure 4: Performance of the algorithm as a function of the duration of the training data.
+The curves show the median of the distribution of correlation coefficients between
+the reconstructed and the original sources, as well as the corresponding signal-tonoise ratio (SNR). Grey-shaded areas indicate the region between the 25th and
+the 75th percentile of the distribution of the correlation/SNR. Statistics cover all
+possible source pairs that can be simulated (data set A: 14 sources → 182 source
+pairs, data set B: 20 sources → 380 source pairs). Panels A and B show results
+for data set A, panels C and D for data set B. Panels A and C show the ability
+of the algorithm to reconstruct the sources themselves, while B and D show the
+performance when trying to reconstruct the slowest harmonics of the sources.
+Note the difference in time scales.
+
+long durations, the algorithm either performs very well or fails completely. We attribute
+this behavior to the fact that all sources were string quartets whose temporal statistics are
+relatively similar in the long term. The SNR is only slightly higher when comparing the
+extracted sources to the slowest harmonics of the original sources. This may serve as an
+indication that the sources were close to Gaussian, so that the harmonics and the sources
+were similar.
+935
+
+Sprekeler, Zito and Wiskott
+
+0.99
+source 1
+
+SNR [dB]
+
+0.9
+0
+
+source 6
+
+0.5
+-10
+-20
+
+0
+
+0.1
+
+correlation coefficient
+
+10
+
+2
+4
+6
+8
+10
+training data duration [104 samples]
+
+Figure 5: Performance of the algorithm for multiple sources. The curves show the median
+of the distribution of correlation coefficients between the reconstructed and the
+orginal six sources, as well as the corresponding signal-to-noise ratio (SNR). The
+grey-shaded area indicates the region between the 25th and the 75th percentile
+of the distribution of the correlation/SNR for the 4th source. The percentiles
+for the other sources are similar but not shown for reasons of graphical clarity.
+Statistics cover 50 repetitions with independently generated sources. The dashed
+grey line indicates the performance of a linear regression.
+
+For data set B, longer training times of at least 2s were necessary to reach a similar
+performance as for data set A. Further research is necessary to assess the reasons for this.
+Again, the estimated sources are more similar to the slowest harmonics of the sources than
+to the sources themselves. The reconstruction performance increases with the duration of
+the training data. For this data set, the prominent divergence of the percentiles for data
+set A is not observed.
+The performance of xSFA is significantly better than that of independent slow feature
+analysis (ISFA; Blaschke et al., 2007), which also relies on temporal correlations and was
+reported to reconstruct both sources with CC> 0.9 for about 70% of the source pairs. For
+our data sets, both sources were reconstructed with a correlation of more than 0.9 for more
+than 90% of the source pairs, if the duration of the training data was sufficiently large.
+Moreover, it is likely that the performance of xSFA can be further improved, for example,
+by using more training data or different function spaces.
+The algorithm is relatively fast: On a notebook with 1.7GHz, the simulation of the 182
+source pairs for data set A with 0.2s training sequences takes about 380 seconds, which
+corresponds to about 2.1s for the unmixing of a single pair.
+Figure 5 shows the performance of the algorithm for the problem where six artificial
+sources were to be extracted from a nonlinear mixture. The slowest source is extracted
+with the highest SNR, and the SNR decreases with increasing ∆-value of the sources. This
+is most likely due to an accumulation of error that arises from the iterative structure of
+the xSFA algorithm (see discussion in section 5). The performance increases monotonically
+936
+
+Extending SFA for Nonlinear BSS
+
+with increasing amount of training data. For 105 training data points, four of six estimated
+sources have a correlation coefficient with the original source that is larger than 0.9. The
+performance of a supervised linear regression between the sources and the mixture happens
+to be close to 0.9. For the first four extracted sources, xSFA is thus performing better than
+any linear technique could.
+
+5. Practical Limitations
+There are several reasons why the algorithm can fail, because some of the assumptions
+underlying the theory are not necessarily fulfilled in simulations. In the following, we
+discuss some of the reasons for failures. The main insights are summarized at the end of
+the section.
+5.1 Limited Sampling Time
+The theory predicts that some of the output signals reproduce the harmonics of the sources
+exactly. However, problems can arise if eigenfunctions have (approximately) the same eigenvalue. For example, assume that the sources have the same temporal statistics, so that the
+∆-value of their slowest harmonics gµ1 is equal. Then, there is no reason for SFA to prefer
+one signal over the other.
+Of course, in practice, two signals are very unlikely to have exactly the same ∆-value.
+However, the difference may be so small that it cannot be resolved because of limited
+sampling. To get a feeling for how well two sources can be distinguished, assume there were
+only two sources that are drawn independently from probability distributions with ∆-values
+∆ and ∆ + δ. Then linear SFA should ideally reproduce the sources exactly. However, if
+there is only a finite amount of data, say of total duration T , the ∆-values of the signals
+can only be estimated with finite precision. Qualitatively, we can distinguish the sources
+when the standard deviation of the estimated ∆-value is smaller than the difference δ in
+the “exact” ∆-values. It √
+is clear that this standard deviation depends on the number of
+data points roughly as 1/ T . Thus the smallest difference δmin in the ∆-values that can
+be resolved has the functional dependence
+1
+δmin ∼ ∆α √ .
+T
+The reason why the smallest distinguishable difference δ must depend on the ∆-value is
+that subsequent data points are not statistically independent, because the signals have a
+temporal structure. For slow signals, that is, signals with a small ∆-values, the estimate
+of the ∆-value is less precise than for quickly varying signals, because the finite correlation
+time of the signals impairs the quality of the sampling. For dimensionality reasons, the
+exponent α has to take the value α = 3/4, yielding the criterion
+δmin
+∼
+∆
+
+1
+√ .
+T ∆
+
+For an interpretation of this equation note that the ∆-value can be interpreted as a (quadratic)
+measure for the width of the power spectrum of a signal (assuming a roughly unimodal power
+937
+
+Sprekeler, Zito and Wiskott
+
+spectrum centered at zero):
+∆(y) =
+
+1
+T
+
+y˙ 2 dt =
+
+1
+T
+
+ω 2 |y(ω)|2 dω ,
+
+(16)
+
+where y(ω) denotes the Fourier transform of y(t). However, the inverse width of the power
+spectrum is an operative
+√ measure for the correlation time τ of the signal, leaving us with a
+correlation time τ ∼ 1/ ∆. With this in mind, the criterion (16) takes a form that is much
+easier to interpret:
+δmin
+τ
+1
+.
+(17)
+∼
+=√
+∆
+T
+Nτ
+The correlation time τ characterizes the time scale on which the signal varies, so intuitively,
+we can cut the signal into Nτ = T /τ “chunks” of duration τ , which are approximately
+independent. Equation (17) then states that the smallest relative difference in the ∆-value
+that can be resolved is inversely proportional to the square root of the number Nτ of
+independent data “chunks”.
+If the difference in the ∆-value of the predicted solutions is smaller than δmin , SFA is
+likely not to find the predicted solutions but rather an arbitrary mixture thereof, because
+the removal of random correlations and not slowness is the essential determinant for the
+solution of the optimization problem. Equation (17) may serve as an estimate of how much
+training time is needed to distinguish two signals. Note however, that the validity of (17)
+is questionable for nonstationary sources, because the statistical arguments used above are
+not valid.
+Using these considerations, we can estimate the order of magnitude of training data
+that is needed for the data sets we used to evaluate the performance of the algorithm. For
+both data sets, the ∆-values of the sources were√on the order of 0.01, which corresponds
+to an autocorrelation time of approximately 1/ 0.01 = 10 samples. Those sources of
+data set A that were most similar differed in ∆-value by δ/∆ ∼ 0.05, which requires
+Nτ = (1/0.05)2 = 400. This corresponds to ∼ 4000 samples that are required to distinguish
+the sources, which is similar to what was observed in simulations. In data set B, the
+problem is not that the sources are too similar, but rather that they are too different in
+∆-value, which makes it difficult to distinguish between the products of the second source
+and harmonics of the first and the second source alone. The ∆-values often differ by a
+factor of 20 or more, so that the relative difference between the relevant ∆-values is again
+on the order of 5%. In theory, the same amount of training data should therefore suffice.
+However, if the sources strongly differ in ∆-value, many harmonics need to be projected
+out before the second source is accessible, which presumably requires a higher precision in
+the estimate of the first source. This might be one reason why significantly more training
+data is needed for data set B.
+5.2 Sampling Rate
+The theory is derived under the assumption that all signals are continuous in time. Real
+data are generally discretized. Therefore, the theory is only valid if the data are sampled
+at a sampling rate sufficient to generate quasi-continuous data. As the sampling rate decreases, so do the correlations between subsequent data points. In the limit of extremely
+938
+
+Extending SFA for Nonlinear BSS
+
+low sampling rates this renders techniques like SFA that are based on short-term temporal
+correlations useless.
+For discrete data, the temporal derivative is usually replaced by a difference quotient:
+y(t)
+˙ ≈
+
+y(t + ∆t) − y(t)
+,
+∆t
+
+where y(t + ∆t) and y(t) are neighboring sample points and ∆t is given by the inverse of
+the sampling rate r. The ∆-value can then be expressed in terms of the variance of the
+signal and its autocorrelation function:
+∆(y) = y˙ 2
+
+t
+
+≈
+
+2
+∆t2
+
+y 2 t − y(t + ∆t)y(t)
+
+t
+
+= 2r2
+
+y 2 t − y(t + ∆t)y(t)
+
+t
+
+.
+
+(18)
+
+If the sampling is too low, the signal effectively becomes white noise. In this case,
+the term that arises from the time-delayed correlation vanishes, while the variance remains
+constant. Thus, for small sampling rates, the ∆-value depends quadratically on the sampling
+rate, while it saturates to its “real” value if the sampling rate is increased. This behavior
+is illustrated in Figure 6A. Note that two signals with different ∆-values for sufficient
+sampling rate may have very similar ∆-value when the sampling is decreased too drastically.
+Intuitively, this is the case if the sampling rate is so low that both signals are (almost) white
+noise. In this case, there are no temporal correlations that could be exploited, so that SFA
+returns a random mixture of the signals.
+The number of samples N that can be used for training is limited by the working
+memory of the computer and/or the available CPU time. Thus, for a fixed maximal number
+of training samples N , the sampling rate implicitly determines the maximal training time
+T = N/r. The training time, in turn, determines the minimal relative difference in ∆-value
+that can be distinguished (cf. Equation (17)). Thus, for a fixed number of sample points,
+the
+√
+√
+minimal relative difference in ∆-value that can be resolved is proportional to 1/ T ∼ r.
+But why do low sampling rates lead to a better resolution? The reason is that for high
+sampling rates, neighboring data points have essentially the same value. Thus, they do not
+help in estimating the ∆-value, because they do not carry new information.
+In summary, the sampling rate should ideally be in an intermediate regime. If the
+sampling rate is too low, the signals become white noise and cannot be distinguished, while
+too high sampling rates lead to high computational costs without delivering additional
+information. This is illustrated in Figure 6B.
+5.3 Density Of Eigenvalues
+The problem of getting random mixtures instead of the optimal solutions is of course most
+relevant in the case where the sources, or more precisely, the slowest non-constant harmonics
+of the sources have similar ∆-values. However, even when the sources are sufficiently different, this problem eventually arises for the higher-order solutions. To quantify the expected
+differences in ∆-value between the solutions, we define a density ρ(∆) of the ∆-values as the
+number of eigenvalues expected in an interval [∆, ∆ + δ], divided by the interval length δ.
+A convenient way to determine this density is to calculate the number R(∆) of solutions
+with eigenvalues smaller than ∆ and then take the derivative with respect to ∆.
+939
+
+Sprekeler, Zito and Wiskott
+
+A
+
+B
+
+Figure 6: Influence of the sampling rate. (A) Qualitative dependence of the ∆-value of two
+different signals on the sampling rate. For very low sampling rates, both signals
+become white noise and the ∆-value quadratically approaches zero. Signals that
+have different ∆-values for sufficiently high sampling rates may therefore not be
+distinguished if the sampling rate is too low. The dotted lines indicate the “real”
+∆-values of the signals. Note: It may sound counterintuitive that the ∆-value
+drops to zero with decreasing sampling rate, as white noise should be regarded as
+a quickly varying signal. This arises from taking the sampling rate into account in
+the temporal derivative (18). If the derivative is simply replaced by the difference
+between adjacent data points, the ∆-value approaches 2 as the sampling rate
+goes to zero and decreases with the inverse square of the sampling rate as the
+sampling rate becomes large. (B) Sampling rate dependence of the “resolution”
+of the algorithm for a fixed number of training samples. The solid line shows the
+qualitative dependence of the relative difference in ∆-value of two signals as a
+function of the sampling rate and the dashed line shows the qualitative behavior
+of the minimal relative difference in ∆-value that can be resolved. The signals
+can only be separated by SFA if the resolvable difference (dashed) is below the
+expected relative difference (solid). Therefore an intermediate sampling is more
+efficient. The dotted line indicates the “real” ratio of the ∆-values.
+
+In the Gaussian approximation, the ∆-values of the harmonics are equidistantly spaced,
+cf. Equation (14). As the ∆-value ∆i of the full product solution gi is the sum of the ∆values of the harmonics, the condition ∆i < ∆ restricts the index i to lie below a hyperplane
+with the normal vector n = (λ11 , ..., λS1 ) ∈ RS :
+iµ λµ1 = i · n < ∆ .
+
+(19)
+
+µ
+
+Because the indices are homogeneously distributed in index space with density one, the
+expected number of solutions with ∆ < ∆0 is simply the volume of the subregion in index
+space for which Equation (19) is fulfilled:
+1
+R(∆) =
+S!
+
+S
+µ=1
+
+940
+
+∆
+.
+λµ1
+
+Extending SFA for Nonlinear BSS
+
+The density of the eigenvalues is then given by
+ρ(∆) =
+
+∂R(∆)
+1
+=
+∂∆
+(S − 1)!
+
+µ
+
+1
+∆S−1 .
+λµ1
+
+As the density of the eigenvalues can be interpreted as the inverse of the expected distance
+between the ∆-values, the distance and thus the separability of the solutions with a given
+amount of data declines as 1/∆S−1 . In simulations, we can expect to find the theoretically
+predicted solutions only for the slowest functions, higher order solutions tend to be linear
+mixtures of the theoretically predicted functions. This is particularly relevant if there are
+many sources, that is, if S is large.
+If the sources are not Gaussian, the dependence of the density on the ∆-value may have
+a different dependence on ∆ (e.g., for uniformly distributed sources ρ(∆) ∼ ∆S/2−1 ). The
+problem of decreasing separability, however, remains.
+5.4 Function Space
+An assumption of the theory is that the function space accessible to SFA is unlimited.
+However, any application has to restrict the function space to a finite dimensionality. If the
+function space is ill-chosen in that it cannot invert the mixture that generated the input
+data from the sources, it is clear that the theory can no longer be valid.
+Because the nature of the nonlinear mixture is not known a priori, it is difficult to choose
+an appropriate function space. We used polynomials with relatively high degree. A problem
+with this choice is that high polynomials generate extremely sparse data distributions.
+Depending on the input data at hand, it may be more robust to use other basis functions
+such as radial basis functions or kernel approaches (B¨ohmer et al., 2012), although for SFA,
+these tend to be computationally more expensive.
+The suitability of the function space is one of the key determinants for the quality
+of the estimation of the first source. If this estimate is not accurate but has significant
+contributions from other sources, the nonlinear versions of the estimate that are projected
+out are not accurate, either. The projection step may thus remove aspects of the second
+source and thereby impair the estimate of the second source. For many sources, these
+errors accumulate so that estimates for faster sources will not be trustworthy, an effect
+that is clearly visible in the simulations with more sources. This problem might be further
+engraved by the increasing eigenvalue density discussed above.
+5.5 Summary
+In summary, we have discussed four factors that have an influence on simulation results:
+• Limited sampling time: Whether the algorithm can distinguish two sources with
+similar ∆-values depends on the amount of data that is available. More precisely, to
+separate two sources with ∆-values ∆ and ∆ + δ, the duration T of the training data
+should be on the order of T ∼ τ (∆/δ)2 or more. Here, τ is the autocorrelation√time
+of the signals, which can be estimated from the ∆-value of the sources: τ ≈ 1/ ∆.
+• Sampling rate: Because the algorithm is based on temporal correlations, the sampling rate should of course be sufficiently high to have significant correlations between
+941
+
+Sprekeler, Zito and Wiskott
+
+subsequent data points. If the number T of samples that can be used is limited by the
+memory capacity of the computer, very high sampling rates can be a disadvantage, because the correlation time τ (measured in samples) of the data is long. Consequently,
+the number T /τ of “independent data chunks” is smaller than with lower sampling
+rates, which may impair the ability of the algorithm to separate sources with similar
+∆-values (see previous point).
+• Density of eigenvalues: The problem of similar ∆-values is not only relevant
+when the sources are similar, because the algorithm also needs to distinguish the
+faster sources from products of these sources with higher-order harmonics of the lower
+sources. To estimate how difficult this is, we have argued that, for the case of Gaussian
+sources, the expected difference between the ∆-values of the output of SFA declines
+as 1/∆S−1 , where S is the number of sources. Separating a source from the product solutions of lower-order sources therefore becomes more difficult with increasing
+number of sources.
+• Function space: Another important influence on the performance of the system is
+the choice of the function space F for SFA. Of course, F has to be chosen sufficiently
+rich to allow the inversion of the nonlinear mixture. According to the theory additional
+complexity of the function spaces should not alter the results and we have indeed
+found that the system is rather robust to the particular choice of F, as long as it
+is sufficiently complex to invert the mixture. We expect, however, that an extreme
+increase in complexity leads to (a) numerical instabilities (in particular for polynomial
+expansions as used here) and (b) overfitting effects.
+
+6. Relation To Other Nonlinear BSS Algorithms
+Because xSFA is based on temporal correlations, in a very similar way as the kernel-TDSEP
+(kTSDEP) algorithm presented by Harmeling et al. (2003), one could expect the two
+algorithms to have similar performance. By using the implementation of the kTDSEP
+algorithm made available by the authors,2 we compared kTDSEP with xSFA on the audio
+signals from data set A in the case of the spiral mixture (15). For the best parameter setting
+we could identify, kTDSEP was able to recover both sources (with correlation >0.9) for only
+20% of the signal pairs, while xSFA recovered both sources for more than 90% of the source
+pairs with the same training data. This result was obtained using a training data duration
+of 0.9 s, 25 time-shifted covariance matrices, a polynomial kernel of degree 7, and k-means
+clustering with a maximum of 10000 points considered. Results depended strongly but not
+systematically on training data duration. A regression analysis for a few of the failure cases
+revealed that the sources were present among the extracted components, but not properly
+selected, suggesting that the poor performance was primarily caused by a failure of the
+automatic source selection approach of Harmeling et al. (2003). The kTDSEP algorithm
+would resemble xSFA even more if kernel PCA were used instead of k-means clustering for
+finding a basis in the kernel feature space. Using kernel PCA, however, yields worse results:
+both sources were recovered at best in 5% of the signal pairs. The influence of the kernel
+2. The code is available on http://people.kyb.tuebingen.mpg.de/harmeling/code/ktdsep-0.2.tar.
+
+942
+
+Extending SFA for Nonlinear BSS
+
+choice (kernel PCA/k-means) on the performance could be due to numerical instabilities
+and small eigenvalues, which we avoid in xSFA by using singular value decomposition with
+thresholding in the SFA dimensionality reduction step.
+Almeida (2003) has suggested a different approach (MISEP) that uses a multilayer perceptron to extend the maximum entropy ansatz of Bell and Sejnowski (1995) to the nonlinear
+case. MISEP has been shown to work in an application to real data (Almeida, 2005). In
+our hands, MISEP was not able to solve the spiral-shaped nonlinear mixture described in
+Section 4, however, exactly because of the problems described by Hyv¨arinen and Pajunen
+(1999): it converges to a nonlinear mixture of the sources that generates statistically independent output signals. Conversely, xSFA fails to solve the image unmixing problem
+on which MISEP was successful (Almeida, 2005), probably because of low-frequency components that introduce correlations between the images (Ha Quang and Wiskott, 2013).
+Whether an information-theoretic ansatz like MISEP or a temporal approach like xSFA is
+more suitable therefore seems to depend on the problem at hand.
+Zhang and Chan (2008) have suggested that the indeterminacies of the nonlinear BSS
+problem could be solved by a minimal nonlinear distortion (MND) principle, which assumes
+that the mixing function is smooth. To exploit this, they added a regularization term to
+common nonlinear ICA objective functions (including that of MISEP). They investigated
+both a global approach that punishes deviations of the unmixing nonlinearity from the
+best linear solution and a local approach that favors locally smooth mappings. The latter
+is remotely related to xSFA, which also tries to enforce smooth mappings, but measures
+smoothness in time rather than directly in the unmixing function. The MND ansatz applies
+to arbitrary functions, while xSFA is limited to time-varying data. On the other hand, the
+temporal smoothness constraint of xSFA could extend to problems where the original sources
+are smooth, but the mixing function is not.
+A nonlinear BSS approach that is even more akin to SFA is the diffusion-map ansatz of
+Singer and Coifman (2008). Diffusion maps and Laplacian eigenmaps are closely related to
+SFA (Sprekeler, 2011). A key difference lies in the choice of the local metrics of the data,
+which is dictated by the temporal structure for SFA (the matrix Kαβ can be thought of
+as an inverse metric tensor), but hand-chosen for diffusion maps. Singer & Coifman made
+a data-driven choice for the metric tensor through local inspection of the data manifold,
+and showed that the resulting diffusion maps can reconstruct the original sources in a toy
+example (Singer and Coifman, 2008) and extract slowly varying manifolds in time series
+data (Singer et al., 2009).3
+
+7. Discussion
+In this article, we have extended previous theoretical results on SFA to the case where
+the input data are generated from a set of statistically independent sources. The theory
+shows that (a) the optimal output of SFA consists of products of signals, each of which
+depends on a single source only and that (b) some of these harmonics should be monotonic
+functions of the sources themselves. Based on these predictions, we have introduced the
+xSFA algorithm to iteratively reconstruct the sources, in theory from arbitrary invertible
+mixtures. Simulations have shown that the performance of xSFA is substantially higher
+3. An SFA-based approach to a similar problem has been suggested by Wiskott (2003a).
+
+943
+
+Sprekeler, Zito and Wiskott
+
+than the performance of independent slow feature analysis (ISFA; Blaschke et al., 2007)
+and kTDSEP (Harmeling et al., 2003), other algorithms for nonlinear BSS that also rely on
+temporal correlations.
+xSFA is relatively robust to changes of parameters. Neither the degree of the expansion
+before the first SFA step nor the number of removed nonlinear versions of the first source
+need to be finely tuned, though both need to be within a certain range, so that the BSS
+problem can be solved without running into the overfitting or error accumulation problems
+discussed above. It should be noted, moreover, that polynomial expansions - as used here
+- become problematic if the degree of the expansion is too high. The resulting expanded
+data contain directions with very sparse distributions, which can lead (a) to singularities
+in the covariance matrix (e.g., for Gaussian signals with limited sampling, x20 and x22 are
+almost perfectly correlated) and (b) to sampling problems for the estimation of the required
+covariances because the data are dominated by few data points with high values. Note, that
+this problem is not specific to the algorithm itself, but rather to the expansion type used.
+Other expansions such as radial basis functions may be more robust. The relative insensitivity of xSFA to parameters is a major advantage over ISFA, whose performance depended
+crucially on the right choice of a trade-off parameter between slowness and independence.
+Many algorithms for nonlinear blind source separation are designed for specific types of
+mixtures, for example, for post-nonlinear mixtures (for an overview of methods for postnonlinear mixtures see Jutten and Karhunen, 2003). In contrast, our algorithm should
+work for arbitrary instantaneous mixtures. As previously mentioned, we have performed
+simulations for a set of instantaneous nonlinear mixtures and the performance was similar
+for all mixtures. The only requirements are that the sources are distinguishable based on
+their ∆-value and that the function space accessible to SFA is sufficiently complex to invert
+the mixture. Note that the algorithm is restricted to instantaneous mixtures. It cannot
+invert convolutive mixtures because SFA processes its input instantaneously and is thus not
+suitable for a deconvolution task.
+It would be interesting to see if the theory for SFA can be extended to other algorithms.
+For example, given the close relation of SFA to TDSEP (Ziehe and M¨
+uller, 1998), a variant
+of the theory may apply to the kernel version of TDSEP (Harmeling et al., 2003). In
+particular, it would be interesting to see whether the theory would suggest an alternative
+source selection algorithm for kTDSEP that is more robust.
+In summary, we have presented a new algorithm for nonlinear blind source separation
+that is (a) independent of the mixture type, (b) robust to parameters, (c) underpinned by a
+rigorous mathematical framework, and (d) relatively reliable, as shown by the reconstruction
+performance for the examined cases.
+
+Acknowledgments
+We want to thank Stefan Harmeling for his valuable help in the comparison of xSFA with
+kTDSEP. This work was supported by the Volkswagen Foundation through a junior research
+group to L.W.. H.S. was supported by the German ministry for Science and Education
+(grant no. 01GQ1201).
+944
+
+Extending SFA for Nonlinear BSS
+
+Appendix A. Proof Of Theorem 1
+α gαiα (sα )
+
+The proof that all product functions gi =
+β Dβ can be carried out directly:
+
+
+
+
+Dgi (s) = 
+
+Dβ 
+
+gαiα (sα )
+α
+
+β
+
+Dβ
+
+=
+
+are eigenfunctions of the operator D =
+
+gαiα (sα )
+α
+
+β
+
+Dβ gβiβ (sβ )
+
+=
+β
+
+gαiα (sα )
+α=β
+
+(because Dβ is a differential operator w.r.t. sβ only)
+=
+
+λβiβ gβiβ (sβ )
+β
+
+gαiα (sα )
+α=β
+
+
+
+
+
+= 
+
+λβiβ 
+
+gαiα (sα )
+α
+
+β
+
+= λi gi (s) .
+Because the product functions are eigenfunctions of the full operator D, the theory of
+Franzius et al. (2007, Theorems 1-5) applies, stating that the J product functions with
+the smallest eigenvalue, ordered by their eigenvalue, are the solutions of the optimization
+problem of SFA. The proof of this theory requires that the eigenfunctions form a complete
+set. Because the set of eigenfunctions for the individual operators Dα form a complete set
+for the individual Sobolev space of functions depending on sα only, however (Courant and
+Hilbert, 1989, §14), the product set gi is also a complete set for the product space.
+
+Appendix B. Proof That Kαβ Is Diagonal
+To prove that the matrix Kαβ (s) is diagonal, we first need to prove that the mean temporal
+derivative of any 1-dimensional signal given its value vanishes: s˙ s|s
+sp(
+˙ s|s)d
+˙
+s˙ = 0.
+˙ =
+To do so, we assume that the distribution of the signal is stationary and that the signal is
+continuously differentiable. Because of the stationarity, the probability that the signal is
+smaller than a given value s0 is constant:
+0 =
+
+d
+dt
+
+∞
+
+s0
+
+p(s, s)dsd
+˙
+s˙
+−∞ −∞
+s0
+∞
+
+=
+
+∂t p(s, s)dsd
+˙
+s˙
+−∞
+
+−∞
+s0
+
+∞
+
+−∞
+
+−∞
+
+= −
+
+∂s [sp(s,
+˙
+s)]
+˙ + ∂s˙ [¨
+sp(s, s))]
+˙ dsds˙
+
+where we used the continuity equation ∂t p(s, s)
+˙ + ∂s [sp(s,
+˙
+s)]
+˙ + ∂s˙ [¨
+sp(s, s))]
+˙ = 0. Using the
+divergence theorem and assuming that the probability distribution vanishes as s˙ → ∞ for
+945
+
+Sprekeler, Zito and Wiskott
+
+all s < s0 , we get the desired result:
+∞
+
+0 = −
+
+sp(s,
+˙
+s)d
+˙ s˙
+−∞
+
+= −p(s) s˙
+
+s|s
+˙ .
+
+Because the mean temporal derivative s˙ α s˙α |sα is zero for each signal, the matrix Kαβ =
+s˙ α s˙ β s˙ |s is not only the matrix of the second moments of the velocity distribution given the
+signal values s but its covariance matrix. Because the signals are statistically independent,
+they are necessarily uncorrelated, that is, their covariance matrix is diagonal.
+
+References
+L. Almeida. MISEP: Linear and nonlinear ICA based on mutual information. Journal of
+Machine Learning Research, 4:1297–1318, 2003.
+L. Almeida. Separating a real-life nonlinear image mixture. Journal of Machine Learning
+Research, 6:1199–1229, 2005.
+A. Bell and T. Sejnowski. An information maximization approach to blind separation and
+blind deconvolution. Neural Computation, 7:1129–1159, 1995.
+P. Berkes and L. Wiskott. Slow feature analysis yields a rich repertoire of complex cells.
+Journal of Vision, 5(6):579–602, 2005.
+T. Blaschke, P. Berkes, and L. Wiskott. What is the relation between slow feature analysis
+and independent component analysis? Neural Computation, 18(10):2495–2508, 2006.
+T. Blaschke, T. Zito, and L. Wiskott. Independent slow feature analysis and nonlinear blind
+source separation. Neural Computation, 19(4):994–1021, 2007.
+W. B¨ohmer, S. Gr¨
+unew¨
+alder, H. Nickisch, and K. Obermayer. Generating feature spaces for
+linear algorithms with regularized sparse kernel slow feature analysis. Machine Learning,
+89:67–86, 2012.
+S. Choi. Differential learning algorithms for decorrelation and independent component
+analysis. Neural Networks, 19(10):1558–1567, Dec 2006.
+R. Courant and D. Hilbert. Methods of Mathematical Physics, Part I. Wiley, 1989.
+M. Franzius, H. Sprekeler, and L. Wiskott. Slowness and sparseness lead to place, headdirection, and spatial-view cells. PLoS Computational Biology, 3(8):e166, 2007.
+M. Ha Quang and L. Wiskott. Multivariate slow feature analysis and decorrelation filtering
+for blind source separation. Image Processing, IEEE Transactions on, 22(7):2737–2750,
+2013.
+S. Harmeling, A. Ziehe, M. Kawanabe, and K.-R. M¨
+uller. Kernel-based nonlinear blind
+source separation. Neural Computation, 15:1089–1124, 2003.
+946
+
+Extending SFA for Nonlinear BSS
+
+A. Hyv¨arinen and P. Pajunen. Nonlinear independent component analysis: Existence and
+uniqueness results. Neural Networks, 12(3):429–439, 1999.
+A. Hyv¨arinen, J. Karhunen, and E. Oja. Independent Component Analysis. Wiley, 2001.
+C. Jutten and J. Karhunen. Advances in nonlinear blind source separation. Proc. of the 4th
+Int. Symp. on Independent Component Analysis and Blind Signal Separation (ICA2003),
+pages 245–256, 2003.
+A. Singer and R. Coifman. Non-linear independent component analysis with diffusion maps.
+Applied and Computational Harmonic Analysis, 25(2):226–239, 2008.
+A. Singer, R. Erban, I. G. Kevrekidis, and R. R. Coifman. Detecting intrinsic slow variables
+in stochastic dynamical systems by anisotropic diffusion maps. Proceedings of the National
+Academy of Sciences, 106(38):16090–16095, 2009.
+H. Sprekeler. On the relation of slow feature analysis and Laplacian eigenmaps. Neural
+Computation, 23:3287–3302, 2011.
+L. Wiskott. Learning invariance manifolds. In L. Niklasson, M. Bod´en, and T. Ziemke,
+editors, Proceedings of the 8th International Conference on Artificial Neural Networks,
+ICANN’98, Sk¨
+ovde, Perspectives in Neural Computing, pages 555–560, London, Sept.
+1998. Springer. ISBN 3-540-76263-9.
+L. Wiskott. Estimating driving forces of nonstationary time series with slow feature analysis.
+arXiv.org e-Print archive, http://arxiv.org/abs/cond-mat/0312317/, Dec. 2003a.
+L. Wiskott. Slow feature analysis: A theoretical analysis of optimal free responses. Neural
+Computation, 15(9):2147–2177, 2003b.
+L. Wiskott and T. Sejnowski. Slow feature analysis: unsupervised learning of invariances.
+Neural Computation, 14:715–770, 2002.
+K. Zhang and L. Chan. Minimal nonlinear distortion principle for nonlinear independent
+component analysis. Journal of Machine Learning Research, 9:2455–2487, 2008.
+A. Ziehe and K.-R. M¨
+uller. TDSEP–an efficient algorithm for blind separation using time
+structure. Proc. Int. Conf. on Artificial Neural Networks (ICANN ’98), pages 675–680,
+1998.
+T. Zito, N. Wilbert, L. Wiskott, and P. Berkes. Modular toolkit for data processing (MDP):
+A python data processing framework. Frontiers in Neuroinformatics, 2:8, 2008.
+
+947
+
+

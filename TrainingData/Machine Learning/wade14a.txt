@@ -1,0 +1,6115 @@
+Journal of Machine Learning Research 15 (2014) 1041-1071
+
+Submitted 2/13; Revised 11/13; Published 3/14
+
+Improving Prediction from Dirichlet Process Mixtures via
+Enrichment∗†
+Sara Wade
+
+sara.wade@eng.cam.ac.uk
+
+Department of Engineering
+University of Cambridge
+Cambridge, CB2 1PZ, UK
+
+David B. Dunson
+
+dunson@stat.duke.edu
+
+Department of Statistical Science
+Duke University
+Durham, NC 27708-0251, USA
+
+Sonia Petrone
+
+sonia.petrone@unibocconi.it
+
+Department of Decision Sciences
+Bocconi University
+Milan, 20136, Italy
+
+Lorenzo Trippa
+
+ltrippa@jimmy.harvard.edu
+
+Department of Biostatistics
+Harvard University
+Boston, MA 02115, USA
+
+Editor: David Blei
+
+Abstract
+Flexible covariate-dependent density estimation can be achieved by modelling the joint
+density of the response and covariates as a Dirichlet process mixture. An appealing aspect
+of this approach is that computations are relatively easy. In this paper, we examine the
+predictive performance of these models with an increasing number of covariates. Even for
+a moderate number of covariates, we find that the likelihood for x tends to dominate the
+posterior of the latent random partition, degrading the predictive performance of the model.
+To overcome this, we suggest using a different nonparametric prior, namely an enriched
+Dirichlet process. Our proposal maintains a simple allocation rule, so that computations
+remain relatively simple. Advantages are shown through both predictive equations and
+examples, including an application to diagnosis Alzheimer’s disease.
+Keywords: Bayesian nonparametrics, density regression, predictive distribution, random
+partition, urn scheme
+
+∗. For the Alzheimer’s Disease Neuroimaging Initiative.
+†. Data used in preparation of this article were obtained from the Alzheimer’s Disease Neuroimaging
+Initiative (ADNI) database (adni.loni.ucla.edu). As such, the investigators within the ADNI contributed to the design and implementation of ADNI and/or provided data but did not participate
+in analysis or writing of this report. A complete listing of ADNI investigators can be found at:
+http://adni.loni.ucla.edu/wp-content/uploads/how_to_apply/ADNI_Acknowledgement_List.pdf.
+c 2014 Sara Wade, David B. Dunson, Sonia Petrone and Lorenzo Trippa.
+
+Wade, Dunson, Petrone and Trippa
+
+1. Introduction
+Dirichlet process (DP) mixture models have become popular tools for Bayesian nonparametric regression. In this paper, we examine their behavior in prediction and aim to highlight
+the difficulties that emerge with increasing dimension of the covariate space. To overcome
+these difficulties, we suggest a simple extension based on a nonparametric prior developed
+in Wade et al. (2011) that maintains desirable conjugacy properties of the Dirichlet process
+and leads to improved prediction. The motivating application is to Alzheimer’s disease
+studies, where the focus is prediction of the disease status based on biomarkers obtained
+from neuroimages. In this problem, a flexible nonparametric approach is needed to account
+for the possible nonlinear behavior of the response and complex interaction terms, resulting
+in improved diagnostic accuracy.
+DP mixtures are widely used for Bayesian density estimation, see, for example, Ghosal
+(2010) and references therein. A common way to extend these methods to nonparametric
+regression and conditional density estimation is by modelling the joint distribution of the
+response and the covariates (X, Y ) as a mixture of multivariate Gaussians (or more general
+kernels). The regression function and conditional density estimates are indirectly obtained
+from inference on the joint density, an idea which is similarly employed in classical kernel
+regression (Scott, 1992, Chapter 8).
+This approach, which we call the joint approach, was first introduced by M¨
+uller et al.
+(1996), and subsequently studied by many others including Kang and Ghosal (2009); Shahbaba and Neal (2009); Hannah et al. (2011); Park and Dunson (2010); and M¨
+uller and
+Quintana (2010). The DP model uses simple local linear regression models as building
+blocks and partitions the observed subjects into clusters, where within clusters, the linear
+regression model provides a good fit. Even though within clusters the model is parametric,
+globally, a wide range of complex distributions can describe the joint distribution, leading
+to a flexible model for both the regression function and the conditional density.
+Another related class of models is based on what we term the conditional approach.
+In such models, the conditional density of Y given x, f (y|x), is modelled directly, as a
+convolution of a parametric family f (y|x, θ) with an unknown mixing distribution Px for
+θ. A prior is then given on the family of distributions {Px , x ∈ X } such that the Px ’s
+are dependent. Examples for the law of {Px , x ∈ X } start from the dependent DPs of
+MacEachern (1999); Gelfand et al. (2005) and include Griffin and Steel (2006); Dunson
+and Park (2008); Ren et al. (2011); Chung and Dunson (2009); and Rodriguez and Dunson
+(2011), just to name a few. Such conditional models can approximate a wide range of
+response distributions that may change flexibly with the covariates. However, computations
+are often quite burdensome. One of the reasons the model examined here is so powerful is
+its simplicity. Together, the joint approach and the clustering of the DP provide a built-in
+technique to allow for changes in the response distribution across the covariate space, yet it
+is simple and generally less computationally intensive than the nonparametric conditional
+models based on dependent DPs.
+The random allocation of subjects into groups in joint DP mixture models is driven by
+the need to obtain a good approximation of the joint distribution of X and Y . This means
+that subjects with similar covariates and similar relationship between the response and
+covariates will tend to cluster together. However, difficulties emerge as p, the dimension of
+1042
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+the covariate space, increases. As we will detail, even for moderately large p the likelihood
+of x tends to dominate the posterior of the random partition, so that clusters are based
+mainly on similarity in the covariate space. This behaviour is quite unappealing if the
+marginal density of X is complex, as is typical in high dimensions, because it causes the
+posterior to concentrate on partitions with many small clusters, as many kernels are needed
+to describe f (x). This occurs even if the conditional density of Y given x is more well
+behaved, meaning, a few kernels suffice for its approximation. Typical results include poor
+estimates of the regression function and conditional density with unnecessarily wide credible
+intervals due to small clusters and, consequently, poor prediction.
+This inefficient performance may not disappear with increasing samples. On one hand,
+appealing to recent theoretical results (Wu and Ghosal, 2008, 2010; Tokdar, 2011), one
+could expect that as the sample size increases, the posterior on the unknown density f (x, y)
+induced by the DP joint mixture model is consistent at the true density. In turn, posterior
+consistency of the joint is likely to have positive implications for the behavior of the random
+conditional density and regression function; see Rodriguez et al. (2009); Hannah et al.
+(2011); and Norets and Pelenis (2012) for some developments in this direction. However, the
+unappealing behaviour of the random partition that we described above could be reflected
+in worse convergence rates. Indeed, recent results by Efromovich (2007) suggest that if the
+conditional density is smoother than the joint, it can be estimated at a faster rate. Thus,
+improving inference on the random partition to take into account the different degree of
+smoothness of f (x) and f (y|x) appears to be a crucial issue.
+Our goal in this paper is to show that a simple modification of the nonparametric prior
+on the mixing distribution, that better models the random partition, can more efficiently
+convey the information present in the sample, leading to more efficient conditional density
+estimates in term of smaller errors and less variability, for finite samples. To achieve this
+aim, we consider a prior that allows local clustering, that is, the clustering structure for the
+marginal of X and the regression of Y on x may be different. We achieve this by replacing the
+DP with the enriched Dirichlet process (EDP) developed in Wade et al. (2011). Like the DP,
+the EDP is a conjugate nonparametric prior, but it allows a nested clustering structure that
+can overcome the above issues and lead to improved predictions. An alternative proposal
+is outlined in Petrone and Trippa (2009) and in unpublished work by Dunson et al. (2011).
+However, the EDP offers a richer parametrization. In a Bayesian nonparametric framework,
+several extensions of the DP have been proposed to allow local clustering (see, e.g., Dunson
+et al. 2008; Dunson 2009; Petrone et al. 2009). However, the greater flexibility is often
+achieved at the price of more complex computations. Instead, our proposal maintains an
+analytically computable allocation rule, and therefore, computations are a straightforward
+extension of those used for the joint DP mixture model. Thus, our main contributions are to
+highlight the problematic behavior in prediction of the joint DP mixture model for increasing
+p and also offer a simple solution based on the EDP that maintains computational ease.
+In addition, we give results on random nested partitions that are implied by the proposed
+prior.
+This paper is organized as follows. In Section 2, we review the joint DP mixture model,
+discuss the behavior of the random partition, and examine the predictive performance.
+In Section 3, we propose a joint EDP mixture model, derive its random partition model,
+and emphasize the predictive improvements of the model. Section 4 covers computational
+1043
+
+Wade, Dunson, Petrone and Trippa
+
+procedures. We provide a simulated example in Section 5 to demonstrate how the EDP
+model can lead to more efficient estimators by making better use of information contained
+in the sample. Finally, in Section 6, we apply the model to predict Alzheimer’s disease
+status based on measurements of various brain structures.
+
+2. Joint DP Mixture Model
+A joint DP mixture model for multivariate density estimation and nonparametric regression
+assumes that
+iid
+
+(Xi , Yi )|P ∼ f (x, y|P ) =
+
+K(x, y|ξ)dP (ξ),
+
+where Xi is p-dimensional, Y is usually univariate, and the mixing distribution P is given
+a DP prior with scale parameter α > 0 and base measure P0 , denoted by P ∼ DP(αP0 ).
+Due to the a.s. discrete nature of the DP, the model reduces to a countable mixture
+∞
+
+wj K(x, y|ξ˜j ),
+
+f (x, y|P ) =
+j=1
+
+iid
+where the mixing weights wj have a stick breaking prior with parameter α and ξ˜j ∼ P0 ,
+independently of the wj . This model was first developed for Bayesian nonparametric regression by M¨
+uller et al. (1996), who assume multivariate Gaussian kernels Np+1 (µ, Σ) with
+ξ = (µ, Σ) and use a conjugate normal inverse Wishart prior as the base measure of the DP.
+However, for even moderately large p, this approach is practically unfeasible. Indeed, the
+computational cost of dealing with the full p + 1 by p + 1 covariance matrix greatly increases
+with large p. Furthermore, the conjugate inverse Wishart prior is known to be too poorly
+parametrized; in particular, there is a single parameter ν to control variability, regardless
+of p (see Consonni and Veronese, 2001).
+A more effective formulation of this model has been recently proposed by Shahbaba
+and Neal (2009), based on two simple modifications. First, the joint kernel is decomposed
+as the product of the marginal of X and the conditional of Y |x, and the parameter space
+consequently expressed in terms of the parameters ψ of the marginal and the parameters θ of
+the conditional. This is a classic reparametrization which, in the Gaussian case, is the basis
+of generalizations of the inverse Wishart conjugate prior; see Brown et al. (1994). Secondly,
+they suggest using simple kernels, assuming local independence among the covariates, that
+is, the covariance matrix of the kernel for X is diagonal. These two simple modifications
+allow several important improvements. Computationally, reducing the covariance matrix
+to p variances can greatly ease calculations. Regarding flexibility of the base measure, the
+conjugate prior now includes a separate parameter to control variability for each of the
+p variances. Furthermore, the model still allows for local correlations between Y and X
+through the conditional kernel of Y |x and the parameter θ. In addition, the factorization
+in terms of the marginal and conditional and the assumption of local independence of
+the covariates allow for easy inclusion of discrete or other types of response or covariates.
+Note that even though, within each component, we assume independence of the covariates,
+globally, there may be dependence.
+
+1044
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+This extended model, in full generality, can be described through latent parameter
+vectors as follows:
+ind
+
+Yi |xi , θi ∼ Fy (·|xi , θi ),
+
+ind
+
+Xi |ψi ∼ Fx (·|ψi ),
+
+(1)
+
+iid
+
+(θi , ψi )|P ∼ P, P ∼ DP(αP0θ × P0ψ ).
+Here the base measure P0θ × P0ψ of the DP assumes independence between the θ and the
+ψ parameters, as this is the structurally conjugate prior for (θ, ψ), and thus, results in
+simplified computations, but the model could be extended to more general choices. We
+further assume that P0θ and P0ψ are absolutely continuous, with densities p0θ and p0ψ .
+Since P is discrete a.s., integrating out the subject-specific parameters (θi , ψi ), the model
+for the joint density is
+∞
+
+wj K(yi |xi , θ˜j )K(xi |ψ˜j ),
+
+f (yi , xi |P ) =
+
+(2)
+
+j=1
+
+where the kernels K(y|x, θ) and K(x|ψ) are the densities associated to Fy (·|x, θ) and Fx (·|ψ).
+2 ) Gaussians, h = 1, . . . , p, and
+In the Gaussian case, K(x|ψ) is the product of N(µx,h , σx,h
+2
+K(y|x, θ) is N(xβ, σy|x ), where x = (1, x ). Shahbaba and Neal (2009) focus on the case
+when Y is categorical and the local model for Y |x is a multinomial logit. Hannah et al.
+(2011) extend the model to the case when, locally, the conditional distribution of Y |x
+belongs to the class of generalized linear models (GLM), that is, the distribution of the
+response belongs to the exponential family and the mean of the response can be expressed
+a function of a linear combination of the covariates.
+Model (2) allows for flexible conditional densities
+f (y|x, P ) =
+
+∞
+˜
+˜
+j=1 wj K(x|ψj )K(y|x, θj )
+∞
+˜
+j =1 wj K(x|ψj )
+
+wj (x)K(y|x, θ˜j ),
+
+≡
+j
+
+and nonlinear regression
+∞
+
+wj (x) E[Y |x, θ˜j ],
+
+E[Y |x, P ] =
+j=1
+
+with E[Y |x, θ˜j ] = xβj∗ for Gaussian kernels. Thus, the model provides flexible kernel based
+density and regression estimation, and MCMC computations are standard. However, the DP
+only allows joint clusters of the parameters (θi , ψi ), i = 1, . . . , n. We underline drawbacks
+of such joint clustering in the following subsections.
+2.1 Random Partition and Inference
+One of the crucial features of DP mixture models is the dimension reduction and clustering
+obtained due to the almost sure discreteness of P. In fact, this implies that a sample (θi , ψi ),
+i = 1, . . . , n from a DP presents ties with positive probability and can be conveniently
+described in terms of the random partition and the distinct values. Using a standard
+notation, we denote the random partition by a vector of cluster allocation labels ρn =
+1045
+
+Wade, Dunson, Petrone and Trippa
+
+(s1 , . . . , sn ), with si = j if (θi , ψi ) is equal to the j th unique value observed, (θj∗ , ψj∗ ), for
+j = 1, . . . , k, where k = k(ρn ) is the number of groups in the partition ρn . Additionally,
+we will denote by Sj = {i : si = j} the set of subject indices in the j th cluster and use the
+notation yj∗ = {yi : i ∈ Sj } and x∗j = {xi : i ∈ Sj }. We also make use of the short notation
+x1:n = (x1 , . . . , xn ).
+Often, the random probability measure P is integrated out and inference is based on
+the posterior of the random partition ρn and the cluster-specific parameters (θ∗ , ψ ∗ ) ≡
+(θj∗ , ψj∗ )kj=1 ;
+k
+∗
+
+∗
+
+k
+
+p0θ (θj∗ )p0ψ (ψj∗ )
+
+p(ρn , θ , ψ |x1:n , y1:n ) ∝ p(ρn )
+j=1
+
+K(xi |ψj∗ )K(yi |xi , θj∗ ).
+j=1 i∈Sj
+
+As is well known (Antoniak, 1974), the prior induced by the DP on the random partition
+is p(ρn ) ∝ αk kj=1 Γ(nj ), where nj is the size of Sj . Marginalizing out the θ∗ , ψ ∗ , the
+posterior of the random partition is
+k
+
+p(ρn |x1:n , y1:n ) ∝ α
+
+Γ(nj ) hx (x∗j ) hy (yj∗ |x∗j ).
+
+k
+
+(3)
+
+j=1
+
+Notice that the marginal likelihood component in (3), say h(x1:n , y1:n |ρn ), is factorized as
+the product of the cluster-specific marginal likelihoods hx (x∗j )hy (yj∗ |x∗j ) where hx (x∗j ) =
+∗ ∗
+i∈Sj K(xi |ψ)dP0ψ (ψ) and hy (yj |xj ) = Θ
+i∈Sj K(yi |xi , θ)dP0θ (θ).
+Ψ
+Given the partition and the data, the conditional distribution of the distinct values is
+simple, as they are independent across clusters, with posterior densities
+p(θj∗ |ρn , x1:n , y1:n ) ∝ p0θ (θj∗ )
+
+K(yi |xi , θj∗ ),
+i∈Sj
+
+K(xi |ψj∗ ).
+
+p(ψj∗ |ρn , x1:n , y1:n ) ∝ p0ψ (ψj∗ )
+
+(4)
+
+i∈Sj
+
+Thus, given ρn , the cluster-specific parameters (θj∗ , ψj∗ ) are updated based only on the
+observations in cluster Sj . Computations are simple if p0θ and p0ψ are conjugate priors.
+The above expressions show the crucial role of the random partition. From Equation (3),
+we have that given the data, subjects are clustered in groups with similar behaviour in the
+covariate space and similar relationship with the response. However, even for moderate p the
+likelihood for x tends to dominate the posterior of the random partition, so that clusters are
+determined only by similarity in the covariate space. This is particularly evident when the
+∗ ).
+covariates are assumed to be independent locally, that is, K(xi |ψj∗ ) = ph=1 K(xi,h |ψj,h
+p
+∗
+Clearly, for large p, the scale and magnitude of changes in h=1 K(xi,h |ψj,h ) will wash
+out any information given in the univariate likelihood K(yi |θj∗ , xi ). Indeed, this is just the
+behavior we have observed in practice in running simulations for large p (results not shown).
+For a simple example demonstrating how the number of components needed to approximate the marginal of X can blow up with p, imagine X is uniformly distributed on a cuboid
+of side length r > 1. Consider approximating
+1
+f0 (x) = p 1(x ∈ [0, r]p )
+r
+
+k
+
+by
+
+wj Np (x|µj , σj2 Ip ).
+
+fk (x) =
+j=1
+
+1046
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+Since the true distribution of x is uniform on the cube [0, r]p , to obtain a good approximation, the weighted components must place most of their mass on values of x contained in
+the cuboid. Let Bσ (µ) denote a ball of radius σ centered at µ. If a random vector V is
+normally distributed with mean µ and variance σ 2 Ip , then for 0 < < 1,
+P (V ∈ Bσz( ) (µ)) = 1 − ,
+
+where
+
+z( )2 = (χ2p )−1 (1 − ),
+
+that is, the square of z( ) is the (1 − ) quantile of the chi-squared distribution with p
+degrees of freedom. For small , this means that the density of V places most of its mass
+on values contained in a ball of radius σz( ) centered at µ. For > 0, define
+k
+
+f˜k (x) =
+
+wj N(x; µj , σj2 Ip ) ∗ 1(x ∈ Bσj z(
+
+j)
+
+(µj )),
+
+j=1
+
+where
+
+j
+
+= /(kwj ). Then, f˜k is close to fk (in the L1 sense):
+k
+
+|fk (x) − f˜k (x)|dx =
+Rp
+
+Rp
+
+wj N(x; µj , σj2 Ip ) ∗ 1(x ∈ Bσc j z(
+
+j)
+
+(µj ))dx = .
+
+j=1
+
+For f˜k to be close to f0 , the parameters µj , σj , wj need to be chosen so that the balls
+Bσj z( /(kwj )) (µj ) are contained in the cuboid. That means that centers of the balls are
+contained in the cuboid,
+µj ∈ [0, r]p ,
+
+(5)
+
+with further constraints on σj2 and wj , so that the radius is small enough. In particular,
+σj z
+
+kwj
+
+r
+≤ min(µ1 , r − µ1 , . . . , µp , r − µp ) ≤ .
+2
+
+(6)
+
+However, as p increases the volume of the cuboid goes to infinity, but the volume of any ball
+Bσj z( /(kwj )) (µj ) defined by (5) and (6) goes to 0 (see Clarke et al., 2009, Section 1.1). Thus,
+just to reasonably cover the cuboid with the balls of interest, the number of components
+will increase dramatically, and more so, when we consider the approximation error of the
+density estimate. Now, as an extreme example, imagine that f0 (y|x) is a linear regression
+model. Even though one component is sufficient for f0 (y|x), a large number of components
+will be required to approximate f0 (x), especially as p increases.
+It appears evident from (4) this behavior of the random partition also negatively affects
+inference on the cluster-specific parameters. In particular, when many kernels are required
+to approximate the density of X with few observations within each cluster, the posterior
+for θj∗ may be based on a sample of unnecessarily small size, leading to a flat posterior with
+an unreliable posterior mean and large influence of the prior.
+2.2 Covariate-dependent Urn Scheme and Prediction
+Difficulties associated to the behavior of the random partition also deteriorate the predictive
+performance of the model. Prediction in DP joint mixture models is based on a covariatedependent urn scheme (Park and Dunson, 2010; M¨
+uller and Quintana, 2010), such that
+1047
+
+Wade, Dunson, Petrone and Trippa
+
+conditionally on the partition ρn and x1:n+1 , the cluster allocation sn+1 of a new subject
+with covariate value xn+1 is determined as
+sn+1 |ρn , x1:n+1 ∼
+
+ωk+1 (xn+1 )
+δk+1 +
+c0
+
+k
+j=1
+
+ωj (xn+1 )
+δj ,
+c0
+
+(7)
+
+where
+α h0,x (xn+1 )
+,
+α+n
+nj K(xn+1 |ψ)p(ψ|x∗j )dψ
+nj hj,x (xn+1 )
+ωj (xn+1 ) =
+≡
+,
+α+n
+α+n
+
+ωk+1 (xn+1 ) =
+
+and c0 = p(xn+1 |ρn , x1:n ) is the normalizing constant. This urn scheme is a generalization
+of the classic P´
+olya urn scheme that allows the cluster allocation probability to depend on
+the covariates; the probability of allocation to cluster j depends on the similarity of xn+1 to
+the xi in cluster j as measured by the predictive density hj,x . See Park and Dunson (2010)
+for more details.
+From the urn scheme (7) one obtains the structure of the prediction. The predictive
+density at y for a new subject with a covariate of xn+1 is computed as
+f (y|y1:n , x1:n+1 )
+f (y|y1:n , x1:n+1 , ρn , sn+1 )p(sn+1 |y1:n , x1:n+1 , ρn ) p(ρn |y1:n , x1:n+1 )
+
+=
+ρn sn+1
+
+
+k
+ω
+(x
+)
+c0 p(ρn |x1:n , y1:n )
+ω
+(x
+)
+j n+1
+ k+1 n+1 h0,y (y|xn+1 ) +
+hj,y (y|xn+1 )
+c0
+c0
+p(xn+1 |x1:n , y1:n )
+j=1
+
+
+k
+ωj (xn+1 )
+ ωk+1 (xn+1 ) h0,y (y|xn+1 ) +
+hj,y (y|xn+1 ) p(ρn |x1:n , y1:n ),
+(8)
+c
+c
+
+
+=
+ρn
+
+=
+ρn
+
+j=1
+
+where c = p(xn+1 |x1:n , y1:n ). Thus, given the partition, the conditional predictive density is
+a weighted average of the prior guess h0,y (y|x) ≡ K(y|x, θ)dP0θ (θ) and the cluster-specific
+predictive densities of y at xn+1 ,
+hj,y (y|xn+1 ) =
+
+K(y|xn+1 , θ)p(θ|x∗j , yj∗ )dθ,
+
+with covariate-dependent weights. The predictive density is obtained by averaging with
+respect to the posterior of ρn . However, for moderate to large p, the posterior of the
+random partition suffers the drawbacks discussed in the previous subsection. In particular,
+too many small x-clusters lead to unreliable within cluster predictions based on small sample
+sizes. Furthermore, the measure which determines similarity of xn+1 and the j th cluster
+will be too rigid. Consequently, the resulting overall prediction may be quite poor.
+1048
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+These drawbacks will also affect the point prediction, which, under quadratic loss, is
+E[Yn+1 |y1:n , x1:n+1 ]
+
+ ωk+1 (xn+1 ) E0 [Yn+1 |xn+1 ] +
+=
+c
+ρ
+n
+
+
+
+k
+j=1
+
+ωj (xn+1 )
+Ej [Yn+1 |xn+1 ] p(ρn |x1:n , y1:n ),
+c
+
+(9)
+
+where E0 [Yn+1 |xn+1 ] is the expectation of Yn+1 with respect to h0,y and Ej [Yn+1 |xn+1 ] ≡
+E[E[Yn+1 |xn+1 , θj∗ ]|x∗j , yj∗ ] is the expectation of Yn+1 with respect to hj,y .
+Example. When K(y|x, θ) = N(y; xβ, σ 2 ) and the prior for (β, σ 2 ) is the multivariate normal
+inverse gamma with parameters (β0 , C −1 , ay , by ), (9) is
+
+ρn
+
+ ωk+1 (xn+1 ) xn+1 β0 +
+c
+
+
+
+k
+j=1
+
+ωj (xn+1 )
+xn+1 βˆj  p(ρn |x1:n , y1:n ),
+c
+
+where βˆj = Cˆj−1 (Cβ0 + X j yj∗ ), Cˆj = C + X j X j , X j is a nj by p + 1 matrix with rows xi
+for i ∈ Sj , and (8) is
+by
+ωk+1 (xn+1 )
+T y|xn+1 β0 , W −1 , 2ay
+c
+ay
+
+k
+
++
+j=1
+
+ˆby,j
+ωj (xn+1 )
+T y|xn+1 βˆj ,
+W −1 , 2ˆ
+ay,j ,
+c
+a
+ˆy,j j
+
+where T (·; µ, σ 2 , ν) denotes the density of a random variable V such that (V − µ)/σ has a
+t-distribution with ν degrees of freedom; a
+ˆy,j = ay + nj /2;
+ˆby,j = by + 1 (y ∗ − X β0 ) (In − X Cˆ −1 X )(y ∗ − X β0 );
+j
+j j
+j
+j
+j
+j
+2 j
+W = 1 − xn+1 (C + xn+1 xn+1 )−1 xn+1 ;
+and Wj is defined as W with C replaced by Cˆj .
+
+3. Joint EDP Mixture Model
+As seen, the global clustering of the DP prior on P(Θ×Ψ), the space of probability measures
+on Θ × Ψ, does not allow one to efficiently model the types of data discussed in the previous
+section. Instead, it is desirable to use a nonparametric prior that allows many ψ-clusters,
+to fit the complex marginal of X, and fewer θ-clusters. At the same time, we want to
+preserve the desirable conjugacy properties of the DP, in order to maintain fairly simple
+computations. To these aims, our proposal is to replace the DP with the more richly
+parametrized enriched Dirichlet process (Wade et al., 2011). The EDP is conjugate and has
+an analytically computable urn scheme, but it gives a nested partition structure that can
+model the desired clustering behavior.
+Recall that the model (1) was obtained by decomposing the joint kernel as the product
+of the marginal and conditional kernels. The EDP is a natural alternative for the mixing
+distribution of this model, as it is similarly based on the idea of expressing the unknown
+1049
+
+Wade, Dunson, Petrone and Trippa
+
+random joint probability measure P of (θ, ψ) in terms of the random marginal and conditionals. This requires the choice of an ordering of θ and ψ, and this choice is problem
+specific. In the situation described here, it is natural to consider the random marginal distribution Pθ and the random conditional Pψ|θ , to obtain the desired clustering structure.
+Then, the EDP prior is defined by
+Pθ ∼ DP(αθ P0θ ),
+Pψ|θ (·|θ) ∼ DP(αψ (θ)P0ψ|θ (·|θ)),
+
+∀θ ∈ Θ,
+
+and Pψ|θ (·|θ) for θ ∈ Θ are independent among themselves and from Pθ . Together these
+assumptions induce a prior for the random joint P through the joint law of the marginal and
+conditionals and the mapping (Pθ , Pψ|θ ) → Pψ|θ (·|θ)dPθ (θ). The prior is parametrized by
+the base measure P0 , expressed as
+P0 (A × B) =
+
+P0ψ|θ (B|θ)dP0θ (θ)
+A
+
+for all Borel sets A and B, and by a precision parameter αθ associated to θ and a collection
+of precision parameters αψ (θ) for every θ ∈ Θ associated to ψ|θ. Note the contrast with
+the DP, which only allows one precision parameter to regulate the uncertainty around P0 .
+The proposed EDP mixture model for regression is as in (1), but with
+P ∼ EDP(αθ , αψ (θ), P0 )
+in place of P ∼ DP(αP0θ × P0ψ ). In general, P0 is such that θ and ψ are dependent, but
+here we assume the same structurally conjugate base measure as for the DP model (1), so
+P0 = P0θ × P0ψ . Using the square breaking representation of the EDP (Wade et al., 2011,
+Proposition 4) and integrating out the (θi , ψi ) parameters, the model for the joint density
+is
+∞
+
+∞
+
+wj wl|j K(x|ψ˜l|j )K(y|x, θ˜j ).
+
+f (x, y|P ) =
+j=1 l=1
+
+This gives a mixture model for the conditional densities with more flexible weights
+∞
+
+f (y|x, P ) =
+j=1
+
+∞
+˜
+l=1 wl|j K(x|ψl|j )
+∞
+∞
+˜
+j =1 wj
+l =1 wl |j K(x|ψl |j
+
+∞
+
+)
+
+K(y|x, θ˜j ) ≡
+
+w
+˜j (x)K(y|x, θ˜j ).
+j=1
+
+3.1 Random Partition and Inference
+The advantage of the EDP is the implied nested clustering. The EDP partitions subjects
+in θ-clusters and ψ-subclusters within each θ-cluster, allowing the use of more kernels to
+describe the marginal of X for each kernel used for the conditional of Y |x. The random
+partition model induced from the EDP can be described as a nested Chinese Restaurant
+Process (nCRP).
+First, customers choose restaurants according to the CRP induced by Pθ ∼ DP(αθ P0θ ),
+that is, with probability proportional to the number nj of customers eating at restaurant j,
+1050
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+the (n+1)th customer eats at restaurant j, and with probability proportional to αθ , she eats
+iid
+
+at a new restaurant. Restaurant are then colored with colors θj∗ ∼ P0θ . Within restaurant
+j, customers sit at tables as in the CRP induced by the Pψ|θj∗ ∼ DP(αψ (θj∗ )P0ψ|θ (·|θj∗ )).
+iid
+
+∗ ∼ P
+∗
+Tables in restaurant j are then colored with colors ψl|j
+0ψ|θ (·|θj ).
+This differs from the nCRP proposed by Blei et al. (2010), which had the alternative
+aim of learning topic hierarchies by clustering parameters (topics) hierarchically along a
+tree of infinite CRPs. In particular, each subject follows a path down the tree according to
+a sequence of nested CRPs and the parameters of subject i are associated with the cluster
+visited at a latent subject-specific level l of this path. Although related, the EDP is not a
+special case with the tree depth fixed to 2; the EDP defines a prior on a multivariate random
+probability measure on Θ × Ψ and induces a nested partition of the multivariate parameter
+(θ, ψ), where the first level of the tree corresponds to the clustering of the θ parameters
+and the second corresponds to the clustering of the ψ parameters. A generalization of
+the EDP to a depth of D ≤ ∞ is related to Blei et al.’s nCRP with depth D ≤ ∞, but
+only if one regards the parameters of each subject as the vector of parameters (ξ1 , . . . , ξD )
+associated to each level of the tree. Furthermore, this generalization of the EDP would
+allow a more flexible specification of the mass parameters and possible correlation among
+the nested parameters.
+The nested partition of the EDP is described by ρn = (ρn,y , ρn,x ), where ρn,y =
+(sy,1 , ..., sy,n ) and ρn,x = (sx,1 , ..., sx,n ) with sy,i = j if θi = θj∗ , the j th distinct θ-value
+∗ , the lth color that appeared inside the j th
+in order of appearance, and sx,i = l if ψi = ψl|j
+θ-cluster. Additionally, we use the notation Sj+ = {i : sy,i = j}, with size nj , j = 1, . . . , k,
+and Sl|j = {i : sy,i = j, sx,i = l}, with size nl|j , l = 1, . . . , kj . The unique parameters will be
+∗ , . . . , ψ ∗ )k . Furthermore, we use the notation
+denoted by θ∗ = (θj∗ )kj=1 and ψ ∗ = (ψ1|j
+kj |j j=1
+∗
+ρnj ,x = (sx,i : i ∈ Sj+ ) and yj = {yi : i ∈ Sj+ }, x∗j = {xi : i ∈ Sj+ }, x∗l|j = {xi : i ∈ Sl|j }.
+
+Proposition 1 The probability law of the nested random partition defined from the EDP
+is
+Γ(αθ )
+p(ρn ) =
+αk
+Γ(αθ + n) θ
+
+k
+
+Γ(αψ (θ))Γ(nj )
+αψ (θ)
+dP0θ (θ)
+Γ(αψ (θ) + nj )
+Θ
+
+kj
+
+kj
+
+j=1
+
+Γ(nl|j ).
+l=1
+
+Proof From independence of random conditional distributions among θ ∈ Θ,
+k
+∗
+
+k
+
+p0θ (θj∗ )p(ρn,x |ρn,y , θ∗ )
+
+p(ρn , θ ) = p(ρn,y )
+
+p0θ (θj∗ )p(ρnj ,x |θj∗ ).
+
+= p(ρn,y )
+
+j=1
+
+j=1
+
+Next, using the results of the random partition model of the DP (Antoniak, 1974), we have
+Γ(αθ )
+p(ρn , θ ) =
+αk
+Γ(αθ + n) θ
+
+k
+
+∗
+
+p0θ (θj∗ )αψ (θj∗ )kj
+j=1
+
+Γ(αψ (θj∗ ))Γ(nj )
+Γ(αψ (θj∗ ) + nj )
+
+kj
+
+Γ(nl|j ).
+l=1
+
+Integrating out θ∗ leads to the result.
+From Proposition 1, we gain an understanding of the types of partitions preferred by the
+1051
+
+Wade, Dunson, Petrone and Trippa
+
+EDP and the effect of the parameters. If for all θ, αψ (θ) = αθ P0θ ({θ}), that is αψ (θ) = 0
+if P0θ is non-atomic, we are back to the DP random partition model, see Proposition 2 of
+Wade et al. (2011). In the case when P0θ is non-atomic, this means that the conditional
+Pψ|θ is degenerate at some random location with probability one (for each restaurant—one
+table).
+In general, αψ (θ) may be a flexible function of θ, reflecting the fact that within some
+θ-clusters more kernels may be required for good approximation of the marginal of X. In
+practice, a common situation that we observe is a high value of αψ (θ) for average values
+of θ and lower values of αψ (θ) for more extreme θ values, capturing homogeneous outlying
+groups. In this case, a small value of αθ will encourage few θ-clusters, and, given θ∗ , a large
+kj
+αψ (θj∗ ) will encourage more ψ-clusters within the j th θ-cluster. The term kj=1 l=1
+Γ(nl|j )
+will encourage asymmetrical (θ, ψ)-clusters, preferring one large cluster and several small
+clusters, while, given θ∗ , the term involving the product of beta functions contains parts
+that both encourage and discourage asymmetrical θ-clusters. In the special case when
+αψ (θ) = αψ for all θ ∈ Θ, the random partition model simplifies to
+Γ(αθ )
+p(ρn ) =
+αk
+Γ(αθ + n) θ
+
+k
+k
+αψj
+j=1
+
+Γ(αψ )Γ(nj )
+Γ(αψ + nj )
+
+kj
+
+Γ(nl|j ).
+l=1
+
+In this case, the tendency of the term involving the product of beta functions is to slightly
+prefer asymmetrical θ-clusters with large values of αψ boosting this preference.
+As discussed in the previous section, the random partition plays a crucial role, as its posterior distribution affects both inference on the cluster-specific parameters and prediction.
+For the EDP, it is given by the following proposition.
+Proposition 2 The posterior of the random partition of the EDP model is
+k
+
+p(ρn | x1:n , y1:n ) ∝ αθk
+j=1 Θ
+
+Γ(αψ (θ))Γ(nj )
+αψ (θ)kj dP0θ (θ)hy (yj∗ |x∗j )
+Γ(αψ (θ) + nj )
+
+kj
+
+Γ(nl|j )hx (x∗l|j ).
+l=1
+
+The proof relies on a simple application of Bayes theorem. In the case of constant αψ (θ),
+the expression for the posterior of ρn simplifies to
+k
+
+p(ρn | x1:n , y1:n ) ∝ αθk
+j=1
+
+Γ(αψ )Γ(nj ) kj
+α hy (yj∗ |x∗j )
+Γ(αψ + nj ) ψ
+
+kj
+
+Γ(nl|j )hx (x∗l|j ).
+l=1
+
+Again, as in (3), the marginal likelihood component in the posterior distribution of ρn
+is the product of the cluster-specific marginal likelihoods, but now the nested clustering
+structure of the EDP separates the factors relative to x and y|x, being h(x1:n , y1:n |ρn ) =
+kj
+k
+∗ ∗
+∗
+j=1 hy (yj |xj )
+l=1 hx (xl|j ). Even if the x-likelihood favors many ψ-clusters, now these
+can be obtained by subpartitioning a coarser θ-partition, and the number k of θ-clusters
+can be expected to be much smaller than in (3).
+Further insights into the behavior of the random partition are given by the induced
+covariate-dependent random partition of the θi parameters given the covariates, which is
+detailed in the following propositions. We will use the notation Pn to denote the set of all
+possible partitions of the first n integers.
+1052
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+Proposition 3 The covariate-dependent random partition model induced by the EDP prior
+is
+k
+
+p(ρn,y |x1:n ) ∝
+
+αθk
+j=1 ρnj ,x ∈Pnj
+
+Θ
+
+Γ(αψ (θ))Γ(nj )
+αψ (θ)kj dP0θ (θ)
+Γ(αψ (θ) + nj )
+
+kj
+
+Γ(nl|j )hx (x∗l|j ).
+l=1
+
+Proof An application of Bayes theorem implies that
+k
+
+p(ρn |x1:n ) ∝ αθk
+j=1 Θ
+
+Γ(αψ (θ))Γ(nj )
+αψ (θ)kj dP0θ (θ)
+Γ(αψ (θ) + nj )
+
+kj
+
+Γ(nl|j )hx (x∗l|j ).
+
+(10)
+
+l=1
+
+Integrating over ρn,x , or equivalently summing over all ρnj ,x in Pnj ,x for j = 1, . . . , k leads
+to,
+k
+
+p(ρn,y |x1:n ) ∝
+
+αθk
+
+...
+ρn1+ ,x
+
+ρnk+ ,x
+
+j=1 Θ
+
+Γ(αψ (θ))Γ(nj )
+αψ (θ)kj dP0θ (θ)
+Γ(αψ (θ) + nj )
+
+kj
+
+Γ(nl|j )hx (x∗l|j ),
+l=1
+
+and, finally, since (10) is the product over the j terms, we can pull the sum over ρnj ,x within
+the product.
+This covariate-dependent random partition model will favor θ-partitions of the subjects
+which can be further partitioned into groups with similar covariates, where a partition with
+many desirable subpartitions will have higher mass.
+Proposition 4 The posterior of the random covariate-dependent partition induced from
+the EDP model is
+k
+
+hy (yj∗ |x∗j )
+
+p(ρn,y |x1:n , y1:n ) ∝ αθk
+j=1
+
+×
+ρnj ,x ∈Pnj
+
+Θ
+
+Γ(αψ (θ))Γ(nj )
+αψ (θ)kj dP0θ (θ)
+Γ(αψ (θ) + nj )
+
+kj
+
+Γ(nl|j )hx (x∗l|j ).
+h=1
+
+The proof is similar in spirit to that of Proposition 3. Notice the preferred θ-partitions
+will consist of clusters with a similar relationship between y and x, as measured by marginal
+local model hy for y|x and similar x behavior, which is measured much more flexibly as a
+mixture of the previous marginal local models.
+The behavior of the random partition, detailed above, has important implications for
+the posterior of the unique parameters. Conditionally on the partition, the cluster-specific
+parameters (θ∗ , ψ ∗ ) are still independent, their posterior density being
+kj
+
+k
+
+p(θ∗ , ψ ∗ |y1:n , x1:n , ρn ) =
+
+p(θj∗ |yj∗ , x∗j )
+j=1
+
+1053
+
+∗
+p(ψl|j
+|x∗l|j ),
+l=1
+
+Wade, Dunson, Petrone and Trippa
+
+where
+p(θj∗ |yj∗ , x∗j ) ∝ p0θ (θj∗ )
+
+∗
+).
+K(xi |ψl|j
+
+∗
+∗
+)
+|x∗l|j ) ∝ p0ψ (ψl|j
+p(ψl|j
+
+K(yi |θj∗ , xi ),
+
+i∈Sj,l
+
+i∈Sj+
+
+The important point is that the posterior of θj∗ can now be updated with much larger
+sample sizes if the data determines that a coarser θ-partition is present. This will result
+in a more reliable posterior mean, a smaller posterior variance, and larger influence of the
+data compared with the prior.
+3.2 Covariate-dependent Urn Scheme and Prediction
+Similar to the DP model, computation of the predictive estimates relies on a covariatedependent urn scheme. For the EDP, we have
+sy,n+1 |ρn , x1:n+1 , y1:n ) ∼
+
+ωk+1 (xn+1 )
+δk+1 +
+c0
+
+k
+j=1
+
+ωj (xn+1 )
+δj ,
+c0
+
+(11)
+
+where c0 = p(xn+1 |ρn , x1:n ), but now the expression of the ωj (xn+1 ) takes into account the
+possible allocation of xn+1 in subgroups, being
+p(xn+1 |ρn , x1:n , y1:n , sy,n+1 = j, sx,n+1 )p(sx,n+1 |ρn , x1:n , y1:n , sy,n+1 = j).
+
+ωj (xn+1 ) =
+sx,n+1
+
+From this, it can be easily found that
+αθ
+ωk+1 (xn+1 ) =
+h0,x (xn+1 ),
+αθ + n
+
+nj 
+ωj (xn+1 ) =
+πkj +1|j h0,x (xn+1 ) +
+αθ + n
+where
+πl|j =
+
+nl|j
+dP0θ (θ|x∗j , yj∗ ),
+αψ (θ) + nj
+
+
+
+kj
+
+πl|j hl|j,x (xn+1 ) ,
+l=1
+
+πkj +1|j =
+
+αψ (θ)
+dP0θ (θ).
+αψ (θ) + nj
+
+In the case of constant αψ (θ) = αψ , these expressions simplify to
+πl|j =
+
+nl|j
+,
+αψ + nj
+
+πkj +1|j =
+
+αψ
+.
+αψ + nj
+
+Notice that (11) is similar to the covariate-dependent urn scheme of the DP model. The
+important difference is that the weights, which measure the similarity between xn+1 and
+the j th cluster, are much more flexible.
+It follows, from similar computations as in Section 2.2, that the predictive density at y
+for a new subject with a covariate value of xn+1 is
+f (y|y1:n , x1:n+1 )
+
+ ωk+1 (xn+1 ) h0,y (y|xn+1 ) +
+=
+c
+ρ
+n
+
+k
+j=1
+
+
+ωj (xn+1 )
+hj,y (y|xn+1 ) p(ρn |x1:n , y1:n ),
+c
+
+1054
+
+(12)
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+where c = p(xn+1 |x1:n , y1:n ).
+Under the squared error loss function, the point prediction of yn+1 is
+E[Yn+1 |y1:n , x1:n+1 ]
+
+ ωk+1 (xn+1 ) E0 [Yn+1 |xn+1 ] +
+=
+c
+ρ
+n
+
+k
+j=1
+
+
+ωj (xn+1 )
+Ej [Yn+1 |xn+1 ] p(ρn |x1:n , y1:n ).
+c
+
+(13)
+
+The expressions for the prediction density (12) and point prediction (13) are quite similar
+to those of the DP, (8) and (9), respectively; in both cases, the cluster-specific predictive
+estimates are averaged with covariate-dependent weights. However, there are two important
+differences for the EDP model. The first is that the weights in (11) are defined with a more
+flexible kernel; in fact, it is a mixture of the original kernels used in the DP model. This
+means that we have a more flexible measure of similarity in the covariate space. The second
+difference is that k will be smaller and nj will be larger with a high posterior probability,
+leading to a more reliable posterior distribution of θj∗ due to larger sample sizes and better
+cluster-specific predictive estimates. We will demonstrate the advantage of these two key
+differences in simulated and applied examples of Sections 5 and 6.
+
+4. Computations
+Inference for the EDP model cannot be obtained analytically and must therefore be approximated. To obtain approximate inference, we rely on Markov Chain Monte Carlo (MCMC)
+methods and consider an extension of Algorithm 2 of Neal (2000) for the DP mixture model.
+In this approach, the random probability measure, P, is integrated out, and the model is
+viewed in terms of (ρn , θ∗ , ψ ∗ ). This algorithm requires the use of conjugate base measures
+P0θ and P0ψ . To deal with non-conjugate base measures, the approach used in Algorithm
+8 of Neal (2000) can be directly adapted to the EDP mixture model.
+Algorithm 2 is a Gibbs sampler which first samples the cluster label of each subject
+conditional on the partition of all other subjects, the data, and (θ∗ , ψ ∗ ), and then samples
+(θ∗ , ψ ∗ ) given the partition and the data. The first step can be easily performed thanks to
+the P´olya urn which marginalizes the DP.
+Extending Algorithm 2 for the EDP model is straightforward, since the EDP maintains
+a simple, analytically computable urn scheme. In particular, the conditional probabilities
+∗
+∗
+p(si |ρ−i
+n−1 , θ , ψ , x1:n , y1:n ) (provided in the Appendix) have a simple closed form, which
+allows conditional sampling of the individual cluster membership indicators si , where ρ−i
+n−1
+denotes the partition of the n−1 subjects with the ith subject removed. To improve mixing,
+we include an additional Metropolis-Hastings step; at each iteration, after performing the
+n Gibbs updates for each si , we propose a shuffle of the nested partition structure obtained
+by moving a ψ-cluster to be nested within a different or new θ-cluster. This move greatly
+improves mixing. A detailed description of the sampler, including the Metropolis-Hastings
+step, can be found in the Appendix.
+1055
+
+Wade, Dunson, Petrone and Trippa
+
+MCMC produces approximate samples, {ρsn , ψ ∗s , θ∗s }Ss=1 , from the posterior. The prediction given in Equation (13) can be approximated by
+1
+S
+
+S
+s=1
+
+s (x
+ωk+1
+n+1 )
+Ehy [Yn+1 |xn+1 ] +
+cˆ
+
+ks
+j=1
+
+ωjs (xn+1 )
+EFy [Yn+1 |xn+1 , θj∗s ],
+cˆ
+
+where ωjs (xn+1 ) for j = 1, . . . , k s + 1, are as previously defined in (11) with (ρn , ψ ∗ , θ∗ )
+replaced by (ρsn , ψ ∗s , θ∗s ) and
+1
+cˆ =
+S
+
+ks
+
+S
+s
+ωk+1
+(xn+1 )
+
+ωjs (xn+1 ).
+
++
+
+s=1
+
+j=1
+
+For the predictive density estimate at xn+1 , we define a grid of new y values and for each
+y in the grid, we compute
+1
+S
+
+S
+s=1
+
+s (x
+ωk+1
+n+1 )
+hy (y|xn+1 ) +
+cˆ
+
+ks
+j=1
+
+ωjs (xn+1 )
+K(y|xn+1 , θj∗s ).
+cˆ
+
+(14)
+
+Note that hyperpriors may be included for the precision parameters, αθ and αψ (·), and
+the parameters of the base measures. For the simulated examples and application, a Gamma
+hyperprior is assigned to αθ , and αψ (θ) for θ ∈ Θ are assumed to be i.i.d. from a Gamma
+s (θ) at θ ∗s for j = 1, . . . , k s are approximate samples
+hyperprior. At each iteration, αθs and αψ
+j
+from the posterior using the method described in Escobar and West (1995).
+
+5. Simulated Example
+We consider a toy example that demonstrates two key advantages of the EDP model; first,
+it can recover the true coarser θ-partition; second, improved prediction and smaller credible
+intervals result. The example shows that these advantages are evident even for a moderate
+value of p, with more drastic differences as p increases. A data set of n = 200 points were
+generated where only the first covariate is a predictor for Y . The true model for Y is
+a nonlinear regression model obtained as a mixture of two normals with linear regression
+functions and weights depending only on the first covariate;
+ind
+
+Yi |xi ∼ p(xi,1 )N(yi |β1,0 + β1,1 xi,1 , σ12 ) + (1 − p(xi,1 ))N(yi |β2,0 + β2,1 xi,1 , σ22 ),
+where
+τ1 exp −
+p(xi,1 ) =
+
+τ1 exp −
+
+τ12
+2 (x1,i
+
+τ12
+2 (x1,i
+
+− µ1 )2
+
+− µ1 )2 + τ2 exp −
+
+τ22
+2 (x1,i
+
+,
+− µ2 )2
+
+with β1 = (0, 1) , σ12 = 1/16, β2 = (4.5, 0.1) , σ22 = 1/8 and µ1 = 4, µ2 = 6, τ1 = τ2 = 2.
+The covariates are sampled from a multivariate normal,
+iid
+
+Xi = (Xi,1 , . . . , Xi,p ) ∼ N(µ, Σ),
+1056
+
+(15)
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+centered at µ = (4, . . . , 4) with a standard deviation of 2 along each dimension, that is,
+Σh,h = 4. The covariance matrix Σ models two groups of covariates: those in the first group
+are positively correlated among each other and the first covariate, but independent of the
+second group of covariates, which are positively correlated among each other but independent of the first covariate. In particular, we take Σh,l = 3.5 for h = l in {1, 2, 4, . . . , 2 p/2 }
+or h = l in {3, 5, . . . , 2 (p − 1)/2 + 1} and Σh,l = 0 for all other cases of h = l.
+We examine both the DP and EDP mixture models;
+p
+2 ind
+Yi |xi , βi , σy,i
+∼
+
+2
+N(xi βi , σy,i
+),
+
+2 ind
+Xi |µi , σx,i
+∼
+
+2
+N(µi,h , σx,h,i
+),
+h=1
+
+iid
+2
+2
+(βi , σy,i
+, µi , σx,i
+)|P ∼
+
+P
+
+with P ∼ DP or P ∼ EDP. The conjugate base measure is selected; P0θ is a multivariate
+normal inverse gamma prior and P0ψ is the product of p normal inverse gamma priors, that
+is
+p0θ (β, σy2 ) = N(β; β0 , σy2 C −1 )IG(σy2 ; ay , by ),
+and
+
+p
+
+p0ψ (µ, σx2 )
+
+2
+2
+c−1
+N(µh ; µ0,h , σx,h
+h )IG(σx,h ; ax,h , bx,h ).
+
+=
+h=1
+
+For both models, we use the same subjective choice of the parameters of the base
+measure. In particular, we center the base measure on an average of the true parameters
+values with enough variability to recover the true model. A list of the prior parameters can
+be found in the Appendix. We assign hyperpriors to the mass parameters, where for the
+iid
+DP model, α ∼ Gamma(1, 1), and for the EDP model, αθ ∼ Gamma(1, 1), αψ (β, σy2 ) ∼
+Gamma(1, 1) for all β, σy2 ∈ Rp+1 × R+ .
+The computational procedures described in Section 4 were used to obtain posterior
+inference with 20,000 iterations and burn in period of 5,000. An examination of the trace and
+2 , µ , σ 2 ) provided evidence
+autocorrelation plots for the subject-specific parameters (βi , σy,i
+i x,i
+of convergence. Additional criteria for assessing the convergence of chain, in particular, the
+Geweke diagnostic, also suggested convergence, and the results are given in Table 6 of the
+Appendix (see the R package coda for implementation and further details of the diagnostic).
+It should be noted that running times for both models are quite similar, although slightly
+faster for the DP.
+The first main point to emphasize is the improved behavior of the posterior of the
+random partition for the EDP. We note that for both models, the posterior of the partition
+is spread out. This is because the space of partitions is very large and many partitions are
+very similar, differing only in a few subjects; thus, many partitions fit the data well. We
+depict representative partitions of both models with increasing p in Figure 1. Observations
+are plotted in the x1 –y space and colored according to the partition for the DP and the
+θ-partition for the EDP. As expected, for p = 1 the DP does well at recovering the true
+partition, but as clearly seen from Figure 1, for large values of p, the DP partition is
+comprised of many clusters, which are needed to approximate the multivariate density of
+X. In fact, the density of Y |x can be recovered with only two kernels regardless of p, and
+1057
+
+Wade, Dunson, Petrone and Trippa
+
+8
+
+0
+
+4
+x1
+
+6
+
+8
+
+6
+
+6
+4
+10
+
+(e) EDP, p=1
+
+6
+4
+0
+
+8
+
+10
+
+0
+
+2
+
+4
+x1
+
+6
+
+8
+
+10
+
+(f) EDP, p=5
+
+4
+x1
+
+6
+
+8
+
+10
+
+p( rho_y |y,x)= 0.0296
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●●
+●●
+●●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●
+●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+●
+
+●
+●
+●
+
+●
+
+●
+●
+●
+●
+●
+
+●
+
+0
+
+2
+
+(d) DP, p=15
+
+●
+●
+
+●
+
+2
+
+6
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●●
+●●
+●●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●
+●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+●
+●
+
+●
+
+4
+x1
+
+p( rho_y |y,x)= 0.0194
+●
+
+●
+●
+●
+
+0
+
+●
+●
+●
+
+2
+
+(c) DP, p=10
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●●
+●●
+●●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●
+●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+●
+●
+
+0
+
+●
+
+10
+
+6
+
+6
+
+p( rho_y |y,x)= 0.0178
+●
+
+y
+2
+
+6
+4
+
+4
+x1
+
+(b) DP, p=5
+
+p( rho_y |y,x)= 0.0001
+
+y
+2
+
+2
+
+4
+
+0
+
+(a) DP, p=1
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●●
+●●
+●●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●
+●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+y
+2
+
+6
+●
+
+10
+
+●
+●
+●
+
+y
+2
+
+8
+
+4
+
+6
+
+●
+
+●
+●
+
+y
+2
+
+4
+x1
+
+0
+
+2
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●●
+●●
+●●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●
+●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+●
+●
+
+●
+
+0
+
+0
+
+●
+●
+●
+
+●
+●
+
+●
+
+p( rho |y,x)= 0.00015
+●
+
+0
+
+●
+●
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●●
+●●
+●●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+4
+
+4
+
+p( rho |y,x)= 0.0001
+●
+
+●
+●
+●
+
+0
+
+●
+●
+●
+
+0
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●●
+●●
+●●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+y
+2
+
+6
+
+p( rho |y,x)= 0.00005
+●
+
+0
+
+y
+2
+
+4
+
+●
+●●
+●●● ● ●
+● ● ●
+●
+●●
+●●● ● ●
+● ●
+●●
+●
+●●
+●
+●●
+●
+● ●● ●
+●
+● ● ●●
+●
+●●
+●
+●
+●●
+● ●
+●
+●●
+●●
+●●
+●
+●●● ●
+●●
+●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●●
+●●
+●●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●
+●●●
+●●●
+●●●
+●●●
+●●●
+●●
+
+y
+2
+
+6
+
+p( rho |y,x)= 0.0001
+
+●
+
+0
+
+2
+
+4
+x1
+
+6
+
+8
+
+10
+
+(g) EDP, p=10
+
+0
+
+2
+
+4
+x1
+
+6
+
+8
+
+10
+
+(h) EDP, p=15
+
+Figure 1: The y partition with the highest estimated posterior probability. Data points are
+plotted in the x1 vs. y space and colored by cluster membership with estimated
+posterior probability included in the plot title.
+
+DP
+EDP
+
+kˆ
+3
+3
+
+p=1
+α
+ˆ
+0.51
+0.56
+
+p=5
+kˆ
+α
+ˆ
+14 2.75
+2 0.35
+
+p = 10
+kˆ
+α
+ˆ
+16 3.25
+2 0.39
+
+p = 15
+kˆ
+α
+ˆ
+15 3.09
+2 0.36
+
+Table 1: The posterior mode number of y clusters, denoted kˆ for both models, and the
+posterior mean of α, αθ , denoted α
+ˆ for both models, as p increases.
+
+the θ-partitions of the EDP depicted in Figure 1, with only two θ-clusters, are very similar
+to the true configuration, even for increasing p. On the other hand, the (θ, ψ)-partition
+of the EDP (not shown) consists of many clusters and resembles the partition of the DP
+model.
+This behavior is representative of the posterior distribution of the random partition
+that, for the DP, has a large posterior mode of k and large posterior mean of α for larger
+values of p, while most of the EDP θ-partitions are composed of only 2 clusters with only
+a handful of subjects placed in the incorrect cluster and the posterior mean of αθ is much
+smaller for large p. Table 1 summarizes the posterior of k for both models and the posterior
+of the precision parameters α, αθ . It is interesting to note that posterior samples of αψ (θ)
+1058
+
+0
+
+4
+x1
+
+0
+
+2
+
+4
+x1
+
+6
+
+8
+
+(e) EDP, p=1
+
+4
+x1
+
+6
+
+0
+
+2
+
+4
+x1
+
+6
+
+0
+
+0
+
+2
+
+4
+x1
+
+*● * *** ***
+●*
+● *
+●●*
+● **
+●*
+●*
+*
+
+**
+
+●
+
+●
+
+*● *
+0
+
+(f) EDP, p=5
+
+6
+
+8
+
+(d) DP, p=15
+
+6
+
+8
+
+**
+
+●
+
+● ● ●●● ● ●
+● ●
+
+● ● ●●● ● ●
+● ●
+
+E[y|x]
+2
+4
+
+**
+
+●
+
+**
+
+8
+
+8
+●
+
+● * *** ***
+**
+●
+
+0
+
+*
+●●*
+● *
+●* *
+*● *
+●
+
+*● *
+
+●
+
+6
+
+8
+2
+
+(c) DP, p=10
+
+−4 −2
+
+−4 −2
+
+●
+
+*● *
+
+**
+
+E[y|x]
+2
+4
+
+*
+●●*
+*
+●● *
+*
+*● *
+●
+
+● * *** ***
+**
+●
+
+0
+
+●
+
+−4 −2
+
+E[y|x]
+2
+4
+0
+
+0
+
+8
+6
+
+6
+E[y|x]
+2
+4
+0
+
+8
+
+●
+●
+●
+● ● ● ●● ●
+
+● ●
+● ●● ● ●●●
+
+−4 −2
+
+6
+
+(b) DP, p=5
+
+8
+
+(a) DP, p=1
+
+2
+
+*
+●●*
+● ●● **
+*
+**
+● ●
+
+8
+
+8
+
+●
+● ● ● ●
+●
+● ● ●
+
+● * *** ***
+*● *
+
+6
+
+6
+
+**
+
+E[y|x]
+2
+4
+
+4
+x1
+
+●
+
+*● *
+
+●
+●
+●
+● ● ●
+
+0
+
+2
+
+●●
+
+*● *● *** ***
+● ●
+*
+●
+*
+●
+● *
+*
+● ●● *
+*
+*
+*
+
+−4 −2
+
+0
+
+●
+
+*● *
+
+**
+
+−4 −2
+
+−4 −2
+
+0
+
+●
+
+*● *
+
+*● * *** ***
+● ●
+● **
+●●*
+●● **
+● **
+*
+
+E[y|x]
+2
+4
+
+E[y|x]
+2
+4
+0
+−4 −2
+
+**
+
+E[y|x]
+2
+4
+
+8
+●
+●● ● ● ●
+●
+● ●
+
+●
+● ●● ● ●●● ●
+
+*● * *** ***
+●*
+● *
+●●*
+*
+●● *
+● **
+*
+●
+
+6
+
+8
+6
+
+6
+
+8
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+2
+
+4
+x1
+
+6
+
+(g) EDP, p=10
+
+*●
+●●*
+● **
+●*
+*● *
+●
+
+●
+
+*● *
+
+8
+
+0
+
+2
+
+● * *** ***
+**
+
+**
+
+●
+
+4
+x1
+
+6
+
+8
+
+(h) EDP, p=15
+
+Figure 2: The point predictions for 20 test samples of the covariates are plotted against x1
+and represented with circles (DP in blue and EDP in red) with true prediction
+as black stars. The bars about the prediction depict the 95% credible intervals.
+
+DP
+EDP
+
+p=1
+ˆl1
+ˆl2
+0.03 0.05
+0.04 0.05
+
+p=5
+ˆl1
+ˆl2
+0.16 0.2
+0.06 0.1
+
+p = 10
+ˆl1
+ˆl2
+0.25 0.34
+0.09 0.16
+
+p = 15
+ˆl1
+ˆl2
+0.26 0.34
+0.12 0.21
+
+Table 2: Prediction error for both models as p increases.
+for θ characteristic of the first cluster tend to be higher than posterior samples of αψ (θ)
+for the second cluster; that is, more clusters are needed to approximate the density of X
+within the first cluster. A non-constant αψ (θ) allows us to capture this behavior.
+As discussed in Section 3, a main point of our proposal is the increased finite sample
+efficiency of the EDP model. To illustrate this, we create a test set with m = 200 new covariates values simulated from (15) with maximum dimension p = 15 and compute the true
+regression function E[Yn+j |xn+j ] and conditional density f (y|xn+j ) for each new subject.
+To quantify the gain in efficiency of the EDP model, we calculate the point prediction and
+predictive density estimates from both models and compare them with the truth.
+Judging from both the empirical l1 and l2 prediction errors, the EDP model outperforms
+the DP model, with greater improvement for larger p; see Table 2. Figure 2 displays the
+prediction against x1 for 20 new subjects. Recall that each new x1 is associated with
+different values of (x2 , . . . , xp ), which accounts for the somewhat erratic behavior of the
+1059
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+0
+
+1
+
+2
+
+y
+
+3
+
+4
+
+5
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+Wade, Dunson, Petrone and Trippa
+
+0
+
+1
+
+2
+
+y
+
+(a) p=1
+
+3
+
+4
+
+5
+
+0
+
+1
+
+2
+
+y
+
+(b) p=5
+
+3
+
+4
+
+5
+
+y
+
+(c) p=10
+
+(d) p=15
+
+3
+
+4
+
+5
+y
+
+(a) p=1
+
+6
+
+7
+
+3
+
+4
+
+5
+y
+
+6
+
+7
+
+(b) p=5
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+f(y|x)
+0.0 0.5 1.0 1.5 2.0 2.5 3.0
+
+Figure 3: Predictive density estimate (DP in blue and EDP in red) for the first new subject
+with true conditional density in black. The pointwise 95% credible intervals are
+depicted with dashed lines (DP in blue and EDP in red).
+
+3
+
+4
+
+5
+y
+
+6
+
+(c) p=10
+
+7
+
+3
+
+4
+
+5
+y
+
+6
+
+7
+
+(d) p=15
+
+Figure 4: Predictive density estimate (DP in blue and EDP in red) for the fifth new subject
+with true conditional density in black. The pointwise 95% credible intervals are
+depicted with dashed lines (DP in blue and EDP in red).
+
+DP
+EDP
+
+p=1
+0.13
+0.12
+
+p=5
+0.5
+0.15
+
+p = 10
+0.66
+0.24
+
+p = 15
+0.68
+0.29
+
+Table 3: l1 density regression error for both models as p increases.
+prediction as a function of x1 for increasing p. The comparison of the credible intervals is
+quite interesting. For p > 1, the unnecessarily wide credible intervals for the DP regression
+model stand out in the first row of Figure 2. This is due to small cluster samples sizes for
+the DP model with p > 1.
+The density regression estimates for all new subjects were computed by evaluating (14)
+at a grid of y-values. As a measure of the performance of the models, the empirical l1
+distance between the true and estimated conditional densities for each of the new covariate
+values is shown in Table 3. Again the EDP model outperforms the DP model. Figures
+1060
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+3 and 4 display the true conditional density (in black) for two new covariate values with
+the estimated conditional densities in blue for the DP and red for the EDP. It is evident
+that for p > 1 the density regression estimates are improved and that the pointwise 95%
+credible intervals are almost uniformly wider both in y and x for the DP model, sometimes
+drastically so. It is important to note that while the credible intervals of the EDP model
+are considerably tighter, they still contain the true density.
+
+6. Alzheimer’s Disease Study
+Our primary goal in this section is to show that the EDP model leads to improved inference
+in a real data study with the important goal of diagnosing Alzheimer’s disease (AD). In
+particular, EDP leads to improved predictive accuracy, tighter credible intervals around the
+predictive probability of having the disease, and a more interpretable clustering structure.
+Alzheimer’s disease is a prevalent form of dementia that slowly destroys memory and
+thinking skills, and eventually even the ability to carry out the simplest tasks. Unfortunately, a definitive diagnosis cannot be made until autopsy. However, the brain may show
+severe evidence of neurobiological damage even at early stages of the disease before the
+onset of memory disturbances. As this damage may be difficult to detect visually, improved
+methods for automatically diagnosing disease based on MRI neuroimaging is needed.
+Data were obtained from the Alzheimer’s Disease Neuroimaging Initiative (ADNI) database,
+which is publicly accessible at UCLA’s Laboratory of Neuroimaging.1 The data set consists
+of summaries of fifteen brain structures computed from structural MRI obtained at the first
+visit for 377 patients, of which 159 have been diagnosed with AD and 218 are cognitively
+normal (CN). The covariates include whole brain volume (BV), intracranial volume (ICV),
+volume of the ventricles (VV), left and right hippocampal volume (LHV, RHV), volume of
+the left and right inferior lateral ventricle (LILV, RILV), thickness of the left and right middle temporal cortex (LMT, RMT), thickness of the left and right inferior temporal cortex
+(LIT, RIT), thickness of the left and right fusiform cortex (LF, RF), and thickness of the
+left and right entorhinal cortex (LE, RE). Volume is measured in cm3 and cortical thickness
+is measured in mm.
+The response is a binary variable with 1 indicating a cognitively normal subject and 0
+indicating a subject who has been diagnosed with AD. The covariate is the 15-dimensional
+1. The ADNI was launched in 2003 by the National Institute on Ageing (NIA), the National Institute of
+Biomedical Imaging and Bioengineering (NIBIB), the Food and Drug Administration (FDA), private
+pharmaceutical companies and non-profit organizations, as a $ 60 million, 5-year public-private partnership. The primary goal of ADNI has been to test whether serial magnetic resonance imaging (MRI),
+positron emission tomography (PET), other biological markers, and clinical and neuropsychological assessment can be combined to measure the progression of mild cognitive impairment (MCI) and early
+Alzheimer’s disease (AD). Determination of sensitive and specific markers of very early AD progression
+is intended to aid researchers and clinicians to develop new treatments and monitor their effectiveness,
+as well as lessen the time and cost of clinical trials. The Principal Investigator of this initiative is Michael
+W. Weiner, MD, VA Medical Center and University of California-San Francisco. ADNI is the result of
+efforts of many co-investigators from a broad range of academic institutions and private corporations,
+and subjects have been recruited from over 50 sites across the U.S. and Canada. The initial goal of ADNI
+was to recruit 800 adults, ages 55 to 90, to participate in the research, approximately 200 cognitively
+normal older individuals to be followed for 3 years, 400 people with MCI to be followed for 3 years and
+200 people with early AD to be followed for 2 years. For up-to-date information, see www.adni-info.org.
+
+1061
+
+Wade, Dunson, Petrone and Trippa
+
+vector of measurements of various brain structures. Our model builds on local probit models
+and can be stated as follows:
+p
+ind
+
+Yi |xi , βi ∼ Bern(Φ(xi βi )),
+
+ind
+
+Xi |µi , σi2 ∼
+
+2
+N(µi,h , σi,h
+),
+h=1
+
+iid
+
+(βi , µi , σi2 )|P ∼ P, P ∼ Q.
+The analysis is first carried using a DP prior for P with mass parameter α and base
+measure P0β × P0ψ , with P0β = N(0p , C −1 ) and P0ψ defined as the product of p normal
+inverse gamma measures. A list of the prior parameters can be found in the Appendix. The
+mass parameter is given a hyperprior of α ∼ Gamma(1, 1).
+The prior parameters were carefully selected based on prior knowledge of the brain
+structures and their relationship with the disease and empirical evidence. The base measure
+for β was chosen to be centered on zero because even though we have prior belief about how
+each structure is related to AD individually, the joint relationship may be more complex.
+For simplicity, the covariance matrix is diagonal. The variances were chosen to reflect
+belief in the maximum range of the coefficient for each brain structure. We also explored
+the idea of defining C through a g-prior, where C −1 = g(X X)−1 with g fixed or given
+a hyperprior. However, this proposal was unsatisfactory because prior information about
+the maximum range of the coefficient for each brain structure is condensed in a single
+parameter g. For example, there was no way to incorporate the belief that while the
+variability of hippocampal volume and inferior lateral ventricular volume are similar, the
+correlation between hippocampal volume and disease status is stronger. The parameters
+of the base measure for X were chosen based on prior knowledge and exploratory analysis
+of the average volume and cortical thickness of the brain structures (µ0 ) and variability
+(bx ). The parameter ax was chosen to equal 2, so that mean of the inverse gamma prior is
+properly defined and the variance is relatively large. The parameter cx is equal to 1/2 to
+increase variability of µ given σx .
+In this example, correlation between the measurements of the brain structures is expected. Furthermore, univariate histograms of the covariates show non-normal behavior.
+These facts suggest that many Gaussian kernels with local independence of the covariates
+will be needed to approximate the density of X. The conditional density of the response,
+on the other hand, may not be so complicated. This motivates the choice of an EDP prior.
+We emphasize that the same conjugate base measure is used with the identical subjective
+choice of parameters. The hyperpriors for the mass parameter of
+αβ ∼ Gamma(1, 1),
+
+iid
+
+αψ (β) ∼ Gamma(1, 1) ∀β ∈ Rp+1 .
+
+If αψ (β) ≈ 0 for all β ∈ Rp+1 the model converges to a DP mixture model, suggesting that
+the extra flexibility of the EDP is unnecessary. On the other hand, αβ ≈ 0 suggests that a
+linear model is sufficient for modelling the conditional response distribution.
+The data were randomly split into a training sample of size 185 and a test sample of
+size 192. Inference is based on the algorithm explained in Section 4 with the added step of
+sampling a latent normal variable to deal with the binary response. For both results the
+number of iterations is 50,000 with burn in period of 10,000. An examination of the trace
+1062
+
+1400
+
+2.2
+2.4
+LMT
+
+2.6
+
+6
+
+5.0
+
+●
+
+2.5
+
+3.0
+
+2.0
+
+2.8
+
+4.0
+
+2.8
+
+3.5
+LHV
+
+RF
+2.2
+
+2.4
+
+2.6
+
+●●
+●
+●
+●
+●●
+● ●●
+●
+● ● ●
+● ●
+●
+●
+● ●●●●
+●● ● ●
+●
+●●● ● ● ●
+●
+●●
+● ●
+●
+●
+●
+●●●●
+● ●●
+● ●● ●
+●
+●●●
+●
+● ●●
+●
+● ● ●● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+● ● ●
+●
+●
+●●●
+●●
+●● ● ● ●●
+●
+● ● ●● ●
+●●
+●
+●
+●● ●
+●
+●
+● ● ●●
+● ● ●
+●
+● ●●● ●
+● ●●
+●
+● ● ● ● ● ●
+●
+●
+● ●
+●
+●
+●●
+● ●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+
+●
+
+●
+
+●
+
+●
+
+●●
+●
+
+5
+4
+RILV
+3
+●
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+2.0
+
+2.2
+
+2.4
+LIT
+
+2.6
+
+2.8
+
+1.8
+
+2.0
+
+2.2
+
+2.4
+
+2.6
+
+●
+●
+
+2
+
+●
+
+3
+LILV
+
+●
+
+4
+
+●
+
+5
+
+●
+
+●
+●
+●●
+● ●●
+●
+● ●
+●●
+● ●●
+● ● ●
+●● ● ●
+●
+● ● ●●
+●
+● ●
+●
+●
+●
+● ● ● ●● ●● ●
+●
+●
+● ●
+●
+●
+●●
+●
+● ●●●
+●
+●●●● ● ●
+●
+●
+●●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●● ●
+●● ●
+●
+●
+●
+●
+●● ●
+●
+● ● ●● ● ●
+●●● ●●●
+●●
+●●
+●●
+●
+● ● ● ●
+●
+●
+● ● ● ●
+●●
+●●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+● ● ●
+● ● ●
+●
+●
+● ●
+●
+●●●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●
+● ● ●
+● ●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+●●
+
+1.6
+
+●●
+
+●
+● ●
+●
+
+● ●
+●
+●●
+●
+●
+●● ●
+● ● ●●
+●
+● ●
+● ●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+● ●● ●●
+● ● ●
+●
+●
+● ● ●●●
+●
+●
+●
+●●● ● ●●●
+●●●
+●
+●
+●
+●● ●●●
+●
+●●●●
+● ●
+●● ●
+● ●
+●
+●
+●
+●●●
+●
+●
+●●● ●
+●
+●●●
+●●
+●●●●
+●●●
+●●
+● ●●● ●
+●● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●●
+●●
+●●
+●
+●
+●
+●●
+●●
+●●
+●●●●
+●
+●●●●●●●
+●
+●●
+
+1
+
+●
+
+●
+
+●
+●
+
+●
+
+●
+
+4.5
+
+●
+
+●
+
+●
+●
+●
+●
+
+2
+1
+
+2.0
+
+2.0
+
+2.8
+2.6
+RIT
+2.4
+2.2
+
+●
+●
+
+●
+
+1.8
+
+2.8
+2.6
+RMT
+2.2
+2.4
+2.0
+1.8
+1.6
+
+● ● ●
+●
+● ●
+●
+●
+● ●
+●
+●
+● ● ● ●● ●
+●
+●
+●
+●
+● ●● ● ●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●
+●●
+● ● ● ● ●● ●
+●
+●
+●
+● ●● ●
+● ●●● ●
+●
+●●●●
+●
+●
+● ● ● ●
+●
+●●
+●
+●
+● ● ● ● ●●● ●●
+●●
+●
+● ● ●●
+●
+● ●●
+●●
+●●
+●
+●● ●● ● ● ●
+●
+●
+●
+●
+● ●●
+●●
+●
+● ●●
+● ●●
+●
+● ● ● ● ●●●
+● ● ●
+●
+●●
+●
+●
+●
+●
+● ●
+● ● ●●
+●
+●
+●
+●●
+
+●
+
+●
+
+2.0
+
+●
+●
+
+●
+
+●
+
+1.8
+
+●
+
+●
+
+●
+
+●
+
+1.6
+
+1800
+
+3.0
+
+3.0
+
+● ●●
+●●
+●
+●
+● ●●
+●
+● ● ● ●●
+●
+●● ●●● ●
+●●
+●●
+● ●●
+●●●
+●
+●●●●
+●
+● ● ●
+●
+●
+●●●● ●
+●
+●● ●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●
+●
+● ●●● ● ● ● ●●●
+●
+●
+●●
+●
+●
+●
+●
+●●
+● ●
+● ●
+●
+●
+●
+●
+● ●● ● ●
+● ●
+●●
+●
+● ●● ●● ● ●●● ● ●● ●
+●
+●●
+● ● ● ●
+●
+●
+●
+●
+●●
+●● ●
+● ●
+●● ●
+● ●
+●
+●
+●
+●●
+● ●●
+●● ●
+●
+●
+●
+●
+●
+●●
+●
+● ●
+● ●
+●
+●●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●
+
+●
+
+●
+
+●
+
+ICV
+● ●
+
+●
+
+●
+
+1600
+
+ICV
+
+●
+
+●
+●
+
+4.0
+
+1200
+
+●
+
+3.5
+
+1800
+
+●
+●●
+●●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●
+●● ● ●
+●
+●
+●
+●
+● ●● ●
+●
+● ●
+● ●● ● ● ●● ● ●
+●
+● ●
+●
+●
+●●
+● ●
+● ●
+● ●
+●
+●
+● ●●
+●
+●
+●
+●●
+●
+●
+●
+●
+● ●
+● ●
+● ●
+●
+●
+● ●● ●●● ●
+● ●
+●
+●
+●
+● ● ●
+●●●
+●● ● ●
+●
+● ●● ●●
+●
+●
+●
+●
+●
+●●
+●
+●● ● ●
+●●
+●●
+●
+●
+●●
+●● ●
+● ● ●●
+●
+● ●
+●
+●
+●●
+●●
+●
+●
+●
+●
+
+●
+●
+
+●
+
+●
+
+RE
+3.0
+
+●
+
+●
+
+●
+
+2.5
+
+60
+
+VV
+
+●
+●●
+
+●●
+● ●
+
+●●
+●●
+
+2.5
+
+● ●
+
+2.0
+
+●
+
+1.5
+
+80
+
+●
+
+RHV
+3.0
+3.5
+
+● ●
+●
+●
+
+●
+
+●
+
+●
+
+2.0
+
+1600
+
+4.0
+
+100
+
+●
+
+●
+
+●
+
+●
+
+●
+
+1.8
+
+1400
+
+●
+●
+● ●● ●
+●
+●
+●●
+● ●● ●
+●●
+●
+●
+● ●●
+●
+● ●
+● ●
+● ● ●
+●●
+●
+●●
+●
+● ●● ●●
+●●●
+●
+● ●●●
+●
+● ●● ●●
+●● ●
+●
+●●
+●
+●●
+●
+●
+● ●
+● ●
+●●
+● ● ●●
+●
+●●●●● ●
+● ●
+●
+●
+●●●
+●
+● ●
+●● ● ●
+●
+●
+●
+●
+● ●●
+●●
+●
+●
+● ●●
+●●
+● ●●
+● ●● ●●●
+●●●●●
+●
+●
+●
+●
+● ●
+●●
+●●
+●● ● ●
+● ●● ●
+●●
+●
+●
+●● ●
+●
+●●
+● ●●● ● ●●●
+●
+●
+●
+●
+● ●●
+●
+●
+●
+●
+●●
+● ●
+●
+●
+●
+
+●
+
+●●
+●
+●
+
+●
+
+1200
+
+●
+
+●
+●
+
+40
+
+BV
+1000
+900
+800
+●
+
+700
+
+●
+●● ●
+●
+
+●
+
+20
+
+1200
+1100
+
+●●
+
+●
+● ●●
+●
+●●●
+●
+●
+●
+●●●
+●● ●
+●●
+●
+●
+●
+●●
+●
+●
+●
+●
+● ●●
+●
+●
+●●
+●
+●●
+●●
+●
+● ●●
+●
+● ●●
+● ●
+●
+●●● ●●
+● ● ●●
+●
+● ● ●
+●●● ●
+●●
+● ●● ●
+●
+●
+●
+●
+●●
+●
+●
+● ●● ●
+●
+●●
+●
+●
+●
+●● ●●●
+●● ●●●
+●
+●
+●
+●●● ●●● ●
+● ●●
+●
+●
+●
+●●
+● ●●
+●
+●●
+●
+●
+●●
+●●● ●
+● ● ●●● ●
+●
+● ●
+●
+●
+●
+●
+●● ● ● ●
+●
+●● ●
+● ●
+● ●
+●
+●● ●
+●
+●
+●
+
+●
+
+120
+
+●
+
+●
+
+4.5
+
+1300
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+2.8
+
+1.5
+
+2.0
+
+2.5
+
+LF
+
+3.0
+
+3.5
+
+LE
+
+1.6
+
+●
+
+1.6
+
+1.8
+
+2.0
+
+6
+
+5.0
+
+2.6
+
+2.8
+
+2.2
+
+●
+●
+●
+●
+
+●
+
+●●
+
+●
+●
+
+2.0
+
+5
+4
+RILV
+3
+1
+
+3.5
+LHV
+
+4.0
+
+2.8
+
+3.0
+
+1
+
+●
+
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+2.4
+LIT
+
+2.6
+
+2.8
+
+●
+
+● ●
+● ●
+● ●
+
+●
+●
+
+●
+
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+1.8
+
+●
+●
+
+2.0
+
+2.2
+
+2.4
+LF
+
+2.6
+
+2.8
+
+●
+
+4
+
+5
+
+●
+
+●
+●
+●●
+● ●●
+● ●
+●●
+● ●●
+● ● ●
+●● ● ●
+●
+●
+●
+● ● ●
+● ●
+●
+●
+●
+● ● ● ●● ●● ●
+●
+●
+● ●
+●
+●
+●●
+●
+● ●●●
+●
+●●●● ● ●
+●
+●
+●●
+●
+●
+●
+●
+●
+● ●●●
+●●
+●● ●
+●● ●
+●
+● ●
+●
+●● ●
+●
+●
+● ● ●●
+●●● ●●●
+●
+● ●
+●● ●
+●●
+●●
+●
+● ● ● ●●
+●
+●
+●●
+●●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+● ● ●
+● ● ●
+●
+●
+● ●
+●
+●●●
+●
+●
+●
+●
+
+●
+
+2.2
+
+3
+LILV
+
+●●
+
+●
+●●
+●
+
+2
+
+●
+
+●
+
+●
+
+●
+
+●
+●
+
+●
+
+●●
+●
+●
+●● ●
+● ● ●●
+●
+● ●
+● ●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●●
+●
+●● ●● ●
+● ● ●
+●
+●
+● ● ●●
+●
+●
+●
+●●● ● ●●●
+●●●
+●
+●
+●
+●
+●● ●●●
+●
+●●●●
+● ●
+●
+●
+● ●● ●
+●
+●●●
+●
+●
+●●● ●
+●
+●●●
+●●
+●●●●
+●●●
+●●
+● ●●● ●
+●● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●●
+●●
+●●
+●
+●●
+●●
+●
+●
+●●●●
+●
+●●●●●●●
+●
+●●
+
+4.5
+
+●●
+●
+●
+●
+●●
+● ●●
+●
+● ●●● ● ●
+●
+●
+●
+● ●●●●
+●
+●
+●
+●●
+●●● ● ● ●
+●
+●●
+● ●
+●
+●
+●
+●●●●
+● ●●
+● ●● ●
+●
+●●●
+●
+● ●●
+●
+● ● ●● ●●
+●
+●
+●
+●
+●● ● ● ●
+●● ● ●● ●
+● ● ●
+●
+●
+●●●
+●●
+●● ● ● ●
+●
+●
+● ● ●● ●
+●●
+●
+●
+●● ●
+●
+●
+● ● ●●
+● ● ●
+●
+● ●●● ●
+● ●●
+●
+● ● ● ● ● ●
+●
+●
+● ●
+●
+●
+●●
+● ●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+
+●
+● ●
+●
+● ●
+
+4.0
+
+2.5
+
+2.6
+2.4
+RF
+2.2
+
+● ● ●
+●
+● ●
+●
+●
+● ●
+●
+●
+● ● ● ●● ●
+●
+●
+●
+●
+● ●● ● ●
+● ●
+●
+● ●
+●
+●
+●● ●
+●●
+●
+●
+●
+●
+●
+●
+● ● ●●
+●
+●
+●
+●●
+●
+●
+● ●●●● ●
+●●●
+●●●●
+●
+●
+● ● ● ●
+●
+●●
+●
+●
+● ● ● ● ●●● ●●
+●●
+●
+● ● ●●
+●
+● ●●
+●●
+●●
+●
+●● ●● ● ● ●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+● ●●
+● ●●
+●
+● ● ● ● ●●●
+● ● ●
+●
+●●
+●
+●
+●
+●
+● ●
+● ● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+
+2
+
+RHV
+3.0
+3.5
+
+2.0
+
+2.0
+
+3.0
+2.8
+2.6
+RIT
+2.4
+
+●
+
+●
+
+2.2
+2.4
+LMT
+
+●
+
+●
+
+●
+●
+
+1.6
+
+1.8
+
+●
+
+●
+
+2.0
+
+2.8
+2.6
+RMT
+2.2
+2.4
+2.0
+
+●
+
+●
+
+●
+
+1800
+
+●
+
+1.8
+
+3.0
+
+● ●●
+●●
+●
+●
+● ●●
+●
+● ● ● ●●
+●
+●● ●●● ●
+●●
+●●
+● ●●
+●●●
+●
+●●●●
+●
+● ● ●
+●
+●
+●●
+●
+●
+●
+●● ●
+●
+● ●●
+● ● ●●●●
+● ●●
+●
+● ●●
+●
+●
+●
+●
+● ●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+● ●● ● ●
+●
+●●
+●
+●
+● ●● ●● ● ●●● ● ●● ●
+●
+●●
+● ● ● ●
+●
+●
+●
+●
+●●
+●● ●
+● ●
+●● ●
+● ●
+●
+●
+●
+●●
+● ●●
+●● ●
+●
+●
+●
+●
+●
+●●
+●
+● ●
+● ●
+●
+●●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●
+
+●
+
+1600
+
+●
+
+ICV
+● ●
+
+●
+
+4.0
+
+1400
+
+●
+●
+
+●
+
+●
+
+3.5
+
+1200
+
+ICV
+
+●
+
+2.5
+
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●●
+●● ● ●
+● ●
+●
+●
+●
+●
+● ●●●●
+●
+● ●
+●●●● ● ●● ● ●
+●
+●● ● ●
+●
+●● ●
+●● ●●●
+●
+●
+●
+●
+●●
+●
+●
+●
+● ●
+●●●●
+● ●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●●
+●
+●
+●
+●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●● ● ●
+●
+● ●●
+●●
+●●
+●
+●
+●●
+●● ●
+● ● ●●
+●
+● ●
+●
+●
+●●
+●
+●
+●
+●
+
+●
+
+●
+
+RE
+3.0
+
+1800
+
+●●
+
+●
+
+2.5
+
+1600
+
+●
+
+●
+●
+
+●
+
+●
+
+2.0
+
+●
+
+●
+●
+
+●●
+●●
+
+1.5
+
+●●
+
+●
+●●
+
+●●
+● ●
+
+1.8
+
+1400
+
+●
+
+VV
+
+80
+
+●
+
+● ●
+
+2.0
+
+100
+
+● ●
+●
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+1200
+
+●
+●
+● ●● ●
+●
+●
+●●
+● ●● ●
+●●
+●
+●
+● ●●
+●
+● ●
+●● ●
+● ●●
+●
+●
+●
+● ●
+●
+● ●● ●
+●●●
+●
+● ●●●
+●
+●
+●
+●
+●
+●
+●● ●
+●
+●●
+●
+●●
+●
+●
+● ●
+● ●
+●●
+● ● ●●
+●
+●●●●● ●
+● ●
+●
+●
+●●●
+●
+● ●
+●● ● ●
+●
+●
+●
+●
+● ●●
+●●
+●
+●
+● ●●
+●●
+● ●●
+● ●● ●●●
+●●●●●
+●
+●
+●●
+● ●●
+●●
+●●
+●
+●
+● ●● ●
+●●●
+●
+●
+●● ●
+●
+●●
+● ●●● ● ●●●
+●
+●
+●
+●
+● ●●
+●
+●
+●
+●
+●●
+● ●
+●
+●
+●
+
+●
+
+●●
+●
+●
+
+60
+
+BV
+1000
+900
+800
+700
+
+●
+
+●
+
+●
+●
+
+40
+
+1100
+
+●●
+●
+● ●●
+●
+●●●
+●
+●
+●●
+●● ●
+●●
+●
+●
+●
+●●
+●
+●
+●
+● ●●
+●
+●
+●●
+●
+●●
+●●
+●
+● ●●
+●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+● ● ●●
+● ● ● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ● ●●●●
+●
+●
+● ●● ●
+●
+●●
+●
+●
+●
+●● ●●●
+●● ●●●
+●
+●
+●
+●●● ●●● ●
+● ●●
+●
+●
+●
+●●
+● ●●
+●
+●●
+●
+●
+●●
+●●● ●
+● ● ●●● ●
+●
+● ● ●●● ●
+●● ● ●
+●
+●
+●● ●
+● ●
+● ●
+●
+●● ●
+●
+●
+●
+●
+
+●
+
+20
+
+1200
+
+●
+●● ●
+●
+
+●
+
+120
+
+●
+
+●
+
+4.5
+
+1300
+
+Figure 5: Data points are plotted in the covariate space and colored by the partition with
+the highest posterior probability for the DP model.
+
+1.5
+
+2.0
+
+●
+●
+●
+
+●
+
+●
+●
+●
+●
+
+●
+
+●
+●
+●
+
+2.5
+
+3.0
+
+3.5
+
+LE
+
+Figure 6: Data points are plotted in the covariate space and colored by the β-partition with
+the highest posterior probability for the EDP model.
+
+and autocorrelation plots for the subject-specific parameters (βi , µi , σi2 ) provided evidence
+of convergence, which was further checked via the Geweke and Raftery and Lewis methods.
+Computation times are quite similar for both models, although slightly faster for the DP.
+The DP based model requires many kernels to approximate the joint distribution, while
+the EDP prefers a coarser β-partition for the conditional density of Y |x. The posterior of k
+and the precision parameters α and αβ are summarized and compared for the two models in
+1063
+
+Wade, Dunson, Petrone and Trippa
+
+DP
+EDP
+
+kˆ
+16
+3
+
+k˜
+16
+4
+
+[kl , ku ]
+[14,19]
+[2,7]
+
+α
+ˆ
+3.41
+0.71
+
+[αl , αu ]
+[1.79, 5.59]
+[0.11, 1.76]
+
+Table 4: The posterior of k for both models is summarized through the posterior mode,
+ˆ the posterior median, denoted k;
+˜ and the 95% credible intervals, dedenoted k;
+noted [kl , ku ]. The posterior of the precision parameter α for the DP and αβ for
+the EDP is summarized through the posterior mode, denoted α
+ˆ , and 95% credible
+intervals, denoted [αl , αu ].
+
+DP
+EDP
+
+Accuracy
+82.81%
+86.46%
+
+AUC
+0.88
+0.90
+
+MXE
+0.42
+0.38
+
+Table 5: Predictive accuracy, area under the ROC curve (AUC), and mean cross entropy
+(MXE) for the test set.
+
+Table 4. Posterior samples of αψ (β) tend to be higher for average values of β, meaning that
+more kernels are needed for the density of X within such β-clusters. The added flexibility
+of a β-dependent precision parameter for ψ allows us to capture this behavior.
+The posterior of the partition is quite spread out across many similar partitions for the
+DP and EDP models. A representative partition, the partition with the highest estimated
+posterior probability, for the DP mixture models is depicted in Figure 5, where the data
+points are plotted in the covariate space and colored by the partition. Notice the high
+number of kernels with small sample sizes within each cluster. Figure 6 depicts a representative β-partition for the EDP mixture model, where the data points are colored by the
+β-partition. Not only are there fewer clusters with larger sample sizes, but the clusters
+are much more interpretable as well. In particular, the posterior concentrates on partitions
+similar to the one depicted in Figure 6 with a general cluster and two extreme clusters
+of 100% AD and 100% non-AD patients (the green and black clusters, respectively). The
+black cluster of non-AD patients display high brain volume compared to intracranial volume, low ventricular volume, high hippocampal volume, and high cortical thickness; this
+behavior could be expected as AD is associated with shrinking brain tissue and increased
+cerebrospinal fluid, while intracranial volume remained fixed. The green cluster of AD patients display lower hippocampal volume and interestingly, low intracranial volume and low
+cortical thickness with a “right-less-than-left” pattern.
+To quantify the gain in efficiency with the EDP model, we computed the predictive
+accuracy, area under the ROC curve (AUC), and mean cross entropy (MXE) for the test
+set, using the ROCR package in R. The larger sample sizes of the EDP model improve all
+predictive criteria when compared to the DP model (Table 5).
+Finally, we note that by allowing for a coarser β-partition when appropriate, the increased cluster sample sizes not only result in improved accuracy for the EDP model but
+also allow for much tighter credible intervals. This is shown in Figure 7 which depicts the
+1064
+
+*● * * *● * *● *●
+
+* *● *● *● *● *● *●
+
+●
+
+●
+
+0.8
+
+●
+
+0.2
+
+p(y=1|x)
+0.4 0.6
+
+p(y=1|x)
+0.4 0.6
+
+0.8
+
+●
+
+1.0
+
+1.0
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+0.2
+
+●
+
+●
+
+0.0
+
+0.0
+
+●
+
+●
+
+*● * *
+2
+
+4
+
+6
+Subject
+
+8
+
+10
+
+(a) DP
+
+*● * *
+2
+
+4
+
+6
+Subject
+
+8
+
+10
+
+(b) EDP
+
+Figure 7: Predicted probability of being healthy against subject index for 10 new subjects
+represented with circles (DP in blue and EDP in red) with the true outcome as
+black stars. The bars about the prediction depict the 95% credible intervals.
+
+estimated probability of being healthy for 10 subjects along with lower and upper bounds for
+95% credible intervals, as a function of subject index. Notice the tighter credible intervals
+for the EDP model with some dramatic examples given by subjects 1 and 8.
+We also compared with Gaussian process (GP), support vector machine (SVM), and
+random forest (RF) models, which are implemented in the kernlab and randomForest packages in R. The results of the EDP are comparable with these other standard nonparametric
+classification methods, in particular the predictive accuracy of the GP, SVM, and RF models
+are 85.42%, 86.46%, and 86.46%, respectively. The results remain quite comparable with
+different random splits into training and test sets, which also confirmed the conclusions
+suggested by Figures 5, 6, and 7 and Tables 4 and 5.
+
+7. Discussion
+In this paper, we have highlighted a drawback of DP mixture models when the aim is
+estimation of the regression function and conditional distribution. We have proposed a
+simple, but efficient, solution based on the EDP, which overcomes the problems of the DP
+mixture model by introducing a nested partition structure. An important feature of the
+proposed EDP mixture model is that computations remain relatively simple; unlike other
+modifications of the DP for conditional distribution modeling we maintain the ability to
+marginalize out the random measure and induce a simple urn scheme. In scaling up to
+larger numbers of predictors p, this simplified structure should be advantageous.
+1065
+
+Wade, Dunson, Petrone and Trippa
+
+Acknowledgments
+We thank the referees and associate editor for their helpful comments. Data collection and
+sharing for the application in Section 6 of this work was funded by the Alzheimer’s Disease
+Neuroimaging Initiative (ADNI) (National Institutes of Health Grant U01 AG024904). We
+acknowledge the funding contributions of ADNI supporters (adni-info.org/Scientists/
+ADNISponsors.aspx).
+
+Appendix A. Computations
+This appendix contains further details of the MCMC algorithm described in Section 4.
+The conditional distribution of si = (si,y , si,x ), which denotes the vector containing the
+y-cluster and x-cluster membership for subject i, is
+ωk−i +1,1 (yi , xi )
+∗
+∗
+si |ρ−i
+δ(k−i +1,1)
+n−1 , θ , ψ , x1:n , y1:n ∼
+c1
+
+
+kj−i
+k−i
+ωj,k−i +1 (yi , xi )
+ωj,l (yi , xi )
+
+
+j
++
+δ(j,k−i +1) +
+δ(j,l)  ,
+
+j
+c1
+c1
+j=1
+
+(16)
+
+l=1
+
+where for j = 1, . . . , k −i and l = 1, . . . , kj−i ,
+ωj,l (yi , xi ) =
+
+−i
+n−i
+j nl|j
+
+αψ (θj∗−i )
+
++
+
+n−i
+j
+
+∗−i
+K(yi |xi , θj∗−i )K(xi |ψl|j
+),
+
+for j = 1, . . . , k −i ,
+ωj,k−i +1 (yi , xi ) =
+j
+
+∗−i
+n−i
+j αψ (θj )
+
+αψ (θj∗−i ) + n−i
+j
+
+K(yi |xi , θj∗−i )hx (xi ),
+
+ωk−i +1,1 (yi , xi ) = αθ hy (yi |xi )hx (xi ),
+and
+k−i
+
+c1 = ωk−i +1,1 (yi , xi ) +
+
+
+
+kj−i
+
+
+ωj,k−i +1 (yi , xi ) +
+j=1
+
+
+
+ωj,l (yi , xi ) .
+
+j
+
+l=1
+
+−i
+Here, ρn−1
+represents the partition of the n − 1 subjects with the ith subject removed where
+−i
+−i
+∗−i
+∗−i
+k −i , kj−i , n−i
+and ψl|j
+are the unique cluster
+j , nl|j are defined from ρn−1 . Similarly, θj
+
+parameters associated to the clusters of ρ−i
+n−1 .
+Next, we describe the Metropolis-Hastings step, which proposes to move a ψ-cluster to
+be nested with a different or new θ-cluster. This step is separated into three possible moves:
+1) a ψ-cluster, among those within θ-clusters with more than one ψ-cluster, is moved to
+a different θ-cluster; 2) a ψ-cluster, among those within θ-clusters with more than one ψcluster, is moved to a new θ-cluster; 3) a ψ-cluster, among those within θ-clusters with only
+one ψ-cluster, is moved to a different θ-cluster.
+1066
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+Let kx,2+ be the number of ψ-clusters within a θ-cluster with more than one ψ-cluster
+and kx,1 be the number of ψ-clusters within a θ-cluster with only one ψ-cluster. The
+proposal distributions for the three moves are as follows. For the first move, the ψ-cluster
+−1
+is uniformly selected with probability kx,2+
+and moved within a different θ-cluster selected
+−1
+uniformly with probability (k − 1) . For the second, the ψ-cluster is again uniformly
+−1
+selected with probability kx,2+
+and moved to a new cluster. Lastly, for the third, the ψ−1
+cluster is uniformly selected with probability kx,1
+and moved within a different θ-cluster
+−1
+selected uniformly with probability (k − 1) .
+Let ρ∗n be the proposed partition defined by moving ψ-cluster l in θ-cluster j to θcluster h. For the first move, h ∈ {1, . . . , j − 1, j + 1, . . . , k} and the acceptance probability
+is min(1, p), where
+p=
+
+Γ(αψ (θj∗ ) + nj )Γ(αψ (θh∗ ) + nh )
+Γ(nj − nl|j )Γ(nh + nl|j )
+αψ (θh∗ )
+Γ(nj )Γ(nh )
+Γ(αψ (θj∗ ) + nj − nl|j )Γ(αψ (θh∗ ) + nh + nl|j ) αψ (θj∗ )
+i∈Sl|j
+
+K(yi |xi , θh∗ ) kx,2+
+
+i∈Sl|j
+
+∗
+K(yi |xi , θj∗ ) kx,2+
+
+,
+
+∗
+and kx,2+
+is the number of ψ-clusters within a θ-cluster with more than one ψ-cluster under
+∗ , x∗ ) be the
+∗
+∼ P (θ|yl|j
+the proposed partition. For the second move, h = k + 1 and let θk+1
+l|j
+proposed parameter of the k + 1 θ-cluster. The acceptance probability is min(1, p), where
+
+p=
+
+∗ ))
+∗ )
+Γ(αψ (θj∗ ) + nj )Γ(αψ (θk+1
+Γ(nj − nl|j )Γ(nl|j )
+αψ (θk+1
+α
+θ
+∗ )+n )
+Γ(nj )
+Γ(αψ (θj∗ ) + nj − nl|j )Γ(αψ (θk+1
+αψ (θj∗ )
+l|j
+∗ |x∗ )
+hy (yl|j
+l|j
+
+kx,2+
+∗ ) k∗ k ,
+K(y
+|x
+,
+θ
+i i j
+x,1
+i∈Sl|j
+∗ is the number of ψ-clusters within a θ-cluster with only one ψ-cluster under the
+and kx,1
+proposed partition. Finally, for the third move, h ∈ {1, . . . , j − 1, j + 1, . . . , k} and the
+acceptance probability is min(1, p), where
+
+Γ(nh + nl|j ) Γ(αψ (θj∗ ) + nl|j )Γ(αψ (θh∗ ) + nh ) 1 αψ (θh∗ )
+p=
+Γ(nl|j )Γ(nh ) Γ(αψ (θj∗ ))Γ(αψ (θh∗ ) + nh + nl|j ) αθ αψ (θj∗ )
+
+i∈Sl|j
+
+K(yi |xi , θh∗ ) kx,1 k − 1
+
+∗ |x∗ )
+hy (yl|j
+l|j
+
+∗
+kx,2+
+
+Each iteration of the MCMC algorithm is summarized as follows:
+• For i = 1, . . . , n,
+– if si,y = j and n−i
+j = 0,
+∗ from (θ ∗ , ψ ∗ ).
+∗ then remove θj∗ and ψl|j
+
+– Otherwise, if si,y = j, si,x = l and n−i
+l|j = 0,
+∗ from ψ ∗ .
+∗ then remove ψl|j
+∗
+∗
+– Next, sample si given ρ−i
+n−1 , θ , ψ , x1:n , y1:n as defined by Equation (16).
+
+– If si,y = k −i + 1,
+1067
+
+.
+
+Wade, Dunson, Petrone and Trippa
+
+β0,i
+β1,i
+2
+σy,i
+
+DP
+EDP
+DP
+EDP
+DP
+EDP
+
+p=1
+-0.91
+-1.86
+0.61
+1.54
+-1.51
+0.49
+
+p=5
+-0.13
+0.59
+-0.22
+-0.64
+1.35
+1.1
+
+p = 10
+-1.22
+1.24
+0.79
+2.08
+-0.13
+-2.09
+
+p = 15
+-3.15
+-0.67
+3.25
+-0.42
+1.06
+-3.51
+
+Table 6: The Z-score from Geweke diagnostic for the subject-specific θ-parameters of one
+subject.
+
+∗
+∗ sample θk∗−i +1 given yi , xi and ψ1|k
+−i +1 given xi and concatenate them to
+∗
+∗
+(θ , ψ ).
+
+– Otherwise, if si,y = j and si,x = kj−i + 1,
+∗ sample ψk∗−i +1|j given xi and concatenate it to ψ ∗ .
+j
+
+• Carry out the first move described in the Metropolis-Hastings step.
+• Sample u ∼ U(0, 1). If u < 0.5, perform move 2, otherwise perform move 3.
+• For j = 1, . . . , k,
+– sample θj∗ given (yj∗ , x∗j ), that is, from the posterior based on p0θ (θj∗ ) and
+∗
+i∈Sj+ K(yi |xi , θj ),
+– and for l = 1, . . . , kj ,
+∗ given x∗ , that is, from the posterior based on p (ψ ∗ ) and
+∗ sample ψl|j
+0ψ
+l|j
+l|j
+∗
+i∈Sj,l K(xi |ψl|j ).
+
+Appendix B. Simulation Study
+The prior parameters used for the simulation study in Section 5 are β0 = (2.25, 0.55, 0, . . . , 0) ,
+C = diag (0.05, 1, . . . , 1); ay = 2, by = 0.1, µ0 = (4, . . . , 4) , c = (0.25, . . . , 0.25) ; ax =
+(2, . . . , 2) , bx = (1, . . . , 1) .
+Table 6 lists the Z-scores for the θ parameters of the one subject from the Geweke
+diagnostic for assessing convergence of the MCMC chain, which are slightly high for p = 10
+and p = 15 but a thinning of 2 improves the scores.
+
+Appendix C. Alzheimer’s Disease Study
+For the prior parameters for the AD study in Section 6, C −1 is a diagonal matrix with
+diagonal elements (400, .0001, .0001, 0.0004, 4, 4, .25, .25, 4, 4, 4, 4, 1, 1, 1, 1), and
+µ0 = (1000, 1450, 45, 3.25, 3.25, 2, 2, 2.4, 2.4, 2.5, 2.5, 2.3, 2.3, 2.75, 2.75) ; cx,h = 1/2, ax,h =
+2 ∀h; and bx = (10000, 10000, 150, .25, .25, .25, .25, .04, .04, .04, .04, .04, .04, .1, .1) .
+1068
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+References
+C.E. Antoniak. Mixtures of Dirichlet processes with applications to Bayesian nonparametric
+problems. Annals of Statistics, 2:1152–1174, 1974.
+D.M. Blei, T.L. Griffiths, and M.I. Jordan. The nested Chinese restaurant process and
+Bayesian nonparametric inference of topic hierarchies. Journal of the ACM, 57:1–30,
+2010.
+P.J. Brown, N.D. Le, and J.V. Zidek. Inference for a covariance matrix. In P.R. Freeman
+and A.F.M. Smith, editors, Aspects of Uncertainty. A Tribute to D.V. Lindley, pages
+77–92. Wiley, Chichester, 1994.
+Y. Chung and D.B. Dunson. Nonparametric Bayes conditional distribution modeling with
+variable selection. Journal of the American Statistical Association, 104:1646–1660, 2009.
+B.S. Clarke, E. Fokou´e, and H.H. Zhang. Principles and Theory for Data Mining and
+Machine Learning. Springer Series in Statistics, New York, 2009.
+G. Consonni and P. Veronese. Conditionally reducible natural exponential families and
+enriched conjugate priors. Scandinavian Journal of Statistics, 28:377–406, 2001.
+D.B. Dunson. Nonparametric Bayes local partition models for random effects. Biometrika,
+96:249–262, 2009.
+D.B. Dunson and J.H. Park. Kernel stick-breaking processes. Biometrika, 95:307–323, 2008.
+D.B. Dunson, J. Xue, and L. Carin. The matrix stick breaking process: Flexible Bayes
+meta analysis. Journal of the American Statistical Association, 103:317–327, 2008.
+D.B. Dunson, S. Petrone, and L. Trippa. Partially hierarchical Dirichlet mixtures for flexible
+clustering and regression. 2011. Unpublished manuscript.
+S. Efromovich. Conditional density estimation in a regression setting. Annals of Statistics,
+35:2504–2535, 2007.
+M.D. Escobar and M. West. Bayesian density estimation and inference using mixtures.
+Journal of the American Statistical Association, 90:577–588, 1995.
+A.E. Gelfand, A. Kottas, and S.N. MacEachern. Bayesian nonparametric spatial modeling
+with Dirichlet process mixing. Journal of the American Statistical Association, pages
+1021–1035, 2005.
+S. Ghosal. Dirichlet process, related priors, and posterior asymptotics. In N.L. Hjort,
+C. Holmes, P. M¨
+uller, and S.G. Walker, editors, Bayesian Nonparametrics: Principles
+and Practice. Cambridge University Press, 2010.
+J.E. Griffin and M.F.J. Steel. Order-based dependent Dirichlet processes. Journal of the
+American Statistical Association, 10:179–194, 2006.
+1069
+
+Wade, Dunson, Petrone and Trippa
+
+L.A. Hannah, D.M. Blei, and W.B. Powell. Dirichlet process mixtures of generalized linear
+models. Journal of Machine Learning Research, 12:1923–1953, 2011.
+C. Kang and S. Ghosal. Clusterwise regression using Dirichlet process mixtures. In A. Sengupta, editor, Advances in Multivariate Statistical Methods, pages 305–325. 2009.
+S.N. MacEachern. Dependent nonparametric processes. In ASA Proceedings of the Section
+on Bayesian Statistical Science, pages 50–55, Alexandria, VA, 1999. American Statistical
+Association.
+P. M¨
+uller and F.A. Quintana. Random partition models with regression on covariates.
+Journal of Statistical Planning and Inference, 140:2801–2808, 2010.
+P. M¨
+uller, A. Erkanli, and M. West. Bayesian curve fitting using multivariate normal
+mixtures. Biometrika, 88:67–79, 1996.
+R.M. Neal. Markov chain sampling methods for Dirichlet process mixture models. Journal
+of Computational and Graphical Statistcs, 9:249–265, 2000.
+A. Norets and J. Pelenis. Bayesian modeling of joint and conditional distributions. Journal
+of Econometrics, 168:332–346, 2012.
+J.H. Park and D.B. Dunson. Bayesian generalized product partition model. Statistica
+Sinica, 20:1203–1226, 2010.
+S. Petrone and L. Trippa. Bayesian modeling via nested random partitions. In Proceedings of
+the International Conference on Complex Data Modelling and Computationally Intensive
+Statistical Methods, Milan, Italy, 2009. Politecnico di Milano.
+S. Petrone, M. Guindani, and A.E. Gelfand. Hybrid Dirichlet mixture models for functional
+data. Journal of the Royal Statistical Society, Series B, 71:755–782, 2009.
+L. Ren, L. Du, D.B. Dunson, and L. Carin. The logistic stick-breaking process. Journal of
+Machine Learning and Research, 12:203–239, 2011.
+A. Rodriguez and D.B. Dunson. Nonparametric Bayesian models through probit stickbreaking processes. Bayesian Analysis, 6:145–178, 2011.
+A. Rodriguez, D.B. Dunson, and A.E. Gelfand. Bayesian nonparametric functional data
+analysis through density estimation. Biometrika, 96:149–162, 2009.
+D.W. Scott. Multivariate Density Estimation: Theory, Practice, and Visualization. John
+Wiley & Sons, Inc., Hoboken, NJ, 1992.
+B. Shahbaba and R.M. Neal. Nonlinear models using Dirichlet process mixtures. Journal
+of Machine Learning Research, 10:1829–1850, 2009.
+S.T. Tokdar. Adaptive convergence rates of a Dirichlet process mixture of multivariate
+normals. 2011. arXiv:1111.4148 [math.ST].
+1070
+
+Prediction via Enriched Dirichlet Process Mixtures
+
+S.K. Wade, S. Mongelluzzo, and S. Petrone. An enriched conjugate prior for Bayesian
+nonparametric inference. Bayesian Analysis, 6:359–386, 2011.
+Y. Wu and S. Ghosal. Kullback Leibler property of kernel mixture priors in Bayesian density
+estimation. Electronic Journal of Statistics, 2:298–331, 2008.
+Y. Wu and S. Ghosal. The L1 -consistency of Dirichlet mixtures in multivariate density
+estimation. Journal of Multivariate Analysis, 101:2411–2419, 2010.
+
+1071
+
+

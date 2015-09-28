@@ -1,0 +1,1714 @@
+Journal of Machine Learning Research 15 (2014) 1011-1039
+
+Submitted 9/13; Published 3/14
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization
+Under Noisy Separability
+Tomohiko Mizutani
+
+mizutani@kanagawa-u.ac.jp
+
+Department of Information Systems Creation
+Kanagawa University
+Yokohama, 221-8686, Japan
+
+Editor: Nathan Srebro
+
+Abstract
+We present a numerical algorithm for nonnegative matrix factorization (NMF) problems
+under noisy separability. An NMF problem under separability can be stated as one of
+finding all vertices of the convex hull of data points. The research interest of this paper is
+to find the vectors as close to the vertices as possible in a situation in which noise is added
+to the data points. Our algorithm is designed to capture the shape of the convex hull of
+data points by using its enclosing ellipsoid. We show that the algorithm has correctness and
+robustness properties from theoretical and practical perspectives; correctness here means
+that if the data points do not contain any noise, the algorithm can find the vertices of their
+convex hull; robustness means that if the data points contain noise, the algorithm can find
+the near-vertices. Finally, we apply the algorithm to document clustering, and report the
+experimental results.
+Keywords: nonnegative matrix factorization, separability, robustness to noise, enclosing
+ellipsoid, document clustering
+
+1. Introduction
+This paper presents a numerical algorithm for nonnegative matrix factorization (NMF)
+problems under noisy separability. The problem can be regarded as a special case of an
+NMF problem. Let Rd×m
+be the set of d-by-m nonnegative matrices, and N be the set of
++
+nonnegative integer numbers. A nonnegative matrix is a real matrix whose elements are
+d×m
+all nonnegative. For a given A ∈ R+
+and r ∈ N, the nonnegative matrix factorization
+d×r
+(NMF) problem is to find F ∈ R+ and W ∈ Rr×m
+such that the product F W is as close
++
+to A as possible. The nonnegative matrices F and W give a factorization of A of the form,
+A = F W + N,
+where N is a d-by-m matrix. This factorization is referred to as the NMF of A.
+Recent studies have shown that NMFs are useful for tackling various problems such
+as facial image analysis (Lee and Seung, 1999), topic modeling (Arora et al., 2012b, 2013;
+Ding et al., 2013), document clustering (Xu et al., 2003; Shahnaz et al., 2006), hyperspectral
+unmixing (Nascimento and Dias, 2005; Miao and Qi, 2007; Gillis and Vavasis, 2014), and
+blind source separation (Cichocki et al., 2009). Many algorithms have been developed in
+the context of solving such practical applications. However, there are some drawbacks in
+c 2014 Tomohiko Mizutani.
+
+Mizutani
+
+the use of NMFs for such applications. One of them is in the hardness of solving an NMF
+problem. In fact, the problem has been shown to be NP-hard by Vavasis (2009).
+As a remedy for the hardness of the problem, Arora et al. (2012a) proposed to exploit
+the notion of separability, which was originally introduced by Donoho and Stodden (2003)
+for the uniqueness of NMF. An NMF problem under separability becomes a tractable one.
+Separability assumes that A ∈ Rd×m
+can be represented as
++
+A = F W for F ∈ Rd×r
+and W = (I, K)Π ∈ Rr×m
+,
++
++
+
+(1)
+
+where I is an r-by-r identity matrix, K is an r-by-(m − r) nonnegative matrix, and Π is
+an m-by-m permutation matrix. This means that each column of F corresponds to that
+of A up to a scaling factor. A matrix A is said to be a separable matrix if it can be
+represented in the form (1). In this paper, we call F the basis matrix of a separable matrix,
+and W , as well as its submatrix K, the weight matrix. Noisy separability assumes that
+a separable matrix A contains a noise matrix N such that A = A + N , where N is a
+d-by-m matrix. Arora et al. showed that there exists an algorithm for finding the near-basis
+matrix of a noisy separable one if the noise is small in magnitude. Although a separability
+assumption restricts the fields of application for NMFs, it is known to be reasonable at
+least, in the contexts of document clustering (Kumar et al., 2013), topic modeling (Arora
+et al., 2012a,b, 2013), and hyperspectral unmixing (Gillis and Vavasis, 2014). In particular,
+this assumption is widely used as a pure-pixel assumption in hyperspectral unmixing (see,
+for instance, Nascimento and Dias, 2005; Miao and Qi, 2007; Gillis and Vavasis, 2014).
+An NMF problem under noisy separability is to seek for the basis matrix of a noisy
+separable one. The problem is formally described as follows:
+Problem 1 Let a data matrix M be a noisy separable matrix of size d-by-m. Find an
+index set I with cardinality r on {1, . . . , m} such that M (I) is as close to the basis matrix
+F as possible.
+Here, M (I) denotes a submatrix of M that consists of every column vector with an index
+in I. We call the column vector of M a data point and that of the basis matrix F a
+basis vector. An ideal algorithm for the problem should have correctness and robustness
+properties; correctness here means that, if the data matrix M is just a separable one, the
+algorithm can find the basis matrix; robustness means that, if the data matrix M is a noisy
+separable one, the algorithm can find the near-basis matrix. A formal description of the
+properties is given in Section 2.1
+We present a novel algorithm for Problem 1. The main contribution of this paper is
+to show that the algorithm has correctness and robustness properties from theoretical and
+practical perspectives. It is designed on the basis of the geometry of a separable matrix.
+Under reasonable assumptions, the convex hull of the column vectors of a separable matrix
+forms a simplex, and in particular, the basis vectors correspond to the vertices. Therefore, if
+all vertices of a simplex can be found, we can obtain the basis matrix of the separable matrix.
+Our algorithm uses the fact that the vertices of simplex can be found by an ellipsoid. That
+is, if we draw the minimum-volume enclosing ellipsoid (MVEE) for a simplex, the ellipsoid
+only touches its vertices. More precisely, we give plus and minus signs to the vertices of a
+simplex, and take the convex hull; it becomes a crosspolytope having the simplex as one of
+1012
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+the facets. Then, the MVEE for the crosspolytope only touches the vertices of the simplex
+with plus and minus signs.
+Consider Problem 1 without noise. In this case, the data matrix is just a separable
+one. Our algorithm computes the MVEE for the data points and outputs the points on the
+boundary of the ellipsoid. Then, the obtained points correspond to the basis vectors for a
+separable matrix. We show in Theorem 5 that the correctness property holds. Moreover, the
+algorithm works well even when the problem contains noise. We show in Theorem 9 that,
+if the noise is lower than a certain level, the algorithm correctly identifies the near-basis
+vectors for a noisy separable matrix, and hence, the robustness property holds. The existing
+algorithms (Arora et al., 2012a; Bittorf et al., 2012; Gillis, 2013; Gillis and Luce, 2013;
+Gillis and Vavasis, 2014; Kumar et al., 2013) are formally shown to have these correctness
+and robustness properties. In Section 2.4, our correctness and robustness properties are
+compared with those of the existing algorithms.
+It is possible that noise will exceed the level that Theorem 9 guarantees. In such a
+situation, the MVEE for the data points may touch many points. Hence, r points need
+to be selected from the points on the boundary of the ellipsoid. We make the selection by
+using existing algorithms such as SPA (Gillis and Vavasis, 2014) and XRAY (Kumar et al.,
+2013). Our algorithm thus works as a preprocessor which filters out basis vector candidates
+from the data points and enhance the performance of existing algorithms.
+We demonstrated the robustness of the algorithms to noise through experiments with
+synthetic data sets. In particular, we experimentally compared our algorithm with SPA
+and XRAY. We synthetically generated data sets with various noise levels, and measured
+the robustness of an algorithm by its recovery rate. The experimental results indicated that
+our algorithm can improve the recovery rates of SPA and XRAY.
+Finally, we applied our algorithm to document clustering. Separability for a documentterm matrix means that each topic has an anchor word. An anchor word is a word which
+is contained in one topic but not contained in the other topics. If an anchor word is
+found, it suggests the existence of its associated topic. We conducted experiments with
+document corpora and compared the clustering performances of our algorithm and SPA.
+The experimental results indicated that our algorithm would usually outperform SPA and
+can extract more recognizable topics.
+The rest of this paper is organized as follows. Section 2 gives an outline of our algorithm
+and reviews related work. Then, the correctness and robustness properties of our algorithm
+are given, and a comparison with existing algorithms is described. Section 3 reviews the
+formulation and algorithm of computing the MVEE for a set of points. Sections 4 and
+5 are the main part of this paper. We show the correctness and robustness properties of
+our algorithm in Section 4, and discuss its practical implementation in Section 5. Section 6
+reports the numerical experiments for the robustness of algorithms and document clustering.
+Section 7 gives concluding remarks.
+1.1 Notation and Symbols
+We use Rd×m to denote a set of real matrices of size d-by-m, and Rd×m
+to denote a set of
++
+d×m
+nonnegative matrices of d-by-m. Let A ∈ R
+. The symbols A and rank(A) respectively
+denote the transposition and the rank. The symbols ||A||p and ||A||F are the matrix p-norm
+1013
+
+Mizutani
+
+and the Frobenius norm. The symbol σi (A) is the ith largest singular value. Let ai be
+the ith column vector of A, and I be a subset of {1, . . . , m}. The symbol A(I) denotes a
+d-by-|I| submatrix of A such that (ai : i ∈ I). The convex hull of all the column vectors of
+A is denoted by conv(A), and referred to as the convex hull of A for short. We denote an
+identity matrix and a vector of all ones by I and e, respectively.
+We use Sd to denote a set of real symmetric matrices of size d. Let A ∈ Sd . If the
+matrix is positive definite, we represent it as A 0. Let A1 ∈ Sd and A2 ∈ Sd . We denote
+by A1 , A2 the Frobenius inner product of the two matrices which is given as the trace of
+matrix A1 A2 .
+We use a MATLAB-like notation. Let A1 ∈ Rd×m1 and A2 ∈ Rd×m2 . We denote by
+(A1 , A2 ) the horizontal concatenation of the two matrices, which is a d-by-(m1 +m2 ) matrix.
+Let A1 ∈ Rd1 ×m and A2 ∈ Rd2 ×m . We denote by (A1 ; A2 ) the vertical concatenation of
+the two matrices, and it is a matrix of the form,
+A1
+A2
+
+∈ R(d1 +d2 )×m .
+
+Let A be a d-by-m rectangular diagonal matrix having diagonal elements a1 , . . . , at where
+t = min{d, m}. We use diag(a1 , . . . , at ) to denote the matrix.
+
+2. Outline of Proposed Algorithm and Comparison with Existing
+Algorithms
+Here, we formally describe the properties mentioned in Section 1 that an algorithm is
+expected to have, and also describe the assumptions we place on Problem 1. Next, we give
+a geometric interpretation of a separable matrix under these assumptions, and then, outline
+the proposed algorithm. After reviewing the related work, we describe the correctness and
+robustness properties of our algorithm and compare with those of the existing algorithms.
+2.1 Preliminaries
+Consider Problem 1 whose data matrix M is a noisy separable one of the form A + N .
+Here, A is a separable matrix of (1) and N is a noise matrix. We can rewrite it as
+M
+
+= A+N
+= F (I, K)Π + N
+= (F + N (1) , F K + N (2) )Π
+
+(2)
+
+where N (1) and N (2) are d-by-r and d-by- submatrices of N such that N Π−1 = (N (1) , N (2) ).
+Hereinafter, we use the notation to denote m − r. The goal of Problem 1 is to identify an
+index set I such that M (I) = F + N (1) .
+As mentioned in Section 1, it is ideal that an algorithm for Problem 1 has correctness
+and robustness properties. These properties are formally described as follows:
+• Correctness. If the data matrix M does not contain a noise matrix N and is just
+a separable matrix, the algorithm returns an index set I such that M (I) = F .
+1014
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+• Robustness. If the data matrix M contains a noise matrix N and is a noisy separable
+matrix such that ||N ||p < , the algorithm returns an index set I such that ||M (I) −
+F ||p < τ for some constant real number τ .
+In particular, the robustness property has τ = 1, if an algorithm can identify an index set I
+such that M (I) = F +N (1) where F and N (1) are of (2) since ||M (I)−F ||p = ||N (1) ||p < .
+In the design of the algorithm, some assumptions are usually placed on a separable
+matrix. Our algorithm uses Assumption 1.
+Assumption 1 A separable matrix A of (1) consists of an basis matrix F and a weight
+matrix W satisfying the following conditions.
+1-a) Every column vector of weight matrix W has unit 1-norm.
+1-b) The basis matrix F has full column rank.
+Assumption 1-a can be invoked without loss of generality. If the ith column of W is zero,
+so is the ith column of A. Therefore, we can construct a smaller separable matrix having
+W with no zero column. Also, since we have
+A = F W ⇔ AD = F W D,
+every column of W can have unit 1-norm. Here, D denotes a diagonal matrix having the
+(i, i)th diagonal element dii = 1/||wi ||1 .
+The same assumption is used by the algorithm in Gillis and Vavasis (2014). We may
+get the feeling that 1-b is strong. The algorithms (Arora et al., 2012a; Bittorf et al., 2012;
+Gillis, 2013; Gillis and Luce, 2013; Kumar et al., 2013) instead assume simpliciality, wherein
+no column vector of F can be represented as a convex hull of the remaining vectors of F .
+Although 1-b is a stronger assumption, it still seems reasonable for Problem 1 from the
+standpoint of practical application. This is because, in such cases, it is less common for the
+column vectors of the basis matrix F to be linearly dependent.
+2.2 Outline of Proposed Algorithm
+Let us take a look at Problem 1 from a geometric point of view. For simplicity, consider
+the noiseless case first. Here, a data matrix is just a separable matrix A. Separability
+implies that A has a factorization of the form (1). Under Assumption 1, conv(A) becomes
+an (r − 1)-dimensional simplex in Rd . The left part of Figure 1 visualizes a separable data
+matrix. The white points are data points, and the black ones are basis vectors. The key
+observation is that the basis vectors f1 , . . . , fr of A correspond to the vertices of conv(A).
+This is due to separability. Therefore, if all vertices of conv(A) can be found, we can obtain
+the basis matrix F of A. This is not hard task, and we can design an efficient algorithm
+for doing it. But, if noise is added to a separable matrix, the task becomes hard. Let us
+suppose that the data matrix of Problem 1 is a noisy separable matrix A of the form A+N .
+The vertices of conv(A) do not necessarily match the basis vectors f1 , . . . , fr of A. The
+right part of Figure 1 visualizes a noisy separable data matrix. This is the main reason why
+it is hard to identify the basis matrix from noisy separable one.
+Our algorithm is designed on the basis of Proposition 3 in Section 4.1; it states that all
+vertices of a simplex can be found by using an ellipsoid. We here describe the proposition
+1015
+
+Mizutani
+
+: Data point
+: Basis vector
+
+Figure 1: Convex hull of a separable data matrix with r = 3 under Assumption 1. (Left)
+Noiseless case. (Right) Noisy case.
+
+from a geometric point of view. Consider an (r − 1)-dimensional simplex ∆ in Rr . Let
+g1 , . . . , gr ∈ Rr be the vertices of ∆, and b1 , . . . , b ∈ Rr be the points in ∆. We draw
+the MVEE centered at the origin for a set S = {±g1 , . . . , ±gr , ±b1 , . . . , ±b }. Then, the
+proposition says that the ellipsoid only touches the points ±g1 , . . . , ±gr among all the points
+in S. Therefore, the vertices of ∆ can be found by checking whether the points in S lie
+on the boundary of ellipsoid. We should mention that the convex hull of the points in
+S becomes a full-dimensional crosspolytope in Rr . Figure 2 illustrates the MVEE for a
+crosspolytope in R3 .
+
+Figure 2: Minimum-volume enclosing ellipsoid for a full-dimensional crosspolytope in R3 .
+
+Under Assumption 1, the convex hull of a separable matrix A becomes an (r − 1)dimensional simplex in Rd . Therefore, we rotate and embed the simplex in Rr by using
+an orthogonal transformation. Such a transformation can be obtained by singular value
+decomposition (SVD) of A.
+Now let us outline our algorithm for Problem 1. In this description, we assume for simd×m
+plicity that the data matrix is a separable one A ∈ R+
+. First, the algorithm constructs
+an orthogonal transformation through the SVD of A. By applying the transformation, it
+transforms A into a matrix P ∈ Rr×m such that the conv(P ) is an (r − 1)-dimensional sim1016
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+plex in Rr . Next, it draws the MVEE centered at the origin for a set S = {±p1 , . . . , ±pm },
+where p1 , . . . , pm are the column vectors of P , and outputs r points lying on the ellipsoid.
+We call the algorithm ellipsoidal rounding, abbreviated as ER. The main computational
+costs of ER are in computing the SVD of A and the MVEE for S. The MVEE computation can be formulated as a tractable convex optimization problem with m variables. A
+polynomial-time algorithm exists, and it is also known that a hybrid of the interior-point
+algorithm and cutting plane algorithm works efficiently in practice.
+In later sections, we will see that ER algorithm works well even if noise is added. In
+particular, we show that ER correctly identifies the near-basis vectors of a noisy separable
+matrix if the noise is smaller than some level. We consider a situation in which the noise
+exceeds that level. In such a situation, the shape of crosspolytope formed by the data points
+is considerably perturbed by the noise, and it is possible that the MVEE touches many
+points. We thus need to select r points from the points on the boundary of the ellipsoid.
+In this paper, we perform existing algorithms such as SPA (Gillis and Vavasis, 2014) and
+XRAY (Kumar et al., 2013) to make the selection. Hence, ER works as a preprocessor
+which filters out basis vector candidates from data points and enhances the performance of
+existing algorithms.
+2.3 Related Work
+First, we will review the algorithms for NMF of general nonnegative matrices. There are an
+enormous number of studies. A commonly used approach is to formulate it as a nonconvex
+optimization problem and compute the local solution. Let A be a d-by-m nonnegative
+matrix, and consider an optimization problem with matrix variables F ∈ Rd×r and W ∈
+Rr×m ,
+minimize ||F W − A||2F subject to F ≥ 0 and W ≥ 0.
+This is an intractable nonconvex optimization problem, and in fact, it was shown to be
+NP-hard by Vavasis (2009). Therefore, the research target is in how to compute the local
+solution efficiently. It is popular to use the block coordinate descent (BCD) algorithm for
+this purpose. The algorithm solves the problem by alternately fixing the variables F and
+W . The problem obtained by fixing either of F and W becomes a convex optimization
+problem. The existing studies propose to use, for instance, the projected gradient algorithm
+(Lin, 2007) and its variant (Lee and Seung, 2001), active set algorithm (Kim and Park, 2008,
+2011), and projected quasi-Newton algorithm (Gong and Zhang, 2012). It is reported that
+the BCD algorithm shows good performance on average in computing NMFs. However, its
+performance depends on how we choose the initial point for starting the algorithm. We
+refer the reader to Kim et al. (2014) for a survey on the algorithms for NMF.
+Next, we will survey the algorithms that work on noisy separable matrices. Four types
+of algorithm can be found:
+• AGKM (Arora et al., 2012a). The algorithm constructs r sets of data points such
+that all of the basis vectors are contained in the union of the sets and each set has one
+basis vector. The construction entails solving m linear programming (LP) problems
+with m − 1 variables. Then, it chooses one element from each set, and outputs them.
+1017
+
+Mizutani
+
+• Hottopixx (Bittorf et al., 2012; Gillis, 2013; Gillis and Luce, 2013). Let A
+be a separable matrix of the form F (I, K)Π. Consider a matrix C such that
+C = Π−1
+
+I K
+0 0
+
+Π ∈ Rm×m .
+
+It satisfies A = AC, and also, if the diagonal element is one, the position of its
+diagonal element indicates the index of basis vector in A. The algorithm models C
+as the variable of an LP problem. It entails solving a single LP problem with m2
+variables.
+• SPA (Gillis and Vavasis, 2014). Let A be a separable matrix of size d-by-m, and
+S be the set of the column vectors of A. The algorithm is based on the following
+observation. Under Assumption 1, the maximum of a convex function over the elements in S is attained at the vertex of conv(A). The algorithm finds one element a
+in S that maximizes a convex function, and then, projects all elements in S into the
+orthogonal space to a. This procedure is repeated until r elements are found.
+• XRAY (Kumar et al., 2013). The algorithm has a similar spirit as SPA, but it
+uses a linear function instead of a convex one. Let A be a separable matrix of size
+d-by-m and S be the set of the column vectors of A. Let Ik be the index set obtained
+after the kth iteration. This is a subset of {1, . . . , m} with cardinality k. In the
+(k + 1)th iteration, it computes a residual matrix R = A(Ik )X ∗ − A, where
+X ∗ = arg min ||A(Ik )X − A||22 ,
+X≥0
+
+and picks up one of the column vectors ri of R. Then, it finds one element from
+S which maximizes a linear function having ri as the normal vector. Finally, Ik is
+updated by adding the index of the obtained element. This procedure is repeated
+until r indices are found. The performance of XRAY depends on how we select the
+column vector of the residual matrix R for making the linear function. Several ways
+of selection, called “rand”, “max”, “dist” and “greedy”, have been proposed by the
+authors.
+The next section describes the properties of these algorithms.
+2.4 Comparison with Existing Algorithm
+We compare the correctness and robustness properties of ER with those of AGKM, Hottopixx, SPA, and XRAY. ER is shown to have the two properties in Theorems 5 and 9.
+In particular, our robustness property in Theorem 9 states that ER correctly identifies the
+near-basis matrix of a noisy separable one A, and a robustness property with τ = 1 holds
+if we set
+σ(1 − µ)
+=
+(3)
+4
+and p = 2 under Assumption 1. Here, σ is the minimum singular value of the basis matrix
+F of a separable one A in the A, that is, σ = σr (F ), and µ is µ(K):
+µ(K) = max ||ki ||2
+i=1,...,
+
+1018
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+for a weight matrix K of A. Under Assumption 1-a, we have µ ≤ 1, and in particular,
+equality holds if and only if ki has only one nonzero element.
+All four of the existing algorithms have been shown to have a correctness property,
+whereas every one except XRAY has a robustness property. Hottopixx is the most similar
+to ER. Bittorf et al. (2012) showed that it has the correctness and robustness with τ = 1
+properties if one sets
+α min{d0 , α}
+=
+(4)
+9(r + 1)
+and p = 1 under simpliciality and other assumptions. Here, α and d0 are as follows. α is
+the minimum value of δF (j) for j = 1, . . . , r, where δF (j) denotes an 1 -distance between
+the jth column vector fj of F and the convex hull of the remaining column vectors in F .
+d0 is the minimum value of ||ai − fj ||1 for every i such that ai is not a basis vector, and
+every j = 1, . . . , r. The robustness of Hottopixx is further analyzed (Gillis, 2013; Gillis and
+Luce, 2013).
+It can be interpreted that the of ER (3) is given by the multiplication of two parameters
+representing flatness and closeness of a given data matrix since σ measures the flatness of
+the convex hull of data points, and 1 − µ measures the closeness between basis vectors and
+data points. Intuitively, we may say that an algorithm becomes sensitive to noise when a
+data matrix has the following features; one is that the convex hull of data points is close to
+a flat shape, and another is that there are data points close to basis vectors. The of (3)
+well matches the intuition. We see a similar structure in the of Hottopixx (4) since α and
+d0 respectively measure the flatness and closeness of a given data.
+Compared with Hottopixx, the of ER (3) does not contain 1/r, and hence, it does not
+decrease as r increases. However, Assumption 1-b of ER is stronger than the simpliciality of
+Hottopixx. In a practical implementation, ER can handle a large matrix, while Hottopixx
+may have limitations on the size of the matrix it can handle. Hottopixx entails solving
+an LP problem with m2 variables. In the NMFs arising in applications, m tends to be a
+large number. Although an LP is tractable, it becomes harder to solve as the size increases.
+Through experiments, we assessed the performance of Hottopixx with the CPLEX LP solver.
+The experiments showed that the algorithm had out of memory issues when m exceeded
+2,000 with d = 100. Bittorf et al. (2012) proposed a parallel implementation to resolve
+these computational issues.
+AGKM and SPA were shown to have a robustness property with τ ≥ 1 for some in
+Arora et al. (2012a) and Gillis and Vavasis (2014), respectively. In practical implementations, SPA and XRAY are scalable to the problem size and experimentally show good
+robustness. Section 6 reports a numerical comparison of ER with SPA and XRAY.
+
+3. Review of Formulation and Algorithm for MVEE Computation
+We review the formulation for computing the MVEE for a set of points, and survey the
+existing algorithms for the computation.
+First of all, let us recall the terminology related to an ellipsoid. An ellipsoid in Rd is
+defined as a set E(L, z) = {x ∈ Rd : (x − z) L(x − z) ≤ 1} for a positive definite matrix
+L of size d and a vector z ∈ Rd . Here, L determines the shape of the ellipsoid and z is
+the center. Let x be a point in an ellipsoid E(L, z). If the point x satisfies the equality
+1019
+
+Mizutani
+
+(x − z) L(x − z) = 1, we call it an active point of the ellipsoid. In other words, an active
+point is one lying on the boundary of the ellipsoid.
+√
+The volume of the ellipsoid is given as c(d)/ det L, where c(d) represents the volume
+of a unit ball in Rd and it is a real number depending on the dimension d. ER algorithm
+considers d-dimensional ellipsoids containing a set S of points in Rd , and in particular,
+finds the minimum volume ellipsoid centered at the origin. In this paper, such an ellipsoid
+is referred to as an origin-centered MVEE for short.
+Now, we are ready to describe a formulation for computing the origin-centered MVEE for
+a set of points. For m points p1 , . . . , pm ∈ Rd , let S = {±p1 , . . . , ±pm }. The computation
+of the origin-centered MVEE for S is formulated as
+Q(S) : minimize − log det L,
+subject to pi pi , L ≤ 1,
+L 0,
+
+i = 1, . . . , m,
+
+where the matrix L of size d is the decision variable. The optimal solution L∗ of Q gives
+the origin-centered MVEE for S as E(L∗ ) = {x : x L∗ x ≤ 1}. We here introduce some
+terminology. An active point of E(L∗ ) is a vector pi ∈ Rd satisfying pi L∗ pi = 1. We call
+pi an active point of Q(S), and the index i of pi an active index of Q(S). The ellipsoid
+E(L∗ ) is centrally symmetric, and if a vector pi is an active point, so is −pi . The dual of
+Q reads
+Q∗ (S) : maximize log det Ω(u),
+subject to e u = 1,
+u ≥ 0,
+where the vector u is the decision variable. Here, Ω : Rm → Sd is a linear function given
+for P = (p1 , . . . , pm ) ∈ Rd×m .
+as Ω(u) = m
+i=1 pi pi ui ; equivalently, Ω(u) = P diag(u)P
+It follows from the Karush-Kuhn-Tucker (KKT) conditions for these problems that the
+optimal solution L∗ of Q is represented by d1 Ω(u∗ )−1 for the optimal solution u∗ of Q∗ . We
+make the following assumption to ensure the existence of an optimal solution of Q.
+Assumption 2 rank(P ) = d for P = (p1 , . . . , pm ) ∈ Rd×m .
+Later, the KKT conditions will play an important role in our discussion of the active
+points of Q. Here though, we will describe the conditions: L∗ ∈ Sd is an optimal solution
+for Q and z ∗ ∈ Rm is the associated Lagrange multiplier vector if and only if there exist
+L∗ ∈ Sd and z ∗ ∈ Rm such that
+−(L∗ )−1 + Ω(z ∗ ) = 0,
+zi∗ (
+
+pi pi , L
+
+pi pi , L
+L
+
+∗
+
+zi∗
+
+∗
+
+∗
+
+− 1) = 0,
+
+≤ 1,
+
+i = 1, . . . , m,
+
+i = 1, . . . , m,
+
+0,
+≥ 0,
+
+(5)
+(6)
+(7)
+(8)
+
+i = 1, . . . , m.
+
+(9)
+
+Many algorithms have been proposed for solving problems Q and Q∗ . These can be
+categorized into mainly two types: conditional gradient algorithms (also referred to as
+1020
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+Frank-Wolfe algorithms) and interior-point algorithms. Below, we survey the studies on
+these two algorithms.
+Khachiyan (1996) proposed a barycentric coordinate descent algorithm, which can be
+interpreted as a conditional gradient algorithm. He showed that the algorithm has a
+polynomial-time iteration complexity.
+Several researchers investigated and revised
+Khachiyan’s algorithm. Kumar and Yildirim (2005) showed that the iteration complexity of Khachiyan’s algorithm can be slightly reduced if it starts from a well-selected initial
+point. Todd and Yildirim (2007) and Ahipasaoglu et al. (2008) incorporated a step called as
+a Wolfe’s away-step. The revised algorithm was shown to have a polynomial-time iteration
+complexity and a linear convergence rate.
+A dual interior-point algorithm was given by Vandenberghe et al. (1998). A primaldual interior-point algorithm was given by Toh (1999), and numerical experiments showed
+that this algorithm is efficient and can provide accurate solutions. A practical algorithm
+was designed by Sun and Freund (2004) for solving large-scale problems. In particular, a
+hybrid of the interior-point algorithm and cutting plane algorithm was shown to be efficient in numerical experiments. For instance, the paper reported that the hybrid algorithm
+can solve problems with d = 30 and m = 30, 000 in under 30 seconds on a personal computer. Tsuchiya and Xia (2007) considered generalized forms of Q and Q∗ and showed
+that a primal-dual interior-point algorithm for the generalized forms has a polynomial-time
+iteration complexity.
+Next, let us discuss the complexity of these two sorts of algorithms for Q and Q∗ . In
+each iteration, the arithmetic operations of the conditional gradient algorithms are less than
+those of the interior-point algorithms. Each iteration of a conditional gradient algorithm
+(Khachiyan, 1996; Kumar and Yildirim, 2005; Todd and Yildirim, 2007; Ahipasaoglu et al.,
+2008) requires O(md) arithmetic operations. On the other hand, assuming that the number of data points m is sufficiently larger than the dimension of data points d, the main
+complexity of interior-point algorithms (Vandenberghe et al., 1998; Toh, 1999) comes from
+solving an m-by-m system of linear equations in each iteration. The solution serves as the
+search direction for the next iteration. Solving these linear equations requires O(m3 ) arithmetic operations. In practice, the number of iterations of conditional gradient algorithms is
+much larger than that of interior-point algorithms. Ahipasaoglu et al. (2008) reports that
+conditional gradient algorithms take several thousands iterations to solve problems such
+that d runs from 10 to 30 and m from 10, 000 to 30, 000. On the other hand, Sun and
+Freund (2004) reports that interior-point algorithms usually terminate after several dozen
+iterations and provide accurate solutions.
+One of the concerns about interior-point algorithms is the computational cost of each
+iteration. It is possible to reduce the cost considerably by using a cutting plane strategy.
+A hybrid of interior-point algorithm and cutting plane algorithm has an advantage over
+conditional gradient algorithms. In fact, Ahipasaoglu et al. (2008) reports that the hybrid
+algorithm is faster than the conditional gradient algorithms and works well even on large
+problems. Therefore, we use the hybrid algorithm to solve Q in our practical implementation
+of ER. The details are in Section 5.1.
+Here, it should be mentioned that this paper uses a terminology “cutting plane strategy”
+for what other papers (Sun and Freund, 2004; Ahipasaoglu et al., 2008) have called the
+1021
+
+Mizutani
+
+“active set strategy”, since it might be confused with “active set algorithm” for solving a
+nonnegative least square problem.
+
+4. Description and Analysis of the Algorithm
+The ER algorithm is presented below. Throughout of this paper, we use the notation N to
+denote a set of nonnegative integer numbers.
+Algorithm 1 Ellipsoidal Rounding (ER) for Problem 1
+Input: M ∈ Rd×m
+and r ∈ N.
++
+Output: I.
+1: Compute the SVD of M , and construct the reduced matrix P ∈ Rr×m associated
+with r.
+2: Let S = {±p1 , . . . , ±pm } for the column vectors p1 , . . . , pm of P . Solve Q(S), and
+construct the active index set I.
+Step 1 needs to be explained in detail. Let M be a noisy separable matrix of size d-bym. In general, the M is a full-rank due to the existence of a noise matrix. However, the
+rank is close to r when the amount of noise is small, and in particular, it is r in the noiseless
+case. Accordingly, we construct a low-rank approximation matrix to M and reduce the
+redundancy in the space spanned by the column vectors of M .
+We use an SVD for the construction of the low-rank approximation matrix. The SVD
+of M gives a decomposition of the form,
+M = U ΣV .
+Here, U and V are d-by-d and m-by-m orthogonal matrices, respectively. In this paper, we
+call the U a left orthogonal matrix of the SVD of M . Let t = min{d, m}. Σ is a rectangular
+diagonal matrix consisting of the singular values σ1 , . . . , σt of M , and it is of the form,
+Σ = diag(σ1 , . . . , σt ) ∈ Rd×m
+with σ1 ≥ · · · ≥ σt ≥ 0. By choosing the top r singular values while setting the others to 0
+in Σ, we construct
+Σr = diag(σ1 , . . . , σr , 0, . . . , 0) ∈ Rd×m
+and let
+M r = U Σr V .
+M r is the best rank-r approximation to M as measured by the matrix 2-norm and satisfies
+||M − M r ||2 = σr+1 (see, for instance, Theorem 2.5.3 of Golub and Loan, 1996). By
+applying the left orthogonal matrix U to M r , we have
+U Mr =
+
+P
+0
+
+∈ Rd×m ,
+
+where P is an r-by-m matrix with rank(P ) = r. We call such a matrix P a reduced matrix
+of M associated with r. Since Assumption 2 holds for the P , it is possible to perform an
+MVEE computation for a set of the column vectors.
+1022
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+4.1 Correctness for a Separable Matrix
+We analyze the correctness property of Algorithm 1. Let A be a separable matrix of size
+d-by-m. Assume that Assumption 1 holds for A. We run Algorithm 1 for (A, rank(A)).
+Step 1 computes the reduced matrix P of A. Since r = rank(A), we have A = Ar , where
+Ar is the best rank-r approximation matrix to A. Let U ∈ Rd×d be the left orthogonal
+matrix of the SVD of A. The reduced matrix P ∈ Rr×m of A is obtained as
+P
+0
+
+= U A
+= U F (I, K)Π.
+
+(10)
+
+∈ Rd×m , where G ∈ Rr×r .
+
+(11)
+
+From the above, we see that
+U F =
+
+G
+0
+
+Here, we have rank(G) = r since rank(F ) = r by Assumption 1-b and U is an orthogonal
+matrix. By using G, we rewrite P as
+P = (G, GK)Π.
+From Assumption 1-a, the column vectors ki of the weight matrix K ∈ Rr× satisfy the
+conditions
+||ki ||1 = 1 and ki ≥ 0, i = 1, . . . , .
+(12)
+In Step 2, we collect the column vectors of P and construct a set S of them. Let
+B = GK, and let gj and bi be the column vector of G and B, respectively. S is a set of
+vectors ±g1 , . . . , ±gr , ±b1 , . . . , ±b . The following proposition guarantees that the active
+points of Q(S) are g1 , . . . , gr . We can see from (10) and (11) that the index set of the
+column vectors of G is identical to that of of F . Hence, the basis matrix F of a separable
+one A can be obtained by finding the active points of Q(S).
+Proposition 3 Let G ∈ Rr×r and B = GK ∈ Rr× for K ∈ Rr× . For the column vectors
+gj and bi of G and B, respectively, let S = {±g1 , . . . ± gr , ±b1 , . . . , ±b }. Suppose that
+rank(G) = r and K satisfies the condition (12). Then, the active point set of Q(S) is
+{g1 , . . . , gr }.
+Proof We show that an optimal solution L∗ of Q(S) is (GG )−1 and its associated
+Lagrange multiplier z ∗ is (e; 0), where e is an r-dimensional all-ones vector and 0 is
+an -dimensional zero vector. Here, the Lagrange multipliers are one for the constraints
+gj gj , L ≤ 1, and these are zero for bi bi , L ≤ 1.
+Since G is nonsingular, the inverse of GG exists and it is positive definite. Now we
+check that L∗ = (GG )−1 and z ∗ = (e; 0) satisfy the KKT conditions (5)-(9) for the
+problem. It was already seen that the conditions (5), (8), and (9) are satisfied. For the
+remaining conditions, we have
+gj gj , (GG )−1 = (G (GG )−1 G)jj = 1
+1023
+
+(13)
+
+Mizutani
+
+and
+bi bi , (GG )−1
+
+= (B (GG )−1 B)ii
+= (K G (GG )−1 GK)ii
+= ki ki
+≤ ||ki ||21 = 1.
+
+(14)
+
+Here, (·)ii for a matrix denotes the (i, i)th element of the matrix. The inequality in (14)
+follows from condition (12). Also, the Lagrange multipliers are zero for the inequality
+constraints bi bi , (GG )−1 ≤ 1. Thus, conditions (6) and (7) are satisfied. Accordingly,
+(GG )−1 is an optimal solution of Q(S).
+We can see from (13) that g1 , . . . , gr are the active points of the problem. Moreover,
+we may have equality in (14). In fact, equality holds if and only if ki has only one nonzero
+element. For such ki , bi = Gki coincides with some vector in g1 , . . . , gr .
+From the above discussion, we can immediately notice that this proposition holds if for
+a matrix K ∈ Rr× , the column vectors ki satisfy
+||ki ||2 < 1,
+
+i = 1, . . . , m.
+
+(15)
+
+Note that in contrast with condition (12), this condition does not require the matrix to be
+nonnegative.
+
+Corollary 4 Proposition 3 holds even if we suppose that K ∈ Rr× satisfies condition (15),
+instead of condition (12).
+
+Note that this corollary is used to show the robustness of Algorithm 1 on a noisy
+separable matrix. The correctness of Algorithm 1 for a separable matrix follows from the
+above discussion and Proposition 3.
+Theorem 5 Let A be a separable matrix. Assume that Assumption 1 holds for A. Then,
+Algorithm 1 for (A, rank(A)) returns an index set I such that A(I) = F .
+4.2 Robustness for a Noisy Separable Matrix
+Next, we analyze the robustness property of Algorithm 1. Let A be a separable matrix of
+size d-by-m. Assume that Assumption 1 holds for A. Let A be a noisy separable matrix
+of the form A + N . We run Algorithm 1 for (A, rank(A)). Step 1 computes the reduced
+matrix P of A. Let U ∈ Rd×d be the left orthogonal matrix of the SVD of A, and Ar be
+the best rank-r approximation matrix to A. We denote the residual matrix A − Ar by Ar .
+1024
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+For the reduced matrix P of A, we have
+P
+0
+
+= U Ar
+= U (A − Ar )
+
+(16)
+r
+
+= U (A + N − A )
+= U (A + N )
+
+(17)
+
+= U ((F , F K)Π + N )
+= U (F + N (1) , F K + N (2) )Π
+
+(18)
+
+= U (F , F K + N )Π.
+
+(19)
+
+The following notation is used in the above: N = N − Ar in (17); N (1) and N (2) in (18)
+are the d-by-r and d-by- submatrices of N such that N Π−1 = (N (1) , N (2) ); F = F +N (1)
+and N = −N (1) K + N (2) in (19). This implies that
+U F =
+
+G
+0
+
+, where G ∈ Rr×r ,
+
+(20)
+
+U N=
+
+R
+0
+
+, where R ∈ Rr× .
+
+(21)
+
+and
+
+Hence, we can rewrite P as
+P = (G, GK + R)Π.
+A is represented by (2) as
+A = (F , F K + N )Π,
+where F and N denote F + N (1) and −N (1) K + N (2) , respectively. From (16), we have
+(G, GK + R)Π
+0
+
+= U ((F , F K + N )Π − Ar ).
+
+Therefore, the index set of the column vectors of G is identical to that of F . If all the
+column vectors of G are found in P , we can identify F hidden in A.
+In Step 2, we collect the column vectors of P and construct a set S of them. Let
+B = GK + R,
+
+(22)
+
+and let gj and bi respectively be the column vectors of G and B. S is a set of vectors
+±g1 , . . . , ±gr , ±b1 , . . . , ±b . We can see from Corollary 4 that, if rank(G) = r and bi is
+written as bi = Gki by using ki ∈ Rr with ||ki ||2 < 1, the active points of Q(S) are given
+as the column vectors g1 , . . . , gr of G. Below, we examine the amount of noise N such that
+the conditions of Corollary 4 still hold.
+Lemma 6 Let A = A + N ∈ Rd×m . Then, |σi (A) − σi (A)| ≤ ||N ||2 for each i = 1, . . . , t
+where t = min{d, m}.
+1025
+
+Mizutani
+
+Proof See Corollary 8.6.2 of Golub and Loan (1996).
+
+Lemma 7 Let n = ||N ||2 and µ = µ(K).
+7-a) The matrix N of (17) satisfies ||N ||2 ≤ 2n.
+7-b) The column vectors ri of matrix R of (21) satisfy ||ri ||2 ≤ 2n(µ + 1) for i = 1, . . . , m.
+7-c) The singular values of matrix G of (20) satisfy |σi (G) − σi (F )| ≤ 2n for i = 1, . . . , r.
+Proof 7-a) Since N = N − Ar ,
+||N ||2 ≤ ||N ||2 + ||Ar ||2 .
+We have ||Ar ||2 ≤ n since ||Ar ||2 = σr+1 (A) and from Lemma 6, |σr+1 (A) − σr+1 (A)| ≤ n.
+Therefore, ||N ||2 ≤ 2n.
+7-b) Let ni be the column vector of the matrix N of (19). Since U ni = (ri ; 0) for an
+orthogonal matrix U , we have ||ni ||2 = ||ri ||2 . Therefore, we will evaluate ||ni ||2 . Let ki
+(2)
+and ni be the column vectors of K and N (2) , respectively. Then, ni can be represented
+(2)
+as −N (1) ki + ni . Thus, by Lemma 7-a, we have
+(2)
+
+||ri ||2 = ||ni ||2 ≤ ||N (1) ||2 ||ki ||2 + ||ni ||2 ≤ 2n(µ + 1).
+7-c) Since U F = (G; 0) for an orthogonal matrix U , the singular values of F and G
+are identical. Also, since F = F + N (1) and Lemma 6, we have
+|σi (G) − σi (F )| = |σi (F ) − σi (F )| ≤ ||N (1) ||2 ≤ 2n.
+
+The following lemma ensures that the conditions of Corollary 4 hold if the amount of
+noise is smaller than a certain level.
+Lemma 8 Let G be the matrix of (20), and let bi be the column vector of B of (22).
+Suppose that ||N ||2 < for = 41 σ(1 − µ) where σ = σr (F ) and µ = µ(K). Then,
+8-a) rank(G) = r.
+8-b) bi is represented as Gki = bi by using ki such that ||ki ||2 < 1.
+In the proof below, n denotes ||N ||2 .
+Proof 8-a) From Lemma 7-c, the minimum singular value of G satisfies
+σr (G) ≥ σ − 2n
+1
+> σ − 2 = σ(1 + µ) > 0.
+2
+
+1026
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+The final inequality follows from σ > 0 due to Assumption 1-b. Hence, we have rank(G) = r.
+8-b) Let ki and ri be the column vectors of K and R, respectively. Then, we have
+bi = Gki + ri . Since Lemma 8-a guarantees that G has an inverse, it can be represented
+as bi = Gki by ki = ki + G−1 ri . It follows from Lemmas 7-b and 7-c that
+||ki ||2 ≤ ||ki ||2 + ||G−1 ||2 ||ri ||2
+2n(µ + 1)
+≤ µ+
+.
+σ − 2n
+Since n < 41 σ(1 − µ), we have ||ki ||2 < 1.
+The robustness of Algorithm 1 for a noisy separable matrix follows from the above
+discussion, Corollary 4, and Lemma 8.
+Theorem 9 Let A be a noisy separable matrix of the form A+N . Assume that Assumption
+1 holds for the separable matrix A in A. Set = 41 σ(1 − µ) where σ = σr (F ) and µ = µ(K)
+for the basis and weight matrices F and K of A. If ||N ||2 < , Algorithm 1 for (A, rank(A))
+returns an index set I such that ||A(I) − F ||2 < .
+In Theorem 9, let F ∗ = A(I), and W ∗ be an optimal solution of the convex optimization
+problem,
+minimize ||A(I)X − A||2F subject to X ≥ 0,
+where the matrix X of size r-by-m is the decision variable. Then, (F ∗ , W ∗ ) serves as the
+NMF factor of A. It is possible to evaluate the residual error of this factorization in a
+similar way to the proof of Theorem 4 by Gillis and Vavasis (2014).
+Corollary 10 Let wi∗ and ai be the column vectors of W ∗ and A, respectively. Then,
+||F ∗ wi∗ − ai ||2 < 2 for i = 1, . . . , m.
+Proof From Assumption 1-a, the column vectors wi of W satisfy ||wi ||2 ≤ 1 for i =
+1, . . . , m. Therefore, for i = 1, . . . , m,
+||F ∗ wi∗ − ai ||2 ≤ ||F ∗ wi − ai ||2
+= ||F ∗ wi − F wi + F wi − ai − ni ||2
+= ||(F ∗ − F )wi − ni ||2
+≤ ||F ∗ − F ||2 ||wi ||2 + ||ni ||2 < 2 ,
+where ai and ni denote the ith column vector of A and N , respectively.
+
+5. Implementation in Practice
+Theorem 9 guarantees that Algorithm 1 correctly identifies the near-basis matrix of a noisy
+separable matrix if the noise is smaller than some level. But in the NMFs of matrices arising
+from practical applications, it seems that the noise level would likely exceed the level for
+1027
+
+Mizutani
+
+which the theorem is valid. In such a situation, the algorithm might generate more active
+points than hoped. Therefore, we need to add a selection step in which r points are selected
+from the active points. Also, the number of active points depends on which dimension we
+choose in the computation of the reduced matrix P . Algorithm 1 computes the reduced
+matrix P of the data matrix and draws an origin-centered MVEE for the column vectors
+p1 , . . . , pm of P . As we will see in Lemma 11, the number of active points depends on
+the dimension of p1 , . . . , pm . Therefore, we introduce an input parameter ρ to control the
+dimension. By taking account of these considerations, we design a practical implementation
+of Algorithm 1.
+Algorithm 2 Practical Implementation of Algorithm 1
+Input: M ∈ Rd×m
+, r ∈ N, and ρ ∈ N.
++
+Output: I.
+1: Run Algorithm 1 for (M , ρ). Let J be the index set returned by the algorithm.
+2: If |J | < r, increase ρ by 1 and go back to Step 1. Otherwise, select r elements from
+J and construct the set I of these elements.
+One may wonder whether Algorithm 2 infinitely loops or not. In fact, we can show that
+under some conditions, infinite loops do not occur.
+Lemma 11 For p1 , . . . , pm ∈ Rρ , let S = {±p1 , . . . , ±pm }. Suppose that Assumption 2
+holds. Then, Q(S) has at least ρ active points.
+Proof Consider the KKT conditions (5)-(9) for Q(S). Condition (5) requires Ω(z ∗ ) to be
+nonsingular. Since rank(P ) = ρ from the assumption, at least ρ nonzero zi∗ exist. Therefore, we see from condition (6) that Q(S) has at least ρ active points.
+Proposition 12 Suppose that we choose r such that r ≤ rank(M ). Then, Algorithm 2
+terminates after a finite number of iterations.
+Proof For the active index set J constructed in Step 1, Lemma 11 guarantees that |J | ≥ ρ.
+The parameter ρ increases by 1 if |J | < r in Step 2 and can continue to increase up to
+ρ = rank(M ). Since r ≤ rank(M ), it is necessarily to satisfy |J | ≥ ρ ≥ r after a finite
+number of iterations.
+Proposition 12 implies that ρ may not be an essential input parameter since Algorithm
+2 always terminates under r ≤ rank(M ) even if starting with ρ = 1.
+There are some concerns about Algorithm 2. One is in how to select r elements from an
+active index set J in Step 2. It is possible to have various ways to make the selection. We
+rely on existing algorithms, such as XRAY and SPA, and perform these existing algorithms
+for (M (J ), ρ). Thus, Algorithm 1 can be regarded as a preprocessor which filters out basis
+vector candidates from the data points and enhance the performance of existing algorithms.
+Another concern is in the computational cost of solving Q. In the next section, we describe
+a cutting plane strategy for efficiently performing an interior-point algorithm.
+1028
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+5.1 Cutting Plane Strategy for Solving Q
+Let S be a set of m points in Rd . As mentioned in Section 3, O(m3 ) arithmetic operations
+are required in each iteration of an interior-point algorithm for Q(S). A cutting plane
+strategy is a way to reduce the number of points which we need to deal with in solving
+Q(S). The strategy was originally used by Sun and Freund (2004). In this section, we
+describe the details of our implementation.
+The cutting plane strategy for solving Q has a geometric interpretation. It is thought of
+that active points contribute a lot to the drawing the MVEE for a set of points but inactive
+points make less of a contribution. This geometric intuition can be justified by the following
+proposition. Let L be a d-by-d matrix. We use the notation δL (p) to denote pp , L for
+an element p ∈ Rd of S.
+¯ ∗ of Q(S)
+¯ satisfies
+Proposition 13 Let S¯ be a subset of S. If an optimal solution L
+∗
+¯
+¯
+δL¯ ∗ (p) ≤ 1 for all p ∈ S \ S, then L is an optimal solution of Q(S).
+The proof is omitted since it is obvious. The proposition implies that Q(S) can be solved
+by using its subset S¯ instead of S. The cutting plane strategy offers a way of finding such a
+¯ in which a smaller problem Q(S)
+¯ has the same optimal solution as Q(S). In this strategy,
+S,
+we first choose some points from S and construct a set S 1 containing these points. Let S k
+be the set constructed in the kth iteration. In the (k + 1)th iteration, we choose some points
+from S \ S k and expand S k to S k+1 by adding these points to S k . Besides expanding, we
+also shrink S k by discarding some points which can be regarded as useless for drawing the
+origin-centered MVEE. These expanding and shrinking phases play an important role in
+constructing a small set. Algorithm 3 describes a cutting plane strategy for solving Q(S).
+Algorithm 3 Cutting Plane Strategy for Solving Q(S)
+Input: S = {p1 , . . . , pm }.
+Output: L∗ .
+1: Choose an initial set S 1 from S and let k = 1.
+2: Solve Q(S k ) and find the optimal solution Lk . If δLk (p) ≤ 1 holds for all p ∈ S \ S k ,
+let L∗ = Lk , and stop.
+3: Choose a subset F of S k and a subset G of {p ∈ S \ S k : δLk (p) > 1}. Update S k as
+S k+1 = (S k \ F) ∪ G and increase k by 1. Then, go back to Step 2.
+Now, we give a description of our implementation of Algorithm 3. To construct the initial
+set S 1 in Step 1, our implementation employs the algorithm used in the papers (Kumar
+and Yildirim, 2005; Todd and Yildirim, 2007; Ahipasaoglu et al., 2008). The algorithm
+constructs a set S 1 by greedily choosing 2d points in a step-by-step manner such that the
+convex hull is a d-dimensional crosspolytope containing as many points in S as possible. We
+refer the reader to Algorithm 3.1 of Kumar and Yildirim (2005) for the precise description.
+To shrink and expand S k in Step 3, we use a shrinking threshold parameter θ such that
+θ < 1, and an expanding size parameter η such that η ≥ 1. These parameters are set before
+running Algorithm 3. For shrinking, we construct F = {p ∈ S k : δLk (p) ≤ θ} by using θ.
+1029
+
+Mizutani
+
+For expanding, we arrange the points of {p ∈ S \ S k : δLk (p) > 1} in descending order,
+as measured by δLk (·), and construct G by choosing the top (m − 2d)/η points. If the set
+{p ∈ S \ S k : δLk (p) > 1} has less than (m − 2d)/η points, we choose all the points and
+construct G.
+
+6. Experiments
+We experimentally compared Algorithm 2 with SPA and the variants of XRAY. These two
+existing algorithms were chosen because their studies (Bittorf et al., 2012; Gillis and Luce,
+2013; Kumar et al., 2013) report that they outperform AGKM and Hottopixx, and scale to
+the problem size. Two types of experiments were conducted: one is the evaluation for the
+robustness of the algorithms to noise on synthetic data sets, and the other is the application
+of the algorithms to clustering of real-world document corpora.
+We implemented Algorithm 2, and three variants of XRAY, “max”, “dist” and “greedy”,
+in MATLAB. We put Algorithm 3 in Algorithm 2 so it would solve Q efficiently. The
+software package SDPT3 (Toh et al., 1999) was used for solving Q(S k ) in Step 2 of Algorithm
+3. The shrinking parameter θ and expanding size parameter η were set as 0.9999 and 5,
+respectively. The implementation of XRAY formulated the computation of the residual
+matrix R = A(Ik )X ∗ − A as a convex optimization problem,
+X ∗ = arg min ||A(Ik )X − A||2F .
+X≥0
+
+For the implementation of SPA (Gillis and Vavasis, 2014), we used code from the first
+author’s website. Note that SPA and XRAY are sensitive to the normalization of the
+column vectors of the data matrix (see, for instance, Kumar et al., 2013), and for this
+reason, we used a data matrix whose column vectors were not normalized. All experiments
+were done in MATLAB on a 3.2 GHz CPU processor and 12 GB memory.
+We will use the following abbreviations to represent the variants of algorithms. For
+instance, Algorithm 2 with SPA for an index selection of Step 2 is referred to as ER-SPA.
+Also, the variant of XRAY with “max” selection policy is referred to as XRAY(max).
+6.1 Synthetic Data
+Experiments were conducted for the purpose of seeing how well Algorithm 2 could improve the robustness of SPA and XRAY to noise. Specifically, we compared it with SPA,
+XRAY(max), XRAY(dist), and XRAY(greedy). The robustness of algorithm was measured
+by a recovery rate. Let I be an index set of basis vectors in a noisy separable matrix,
+and I ∗ be an index set returned by an algorithm. The recovery rate is the ratio given by
+|I ∩ I ∗ | / |I|.
+We used synthetic data sets of the form F (I, K)Π + N with d = 250, m = 5, 000, and
+r = 10. The matrices F , K, Π and N were synthetically generated as follows. The entries
+of W ∈ Rd×r
+were drawn from a uniform distribution on the interval [0, 1]. The column
++
+vectors of K ∈ Rr×
++ were from a Dirichlet distribution whose r parameters were uniformly
+from the interval [0, 1]. The permutation matrix Π was randomly generated. The entries
+of the noise matrix N ∈ Rd×m were from a normal distribution with mean 0 and standard
+deviation δ. The parameter δ determined the intensity of the noise, and it was chosen from
+1030
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+1
+
+1
+ER−SPA
+SPA
+
+0.8
+
+0.8
+
+0.7
+
+0.7
+
+0.6
+0.5
+0.4
+
+0.5
+0.4
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+0.1
+
+0.2
+0.3
+Noise Level (δ)
+
+0.4
+
+0
+0
+
+0.5
+
+1
+
+0.2
+0.3
+Noise Level (δ)
+
+0.4
+
+0.5
+
+0.7
+
+0.7
+Recovery Rate
+
+0.8
+
+0.6
+0.5
+0.4
+
+0.6
+0.5
+0.4
+
+0.3
+
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+0.1
+
+0.2
+0.3
+Noise Level (δ)
+
+0.4
+
+ER−XRAY(geedy)
+XRAY(greedy)
+
+0.9
+
+0.8
+
+0
+0
+
+0.1
+
+1
+ER−XRAY(dist)
+XRAY(dist)
+
+0.9
+
+Recovery Rate
+
+0.6
+
+0.3
+
+0
+0
+
+ER−XRAY(max)
+XRAY(max)
+
+0.9
+
+Recovery Rate
+
+Recovery Rate
+
+0.9
+
+0
+0
+
+0.5
+
+0.1
+
+0.2
+0.3
+Noise Level (δ)
+
+0.4
+
+0.5
+
+Figure 3: Comparison of the recovery rates of Algorithm 2 with SPA and XRAY.
+
+1031
+
+Mizutani
+
+Recovery rate
+ER-SPA
+SPA
+ER-XRAY(max)
+XRAY(max)
+ER-XRAY(dist)
+XRAY(dist)
+ER-XRAY(greedy)
+XRAY(greedy)
+
+100%
+0.06
+0.05
+0.06
+0.05
+0.07
+0.03
+0.07
+0.00
+
+90%
+0.24
+0.21
+0.24
+0.21
+0.23
+0.10
+0.23
+0.08
+
+80%
+0.32
+0.27
+0.32
+0.27
+0.29
+0.13
+0.29
+0.12
+
+70%
+0.37
+0.31
+0.37
+0.31
+0.36
+0.16
+0.35
+0.14
+
+Table 1: Maximum values of noise level δ for different recovery rates in percentage.
+0 to 0.5 in 0.01 increments. A single data set consisted of 51 matrices with various amounts
+of noise, and we made 50 different data sets. Algorithm 2 was performed in the setting that
+M is a matrix in the data set and r and ρ are each 10.
+Figure 3 depicts the average recovery rate on the 50 data sets for Algorithm 2, SPA and
+XRAY. Table 1 summarizes the maximum values of noise level δ for different recovery rates
+in percentage. The noise level was measured by 0.01, and hence, for instance, the entry
+“0.00” at XRAY(greedy) for 100% recovery rate means that the maximum value is in the
+interval [0.00, 0.01). We see from the figure that Algorithm 2 improved the recovery rates of
+the existing algorithms. In particular, the recovery rates of XRAY(dist) and XRAY(greedy)
+rapidly decrease as the noise level increases, but Algorithm 2 significantly improved them.
+Also, the figure shows that Algorithm 2 tended to slow the decrease in the recovery rate.
+We see from the table that Algorithm 2 is more robust to noise than SPA and XRAY.
+Table 2 summarizes the average number of active points and elapsed time for 50 data
+sets taken by Algorithm 2 with δ = 0, 0.25 and 0.5. We read from the table that the
+elapsed time increases with the number of active points. The average elapsed times of SPA,
+XRAY(max), XRAY(dist), and XRAY(greedy) was respectively 0.03, 1.18, 16.80 and 15.85
+in seconds. Therefore, we see that the elapsed time of Algorithm 2 was within a reasonable
+range.
+δ
+
+Active points
+
+0
+0.25
+0.5
+
+10
+12
+23
+
+Elapsed time (second)
+ER-SPA ER-XRAY(max) ER-XRAY(dist) ER-XRAY(greedy)
+1.05
+1.07
+1.07
+1.07
+3.08
+3.10
+3.10
+3.10
+4.70
+4.71
+4.71
+4.71
+
+Table 2: Average number of active points and elapsed time of Algorithm 2.
+
+6.2 Application to Document Clustering
+Consider a set of d documents. Let m be the total number of words appearing in the
+document set. We represent the documents by a bag-of-words. That is, the ith document is
+represented as an m-dimensional vector ai , whose elements are the appearance frequencies
+of words in the document. A document vector ai can be assumed to be generated by a
+1032
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+convex combination of several topic vectors w1 , . . . wr . This type of generative model has
+been used in many papers (for instance, Xu et al., 2003; Shahnaz et al., 2006; Arora et al.,
+2012b, 2013; Ding et al., 2013; Kumar et al., 2013).
+Let W be an r-by-m topic matrix such that w1 , . . . , wr are stacked from top to bottom
+and are of the form (w1 ; . . . ; wr ). The model allows us to write a document vector in the
+form ai = fi W by using a coefficient vector fi ∈ Rr such that e fi = 1 and fi ≥ 0. This
+means that we have A = F W for a document-by-word matrix A = (a1 ; . . . ; ad ) ∈ Rd×m
+,a
++
+d×r
+coefficient matrix F = (f1 ; . . . ; fd ) ∈ R+
+, and a topic matrix W = (w1 ; . . . ; wr ) ∈ Rr×m
+.
++
+In the same way as the papers (Arora et al., 2012b, 2013; Ding et al., 2013; Kumar et al.,
+2013), we assume that a document-by-word matrix A is separable. This requires that W
+is of (I, K)Π, and it means that each topic has an anchor word. An anchor word is a word
+that is contained in one topic but not contained in the other topics. If an anchor word is
+found, it suggests that the associated topic exists.
+Algorithms for Problem 1 can be used for clustering documents and finding topics for
+the above generative model. The algorithms for a document-word matrix A return an index
+set I. Let F = A(I). The row vector elements fi1 , . . . , fir of F can be thought of as the
+contribution rate of topics w1 , . . . , wr for generating a document ai . The highest value
+fij ∗ among the elements implies that the topic wj ∗ contributes the most to the generation
+of document ai . Hence, we assign document ai to a cluster having the topic wj ∗ . There
+is an alternative to using F for measuring the contribution rates of the topics. Step 1
+of Algorithm 1 produces a rank-r approximation matrix Ar to A as a by-product. Let
+F = Ar (I), and use it as an alternative to F . We say that clustering with F is clustering
+with the original data matrix, and that clustering with F is clustering with a low-rank
+approximation data matrix.
+Experiments were conducted in the purpose of investigating clustering performance of
+algorithms and also checking whether meaningful topics could be extracted. To investigate
+the clustering performance, we used only SPA since our experimental results implied that
+XRAY would underperform. We assigned the values of the document-word matrix on the
+basis of the tf-idf weighting scheme, for which we refer the reader to Manning et al. (2008),
+and normalized the row vectors to the unit 1-norm.
+To evaluate the clustering performance, we measured the accuracy (AC) and normalized
+mutual information (NMI). These measures are often used for this purpose (see, for instance,
+Xu et al., 2003; Manning et al., 2008). Let Ω1 , . . . , Ωr be the manually classified classes and
+C1 , . . . , Cr be the clusters constructed by an algorithm. Both Ωi and Cj are the subsets of
+the document set {a1 , . . . , am } such that each subset does not share any documents and
+the union of all subsets coincides with the document set. AC is computed as follows. First,
+compute the correspondence between classes Ω1 , . . . , Ωr and clusters C1 , . . . , Cr such that
+the total number of common documents Ωi ∩ Cj is maximized. This computation can be
+done by solving an assignment problem. After that, rearrange the classes and clusters in
+the obtained order and compute
+1
+d
+
+r
+
+|Ωk ∩ Ck |.
+k=1
+
+1033
+
+Mizutani
+
+This value is the AC for the clusters constructed by an algorithm. NMI is computed as
+I(Ω, C)
+.
++ E(C))
+
+1
+2 (E(Ω)
+
+I and E denote the mutual information and entropy for the class family Ω and cluster
+family C where Ω = {Ω1 , . . . , Ωr } and C = {C1 , . . . , Cr }. We refer the reader to Section 16.3
+of Manning et al. (2008) for the precise forms of I and E.
+Two document corpora were used for the clustering-performance evaluation: Reuters21578 and 20 Newsgroups. These corpora are publicly available from the UCI Knowledge
+Discovery in Databases Archive (http://kdd.ics.uci.edu). In particular, we used the
+data preprocessing of Deng Cai, in which multiple classes are discarded. The data sets are
+available from the website (http://www.cad.zju.edu.cn/home/dengcai). The Reuters21578 corpus consists of 21,578 documents appearing in the Reuters newswire in 1987, and
+these documents are manually classified into 135 classes. The text corpus is reduced by the
+preprocessing to 8,293 documents in 65 classes. Furthermore, we cut off classes with less
+than 5 documents. The resulting corpus contains 8,258 documents with 18,931 words in
+48 classes, and the sizes of the classes range from 5 to 3,713. The 20 Newsgroups corpus
+consists of 18,846 documents with 26,213 words appearing in 20 different newsgroups. The
+size of each class is about 1,000.
+We randomly picked some classes from the corpora and evaluated the clustering performance 50 times. Algorithm 2 was performed in the setting that M is a document-word
+matrix and r and ρ each are the number of classes. In clustering with a low-rank approximation data matrix, we used the rank-r approximation matrix to a document-word
+matrix.
+
+# Classes
+6
+8
+10
+12
+
+AC
+Original
+Low-rank
+ER-SPA SPA ER-SPA
+0.605
+0.586
+0.658
+0.534
+0.539
+0.583
+0.515
+0.508
+0.572
+0.482
+0.467
+0.532
+
+approx.
+SPA
+0.636
+0.581
+0.560
+0.522
+
+NMI
+Original
+Low-rank
+ER-SPA SPA ER-SPA
+0.407
+0.397
+0.532
+0.388
+0.387
+0.491
+0.406
+0.393
+0.511
+0.399
+0.388
+0.492
+
+approx.
+SPA
+0.466
+0.456
+0.475
+0.469
+
+Table 3: (Reuters-21578) Average AC and NMI of ER-SPA and SPA with the original data
+matrix and low-rank approximation data matrix.
+
+Tables 3 and 4 show the results for Reuters-21578 and 20 Newsgroups, respectively.
+They summarize the average ACs and NMIs of ER-SPA and SPA. The column with “#
+Classes” lists the number of classes we chose. The columns labeled “Original” and “Lowrank approx.” are respectively the averages of the corresponding clustering measurements
+with the original data matrix and low-rank approximation data matrix. The tables suggest
+that clustering with a low-rank approximation data matrix performed better than clustering
+with the original data matrix. We see from Table 3 that ER-SPA could achieve improvements in the AC and NMI of SPA on Reuters-21578 when the clustering was done with a
+1034
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+# Classes
+6
+8
+10
+12
+
+Original
+ER-SPA SPA
+0.441
+0.350
+0.391
+0.313
+0.356
+0.278
+0.319
+0.240
+
+AC
+Low-rank
+ER-SPA
+0.652
+0.612
+0.559
+0.517
+
+approx.
+SPA
+0.508
+0.474
+0.439
+0.395
+
+NMI
+Original
+Low-rank
+ER-SPA SPA ER-SPA
+0.314
+0.237
+0.573
+0.306
+0.242
+0.555
+0.291
+0.228
+0.515
+0.268
+0.205
+0.486
+
+approx.
+SPA
+0.411
+0.415
+0.397
+0.372
+
+Table 4: (20 Newsgroups) Average AC and NMI of ER-SPA and SPA with the original data
+matrix and low-rank approximation data matrix.
+
+low-rank approximation data matrix. Table 4 indicates that ER-SPA outperformed SPA in
+AC and NMI on 20 Newsgroups.
+Finally, we compared the topics obtained by ER-SPA and SPA. We used the BBC
+corpus of Greene and Cunningham (2006), which is available from the website (http:
+//mlg.ucd.ie/datasets/bbc.html). The documents in the corpus have been subjected
+by preprocessed such as stemming, stop-word removal, and low word frequency filtering. It
+consists of 2,225 documents with 9,636 words that appeared on the BBC news website in
+2004-2005. The documents were news on 5 topics: “business”, “entertainment”, “politics”,
+“sport” and “tech”.
+AC
+ER-SPA SPA
+0.939
+0.675
+
+NMI
+ER-SPA SPA
+0.831
+0.472
+
+Table 5: AC and NMI of ER-SPA and SPA with low-rank approximation data matrix for
+BBC.
+
+ER-SPA
+SPA
+ER-SPA
+SPA
+ER-SPA
+SPA
+ER-SPA
+SPA
+ER-SPA
+SPA
+
+Anchor word
+film
+film
+mobil
+mobil
+bank
+bank
+game
+fiat
+elect
+blog
+
+1
+award
+award
+phone
+phone
+growth
+growth
+plai
+sale
+labour
+servic
+
+2
+best
+best
+user
+user
+economi
+economi
+player
+profit
+parti
+peopl
+
+3
+oscar
+oscar
+softwar
+microsoft
+price
+price
+win
+euro
+blair
+site
+
+4
+nomin
+nomin
+microsoft
+music
+rate
+rate
+england
+japan
+tori
+firm
+
+5
+actor
+star
+technolog
+download
+oil
+oil
+club
+firm
+tax
+game
+
+Table 6: Anchor words and top-5 frequent words in topics grouped by ER-SPA and SPA
+for BBC.
+
+1035
+
+Mizutani
+
+Table 5 shows the ACs and NMIs of ER-SPA and SPA on the low-rank approximation
+data matrix for the BBC corpus. The table indicates that the AC and NMI of ER-SPA
+are higher than those of SPA. Table 6 summarizes the words in the topics obtained by ERSPA and SPA. The topics were computed by using a low-rank approximation data matrix.
+The table lists the anchor word and the 5 most frequent words in each topic from left to
+right. We computed the correspondence between topics obtained by ER-SPA and SPA and
+grouped the topics for each algorithm. Concretely, we measured the 2-norm of each topic
+vector and computed the correspondence by solving an assignment problem. We can see
+from the table that the topics obtained by these two algorithms are almost the same from
+the first to the third panel, and they seem to correspond to “entertainment”, “tech” and
+“business”. The topics in the fourth and fifth panels, however, are different. The topic in
+the fifth panel by ER-SPA seems to correspond to “politics”. In contrast, it is difficult to
+find the topic corresponding to “politics” in the panels by SPA. These show that ER-SPA
+could extract more recognizable topics than SPA.
+Remark 14 Sparsity plays an important role in computing the SVD for a large document
+corpus. In general, a document-word matrix arising from a text corpus is quite sparse. Our
+implementation of Algorithm 2 used the MATLAB command svds that exploits the sparsity
+of a matrix in the SVD computation. The implementation could work on all data of 20
+Newsgroups corpus, which formed a document-word matrix of size 18,846-by-26,213.
+
+7. Concluding Remarks
+We presented Algorithm 1 for Problem 1 and formally showed that it has correctness and
+robustness properties. Numerical experiments on synthetic data sets demonstrated that
+Algorithm 2, which is the practical implementation of Algorithm 1, is robustness to noise.
+The robustness of the algorithm was measured in terms of the recovery rate. The results
+indicated that Algorithm 2 can improve the recovery rates of SPA and XRAY. The algorithm was then applied to document clustering. The experimental results implied that it
+outperformed SPA and extracted more recognizable topics.
+We will conclude by suggesting a direction for future research. Algorithm 2 needs to do
+two computations: one is the SVD of the data matrix and the other is the MVEE for a set
+of reduced-dimensional data points. It would be ideal to have a single computation that
+could be parallelized. The MVEE computation requires that the convex hull of data points
+is full-dimensional. Hence, the SVD computation should be carried out on data points.
+However, if we could devise an alternative convex set for MVEE, it would possible to avoid
+SVD computation. It would be interesting to investigate the possibility of algorithms that
+find near-basis vectors by using the other type of convex set for data points.
+
+Acknowledgments
+The author would like to thank Akiko Takeda of the University of Tokyo for her insightful
+and enthusiastic discussions, and thank the referees for careful reading and helpful suggestions that considerably improved the quality of this paper.
+1036
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+References
+S. D. Ahipasaoglu, P. Sun, and M. J. Todd. Linear convergence of a modified Frank-Wolfe
+algorithm for computing minimum-volume enclosing ellipsoids. Optimization Methods
+and Software, 23(1):5–19, 2008.
+S. Arora, R. Ge, R. Kannan, and A. Moitra. Computing a nonnegative matrix factorization
+– Provably. In Proceedings of the 44th Symposium on Theory of Computing (STOC),
+pages 145–162, 2012a.
+S. Arora, R. Ge, and A. Moitra. Learning topic models – Going beyond SVD. In Proceedings
+of the 2012 IEEE 53rd Annual Symposium on Foundations of Computer Science (FOCS),
+pages 1–10, 2012b.
+S. Arora, R. Ge, Y. Halpern, D. Mimno, and A. Moitra. A practical algorithm for topic
+modeling with provable guarantees. In Proceedings of the 30th International Conference
+on Machine Learning (ICML), 2013.
+V. Bittorf, B. Recht, C. Re, and J. A. Tropp. Factoring nonnegative matrices with linear
+programs. In Advances in Neural Information Processing Systems 25 (NIPS), pages
+1223–1231, 2012.
+A. Cichocki, R. Zdunek, A. H. Phan, and S. Amari. Nonnegative Matrix and Tensor
+Factorizations: Applications to Exploratory Multi-way Data Analysis and Blind Source
+Separation. Wiley, 2009.
+W. Ding, M. H. Rohban, P. Ishwar, and V. Saligrama. Topic discovery through data
+dependent and random projections. In Proceedings of the 30th International Conference
+on Machine Learning (ICML), 2013.
+D. Donoho and V. Stodden. When does non-negative matrix factorization give a correct
+decomposition into parts? In Advances in Neural Information Processing Systems 16
+(NIPS), pages 1141–1148, 2003.
+N. Gillis. Robustness analysis of Hottopixx, a linear programming model for factoring
+nonnegative matrices. SIAM Journal on Matrix Analysis and Applications, 34(3):1189–
+1212, 2013.
+N. Gillis and R. Luce. Robust near-separable nonnegative matrix factorization using linear
+optimization. arXiv:1302.4385v1, 2013.
+N. Gillis and S. A. Vavasis. Fast and robust recursive algorithms for separable nonnegative
+matrix factorization. IEEE Transactions on Pattern Analysis and Machine Intelligence,
+36(4):698–714, 2014.
+G. H. Golub and C. F. Van Loan. Matrix Computation. The Johns Hopkins University
+Press, 3rd edition, 1996.
+P. Gong and C. Zhang. Efficient nonnegative matrix factorization via projected newton
+method. Pattern Recognition, 45(9):3557–3565, 2012.
+1037
+
+Mizutani
+
+D. Greene and P. Cunningham. Practical solutions to the problem of diagonal dominance
+in kernel document clustering. In Proceedings of the 23th International Conference on
+Machine Learning (ICML), 2006.
+L. G. Khachiyan. Rounding of polytopes in the real number model of computation. Mathematics of Operations Research, 21(2):307–320, 1996.
+H. Kim and H. Park. Non-negative matrix factorization based on alternating non-negativity
+constrained least squares and active set method. SIAM Journal on Matrix Analysis and
+Applications, 30(2):713–730, 2008.
+H. Kim and H. Park. Fast nonnegative matrix factorization: An active-set-like method and
+comparisons. SIAM Journal on Scientific Computing, 33(6):3261–3281, 2011.
+J. Kim, Y. He, and H. Park. Algorithms for nonnegative matrix and tensor factorizations: a unified view based on block coordinate descent framework. Journal of Global
+Optimization, 58(2):285–319, 2014.
+A. Kumar, V. Sindhwani, and P. Kambadur. Fast conical hull algorithms for near-separable
+non-negative matrix factorization. In Proceedings of the 30th International Conference
+on Machine Learning (ICML), 2013.
+P. Kumar and E. A. Yildirim. Minimum-volume enclosing ellipsoids and core sets. Journal
+of Optimization Theory and Applications, 126(1), 2005.
+D. D. Lee and H. S. Seung. Learning the parts of objects by non-negative matrix factorization. Nature, 401:788–791, 1999.
+D. D. Lee and H. S. Seung. Algorithms for non-negative matrix factorization. In Advances
+in Neural Information Processing Systems 13 (NIPS), pages 556–562, 2001.
+C.-J. Lin. Projected gradient methods for non-negative matrix factorization. Neural Computation, 19(10):2756–2779, 2007.
+C. D. Manning, P. Raghavan, and H. Schuetze. Introduction to Information Retrieval.
+Cambridge University Press, 2008.
+L. Miao and H. Qi. Endmember extraction from highly mixed data using minimum volume
+constrained nonnegative matrix factorization. IEEE Transactions on Geoscience and
+Remote Sensing, 45(2):765–777, 2007.
+J. M. P. Nascimento and J. M. B. Dias. Vertex component analysis: A fast algorithm to
+unmix hyperspectral data. IEEE Transactions on Geoscience and Remote Sensing, 43
+(4):898–910, 2005.
+F. Shahnaz, M. W. Berry, V. P. Pauca, and R. J. Plemmons. Document clustering using
+nonnegative matrix factorization. Information Processing and Management, 42(2):373–
+386, 2006.
+P. Sun and R. M. Freund. Computation of minimum-volume covering ellipsoids. Operations
+Research, 52(5):690–706, 2004.
+1038
+
+Ellipsoidal Rounding for Nonnegative Matrix Factorization Under Noisy Separability
+
+M. J. Todd and E. A. Yildirim. On Khachiyan’s algorithm for the computation of minimumvolume enclosing ellipsoids. Discrete Applied Mathematics, 155(13):1731–1744, 2007.
+K.-C. Toh. Primal-dual path-following algorithms for determinant maximization problems
+with linear matrix inequalities. Computational Optimization and Applications, 14(3):
+309–330, 1999.
+K.-C. Toh, M. J. Todd, and R. H. T¨
+ut¨
+unc¨
+u. SDPT3 – a MATLAB software package for
+semidefinite programming. Optimization Methods and Software, 11:545–581, 1999.
+T. Tsuchiya and Y. Xia. An extension of the standard polynomial-time primal-dual pathfollowing algorithm to the weighted determinant maximization problem with semidefinite
+constraints. Pacific Journal of Optimization, 3(1):165–182, 2007.
+L. Vandenberghe, S. Boyd, and S. P. Wu. Determinant maximization with linear matrix
+inequality constraints. SIAM Journal on Matrix Analysis and Applications, 19(2):499–
+533, 1998.
+S. A. Vavasis. On the complexity of nonnegative matrix factorization. SIAM Journal of
+Optimization, 20(3):1364–1377, 2009.
+W. Xu, X. Liu, and Y. Gong. Document clustering based on non-negative matrix factorization. In Proceedings of the 26th Annual International ACM SIGIR Conference on
+Research and Development in Information Retrieval (SIGIR), pages 267–273, 2003.
+
+1039
+
+

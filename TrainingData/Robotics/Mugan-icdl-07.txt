@@ -1,0 +1,765 @@
+Learning to Predict the Effects of Actions:
+Synergy between Rules and Landmarks
+Jonathan Mugan
+
+Benjamin Kuipers
+
+Computer Science Department
+University of Texas at Austin
+Austin Texas, 78712 USA
+
+Computer Science Department
+University of Texas at Austin
+Austin Texas, 78712 USA
+
+Abstract— A developing agent must learn the structure of
+its world, beginning with its sensorimotor world. It learns
+rules to predict how its motor signals change the sensory
+input it receives. It learns the limits to its motion. It learns
+which effects of its actions are unconditional and which effects
+are conditional, including what they depend on. We present
+preliminary results evaluating an implemented computational
+model of this important kind of foundational developmental
+learning. Our model demonstrates synergy between the learning
+of landmarks representing important qualitative distinctions,
+and the learning of rules that exploit those distinctions to
+make reliable predictions. These qualitative distinctions make it
+possible to define discrete events, and then to identify predictive
+rules describing regularities among events and the values of
+context variables. The attention of the learning agent is focused
+by a stratified model that structures the set of variables, and
+the structure of the stratified model is simultaneously created
+by the learning process.
+Index Terms— developmental learning, sensorimotor learning, qualitative abstraction, predictive rules, landmark values
+
+I. I NTRODUCTION
+A developing agent — human or robot — must learn the
+structure of its world, beginning with its own sensorimotor
+interaction. Even in an unknown environment, with uninterpreted sensors and effectors — what William James [1]
+described as “blooming, buzzing confusion” — it must learn
+to predict how its motor signals change the sensory input
+it receives. It learns rules to make predictions. It learns the
+limits to its motion. It learns which effects of its actions are
+unconditional and which effects are conditional, including
+what they depend on. And so on.
+We present early results with an implemented computational model that shows how this learning process could be
+structured. Important qualitative distinctions are identified,
+and represented as landmarks in the ranges of continuous
+variables. The landmarks allow rules to be learned to capture
+This work has taken place in the Intelligent Robotics Lab at the Artificial
+Intelligence Laboratory, The University of Texas at Austin. Research of the
+Intelligent Robotics lab is supported in part by grants from the National
+Science Foundation (IIS-0413257 and IIS-0538927), from the National
+Institutes of Health (EY016089), and by an IBM Faculty Research Award.
+We would also like to acknowledge NSF grant EIA-0303609.
+
+Fig. 1. A simulated “robot baby” is implemented in Breve [2]. It has a
+torso with a 2-dof arm and is sitting in front of a tray with a block. The
+robot has two motor variables u
+˜x and u
+˜y that move the hand in the x
+and y directions, respectively. The perceptual system creates variables for
+each of the two tracked objects in this environment: the hand and the block.
+˜ x (t), h
+˜ y (t), and ha (t). The
+The variables corresponding to the hand are h
+˜ x (t), h
+˜ y (t) represent the location of the hand in the
+continuous variables h
+x and y directions, respectively, and the Boolean variable ha (t) represents
+whether the hand is in view. The variables corresponding to the block are
+˜bx (t), ˜by (t), and ba (t) and they have the same respective meanings as the
+variables for the hand. When two objects are sufficiently close together the
+perceptual system also creates variables to represent their relationship. The
+relationship between the hand and the block is represented by the continuous
+variables c˜x (t), c˜y (t), and e˜(t). The variables c˜x (t) and c˜y (t) represent
+the coordinates of the center of the hand in the frame of reference of the
+center of the block, and the variable e˜(t) represents the distance between
+the hand and the block. The values of all variables are updated by perceptual
+trackers at each timestep as the object moves. If the block disappears from
+view by falling off the tray, then ba (t) = false.
+
+significant regularities. Non-determinism in these rules allows
+attention to be focussed on regions where new landmarks
+can be learned to improve the predictions. And the new
+landmarks, in turn, allow yet more rules to be learned.
+This learning process is one stage in a longer developmental learning sequence. We build on existing methods
+for learning the structure of the sensorimotor system by
+analyzing the statistical properties of disorganized elements
+(“pixels”) of the agent’s sensory and motor vectors [3]–
+[5]. We also assume that the agent has already learned to
+
+individuate, track, and describe perceived objects in its visual
+field, using the methods of Modayil and Kuipers [6], [7].
+The agent’s only task is to learn progressively more reliable
+rules to predict the effects of its actions on the objects
+in its environment. By observing the success or failure of
+these rules the unsupervised learning agent generates its own
+supervisory signal.
+Learning identifies predictive rules and adds contextual
+conditions to increase reliability. In order to learn rules
+robustly, the agent builds a stratified model, where the
+variables it has characterized are organized into strata. It
+starts with the built-in motor variables in the lowest stratum,
+and then creates higher strata as determined by the rules
+it learns. The stratified model focuses the attention of the
+learning agent, so it can proceed greedily, building rules
+with antecedent events involving variables already in the
+model. Meanwhile, it infers a qualitative abstraction for the
+range of each continuous variable, describing values in the
+range in terms of landmark values, open intervals between
+landmark values, and directions of change. An important part
+of learning is to identify landmarks representing distinctions
+that make the rules more reliable.
+We evaluate the learning algorithm with a simulated “robot
+baby” (Fig. 1). The agent’s only task is to learn to predict
+future states in its environment. It learns how much force is
+necessary to move its hand. It learns the limits of its hand
+motion, and how to reliably move its hand within those limits.
+It also learns reliable rules that in some situations allow it
+to move its hand towards the block, and then to move the
+block. These are essential first steps toward grasping and
+manipulation of objects in its world.
+The significance of this learning scenario is that the agent
+learns the qualitative distinctions that allow reliable and
+informative rules to be learned. The rules learned from these
+distinctions then serve as a supervisory signal because the
+agent can observe when they do and do not make correct
+predictions. The agent can then use this supervisory signal
+to make further distinctions, which in turn can lead to more
+predictive rules. All learning takes place within a stratified
+model that serves as a focus of attention and a mechanism
+to reduce the number of rules learned.
+We will first introduce the theory behind our method. We
+then provide an evaluation, describing what the agent learns
+in the simulated environment described in Fig. 1. Finally, we
+will discuss related work and future directions of research.
+II. K NOWLEDGE R EPRESENTATION AND L EARNING
+A cognitive learning agent (the “robot baby”) has access to
+a number of continuous variables representing the interfaces
+to sensory and motor processes associated with its body. In
+our model, the learning agent can observe the continuous
+values of its variables, and can collect certain limited kinds
+of statistics, but it can only represent (i.e., store, match, and
+
+retrieve) and do logical and causal inference with discrete
+variables.
+Therefore, a critical task for the “robot baby” is to learn appropriate abstractions from continuous to discrete variables.
+Initially, the values of the continuous variables are completely
+meaningless. Our goal is for the agent to learn, from its
+own undirected experience, to identify landmark values that
+make important qualitative distinctions for each variable.
+The importance of a qualitative distinction is estimated from
+the reliability of the rules that can be learned, given that
+distinction.
+The qualitative representation is based on QSIM [8]. For
+each continuous variable x
+˜(t) two discrete variables are
+created: a discrete variable x(t) that represents the magnitude
+of x
+˜(t), and a discrete variable x(t)
+˙
+that represents the
+direction of change of x
+˜(t). (Non-zero directions of change
+that persist fewer than three time-steps are filtered out.)
+A continuous variable x
+˜(t) ranges over some subset of the
+real number line (−∞, +∞). In QSIM, its magnitude is abstracted to a discrete variable x(t) that ranges over a quantity
+space Q(x) of qualitative values. Q(x) = L(x)∪I(x), where
+L(x) = {x1 , · · · xn } is a totally ordered set of landmark
+values, and I(x) = {(−∞, x1 ), (x1 , x2 ), · · · (xn , +∞)} is
+the set of mutually disjoint open intervals in the real number
+line that L(x) defines. A discrete variable x(t)
+˙
+representing the direction of change of x
+˜(t) has a single intrinsic
+landmark at 0, so its initial quantity space is Q(x)
+˙ =
+{(−∞, 0), 0, (0, +∞)}. (Note that, for most magnitude variables, zero is just another point on the number line, so those
+variables initially have no landmarks.)
+Initially, when the agent knows of no meaningful qualitative distinctions among values for x
+˜(t), we describe the
+quantity space as the empty list of landmarks, (). A quantity
+space with two landmarks might be described by (x1 , x2 ),
+which implies five distinct qualitative values, Q(x) =
+{(−∞, x1 ), x1 , (x1 , x2 ), x2 , (x2 , +∞)}. Table I and Fig. 1
+give examples of the variables the learning agent knows
+about, and their initial and final quantity spaces.
+A. Events
+An event E(t) is a qualitative change in the state of a
+system that takes place at time-point t.
+A transition At → a is an event defined by A(t − 1) = a
+and A(t) = a. That is, a discrete variable A changes to value
+a at time t, from some other value.
+The only events we will consider here are transitions.
+Our goal is to describe regularities in the occurrence of
+events. These regularities are expressed as predictive rules.
+There are two types of predictive rules: causal rules represent
+that one event occurs after another later in time, the linking
+of events appearing as causal to the agent; and functional
+rules represent that two events are linked by a function and
+so happen at the same time. These two rules differ only in the
+
+time component, so after initially discussing them separately,
+we will simply refer to both types as rules.
+B. Causal Rules
+A causal rule r has the form C : E1 ⇒ E2 , where E1 (t)
+is one event, say At → a, E2 (t ) is another event over a
+direction of change variable, say Bt → b, that takes place
+relatively soon after t, and the context C is a set that can
+consist of magnitude or Boolean variables.
+We say that a causal rule r = C : E1 ⇒ E2 applies at
+time t when E1 (t) is true. That E2 takes place “relatively
+soon after” E1 (t) is formalized in terms of a time-delay k.
+soon(t, E2 ) ≡
+
+∃t [t < t < t + k ∧ E2 (t )]
+
+(1)
+
+A rule r = C : E1 ⇒ E2 succeeds when:
+succeeds(r, t) ≡
+
+E1 (t) ∧ soon(t, E2 )
+
+(2)
+
+Associated with a causal rule r = C : E1 ⇒ E2 is a
+probability distribution of the form
+P (soon(t, E2 )|E1 (t) = true, C(t − 1))
+
+(3)
+
+which is the conditional probability distribution over the
+binary random variable soon(t, E2 ), given that E1 (t) is true,
+conditioned on the values of the variables in C at time t − 1.
+We define the entropy of a rule r = C : E1 ⇒ E2 as the
+conditional entropy of soon(t, E2 ) given C(t − 1), with the
+added restriction that event E1 (t) occurs. In equation form
+it is given by
+H(r)
+
+= H(soon(t, E2 )|E1 (t) = true, C(t − 1)). (4)
+
+We are interested in learning rules that predict events,
+but rule r can have low entropy if it predicts that E2 will
+almost never follow E1 , so a rule must have more than
+low entropy to be useful. We define a concept called best
+reliability represented as brel(r). For rule r, brel(r) is the
+highest probability of success for any value of C. If C = ∅
+then brel(r) is just the probability of success of r.
+1) Learning a causal rule: The learner starts by searching
+for two events E1 and E2 such that observing event E1 means
+that event E2 is significantly more likely to occur than it
+would have been otherwise.
+The learner asserts an initial rule ∅ : E1 ⇒ E2 with
+empty context, when P (soon(t, E2 )|E1 (t)) > 0.1 and
+ι(P (soon(t, E2 )|E1 (t)), P (soon(t, E2 ))) > θa > 1
+
+(5)
+
+1−q
+has
+where the function on probabilities ι(p, q) = pq · 1−p
+been defined to have higher resolution near the extremes,
+and lower resolution near the center, over the interval (0, 1)
+of probability values. The parameter θa = 2.5 specifies how
+much more likely E2 should be, after E1 has been observed.
+(Here and elsewhere we require a minimum number of
+relevant observations so the probability will be reliable.)
+
+2) Learning a context for a functional rule: Once the
+agent has learned a rule r = ∅ : E1 ⇒ E2 , it searches for a
+magnitude or Boolean variable v1 such that if r is modified to
+be r = {v1 } : E1 ⇒ E2 the variable v1 provides sufficient
+information gain H(r) − H(r ) > θig . The parameter θig =
+0.15 determines how much information gain is required to
+augment the context. If there are multiple discrete variables
+that meet this criteria, then the one providing the largest
+information gain is chosen.
+Once it has learned a rule r = {v1 } : E1 ⇒ E2 the
+agent searches for another magnitude or Boolean variable v2
+such that if r is modified to be r = {v1 , v2 } : E1 ⇒ E2
+the variable v2 provides sufficient information gain H(r ) −
+H(r ) > θig . In principle, an arbitrarily large context can be
+learned, but in our current implementation, the size is limited
+to 2.
+This approach is inspired by the concept of marginal
+attribution from Drescher’s schema mechanism [9]. However,
+unlike Drescher and others, we reason with the entire set of
+possible values of the set C of context variables, rather than
+simply asserting a condition V = vj into the antecedent of a
+particular rule.
+C. Functional Rules
+A functional rule r = C : E1 ⇒ E2 has the same
+form as a causal rule, and behaves in a similar way, with
+three exceptions. The first difference is in the timing of
+the events: the predicate soon(t, E2 ) is replaced with E2 (t),
+which means that the events E1 and E2 must happen in the
+same timestep. The second difference is that functional rules
+are only learned on events over direction of change variables.
+And the third difference is because there is no time delay. If
+a functional rule C : E1 ⇒ E2 is learned but its opposite
+C : E2 ⇒ E1 has a significantly higher rate of success
+before the context is considered, then C : E1 ⇒ E2 is
+replaced by C : E2 ⇒ E1 (although C : E1 ⇒ E2 is
+still used to build the stratification process as discussed in
+SectionII-E). We will refer to both types of rules as predictive
+rules or rules.
+D. Landmarks for Predictive Rules
+Inserting a new landmark x∗ into an open interval
+(xi , xi+1 ) allows it to be replaced in Q(x) by two intervals
+and the dividing landmark: (xi , x∗ ), x∗ , (x∗ , xi+1 ). Adding
+this new landmark into the quantity space Q(x) allows a new
+distinction to be made that may transform a rule r into a new
+rule r .
+If a landmark candidate for a rule r = C : A→b ⇒ B→
+b is on variable A, then to be adopted the landmark must
+increase the best reliability of r by transforming it into r so
+that ι(brel(r ), brel(r)) > θa .
+If the landmark candidate for r is on a variable other than
+A, it must improve the entropy of r to be adopted. To do
+this it must modify an existing variable in C or a variable
+
+outside of C that can then be added to C so that r becomes
+more deterministic by transforming it into r where H(r) −
+H(r ) > θig .
+Landmark candidates are chosen considering the width of
+the interval and the highest gain [10] with respect to the
+success of the rule. Depending on the relative gains of nearby
+potential values for a new landmark x∗ , this search can result
+in either a precise numerical value, or a range of possible
+values for x∗ on different occasions: range(x∗ ) = [lb, ub].
+Examples of both cases are shown in Table I.
+E. Learning the Stratified Model
+The learning process organizes the discrete variables into
+a stratified model, which serves as a focus of attention and
+helps contain the proliferation of rules.
+The learning agent starts with a set of continuous variables.
+The motor variables {˜
+ux , u
+˜y } control the hand position. Perceptual trackers deliver groups of continuous variables cor˜ x, h
+˜ y , ha }, the block {˜bx , ˜by , ba },
+responding to the hand {h
+and the relation between the two {˜
+cx , c˜y , e˜}. (See Figure 1
+for a description of these variables.)
+A stratum Si in the model at level i is a set of discrete
+variables. A variable may be in at most one stratum and a
+derivative variable x˙ is always included in the same stratum
+as the variable x. The first stratum S0 is initialized with
+the qualitative motor variables {ux , uy }, which have initial
+intrinsic landmarks at 0. The remaining unstratified discrete
+variables are available for rule-building.
+From the current highest (or outermost) stratum Si and
+each stratum below, the learning agent then repeatedly applies
+the predictive rule and landmark learning methods until no
+new rules or landmarks are generated. Once a new stratum
+Si+1 is defined, the set of rules is pruned, and the process
+repeats to build the next stratum.
+Where Si is the current highest stratum, the learning
+algorithm attempts to learn rules r = C : A→a ⇒ B→b
+starting with antecedent variables A in Sj where j ≤ i. When
+searching for a suitable result event B → b, it restricts its
+attention to variables in Sj , variables in Sj+1 , and variables
+so far unstratified. A previously unstratified variable that
+becomes the result variable B of a rule r = C : A→a ⇒
+B→b where A ∈ Sj is added to Sj+1 . And the other member
+of a variable-derivative pair, x, x˙ is also added to Sj+1 .
+An exception is a functional rule C : E2 ⇒ E1 that
+is learned because it has a higher rate of success than C :
+E1 ⇒ E2 . In this case for the purpose of stratification, the
+rule C : E2 ⇒ E1 is treated as if it were of the form
+C : E1 ⇒ E2 .
+After a stratum Si is learned, the algorithm prunes the
+model. Rules that have not become sufficiently deterministic
+are pruned, where how deterministic a rule r = C : A→a ⇒
+B→b must be depends on the number n of variables in C.
+Rule r is removed if H(r) ≥ 0.6 − (0.05n × θig ). Rule r
+
+TABLE I
+VARIABLES , THEIR RANGES OF VALUES , AND INITIAL AND FINAL
+LANDMARKS
+
+Var.
+ux
+uy
+hx
+h˙ x
+hy
+h˙ y
+ha
+bx
+b˙ x
+by
+b˙ y
+ba
+cx
+c˙x
+cy
+c˙y
+e
+e˙
+
+Range
+[−500, 500]
+[−500, 500]
+[−2.0, 2.0]
+(−∞, +∞)
+[−2.0, 2.0]
+(−∞, +∞)
+{0, 1}
+(−∞, +∞)
+(−∞, +∞)
+(−∞, +∞)
+(−∞, +∞)
+{0, 1}
+(−∞, +∞)
+(−∞, +∞)
+(−∞, +∞)
+(−∞, +∞)
+[0, +∞)
+(−∞, +∞)
+
+Initial
+(0)
+(0)
+()
+(0)
+()
+(0)
+Binary
+()
+(0)
+()
+(0)
+Binary
+()
+(0)
+()
+(0)
+()
+(0)
+
+Final
+(L1 , 0, L2 )
+(L3 , 0, L4 )
+(L5 , L6 )
+(0)
+(L7 , L8 )
+(0)
+Binary
+()
+(0)
+()
+(0)
+Binary
+(L9 , L10 )
+(0)
+(L11 )
+(0)
+(L12 )
+(0)
+
+Landmarks
+L1 = −302.80
+L2 = 302.23
+L3 = −305.10
+L4 = 302.50
+L5 = [−2.03, −1.99]
+L6 = [1.99, 2.04]
+L7 = [−2.01, −1.99]
+L8 = [1.99, 2.01]
+L9 = −2.16
+L10 = 2.00
+L11 = −1.68
+L12 = 0.47
+
+is also removed if brel(r) ≥ 0.6. Of the remaining rules, if
+there exist rules E1 ⇒ E2 , E2 ⇒ E3 , and E1 ⇒ E3 ,
+then E1 ⇒ E3 is redundant and can be pruned.
+If the pruning operation eliminates all rules pointing to
+variables in some variable-derivative pair x, x˙ in Si , then
+those variables are removed from Si .
+III. E VALUATION
+A. Simulation Scenario
+The agent executed the learning algorithm on the simulation shown in Fig. 1. The agent’s experience consisted of
+405,000 timesteps where each timestep corresponded to 0.05
+seconds. The agent alternated between gathering statistics
+while experiencing the world and learning new rules and
+landmarks. During each period of experience the agent began
+with its motor variables set to 0 and would then motor babble
+for 15,000 timesteps. During this time, if the block fell off
+of the tray it was immediately moved to a random position
+within reach of the agent. Since there are parts of the tray
+that cannot be reached by the agent, if at any point the block
+was not moved for 300 timesteps it was moved to a random
+location within reach of the agent.
+As the agent experiences the world it uses its current set
+of landmarks to convert the continuous variables described in
+the caption of Fig. 1 into discrete variables. These variables
+include the variables ux and uy for controlling the hand, the
+variables hx , hy , h˙ x , h˙ y , and ha that give the state of the
+hand, the variables bx , by , b˙ x , b˙ y , and ba that give the state
+of the block. And finally, the relation between the hand and
+the block is given by cx , cy , c˙x , c˙y , and e.
+For each variable, Table I provides the physical range of
+values it can take on, the initial and final sets of landmarks,
+
+and the numerical value or range representing the agent’s
+knowledge of the value of each landmark.
+TABLE II
+S UBSET OF L EARNED RULES (T INDICATES EITHER CAUSAL RULE OR
+FUNCTIONAL RULE )
+
+Strata
+
+T
+
+Rule
+
+S0 =
+{ux , uy }
+
+C
+C
+C
+C
+C
+F
+F
+F
+F
+F
+F
+C
+
+{hx } : ux→(−∞, −302.80) ⇒ h˙ x→(−∞, 0)
+{hx } : ux→(302.23, +∞) ⇒ h˙ x→(0, +∞)
+{hy } : uy →(−∞, −305.10) ⇒ h˙ y →(−∞, 0)
+{hy } : uy →(302.50, +∞) ⇒ h˙ y →(0, +∞)
+∅ : hx→[−2.03, −1.99] ⇒ h˙ x→[0]
+∅ : h˙ x→(−∞, 0) ⇒ c˙x→(−∞, 0)
+∅ : h˙ y →[0] ⇒ c˙y →[0]
+∅ : h˙ y →(0, +∞) ⇒ c˙y →(0, +∞)
+{cx } : c˙x→(−∞, 0) ⇒ e→(−∞,
+˙
+0)
+{cx } : c˙x→(0, +∞) ⇒ e→(−∞,
+˙
+0)
+{cx , cy } : c˙y →(−∞, 0) ⇒ e→(0,
+˙
++∞)
+{cx } : e→(0, 0.47) ⇒ b˙ x→(−∞, 0)
+empty
+
+S1 =
+{hx , h˙ x ,
+hy , h˙ y }
+S2 =
+{cx , c˙x ,
+cy , c˙y ,
+e, e}
+˙
+S3 =
+{bx , b˙ x }
+
+B. Learning Example
+This section describes a particular case of rule and landmark learning that is typical of the learning agent’s behavior.
+(1) By noting that the event h˙ x → (−∞, 0) of the hand
+moving to the left is more likely to occur following the event
+ux → (−∞, 0) of force being applied to the left, the agent
+hypothesizes a causal rule linking ux → (−∞, 0) to h˙ x →
+(−∞, 0). It then creates the rule
+r = ∅ : ux→(−∞, 0) ⇒ h˙ x→(−∞, 0)
+with a best reliability brel(r) = 0.36 and an entropy H(r) =
+0.94.
+(2) To try to make this rule more reliable, the agent looks
+at the value of ux each time event ux →(−∞, 0) occurs. It
+finds that the best reliability of r can be increased by creating
+a landmark L1 = −302.80 (in the simulator it takes a force
+of 300 to move the hand). It then updates r to be
+r = ∅ : ux→(−∞, L1 ) ⇒ h˙ x→(−∞, 0)
+with best reliability brel(r ) = 0.74 and an entropy H(r ) =
+0.58.
+(3) The agent cannot move the hand farther to the left if
+it is already at its leftmost point. The agent finds that if it
+adds a landmark L5 = [−2.12, −1.95] for hx that it can add
+hx to the context of r creating a new rule
+r = {hx } : ux→(−∞, L1 ) ⇒ h˙ x→(−∞, 0)
+a best reliability of brel(r ) = 0.90 with entropy H(r ) =
+0.39. The rule r is now deterministic enough to make
+useful predictions. The initial failure rate of 0.10 comes
+from having experienced relatively few timesteps and the
+
+stochastic property of motor babbling. When ux = (−∞, L1 )
+is selected for a small number of timesteps and it is a value
+close to L1 , then it may not be enough to elicit the event
+h˙ x →(−∞, 0). But even in this noisy environment, the rule
+can be learned.
+(4) Landmark L6 = [1.99, 2.04] is learned in the same
+way using movement in the positive x direction. With the
+addition of L6 , r is the first rule seen in Table II. If we
+let E1 = ux (t) → (−∞, L1 ) and E2 = h˙ x (t) → (−∞, 0)
+then at the end of learning the rule r represents the set of
+probabilities
+P (soon(t, E2 )|E1 , hx (t) = L5 )
+
+=
+
+0.01
+
+P (soon(t, E2 )|E1 , hx (t) = (L5 , L6 ))
+
+=
+
+0.93
+
+P (soon(t, E2 )|E1 , hx (t) = L6 )
+
+=
+
+0.95
+
+(5) Landmark L5 also allows the agent to create a new rule.
+Since L5 represents the limit of movement in the negative x
+direction, it can be used to predict when the hand will stop
+using the rule ∅ : hx →L7 ⇒ h˙ x →0 , with best reliability
+0.96 and entropy 0.23.
+C. What the Agent Has Learned
+The agent learns a set of landmarks and a stratified
+structure on the set of discrete variables (Table I). It also
+learns a total of 33 rules: 14 causal rules and 19 functional
+rules (a sample of these appears in Table II). The numbers
+of rules at levels S0 , S1 , S2 , and S3 , is 5, 15, 13, and 0,
+respectively.
+Recall that, initially, only the motor and direction-ofchange variables included an initial landmark at 0, and that
+magnitude variables had no landmarks at all, so that any
+qualitative distinctions among values of those variables had
+to be learned by the agent from its own experience.
+By using the learning algorithm, the agent learns that the
+motor variables directly control the motion of the hand, and
+that a motor value greater than about 300 is necessary to
+produce motion (4 rules in S0 ). It learns that motion of the
+hand directly affects the relational variables between the hand
+and the block (5 rules in S1 ).
+It learns that each hand position variable is restricted to
+the approximate range of [−2.0, +2.0] in both the x and the
+y direction. It also learns that it cannot move the hand further
+in any direction if it is at the boundary in that direction (4
+rules in S1 ).
+It learns a large variety of rules (in S2 and S3 ) describing
+the relationships among (a) the position of the hand in the
+frame of reference of the block, (b) the distance between the
+hand and the block, and (c) the motion of the block. It learns
+a landmark on the distance e between the hand and the block
+and then learns that if the distance between the hand and the
+block reduces to less than 0.47 that the block may move.
+
+The agent also learns important landmarks on the variables
+cx and cy . The hand and the block each have a diameter of
+2.0, so if they are next to each other c˜x will have a value of
+2.0 or -2.0 depending on which side the block is on, and this
+is represented by landmarks L9 and L10 . When the hand is
+under and touching the block c˜y = −2.0, and this value is
+approximated by landmark L11 .
+Not every learned rule makes sense from the point of
+view of a human observer. Nor is every rule learned that
+a human observer would consider justified. In some cases,
+deeper analysis shows that the learning agent is, in fact,
+behaving sensibly. In other cases, additional learning from
+additional experience will resolve problems due to statistical
+anomalies. Further analysis and experimentation will bring
+deeper insights into this learning process.
+IV. R ELATED W ORK
+Drescher [9] created the schema mechanism, by which an
+agent progressively constructed knowledge of the world in
+the form of schemas that linked contexts, actions, and results,
+all consisting of Boolean variables. The schema mechanism
+suffered from an intractable proliferation of rules, partly (we
+believe) because it lacked the stratified model that imposes a
+hierarchical structure on the set of variables in our approach.
+Cohen et al. [11] created an agent called Neo that, like our
+agent, learned by looking for events that tend to co-occur,
+however the input into the learning algorithm was discrete.
+Cohen et al. [12] have also done work with abstracting sensor
+input using clustering of time series data.
+Das et al. [13] also cluster time series data. Their algorithm
+discretizes the data by clustering subsequences using a sliding
+window. They then learn rules from this discretized data, but
+the rules do not in turn influence the discretization.
+To learn both a Bayesian network and the discretizations
+of the variables for that network, Friedman and Goldszmidt
+[14] iterate between the two. They learn new thresholds for
+variables in an unsupervised setting by seeking to maximize
+the mutual information between each variable and its parents.
+Their work addresses the problem of building Bayesian
+networks from continuous data. The purpose of a Bayesian
+network is to compactly represent a full joint probability
+distribution. Our method is designed, like Drescher’s, for
+environments that cannot be completely characterized.
+V. C ONCLUSIONS AND F UTURE W ORK
+We have presented preliminary results from an implemented computational model of an important kind of foundational developmental learning. Our model demonstrates
+an important synergy between the learning of landmarks
+representing important qualitative distinctions, and the learning of rules that exploit those distinctions to make reliable
+predictions. These qualitative distinctions make it possible
+to define discrete events, and then to identify predictive rules
+
+describing regularities among events and the values of context
+variables.
+We have demonstrated these only with the very first steps
+in learning to control the hand of our “baby robot” and to
+interact with a single object. There is much more to learn, and
+the learning mechanism will undoubtedly evolve in response
+to more extensive and more quantitative evaluation.
+The next major step will be to incorporate active learning.
+The current learning process uses sensorimotor experience
+resulting from random “motor babbling” behavior. Once
+the earliest levels of representation have been learned, new
+landmarks to resolve non-determinism in the rules can only
+be learned by actively pursuing experience in the nondeterministic region. The rules learned in this paper encode
+the knowledge necessary for the creation and execution of
+simple plans needed to pursue such experience. The next step
+in our research is to develop and evaluate the mechanisms
+for applying that knowledge.
+R EFERENCES
+[1] W. James, The Principles of Psychology, 1890.
+[2] J. Klein, “Breve: a 3d environment for the simulation of decentralized
+systems and artificial life,” in ICAL 2003: Proceedings of the eighth
+international conference on Artificial life. Cambridge, MA, USA:
+MIT Press, 2003, pp. 329–334.
+[3] D. M. Pierce and B. J. Kuipers, “Map learning with uninterpreted
+sensors and effectors.” Artificial Intelligence, vol. 92, pp. 169–227,
+1997.
+[4] B. Kuipers, P. Beeson, J. Modayil, and J. Provost, “Bootstrap learning
+of foundational representations,” Connection Science, vol. 18, no. 2,
+pp. 145–158, 2006.
+[5] L. A. Olsson, C. L. Nehaniv, and D. Polani, “From unknown sensors and actuators to actions grounded in sensorimotor perceptions,”
+Connection Science, vol. 18, no. 2, pp. 121–144, 2006.
+[6] J. Modayil and B. Kuipers, “Bootstrap learning for object discovery,”
+in IEEE/RSJ Int. Conf. on Intelligent Robots and Systems, 2004.
+[7] ——, “Autonomous shape model learning for object localization and
+recognition,” in IEEE Int. Conf. on Robotics and Automation (ICRA),
+2006.
+[8] B. Kuipers, Qualitative Reasoning. Cambridge, Massachusetts: The
+MIT Press, 1994.
+[9] G. L. Drescher, Made-Up Minds: A Constructivist Approach to Artificial Intelligence. Cambridge, MA: MIT Press, 1991.
+[10] U. M. Fayyad and K. B. Irani, “Multi-interval discretization of
+continuousvalued attributes for classification learning,” in Thirteenth
+International Joint Conference on Articial Intelligence, vol. 2. Morgan
+Kaufmann Publishers, 1993, pp. 1022–1027.
+[11] P. R. Cohen, M. S. Atkin, T. Oates, and C. R. Beal, “Neo: Learning
+conceptual knowledge by sensorimotor interaction with an environment,” in Agents ’97. Marina del Rey, CA: ACM, 1997.
+[12] P. R. Cohen, T. Oates, C. R. Beal, and N. Adams, “Contentful mental
+states for robot baby,” in Proc. 18th National Conf. on Artificial
+Intelligence (AAAI-2002). AAAI/MIT Press, 2002.
+[13] G. Das, K.-I. Lin, H. Mannila, G. Renganathan, and P. Smyth, “Rule
+discovery from time series,” in Knowledge Discovery and Data Mining,
+1998, pp. 16–22.
+[14] N. Friedman and M. Goldszmidt, “Discretizing continuous attributes
+while learning bayesian networks,” in International Conference on
+Machine Learning, 1996, pp. 157–165.
+
+
