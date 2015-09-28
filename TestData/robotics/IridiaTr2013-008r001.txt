@@ -1,0 +1,2343 @@
+The Swarm/Potential Model: Modeling
+Robotics Swarms with Measure-valued
+Recursions Associated to Random Finite
+Sets
+M. Pace, M. Birattari, and M. Dorigo
+
+IRIDIA – Technical Report Series
+Technical Report No.
+TR/IRIDIA/2013-008
+May 2013
+
+IRIDIA – Technical Report Series
+ISSN 1781-3794
+Published by:
+IRIDIA, Institut de Recherches Interdisciplinaires
+et de D´eveloppements en Intelligence Artificielle
+
+´ Libre de Bruxelles
+Universite
+Av F. D. Roosevelt 50, CP 194/6
+1050 Bruxelles, Belgium
+Technical report number TR/IRIDIA/2013-008
+
+The information provided is the sole responsibility of the authors and does not necessarily
+reflect the opinion of the members of IRIDIA. The authors take full responsibility for
+any copyright breaches that may result from publication of this paper in the IRIDIA –
+Technical Report Series. IRIDIA is not responsible for any use that might be made of
+data appearing in this publication.
+
+1
+
+The Swarm/Potential Model:
+Modeling Robotics Swarms with Measure-valued
+Recursions Associated to Random Finite Sets
+Michele Pace, Mauro Birattari, Senior Member, IEEE, and Marco Dorigo, Fellow, IEEE
+
+Abstract—We propose the S/P model (swarm/potential model)
+to describe the dynamics of robot swarms—that is, large groups
+of robots that coordinate without the use of any form of central
+control. The S/P model is a set of measure-valued equations
+that model the temporal evolution of a robot swarm and of a
+potential function that the swarm uses to self-coordinate. The
+S/P model is based on random finite sets (RFS), a general
+formalism for modeling multi-object systems. In this paper, we
+illustrate the S/P model by using it to describe and analyse three
+swarm robotics systems; we use particle approximations for the
+numerical solution of the model.
+
+I. I NTRODUCTION
+We propose a model to describe the dynamics of large
+groups of robots that operate in a self-organized way. Selforganization is the core concept in swarm robotics, an approach to collective robotics that seeks robustness and faulttolerance via redundancy, local sensing, local communication,
+and the lack of any form of central control. Results have
+shown that, on the basis of local information gathered from the
+environment or received from neighbouring peers, robots in a
+swarm can make coherent decisions on tasks to be performed
+and on their respective priorities [1], [2]. Designing and
+analyzing robot swarms has proven to be a challenging task
+due to the complex relation occurring between the local (or
+microscopic) robot-robot and robot-environment interactions
+and the resulting collective (or macroscopic) behavior of the
+entire swarm. In order to design and analyze a robot swarm, it
+is important to find an appropriate level of description that, on
+the one hand, represents the relevant microscopic information
+that is needed to grasp the macroscopic dynamics and, on the
+other hand, is not flooded with excessive microscopic details.
+In this paper, we propose to use the random finite set (RFS)
+formalism [3], [4], [5] for modeling robot swarms. In particular, we illustrate a set of measure-valued equations that we
+call the S/P model—swarm/potential model. The S/P model
+describes the temporal evolution of a probabilistic description
+of a robot swarm and of a potential function that the robots
+use to encode and to share information that is relevant to
+achieve self-coordination. The premise is that the state of the
+robot swarm (i.e., the collection of the states of the individual
+robots) may be formulated as a random finite set, that is, as
+a random set in which the number of elements as well as
+their values are stochastic. The central thesis of the article is
+The authors are with IRIDIA, Universit´e Libre de Bruxelles, Belgium (email: Michele.Pace@ulb.ac.be; mbiro@ulb.ac.be; mdorigo@ulb.ac.be)
+
+that this formulation leads to a natural and elegant description
+of large groups of robots and opens the door to efficient
+simulation algorithms. In order to facilitate the intuition behind
+the rather abstract measure-valued equations that we introduce,
+we maintain a strong emphasis on the spatiality of the models,
+that is, the underlying physical system is regarded as a discrete
+set of points, linked to the physical positions of the robots.
+Nothing, however, prevents the definition of RFS models for
+extended state spaces, such as the combination of the physical
+coordinates, speed, and an internal state of the robots.
+To illustrate the S/P model, we present three case studies.
+The first two concern wheeled robots that move in closed
+environments and exhibit two collective behaviors commonly
+studied in swarm robotics: movement in the direction of
+a light [6] and aggregation [7], [8]. The last case study
+concerns the so-called chemical robots [9]: colloidal particles
+with diameters of about 200 nm or less, that are intended
+to be injected in the human body to accomplish tasks such
+as chemical sensing [10], targeted drug delivery and microassembly [11].
+The rest of the paper is organized as follows. In Section II
+we provide a short list of references to relevant works on
+modeling in swarm robotics and pointers to relevant literature
+on random finite sets. In Section III we summarize the
+concepts of the random finite set framework that will be used
+throughout the rest of the paper. In Section IV we introduce the
+general S/P model (swarm/potential model). In Section V we
+specialize the S/P model for swarm robotics. In Section VI
+we develop an approximate solution of the S/P model. In
+Section VII we illustrate the S/P model on the three case
+studies. We conclude the paper in Section VIII.
+II. R ELATED WORKS
+In order to understand and model the relationship between
+the local and global aspects of swarm systems (the so called
+micro-macro link), several approaches have been proposed.
+Early works investigate the derivation of coupled differential
+equations to describe the average state of the swarm in time
+[12]. When this description is able to capture the relevant
+characteristics of the system, a large corpus of well established
+theoretical techniques can be used to analyze the stability
+and long term behavior of the macroscopic models. These
+techniques have been used to study swarming and social aggregation [7], collective decision-making [13], [14] and foraging
+[15]. More recent approaches to model robotics swarms use
+
+2
+
+analogies from the domain of chemical modeling [16] and
+methods from statistical physics [6], [17]. In particular, in
+[6] macroscopic models based on Fokker-Planck equations are
+derived from microscopic models.
+Differently, in this paper the main idea is to model the
+objects at each time step as RFSs, that is set-valued random
+variables, and then to characterise the uncertainty about
+the collective motion of the swarm by propagating in time
+the intensity of the associated point process [18], [5], [4],
+[3]. Random set theory was first systematically examined
+in connection with statistical geometry by Kendall [18]
+and Matheron [3] in the mid-1970s and then applied to
+two-dimensional image analysis by Serra [19]. Since then,
+it has become a basic tool in theoretical statistics and it has
+generated a substantial amount of innovation in the fields
+related to data fusion and multi-target tracking [4], [20], [21],
+[22]. An early application to robotics has been investigated
+in [23].
+
+III. T HE R ANDOM F INITE S ET F RAMEWORK
+A random finite set can be described as a finite, set-valued
+random variable where not only the elements but also the
+cardinality of the set is random [24].1 The realization of a
+RFS is thus an unordered and finite set of elements distributed
+according to a common probability distribution. This concept
+is particularly relevant in the field of swarm robotics, where the
+objective is normally not to describe the state of each single
+robot, but rather to obtain a descriptive characterization of the
+swarm as a whole. This section introduces the RFS formalism
+that will be used throughout the article. The measure-valued
+recursion describing the evolution in time of the intensity of a
+Poisson RFS associated to the macroscopic behavior of robotic
+swarms is introduced in Sec. IV.
+The set of all finite positive measures on some measurable
+space E will be denoted by M(E), the subset of all probability
+measures on E by P(E) ⊂ M(E) and the Banach space of
+all bounded and measurable real-valued functions on E by
+def
+B(E). Let µ(f ) = f (x)µ(dx) be the Lebesgue integral of a
+function f with respect to a measure µ ∈ M(E). A bounded
+positive integral operator Q from a measurable space E1 into
+a measurable space E2 is an operator Q : f ∈ B(E2 ) →
+Q(f ) ∈ B(E1 ) such that the functions
+def
+
+x → Q(f )(x) =
+
+Q(x, dy)f (y)
+E2
+
+are measurable and bounded for some measure Q(x, ·) ∈
+def
+M(E2 ). These operators induce a dual operator (µQ)(dy) =
+µ(dx)Q(x, dy) from M(E1 ) into M(E2 ) which will be
+used to model the way in which a probabilistic descriptor
+associated to a swarm of robots changes in time. Intuitively,
+the probability (or intensity) mass that characterizes the state
+of the system is transported in time according to forces and
+dynamics that are captured by the analytical form of the
+transport operator Q.
+1 Note that the terms random finite set and simple-finite point process are
+normally used to refer to the same mathematical object.
+
+Let g : x ∈ E → g(x) ∈]0, +∞[ be a bounded positive
+function. A measure η ∈ M(E) can be transformed into a
+probability measure by using the Boltzmann-Gibbs transformation Ψg : η ∈ M(E) → Ψg (η) ∈ P(E) defined in
+[25], Pag. 20, as:
+def
+
+Ψg (η)(dx) =
+
+1
+g(x) η(dx)
+η(g)
+
+(1)
+
+provided η(g) > 0. One of the advantages that come from the
+use of the Boltzmann-Gibbs transformation is that its particle
+approximation is obtained straightforwardly by resampling
+the particles approximating the original measure η according
+to their weights obtained by the evaluation of the potential
+function g. An introduction to particle methods with a detailed
+explanation of the Boltzmann-Gibbs transformation is given
+in [25]. Additional references covering the fundamentals of
+the interacting-particle systems applied to filtering problems
+can be found in [26] and [27].
+The first moment measure M of a RFS X is the analogue of
+the expectation and it is commonly called intensity measure.
+It is defined for any subset S of the space E, S ⊆ E, by
+def
+
+M (S) = E [|S|] =
+
+γ(x)dx
+
+(2)
+
+S
+
+where |S| denotes the number of points in the subset S. M (S)
+gives the expected number of points of X contained in S.
+The last equality holds if the measure M admits a density
+γ : E → [0, +∞[. In point process theory γ is called intensity
+function and is simply referred to as the intensity.
+Just as the density of a continuous random vector represents
+the zero-probability event of a particular realization of the random vector, the intensity γ(x) represents the zero-probability
+event P(x ∈ X). The intensity γ(x) is usually multimodal and
+the peaks are the regions of high object intensity.
+In the following, we focus on a specific class of random
+finite sets that have the important property to be uniquely
+characterized by their intensity function: the Poisson RFS. In
+this case, the integral of the intensity over the domain (somedef
+times called mass) γ(f ) = γ(x)f (x)dx when f (x) = 1
+corresponds to the expected number of points, and it will be
+denoted by γ(1) ≥ 0.
+A realization of a Poisson point process consists of N points
+i.i.d. with distribution η(dx) = γ(dx)/γ(1) where N is an
+integer-valued Poisson random variable with parameter γ(1).
+Essentially, the Poisson RFS characterizes a set of points with
+no interaction, that is, complete spatial randomness. In the
+context of swarm robotics, this property implies that the state
+of a robot and its dynamics are independent of the state of the
+other robots. While this may not be true in the general case, it
+can be considered as an acceptable approximation for systems
+where robots have a low level of mutual interdependence.
+IV. T HE S/P M ODEL
+This section introduces a coupled system describing the propagation in time of the intensity function γt associated to a
+Poisson point process that we use to describe the state of
+a swarm at time t. The use of the intensity of the point
+
+3
+
+−4
+
+−4
+
+x 10
+
+−4
+
+x 10
+
+4
+
+x 10
+
+2
+
+2
+
+1
+
+1
+
+3
+2
+1
+0
+100
+
+0
+100
+
+0
+100
+
+100
+0
+
+100
+0
+
+0
+−100
+
+100
+0
+
+0
+−100
+
+−100
+
+(a)
+
+−100
+
+−100
+
+(b)
+100
+
+100
+
+50
+
+50
+
+50
+
+0
+
+0
+
+0
+
+−50
+
+−50
+
+−50
+
+−50
+
+0
+
+50
+
+100
+
+−100
+−100
+
+−50
+
+0
+
+(d)
+
+(e)
+
+−100
+
+(c)
+
+100
+
+−100
+−100
+
+0
+
+50
+
+100
+
+−100
+−100
+
+−50
+
+0
+
+50
+
+100
+
+(f)
+
+Fig. 1: Intensity functions γt , γt+1 , γt+2 of the point process associated to the robotics swarm at time t, t+1 and t+2 (a),(b),(c)
+and realizations of the point process (d),(e),(f)
+process as a probabilistic descriptor allows for the characterization of the uncertainty about the number and distribution
+of the robots while keeping the computational complexity
+significantly lower than other probabilistic descriptors, such
+as the full multi-object probability density [3], [21]. Figures
+1(a-b-c) provide an intuitive illustration of the probabilistic
+description of a swarm’s state (in the example the state is given
+by the 2-dimensional spatial position) in time as a sequence
+of intensity functions γt , γt+1 , γt+2 . Figures 1(d-e-f) show a
+realization of the point process Xt , Xt+1 , Xt+2 superimposed
+to the profile of the intensity functions. The points represent
+one of the infinite possible realizations of a Poisson RFS
+characterized by the respective intensities, corresponding to
+a possible state configuration of the robots. The objective is
+to couple the equation describing the evolution of the intensity
+with an equation capturing the interaction of the swarm with
+the environment. The dynamics of the interactions will be
+modeled with a positive function which will be referred to
+as potential. Phenomena of self-interaction and feedback, for
+instance, are captured by modeling the way robots modify the
+potential function and how, in turn, the potential modifies the
+behavior of the robots. The system we are considering, referred
+to in the following as the S/P model, has the following form:
+γt+1
+gt+1
+
+t
+= γt Qgt+1,γ
++ µt+1
+t
+= Φ(gt , γt )
+
+(3)
+
+where the propagation of the intensity depends on the potential
+function gt (the dependency is made explicit by using the
+superscript gt in Q) while the potential, in turn, depends on
+
+the intensity function γt . This dependency captures the fact
+that robots may be able to modify the environment with their
+actions. The evolution in time of the expected number of robot
+t
+and µt+1 . The mass
+is described both via the term Qgt+1,γ
+t
+gt
+of Qt+1,γt models modifications of the expected number of
+robots in a region of space that are function of the intensity
+γt , that is of the expected number of robots currently present
+in the region. This capture the phenomenon of spawning and
+the failure of robots. On the other hand, µt+1 is the intensity
+of a Poisson point process modeling new robots coming in
+the environment independently of the current distribution of
+robots. This captures the deployment of further robots.
+The S/P model of equation (3), inspired from a model
+discussed in [28], takes into account the effects of the interactions between the robots and a potential representing a
+set of characteristics of the environment that can be perceived
+by the robots. Dynamics of the potential that do not depend
+on the robots, such as potential diffusion and dissipation, are
+also modeled in the operator Φ (via the dependence of gt+1
+on gt ). We will illustrate the S/P model by using it to describe
+and analyse three swarm robotics scenarios: movement in the
+direction of a light [6], swarm aggregation [8], [29], and
+coordinated motion of colloidal particles (so-called chemical
+robots [30]). The actual modeling of specific swarm robotics
+systems is obtained by appropriately defining the operator
+t
+Qgt+1,γ
+, which governs the evolution of the intensity in
+t
+time, and the operator Φ, which governs the evolution of the
+potential in time. In addition, robots that are added to the
+swarm are modeled by µt+1 .
+
+4
+
+In this framework, robots are modeled as memory-less. This
+constraint, introduced to make the equations more tractable, is
+acceptable when robots make limited use of their memory and
+do not take decisions based on stimuli or events happened in
+the distant past. Consequently, typical characteristics of swarm
+robotics such as sharing of information or positive and negative
+feedback dynamics have to be modeled in the potential via the
+operator Φ.
+The numerical solution of the S/P model can be obtained
+by adopting a stochastic particle interpretation for which
+many stability properties as well as a series of estimators for
+the approximation errors are available [31].
+
+V. S PECIALIZING THE S/P M ODEL FOR S WARM ROBOTICS
+In this section we introduce a specialization of the S/P model
+(Eq. (3)) that makes it suitable for swarm robotics. To do so,
+t
+associated to the
+we define the form of the operator Qgt+1,γ
+t
+evolution of the intensity and the operator Φ associated to the
+evolution of the potential.
+In the context of swarm robotics, this specialization corresponds to the microscopic model that describes the way
+robots sense the environment (i.e., how robots measure the
+potential function in their surroundings), how they react by
+choosing from a set of possible actions, and how they modify
+the potential function.
+Section V-A introduces a model for the dynamics of the
+robots, while section V-B describes the evolution of the
+potentials.
+A. Robots dynamics
+The first step towards the specialization of the S/P model is to
+characterize the probability with which a robot in state Xt = x
+moves to an infinitesimal region dy centered in Xt+1 = y. We
+assume that this transition, given by the normalized version
+t
+of Qgt+1,γ
+, is time-homogeneous and independent of γt . The
+t
+transport operator can therefore be written as Qgt (x, dy).
+The removal of the dependency on time indicates that the
+robot behaviour does not change in time. The removal of
+the dependency on the intensity γt indicates that the robot
+behavior does not depend on the overall state of the swarm.
+These assumptions allow for a simplification of the S/P model
+equations. Additionally, we assume that Qgt (x, ·) ∈ P(E) for
+each x ∈ E (this is equivalent to say that the transport operator
+Qgt has integral 1). This implies that the number of robots
+in the scene is expected to remain the same. We model the
+dependence of the dynamics of the robots on the value of the
+potential function by the Markov operator originally proposed
+in [32]:
+Qgt (x, dy) = Q0 (x, dy)e−λ(gt (x)−gt (y))
++ Q1 (x, dy) 1 −
+
++
+
+(4)
++
+
+Q0 (x, dy)e−λ(gt (x)−gt (y))
+
+This operator captures the intrinsic dynamics of the robots
+(modeled by Q0 (x, dy)) as well as the effect of the potential
+field. The parameter λ specifies the sensitivity of the robots to
+
+the difference in potential between the current state Xt = x
+and one of the possible future states Xt+1 .
+Suppose a robot is in state Xt = x at time t, possibly
+representing its physical location. Its future state Xt+1 at
+time t + 1 depends on the environmental conditions around
+it, captured by the potential function, and on the robotics
+controller. In Eq. (4) the operator Q0 (x, dy) models the
+dynamics of the robot in absence of any external conditioning,
+that is, when gt (·) is constant. When gt (·) is not constant, the
+robot dynamics is influenced by the potential. The probability
++
+that Xt+1 ∈ dy is e−λ(gt (x)−gt (y)) : that is, it depends on
+the difference of potential between the current and the new
+state. If the movement is not performed, the new state of
+the robot if sampled according to the operator Q1 (x, dy).
++
+This happens with probability (1 − e−λ(g(x)−g(y)) ). It is
+important to note that even though the dynamics of the robots
+given by Eq. (4) are completely specified by the transition
+probabilities Q0 (x, dy), Q1 (x, dy) and by the parameter λ, no
+constraints are imposed on the development of the algorithm
+used by the robots to take decisions. In practical terms, the
+t
+and
+link between the analytical form of the operator Qgt+1,γ
+t
+the implementation of robotics controllers can be established
+t
+in its simplified
+in two ways. If the S/P model (with Qgt+1,γ
+t
+version as in Eq. (4)) is used to derive specific behaviors to
+be implemented on the robots, the form of Q0 , Q1 , and λ
+are first investigated numerically. When the analytical form of
+the operators that generate the desired swarm-level behavior is
+found, the robotic controller can be implemented as a series of
+actions that individual robots take with certain probabilities.
+If, however, a robotic controller is already available (for
+example implemented by using other methodologies [33]), one
+must first consider if Eq. (4) is sufficiently general to model
+the behavior of the robots. If this is the case, the form of
+Q0 (x, dy), Q1 (x, dy) and the value of the parameter λ that
+capture the dynamics of the robot must be derived. Once
+the characteristics of the robot controller are satisfactorily
+captured by Qgt , the system can be studied numerically to gain
+insights on the swarm-level dynamics. Otherwise, if Eq. (4) is
+not sufficiently general to model the behavior of the robots, an
+t
+alternative and possibly more complex expression of Qgt+1,γ
+t
+is necessary.
+The advantage of adopting Eq. (4) as a probabilistic description of the microscopic dynamics of the robots is that if closed
+form solutions are not available, as it is generally the case,
+generating samples from Qgt (x, ·) is straightforward and can
+be done with the following procedure:
+•
+
+•
+
+•
+
+Draw a sample y0 ∼ Q0 (x, ·) and a sample Y1 ∼ Q1 (x, ·)
+If g(y0 ) ≥ g(y1 ) accept y0 and do the transition x → y0
+If g(y0 ) ≤ g(y1 ) accept y0 with a probability
++
+e−λ(g(x)−g(y)) and do the transition x → y0 otherwise
+do the transition x → y1
+
+Figure 2 shows the acceptance probability of the samples
+obtained from Q0 as a function of the difference of potential
+(g(x) − g(y)) when different values of the parameter λ are
+used. For low values of λ, robots accept the transitions towards
+regions with lower potential with relatively high probability.
+In this case, the gradient of the potential exerts only a weak
+
+5
+
+1
+
+0.7
+0.6
+0.5
+
+100
+
+80
+
+80
+
+60
+
+40
+
+0.4
+
+20
+
+0.3
+
+0
+
+0
+
+20
+
+40
+
+40
+
+60
+
+ψ1 coordinate
+
+80
+
+0
+
+100
+
+0
+
+20
+
+40
+
+−10
+
+−5
+
+0
+
+5
+
+10
+
+15
+
+20
+
+Time step: 30
+
+Fig. 2: Acceptance probability of the sample obtained from
+Q0 with decreasing values of λ.
+influence on the behavior of the robots. For high values of λ,
+on the contrary, the movement is accepted almost exclusively
+if the new location has a higher potential than the current
+location. The macroscopic result is that the swarm is strongly
+attracted towards regions of the space associated with high
+potentials.
+To clarify this important point, Figure 3 illustrates the evolution of the probability density (approximated with 1000
+particles) of the position x = [ψ1 , ψ2 ]T of the robots moving
+according to Eq. (4) with λ = 50, Q0 (x, ·) = N (·; x, 0.1I2 ),
+Q1 (x, ·) = N (·; x, 10−4 I2 ). The n-dimensional identity matrix is denoted by In . The value of the potential is represented
+as a grayscale image (white associated to higher potentials).
+In time, the robots are attracted by high potential regions.
+The particle approximation provides, at each time step, a
+characterization of the probability of finding a certain number
+of robots in a certain region of the space.
+B. Potential dynamics
+The second step to complete the specialization of the S/P
+model is to characterize the form of the recursion of the
+potential in Eq. (3). In doing so, we focus on two types
+of intrinsic potential dynamics, dissipation and diffusion,
+and on potential dynamics due to the actions of the robots,
+stigmergy2 .
+In order to avoid negative potentials, we assume that the
+potential πt is given in terms of positive measures: πt : S →
+R, where S is the set of subsets of E. According to the notation
+previously introduced, the integral of the potential over the
+def
+state space is denoted by πt (1) = E πt (x)dx. Simililarly to
+what discussed in Sec. V of [37], the evolution of the potential
+is a mechanism of indirect coordination observable in insect
+societies such as ant colonies. It is based on the ability of the individuals
+to create dissipative fields by spreading chemical substances into the environment. Other individuals then sense the chemical fields and are influenced
+to perform certain activities or to assume certain behaviors. The spreading
+of additional chemical substances as a reflection of these activities tends to
+create reinforcement dynamics. Stigmergy allows complex social behaviors
+to emerge from the actions of the individuals without the need for central
+planning, control, or even direct communication [34], [35], [36].
+
+ψ2 coordinate
+
+g(x)−g(y)
+
+100
+
+80
+
+100
+
+Time step: 40
+
+100
+
+100
+
+80
+
+80
+
+60
+
+40
+
+20
+
+0
+
+80
+
+(b)
+
+ψ2 coordinate
+
+−15
+
+60
+
+ψ1 coordinate
+
+(a)
+
+0.1
+
+2 Stigmergy
+
+60
+
+20
+
+0.2
+
+0
+−20
+
+Time step: 20
+
+100
+
+ψ2 coordinate
+
+0.8
+
+ψ2 coordinate
+
+Acceptance probability
+
+Time step: 10
+
+λ=10
+λ=1
+λ=0.1
+
+0.9
+
+60
+
+40
+
+20
+
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+80
+
+100
+
+0
+
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+(c)
+
+(d)
+
+Fig. 3: Distribution of the position of the swarm at time t = 10
+(a), t = 20 (b), t = 30 (c), t = 40 (d). In the example: λ = 50,
+Q0 (x, ·) = N (·; x, 0.1I2 ), Q1 (x, ·) = N (·; x, 10−4 I2 ), where
+I2 denotes the identity matrix with dimension 2. Low potential
+regions are shown in gray/black.
+is modeled as follows:
+πt+1 = πt R + Cπt ,γt
+
+(5)
+
+or, equivalently:
+πt+1 (dy) =
+
+πt (x)R(x, dy)dx + Cπt ,γt (dy)
+
+(6)
+
+where Cπt ,γt denotes a positive measure on S modeling the
+robots’ stigmergic contribution to the potential. The subscripts
+πt and γt are used to stress the fact that, at any given time,
+the increase of the potential occurs in a way that depends
+on the intensity of the robots at time t (represented by
+γt ), and possibly on the potential function πt itself. The
+operator capturing the diffusive and dissipative dynamics of
+the potential is denoted by R(x, dy).
+C. S/P Model dynamics
+The S/P model describing the evolution of the potential and
+particle approximation of the intensity measure is as follows:
+N
+γt+1
+πt+1
+
+= γtN Qπt + µN
+t+1
+= πt R + Cπt ,γt
+
+(7)
+
+where N is used to stress the fact that we are using N particles
+to approximate the flow of γt . The limit N → ∞ formally
+corresponds to the S/P Model of Eq. (3):
+γt+1
+πt+1
+
+= γt Qπt + µt+1
+= πt R + Cπt ,γt
+
+(8)
+
+6
+
+Potential function at time: 1
+
+A. Mean field particle interpretation
+The evolution of the intensity γt can be described by decoupling the process in the pair (γt (1), ηt ) ∈ (R+ ×P(E)), where
+γt (1) represents the mass at time t and the normalized intensity
+ηt = γt /γt (1) is the density function at time t. A way to
+solve the non-linear equations of the S/P model is to find a
+judicious probabilistic interpretation of the flow of normalized
+intensity ηt = γt /γt (1) and to devise a particle approximation
+scheme for the probability density ηt such that the total mass
+of the process at time (t + 1) can be computed in terms of the
+particle approximations. We use the so-called mean field-type
+interpretation that is based on the fact that the density ηt+1
+can be thought as a non-linear Markov chain whose elementary
+transitions depend both on the distributions ηt and on the mass
+process γt (1).
+More precisely, as shown in Fig. 3, the approximation of
+the normalized intensity measures ηt and process mass γt (1)
+is obtained by using a population of particles that evolve
+according to specifically designed probabilities. These discrete
+approximations are denoted by:
+ηtN
+
+1
+=
+N
+
+300
+
+250
+
+250
+
+200
+150
+
+2
+
+100
+50
+
+δxit
+
+and
+
+γtN
+
+=
+
+γtN (1)
+
+ηtN
+
+(9)
+
+i=1
+
+where N denotes the number of particles used to approximate
+ηt , and δxit denotes the Dirac delta, which can be interpreted
+as a point mass at xit ∈ E. A detailed description of the origin
+of these particle approximations can be found in [31], [38] and
+reference therein.
+As it has been discussed in [25], [26], [27], [31], the nonlinear transformation of the normalized intensity ηt can be
+rewritten in the form of the product of a selection operator
+g
+St,γt and an update operator Mt+1,γ
+, both depending on the
+t
+measure γt :
+g
+ηt+1 = ηt St,γt Mt+1,γ
+(10)
+t
+
+150
+100
+
+0
+0
+
+50
+
+100
+
+150
+
+200
+
+ψ1 coordinate
+
+250
+
+300
+
+0
+
+50
+
+(a)
+Potential function at time: 20
+
+150
+
+200
+
+250
+
+300
+
+Potential function at time: 30
+
+300
+
+300
+
+250
+
+250
+
+ψ coordinate
+
+200
+150
+100
+
+2
+
+ψ2 coordinate
+
+100
+
+ψ1 coordinate
+
+(b)
+
+50
+
+200
+150
+100
+50
+
+0
+
+0
+0
+
+50
+
+100
+
+150
+
+200
+
+ψ1 coordinate
+
+250
+
+300
+
+(c)
+
+0
+
+50
+
+100
+
+150
+
+200
+
+ψ1 coordinate
+
+250
+
+300
+
+(d)
+
+Fig. 5: Diffusion and dissipation of the potential corresponding
+to the solution of equation (13) in the Gaussian case.
+and ηt Sηt can be written in term of the Boltzmann-Gibbs
+transformation: ηt Sηt = Ψgt,γt (ηt ) [27], [38].
+Therefore, the solution of the γt recursion in the S/P model,
+Eq. (3), is given by the set of particles evolving according to
+these selection and propagation mechanisms:
+γtN (1)
+ηtN
+
+selection
+
+−−−−−→
+
+γtN (1)
+ηtN
+
+propagation
+
+−−−−−→
+
+N
+γt+1
+(1)
+N
+ηt+1
+
+When a large number of particles are used, their distribution
+in time provides both a good approximation of the flow of
+intensity γt , as shown in Fig. 3, and of the mass terms γt (1).
+B. A Gaussian representation of the potential
+The potential function πt can be represented as a weighted
+mixture of Gaussian terms. In particular, we assume that the
+potential at each time step t can be written in the form:
+Jt
+
+πt (x) =
+
+N
+
+200
+
+50
+
+0
+
+VI. S OLUTION OF THE S PECIALIZED S/P M ODEL
+In this section we discuss the numerical techniques used in
+the rest of the article to approximate in time the solution of
+the specialized S/P model of Eq. (7). In particular, Sec.VI-A
+introduces the theoretical background of the particle approximation techniques used to approximate the first equation of
+the S/P model. Sec. VI-B discusses a Gaussian form of the
+potential function that allows for an efficient computational
+treatment of the second equation of the S/P model.
+
+Potential function at time: 10
+
+300
+
+ψ coordinate
+
+ψ2 coordinate
+
+As stated in Eqs. (7) and (8), the expression of the potential
+function is assumed to be known in closed form at each time
+step. No particle approximation of πt is thus required. This
+is true only for a limited set of models. The general case
+would require an approximation of the potential function as
+N
+well: πt+1
+= πtN R + CπtN ,γtN . For the sake of clarity and
+ease of implementation, we assume that an analytical form of
+πt is available at each time step. Section VI-B discusses the
+implications of this assumption.
+Figure 4 illustrates the evolution in time of the measures
+associated to the system (8). Arrows are used to show the
+dependencies between the elements of the recursion.
+
+i=1
+
+wti N (x; mit , Pti )
+
+(11)
+
+where N (x; m, P ) denotes a Gaussian term centered in m
+with covariance matrix P :
+1
+1
+N (x; m, P ) = |2πP |− 2 exp − (x − m)T P −1 (x − m)
+2
+(12)
+wti represents the weight of the i-th Gaussian in the mixture
+and Jt the total number of terms in the approximation of the
+potential at time t.
+We assume that the dissipation of the potential is described
+by a constant coefficient αt (x) = α and that the diffusion
+of the potential and the contribution of the robots to the
+potential are linear-Gaussian. These assumptions are sufficient
+
+7
+
+µt
+
+γt+1
+
+γt
+
+...
+
+µt+2
+
+µt+1
+
+Q
+
+Q
+
+πt
+
+πt+1
+
+πt+1
+
+R
+
+Q
+
+πt+2
+
+R
+
+πt+2
+
+Cπt+2 ,γt+2
+
+Cπt+1 ,γt+1
+
+Cπt ,γt
+...
+
+...
+
+γt+2
+
+πt
+
+...
+
+R
+
+(a)
+
+Fig. 4: Evolution in time of the measures associated to the system (8). The dependencies between the potential and the
+intensity function is illustrated with arrows. Each arrow specifies the dependency of each term on other terms available during
+the previous time-step. The intensity γt+1 associated to the state of the system at time t + 1, for instance, depends on the
+potential πt at time t as well as on γt and on the intensity on the robots appearing at time t + 1. Similarly, the potential πt+1
+at time t + 1 depends on the intensity γt and on the potential πt of the previous time step.
+to characterize in closed form the potential πt at each time
+step [39] [40]:
+πt+1 (dy) =
+
+πt (x) D(x, dy) dx
+
+α
+dissipation
+
++
+
+diffusion
+
+Cπt ,γt (x, dy) dx
+
+(13)
+
+contribution
+
+where R(x, dy) = α D(x, dy) and the contribution to the
+potential Cπt ,γt (x, dy) is a mixture of Gaussian terms. Equation (13) states that the potential in an infinitesimally small
+region dy at time t+1 is given by the sum of the potential that
+is transferred to dy from the other regions of the space (due
+to diffusive dynamics) and the additional potential released
+by the swarm in dy. The term α accounts for the dissipation,
+the term D(x, dy) for the diffusion dynamics of the potential,
+and the term Cπt ,γt for the contribution of the swarm to the
+potential at time t. In this latter term, the subscripts πt and
+γt stress that the contribution to the potential depends on the
+distribution of the robots and may as well depend on the value
+of the potential at time t.
+To simplify the formulae, we make the reasonable assumption that:
+Cπt ,γt (x, dy) = γt (x) Cπt (x, dy)
+By using the particle approximation of the intensity γt (x)
+defined in Eq. (9), we can write:
+Cπt ,γt (x, dy) dx ≈
+
+γt (1)
+N
+=
+
+N
+
+δxit Cπt (x, dy) dx
+i=1
+N
+
+γt (1)
+N
+
+Cπt (xit , dy) (14)
+i=1
+
+Therefore, Eq. (13) can be written as:
+πt+1 (dy) ≈ α
+
+πt (x)D(x, dy)dx
+1
+N
+
++
+N
+
+cit C¯πt (xit , dy) (15)
+i=1
+
+where
+cit = γt (1)
+
+Cπt (xit , dy)
+
+and C¯πt (xit , dy) is Cπt (xit , dy) normalized by its integral.
+The evolution in time of the potential, Eq. (13), has the
+following Gaussian form: at time t it is represented by the
+Gaussian mixture of Eq. (11), while at time t + 1 it is given
+by
+Jt
+
+πt+1 (x) =
+i=1
+
+i
+i
+wt+1
+N (x; mit+1 , Pt+1
+)
+
++
+
+Jt +1+N
+i=Jt +1
+
+i
+i
+wt+1
+N (x; mit+1 , Pt+1
+) (16)
+
+i
+i
+= cjt /N , for
+where wt+1
+= α wti , for i = 1, . . . , Jt ; wt+1
+i = Jt + 1, . . . , Jt + 1 + N and j = i − Jt + 1; mit+1 and
+i
+Pt+1
+, for i = 1, . . . , Jt , are means and covariance matrices of
+the Gaussians resulting from the product between the terms of
+πt (x) and D(x, dy), calculated by using the well known closed
+form solutions described in [39] and [40]; mit+1 = xit , for i =
+i
+Jt +1, . . . , Jt +1+N ; and Pt+1
+, for i = Jt +1, . . . , Jt +1+N
+is a design parameter representing the covariance matrix of the
+contribution of a robot to the potential function.
+A comparison between Eq. (11) and Eq. (16) indicates that
+the number of Gaussian terms used to approximate π increases
+in time. In practical implementations of the S/P model, this
+problem can be addressed with a pruning operation: the weight
+w of each Gaussian term decreases exponentially in time due
+to dissipation; when the weight of a Gaussian term reaches
+a predefined threshold, the term can be neglected and is not
+considered in further computation.
+
+VII. C ASE STUDIES
+In this section, we develop the concepts introduced in the
+previous sections for a series of swarm robotics scenarios:
+movement in the direction of a light, swarm aggregation,
+and coordinated motion of colloidal particles. We define the
+operators of the specialized S/P model so that its solution
+captures classical behaviors encountered in swarm robotics. As
+
+8
+
+previously noted, the model is composed of two equations: one
+describes the dynamics of the robots and the other describes
+the dynamics of the potential function. These two equations are
+coupled: the movement of the robots depends on the potential
+function via the transport operator; and the evolution of the
+potential function depends on the distribution of the robots.
+In the first example, we focus on the first equation of
+the specialised S/P model of Eq. (7) and we show how it
+describes the collective dynamics of the swarm starting from
+the behavior of the individual robots. We also derive a particle
+approximation of the solution. In the second example, we
+focus on the second equation and we discuss the potential
+function that influences the behavior of the robots. Finally, in
+the third example we address a more complex scenario from
+the recently introduced field of chemical robots [30]: we use
+the S/P model to describe the cohesive motion of chemical
+robots along a preferential direction. These chemical robots
+coordinate by modifying the concentration of a chemical in
+the environment.
+A. Swarm motion towards a light
+In this section, Eq. (7) is solved to show that the S/P model
+can describe the motion of a robot swarm towards a light. Collective motion towards a light is a classical behavior studied in
+swarm robotics that has been discussed, for example, in [41]
+and [6].
+In order to illustrate the mean-field approximation of the
+flow of the intensity measures, we focus here exclusively on
+the first equation of the S/P model: robots do not modify the
+environment, hence the second equation is set to zero. The
+appearance of new robots at time t + 1 is modeled as a RFS
+with a known intensity µt . The number of robots appearing
+at each time step is described by a Poisson distrution with
+mean µt (1), and their initial position has probability density
+µt /µt (1). Robots are equipped with a light sensor that allows
+them to estimate the direction of the light. Despite the fact
+that robots sense the direction of the light and deterministically
+attempt to move towards it, due to sensing and actuation errors
+their behavior appears to be stochastic and can be conveniently
+described as a random walk biased by a light field. The
+following Markov operator captures the main elements of the
+robots dynamics:
+Q(x, dy) =
+
+l(y)M (x, dy)
+l(y)M (x, dy)
+
+(17)
+
+where l(y) represents the light intensity at point y and
+M (x, dy) denotes the free motion of the robots, assumed
+Gaussian with zero mean and covariance matrix Σ2 =
+[4, 0; 0, 4], expressed in square meters. We assume that, at each
+time step, a robot has a survival probability of = 1 − 10−3 .
+The first equation of the specialised S/P model of (7) is written
+as follow:
+γt+1 = γt Q + µt+1
+
+(18)
+
+Furthermore, we assume that robots enter in the region
+from time t = 0 s to t = 25 s and from time t = 100 s to
+t = 125 s. The number of new robots entering at each time
+
+step during these intervals has a Poisson distribution with
+mean 2. The decoupling of the intensity γt into the pair
+(γt (1), ηt ) ∈ (R+ × P(E)) corresponding to the mass γt (1)
+and to density function ηt (dxt ) = γt (dxt )/γt (1) as described
+in section VI-A can be written as:
+γt+1 (1)
+ηt+1
+
+= γt (1) + µt+1 (1)
+= βt Ψ (ηt )Q + (1 − βt )¯
+µt+1
+
+(19)
+
+where the first equation is simply the integral of Eq. (18) over
+the state space and the second is obtained dividing Eq. (18) by
+γt+1 (1) and using the definition of the operator Ψg (ηt ) given
+in Eq. (1):
+ηt+1 =
+
+γt Q + µt+1
+γt+1
+=
+γt+1 (1)
+γt+1 (1)
+
+γt (1)ηt ηηtt (( )) Q + µt+1
+γt (1)ηt Q + µt+1
+=
+γt+1 (1)
+γt+1 (1)
+µt+1 (1)¯
+µt+1
+γt (1)
+Ψ (ηt )Q +
+(20)
+=
+γt+1 (1)
+γt+1 (1)
+=
+
+By using the notation introduced in Sec. III and letting
+µ
+¯t+1 = µt+1 /µt+1 (1) and βt = γt (1) /γt+1 (1), the second
+equation of the system given in Eq. (19) is obtained.
+The approximation of the solution of (19) is illustrated in
+Figure 6. At each step, with probability βt , particles are
+resampled according to Ψ (ηt ) and are propagated according
+to Q. With probability 1 − βt , particles are resampled from
+µ
+¯t+1 . Algorithm 1 provides the details on how the numerical
+solution is obtained.
+B. A model of swarm aggregation
+In this section, the S/P model is specialized to describe the
+phenomenon of aggregation in robots moving in a square
+region of 100 × 100 m2 . In this region there are two square
+green areas that the robots can perceive when they are on
+them—see Fig. 7. The robots are required to aggregate in these
+areas. The initial distribution of the swarm is assumed to be
+known, its intensity Gaussian with mean γ0µ = [50, 45]T m and
+covariance matrix γ0Σ = 20 I2 m2 . The system is as follows:
+γt+1
+πt+1
+
+= γt Qπt
+= C γt
+
+(21)
+
+where Qπt is defined in Eq. (4). The modification of the
+potential occurs when robots sense the green areas. These
+areas stimulate the robots to emit light signals that can be
+perceived by other robots. In this context, the potential is the
+intensity of the light.
+In this case study, terms modeling dissipation or diffusion
+are thus not required. Moreover, the contribution term Cγt
+does not depend on the intensity of the potential πt , but
+only on the expected intensity of robots in the aggregation
+area. Robots move according to Eq. (4) with parameters
+λ = 105 , Q0 (x, ·) = N (·; x, Σ0 ), Q1 (x, ·) = N (·; x, Σ1 )
+where Σ0 = 5 I2 m2 and Σ1 = I2 m2 . Each robot moves
+randomly but when a light stimulus is perceived, random
+motions towards regions of the space where the intensity of
+
+9
+
+Algorithm 1 Particle approximation algorithm
+S/P model solution at time: 50
+
+100
+
+100
+
+80
+
+80
+
+ψ2 coordinate
+
+ψ2 coordinate
+
+S/P model solution at time: 1
+
+60
+
+40
+
+60
+
+40
+
+20
+
+20
+
+0
+
+0
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+80
+
+100
+
+0
+
+20
+
+40
+
+(a)
+
+80
+
+100
+
+(b)
+
+S/P model solution at time: 100
+
+S/P model solution at time: 200
+
+100
+
+100
+
+80
+
+80
+
+ψ2 coordinate
+
+ψ2 coordinate
+
+60
+
+ψ1 coordinate
+
+60
+
+40
+
+20
+
+60
+
+40
+
+20
+
+0
+
+0
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+80
+
+100
+
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+(c)
+
+80
+
+100
+
+(d)
+Particle approximation of γt(1)
+
+100
+
+80
+
+γ(1)
+
+60
+
+40
+
+20
+
+0
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+120
+
+140
+
+160
+
+180
+
+200
+
+time
+
+(e)
+
+Fig. 6: Normalized intensity function ηt of the point process
+associated to the robot swarm at time t = 1 (a), t = 50 (b),
+t = 100 (c), and t = 200 (d), approximated by 5000 particles.
+The average number of active robots at each time step is given
+by γt (1), shown in (e).
+the light is greater have a higher probability. The probability of
+moving towards a light source is proportional to the intensity
+of the light itself. The release of the potential is modeled by
+the term πt+1 that can be approximated by:
+πt+1 (dy) ≈
+
+γt (1)
+N
+
+N
+
+δxti (A)C(xti , dy)
+
+N : number of particles
+N
+ξi,t
+: i-th particle approximating γt , i ∈ {1, . . . , N }
+N
+N
+N
+ηt : particle approximation of ηt : ηtN = N1 i=1 δξi,t
+µN
+:
+particle
+approximation
+of
+µ
+t
+t
+g(x): function modeling the probability of a robot survival
+at x. For scenario VII-A g(x) =
+M : max number of iterations
+Initialization
+γ0N (1) = µ0 (1)
+for i = 1 to N do
+N
+Sample ξi,0
+, i ∈ {1, . . . , N } from µ
+¯0 = µ0 (·)/µ0 (1)
+end for
+Main loop
+while t ≤ M do
+N
+N
+ηtN (g) = (1/N ) i=1 g(ξi,t
+);
+N
+N
+N
+βt = (γt−1 (1)ηt (g))/(γt−1 (1)ηtN (g) + µN
+t (1))
+Compute the weight of each particle:
+N
+N
+N
+wi,t
+= g(ξi,t
+)/ i g(ξi,t
+)
+for i = 1 to N do
+Sample u ∼ U [0, 1]
+if u ≤ βt then
+Sample a new particle from the current particle
+approximation with probability given by the weights
+N
+N
+ξ¯i,t
+∼ wj,t
+, j ∈ {1, . . . , N } and propagate it
+N
+N
+according to the dynamical model: ξi,t
+∼ Q(ξ¯i,t
+,.)
+else
+Sample a new particle from the birth distribution
+N
+ξi,t
+∼µ
+¯t
+end if
+end for
+N
+(1)ηtN (g) + µN
+γtN (1) = γt−1
+t (1)
+t=t+1
+end while
+
+(22)
+
+i=1
+
+with A ⊂ R2 modeling the aggregation areas and C(xti , dy)
+capturing the intensity of the light perceived in the infinitesimal region dy emitted by a robot with state xti . These terms
+are modeled as Gaussians, centered in xti , whose covariance
+
+matrices model the intensity of the light over the space.
+Figure 7 illustrates the numerical solution of the system
+when the swarm distribution is approximated with N = 500
+particles.
+C. Swarming behavior of Brownian particles towards preferential directions
+While existing robotic technologies are mostly based on
+mechatronic hardware principles (i.e., robots are mechanical
+machines controlled by electronics), a novel approach consists
+in designing and fabricating robots based on soft matter that
+function on the basis of chemical principles [9]. Taking inspiration from single cell organisms like protozoa and bacteria,
+a chemical robot can be defined as an internally structured
+vesicle in the size range of 10-100 µm, with the ability to
+uptake, store, chemically process and release molecules as
+a function of external stimuli. Prototypes of such chemical
+robots are already being built [30], [42], [43], [44]. In recent
+works on chemical robots such as [9], chemical robots are
+modeled as particles capable of releasing chemical signals
+that can be sensed by other particles in close proximity. In
+
+10
+
+S/P model solution at time: 100
+
+100
+
+100
+
+80
+
+80
+
+ψ2 coordinate
+
+ψ2 coordinate
+
+S/P model solution at time: 1
+
+60
+
+40
+
+20
+
+60
+
+40
+
+20
+
+0
+
+0
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+80
+
+100
+
+0
+
+20
+
+40
+
+(a)
+
+80
+
+100
+
+(b)
+
+S/P model solution at time: 200
+
+S/P model solution at time: 300
+
+100
+
+100
+
+80
+
+80
+
+ψ2 coordinate
+
+ψ2 coordinate
+
+60
+
+ψ1 coordinate
+
+60
+
+40
+
+20
+
+Cπt ,γt (dy) ≈
+
+60
+
+0
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+80
+
+100
+
+0
+
+20
+
+40
+
+60
+
+ψ1 coordinate
+
+(c)
+
+80
+
+100
+
+Fig. 7: Solution of the S/P model specialized as in Eq. (21)
+at time t = 1 (a), t = 100 (b), t = 200 (c), and t = 300
+(d), approximated by 500 particles. Particles represent the
+discrete approximation of the intensity functions. Isolines of
+the Gaussian mixture corresponding to the potential are shown
+in blue.
+this section we design the transport operator and the potential
+function that generate a phenomenon of coordinated motion
+towards a preferential direction in a swarm of chemical robots.
+The following version of the specialised S/P model of Eq. (8)
+will be studied numerically:
+= γt Qπt
+= απt D + Cπt ,γt
+
+(23)
+
+In Eq. (23) it is assumed that no new particles enter the scene
+(µt+1 = 0) and that Qπt has the expression as in Eq. (4). The
+particles can move anywhere on the plane but are observed
+in a region of 250 × 300 mm2 . The random dynamics of the
+individuals are modeled trough Gaussian operators: Q0 (x, ·) =
+N (·; x, Σ0 ), Q1 (x, ·) = N (·; x, Σ1 ) and
+Σ0
+
+=
+
+σ02 I2 mm2
+
+,
+
+N
+
+wxti C¯πt (xti , dy)
+
+(24)
+
+i=1
+
+with C¯πt (xti , ·) = N (·; xti + c0 , σc2 I2 ), having c0 = [0, 5]T
+mm and σc2 = 4.5 mm2 . The release is done only if a particle
+perceives a sufficiently high concentration of chemical signal
+in its surroundings. The weight wxti is written as:
+
+(d)
+
+γt+1
+πt+1
+
+1
+N
+
+40
+
+20
+
+0
+
+displacement is chosen according to Q1 (x, ·). Deplacements
+towards regions with lower values of the potential are done
+with an exponentially decreasing probability.
+The colloidal particles are able to modify the level of the
+potential in the environment by releasing chemical signals.
+The release is assumed to occur in a preferential direction.
+Although the implementation of this behavior on chemical
+robots has not been achieved yet, efforts to devise the technology necessary to coordinate the collective motion of particles
+and to orientate them in a certain direction are being made
+[9]. In the model, we assume the presence of an external
+force field which can orient the particles in such a way that
+the release of the chemical substances occurs in a specific
+direction. The response of the robots to the potential (second
+term of Eq. (23)) is approximated as follows:
+
+Σ1 = σ12 I2 mm2
+
+where I2 denotes the identity matrix of dimension two,
+σ0 = 9 mm and σ1 = 6 mm. The sensitivity threshold is
+set to λ = 106 , and the diffusion of the potential occurs
+at a rate of α = 0.8. The diffusion dynamics is Gaussian
+2
+with mean zero and covariance σD
+I2 with σD = 6.3 mm.
+According to Eq. (4), the robot dynamics is modeled as
+follows: if random movements chosen according to Q0 (x, ·)
+are directed towards regions of the space associated to high
+potentials, the movements are performed, otherwise a random
+
+wxti =
+
+0
+γt (1)Cπt (1)
+
+if
+if
+
+πt (xti ) < θ
+πt (xti ) ≥ θ
+
+(25)
+
+where the amount of potential injected by a particle is
+Cπt (1) = 1. The sensing threshold is set to θ = 2 · 10−4 . The
+numerical solution of Eq. (23) is shown in Fig. 8. The solution
+is approximated with 500 particles. The initial potential is
+modeled as a Gaussian centered in π0µ = [150, 150]T mm
+with covariance matrix π0P = [120, 0; 0, 120] mm2 . The initial
+distribution of the swarm is modeled with a Gaussian term
+with mean γ0µ = [180, 175]T m and covariance matrix γ0Σ =
+1000 I2 m2 . Figure 9 illustrates the phase transition occurring
+with increasing values of the dissipation coefficient α. Highly
+dissipative chemical signals tend to disappear rapidly since
+the chemical robots have less opportunities to sense them
+and to release additional potential. When this happens, the
+initial potential dissipates completely and the coupling of the
+system disappears. By increasing the dissipation coefficient
+towards 1, the initial chemical signal is able to remain in
+the environment long enough to be perceived by the swarm.
+In particular, for the the parameters discussed above, values
+of α > 0.6 trigger the flocking behavior: as a response
+to the stimulus, particles release additional chemicals in the
+environment and progressively start to aggregate and move
+cohesively in the direction of the potential release. In the
+simulation, the preferential direction corresponds to the ψ2 axis.
+VIII. C ONCLUSION
+In the paper, we introduced a measure-valued recursion for
+spatial swarm robotics models arising from an random finite
+set (RFS) interpretation of the state of a swarm at any given
+time. The premise of the application of the RFS framework
+to swarm robotics is that the collection of robots’ states can
+
+11
+
+Intensity of the potential at time: 100
+
+S/P model solution at time: 2
+
+3.5
+
+S/P model solution at time: 40
+
+300
+
+300
+
+α = 0.8
+
+200
+
+150
+
+250
+
+2.5
+
+α = 0.75
+
+200
+
+Intensity
+
+250
+
+ψ2 coordinate
+
+ψ2 coordinate
+
+3
+
+150
+
+2
+α = 0.7
+
+1.5
+α = 0.65
+
+100
+100
+
+150
+
+200
+
+ψ1 coordinate
+
+100
+100
+
+250
+
+(a)
+
+150
+
+200
+
+ψ1 coordinate
+
+250
+
+1
+0.5
+
+(b)
+
+α = 0.2 to 0.6
+
+S/P model solution at time: 120
+
+300
+
+300
+
+250
+
+250
+
+ψ2 coordinate
+
+ψ2 coordinate
+
+S/P model solution at time: 80
+
+200
+
+150
+
+100
+100
+
+150
+
+200
+
+ψ1 coordinate
+
+(c)
+
+250
+
+20
+
+40
+
+60
+
+80
+
+100
+
+Time
+
+200
+
+150
+
+100
+100
+
+0
+0
+
+150
+
+200
+
+ψ1 coordinate
+
+250
+
+Fig. 9: Phase transition with varying dissipation coefficients
+α. Lower dissipation coefficients cause the potential to rapidly
+disappear. When the initial potential dissipates slowly, robots
+are able to sense it and can release additional potential and the
+process self-sustains. The intensity of the potential increases
+in time up to a value corresponding to a stable configuration
+of the system.
+
+(d)
+
+Fig. 8: Solution of the S/P model specialized as in Eq. (23) t =
+2 (a), t = 40 (b), t = 80 (c), and t = 120 (d), approximated
+by 500 particles. Particles represent the discrete approximation
+of the intensity functions. Isolines of the potential are shown
+in blue.
+
+chemical robots, will be able to sense chemical substances that
+exhibit diffusion dynamics whose nature is typically Gaussian.
+In more complex scenarios in which this assumption does not
+hold, a particle approximation of the evolution of the potential
+is required.
+R EFERENCES
+
+be treated as a random variable that is random both in the
+number and the value of the elements. When this is the case,
+the evolution in time of the intensity of the RFS can be used to
+describe the dynamics of robotic swarms in a computationally
+efficient way. We coupled the RFS-based modeling of the
+macroscopic behavior of a swarm of robots with a second
+general equation modeling the evolution in time of positive
+potentials. The resulting S/P model captures the dynamics of
+the interaction between the robots and the potential. Suitable
+forms for the operators of the abstract model have been derived
+for a series of scenarios. Results show that numerical solutions
+of the system are able to provide insights into the non-linear
+dynamics of complex phenomena such as coordinate motion
+and swarm aggregation. Moreover, the model allows for the
+study of the dynamics of swarm robotics systems, including
+phase transitions, when fundamental parameters are changed.
+In the paper, numerical solutions have been derived by
+assuming that the potential function can be approximated at
+each time step by a weighted Gaussian mixture. While this
+assumption is introduced to render the models computationally tractable, it is also realistic in practical terms. Typical
+sensing operations encountered in swarm robotics, such as
+the recording of images or the perception of physical objects
+through infrared sensors, are often represented in Gaussians
+terms as a practical approximation or due to the noise in the
+acquisition process. More advanced robot swarms, such as
+
+[1] E. J. H. Robinson, N. R. Franks, S. Ellis, S. Okuda, and J. A. R.
+Marshall, “A simple threshold rule is sufficient to explain sophisticated
+collective decision-making,” PLoS ONE, vol. 6, no. 5, p. e19981, 2011.
+[2] T. D. Seeley, S. Camazine, and J. Sneyd, “Collective decision-making
+in honey bees: how colonies choose among nectar sources,” Behavioral
+Ecology and Sociobiology, vol. 28, no. 4, pp. 277–290, 1991.
+[3] G. Matheron, Random Sets and Integral Geometry. J. Wiley, New York,
+1975.
+[4] I. R. Goodman, R. Mahler, and H. T. Nguyen, Mathematics of Data
+Fusion. Norwell, MA, USA: Kluwer Academic Publishers, 1997.
+[5] R. Mahler, Statistical Multisource-Multitarget Information Fusion. Norwood, MA, USA: Artech House, Inc., 2007.
+[6] H. Hamann and H. W¨orn, “A framework of space-time continuous
+models for algorithm design in swarm robotics,” Swarm Intelligence,
+vol. 2, no. 2-4, pp. 209–239, 2008.
+[7] E. L. Keshet, “Mathematical models of swarming and social aggregation,” in Proceedings of the 2001 International Symposium on Nonlinear
+Theory and its Applications, Miyagi, Japan, 2001, pp. 1–7.
+[8] O. Soysal and E. S¸ahin, “A macroscopic model for self-organized
+aggregation in swarm robotic systems,” in Swarm Robotics, ser. Lecture
+Notes in Computer Science, E. S¸ahin, W. Spears, and A. F. Winfield,
+Eds. Springer, Berlin, Germany, 2007, vol. 4433, pp. 27–42.
+ˇ ep´anek, “Swarming behavior of gradient-responsive
+[9] P. Granˇciˇc and F. Stˇ
+brownian particles in a porous medium,” Physical Review E, vol. 86, p.
+011916, 2012.
+[10] K. M. Manesh, S. Campuzano, W. Gao, M. J. Lobo-Castanon, I. Shitanda, K. Kiantaj, and J. Wang, “Nanomotor-based biocatalytic patterning of helical metal microstructures,” Nanoscale, vol. 5, pp. 1310–1314,
+2013.
+[11] T. M. Allen and P. R. Cullis, “Drug delivery systems: Entering the
+mainstream,” Science, vol. 303, no. 5665, pp. 1818–1822, 2004.
+[12] K. Lerman and A. Galstyan, “A general methodology for mathematical
+analysis of multi-agent systems,” USC Information Sciences, Marina del
+Rey, CA, USA, Tech. Rep., 2001.
+
+12
+
+[13] M. Montes de Oca, E. Ferrante, A. Scheidler, C. Pinciroli, M. Birattari, and M. Dorigo, “Majority-rule opinion dynamics with differential
+latency: A mechanism for self-organized collective decision-making,”
+Swarm Intelligence, vol. 5, no. 3-4, pp. 305–327, 2011.
+[14] M. Massink, M. Brambilla, D. Latella, M. Dorigo, and M. Birattari, “On
+the use of bio-pepa for modelling and analysing collective behaviours
+in swarm robotics.” Swarm Intelligence, 2013, in press.
+[15] W. Liu and A. F. T. Winfield, “Modeling and optimization of adaptive
+foraging in swarm robotic systems,” International Journal of Robotics
+Research, vol. 29, no. 14, pp. 1743–1760, 2010.
+[16] S. M. Berman, “Abstractions, analysis techniques, and synthesis of scalable control strategies for robot swarms,” Ph.D. dissertation, University
+of Pennsylvania, Philadelphia, USA, 2010.
+[17] H. Hamann, “Towards swarm calculus: universal properties of swarm
+performance and collective decisions,” in Swarm Intelligence. Proceedings of the 8th international conference ANTS 2012, ser. Lecture Notes
+in Computer Science. Springer, Berlin, Germany, 2012, vol. 7461, pp.
+168–179.
+[18] D. Kendall, “Foundations of a theory of random sets,” in Stochastic
+Geometry. J. Wiley, New York, 1963, pp. 322–376.
+[19] J. Serra, “The Boolean model and random sets,” Computer Graphics
+and Image Processing, vol. 12, pp. 99–126, 1980.
+[20] F. Caron, P. Del Moral, A. Doucet, and M. Pace, “Particle approximation
+of the intensity measures of a spatial branching point process arising
+in multi-target tracking,” SIAM Journal of Control and Optimization,
+vol. 49, no. 4, pp. 1766–1792, 2011.
+[21] B.-T. Vo, “Random finite sets in multi object filtering,” Ph.D. dissertation, The University of Western Australia, Australia, 2008.
+[22] B.-N. Vo, S. S. Singh, and A. Doucet, “Sequential Monte Carlo methods
+for multi-target filtering with random finite sets,” IEEE Transactions On
+Aerospace and Electronic Systems, vol. 41, no. 4, pp. 1224–1245, 2005.
+[23] J. Mullane, B.-N. Vo, M. Adams, and B.-T. Vo, Random Finite Sets for
+Robot Mapping and SLAM - New Concepts in Autonomous Robotic Map
+Representations, ser. Springer Tracts in Advanced Robotics. Springer,
+2011.
+[24] D. Daley and D. Vere-Jones, An Introduction to the Theory of Point
+Process, 2nd ed. Springer, Berlin, Germany, 2003.
+[25] P. Del Moral, G. W. Peters, and C. Verg´e, “An introduction to particle
+integration methods: with applications to risk and insurance,” ArXiv eprints, 2012.
+[26] P. Del Moral, “Nonlinear filtering using random particles,” Theory of
+Probability and Its Applications, vol. 40, no. 4, pp. 690–701, 1995.
+[27] ——, “Measure valued processes and interacting particle systems. application to non linear filtering problems,” Annals of Applied Probability,
+vol. 8, pp. 438–495, 1996.
+[28] F. Schweitzer, Brownian Agents and Active Particles: Collective Dynamics in the Natural and Social Sciences. Springer Series in Synergetics,
+2007.
+[29] W. Agassounon and A. Martinoli, “A macroscopic model of an aggregation experiment using embodied agents in groups of time-varying
+sizes,” in 2002 IEEE International Conference on Systems, Man and
+Cybernetics, 2002, vol. 2, pp. 250–255.
+ˇ ep´anek, “Fabrication of composite microcapsules by
+[30] J. Dohnal and F. Stˇ
+drop-on-demand inkjet: effect of precursor composition on the process
+limits,” Chemical Engineering Science, vol. 66, pp. 3829–3835, 2011.
+[31] P. Del Moral, Feynman-Kac formulae. Genealogical and Interacting
+Particle Systems with Applications. Springer, New York, 2004.
+[32] A. Budhiraja, P. Del Moral, and S. Rubenthaler, “Discrete time markovian agents interacting through a potential,” ESAIM: Probability and
+Statistics, 2013, in press.
+[33] M. Brambilla, E. Ferrante, M. Birattari, and M. Dorigo, “Swarm
+robotics: A review from the swarm engineering perspective,” Swarm
+Intelligence, vol. 7, no. 1, pp. 1–41, 2013.
+[34] S. Garnier, J. Gautrais, and G. Theraulaz, “The biological principles of
+swarm intelligence,” Swarm Intelligence, vol. 1, no. 1, pp. 3–31, 2007.
+[35] M. Dorigo, E. Bonabeau, and G. Theraulaz, “Ant algorithms and
+stigmergy,” Future Generation Computer Systems, vol. 16, no. 8, pp.
+851–871, 2000.
+[36] P.-P. Grass´e, “La reconstruction du nid et les coordinations interindividuelles chez Bellicositermes natalensis et Cubitermes sp. la th´eorie
+de la stigmergie: Essai d’interpr´etation du comportement des termites
+constructeurs,” Insectes Sociaux, vol. 6, no. 1, pp. 41–80, 1959.
+[37] M. Pace, “Random Finite Set Modeling of Swarm Robotics Systems
+and Roboplasms: Fundamentals,” IRIDIA, Universit´e Libre de Bruxelles,
+Brussels, Belgium, Tech. Rep., 2013.
+
+[38] P. Del Moral, L. Kallel, and J. Rowe, “Modeling genetic algorithms
+with interacting particle systems,” in Theoretical Aspects of Evolutionary
+Computing. Springer, Berlin, Germany, 2001, pp. 10–67.
+[39] Y.-C. Ho and R. Lee, “A Bayesian approach to problems in stochastic
+estimation and control,” IEEE Transactions on Automatic Control, vol. 9,
+no. 4, pp. 333–339, 1964.
+[40] B. Ristic, S. Arulampalam, and N. Gordon, Beyond the Kalman Filter:
+Particle Filters for Tracking Applications. Norwood, MA, USA: Artech
+House, 2004.
+[41] J. D. Bjerknes, A. F. Winfield, C. Melhuish, and C. Lane, “An analysis
+of emergent taxis in a wireless connected swarm of mobile robots,” in
+In IEEE Swarm Intelligence Symposium. IEEE Press, 2007, pp. 45–52.
+[42] S. Balasubramanian, D. Kagan, C. Hu, S. Campuzano, M. LoboCastaon, N. Lim, D. Kang, M. Zimmerman, L. Zhang, and J. Wang,
+“Micromachine-enabled capture and isolation of cancer cells in complex
+media,” Angewandte Chemie International Edition, vol. 50, no. 18, pp.
+4161–4, 2011.
+[43] J. Wu, S. Balasubramanian, D. Kagan, K. M. Manesh, S. Campuzano,
+and J. Wang, “Motion-based DNA detection using catalytic nanomotors,”
+Nature Communications, vol. 1, no. 36, 2010.
+[44] D. Kagan, R. Laocharoensuk, M. Zimmerman, C. Clawson, S. Balasubramanian, D. Kang, D. Bishop, S. Sattayasamitsathit, L. Zhang, and
+J. Wang, “Rapid delivery of drug carriers propelled and navigated by
+catalytic nanoshuttles,” Small, vol. 6, no. 23, pp. 2741–2747, 2010.
+
+
