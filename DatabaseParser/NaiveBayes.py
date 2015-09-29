@@ -31,6 +31,8 @@ def NaiveBayes(file):
     stopwords=loadStopWords(STOP_WORD_LIST_FILENAME)
     for w_ in W:
         w=w_.lower()
+        if not w[-1].isalpha():
+            w=w[:-1]
         if not w.isalpha():
             continue
         if w in processedW.keys(): 
