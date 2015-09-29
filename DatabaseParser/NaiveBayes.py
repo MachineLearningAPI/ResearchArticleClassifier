@@ -4,11 +4,11 @@ Created on Sep 22, 2015
 @author: Ashish Tilokani, Jaiwant Rawat
 '''
 import sys
-
+from DatabaseParser.views import STOP_WORD_LIST_FILENAME
 from DatabaseParser.models import DocFreqTable, DocClass, WordTable
-from DatabaseParser.views import FREQ_THRESHOLD_PERCENT
 from DatabaseParser.views import MAX_NUM_OF_WORDS_READ
 from math import log10
+from DatabaseParser.views import loadStopWords  
 
 def NaiveBayes(file):
     
@@ -24,21 +24,19 @@ def NaiveBayes(file):
     fp = open(file,'r')
     docCount = DocClass.objects.count()
     print("Number of documents: ",docCount)
-    FREQ_THRESHOLD = docCount*FREQ_THRESHOLD_PERCENT   
     
     W = fp.read().split()
     cnt=0
     processedW={}
+    stopwords=loadStopWords(STOP_WORD_LIST_FILENAME)
     for w_ in W:
         w=w_.lower()
         if not w.isalpha():
             continue
         if w in processedW.keys(): 
             continue
-        #term occurs in a lot of documents
-        if DocFreqTable.objects.filter(docFreq__gte = FREQ_THRESHOLD,word=w).count()==1:
+        if w in stopwords.keys():
             continue
-        
         processedW[w]=1
         cnt += 1
         if cnt == MAX_NUM_OF_WORDS_READ:
