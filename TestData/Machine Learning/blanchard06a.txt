@@ -1,0 +1,3327 @@
+Journal of Machine Learning Research 7 (2006) 247–282
+
+Submitted 3/05; Revised 10/05; Published 2/06
+
+In Search of Non-Gaussian Components of a
+High-Dimensional Distribution
+Gilles Blanchard
+
+BLANCHAR @ FIRST. FHG . DE
+
+Fraunhofer FIRST.IDA
+Kekul´estrasse 7
+12489 Berlin, Germany
+and
+CNRS, Universit´e Paris-Sud
+Orsay, France
+
+Motoaki Kawanabe
+
+NABE @ FIRST. FHG . DE
+
+Fraunhofer FIRST.IDA
+Kekul´estrasse 7
+12489 Berlin, Germany
+
+Masashi Sugiyama
+
+SUGI @ CS . TITECH . AC . JP
+
+Fraunhofer FIRST.IDA
+Kekul´estrasse 7
+12489 Berlin, Germany
+and
+Department of Computer Science
+Tokyo Institute of Technology
+2-12-1, O-okayama, Meguro-ku, Tokyo, 152-8552, Japan
+
+Vladimir Spokoiny
+
+SPOKOINY @ WIAS - BERLIN . DE
+
+Weierstrass Institute and Humboldt University
+Mohrenstrasse 39
+10117 Berlin, Germany
+
+¨
+Klaus-Robert Muller
+
+KLAUS @ FIRST. FHG . DE
+
+Fraunhofer FIRST.IDA
+Kekul´estrasse 7
+12489 Berlin, Germany
+and
+Department of Computer Science
+University of Potsdam
+August-Bebel-Strasse 89, Haus 4
+14482 Potsdam, Germany
+
+Editor: Sam Roweis
+
+c 2006 Gilles Blanchard, Motoaki Kawanabe, Masashi Sugiyama, Vladimir Spokoiny and Klaus-Robert M¨uller.
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Abstract
+Finding non-Gaussian components of high-dimensional data is an important preprocessing step for
+efficient information processing. This article proposes a new linear method to identify the “nonGaussian subspace” within a very general semi-parametric framework. Our proposed method,
+called NGCA (non-Gaussian component analysis), is based on a linear operator which, to any
+arbitrary nonlinear (smooth) function, associates a vector belonging to the low dimensional nonGaussian target subspace, up to an estimation error. By applying this operator to a family of different nonlinear functions, one obtains a family of different vectors lying in a vicinity of the target
+space. As a final step, the target space itself is estimated by applying PCA to this family of vectors.
+We show that this procedure is consistent in the sense that the estimaton error tends to zero at a
+parametric rate, uniformly over the family, Numerical examples demonstrate the usefulness of our
+method.
+
+1. Introduction
+Suppose {Xi }ni=1 are i.i.d. samples in a high dimensional space Rd drawn from an unknown distribution with density p(x) . A general multivariate distribution is typically too complex to analyze
+directly from the data, thus dimensionality reduction is useful to decrease the complexity of the
+model (see Cox and Cox, 1994; Sch¨olkopf et al., 1998; Roweis and Saul, 2000; Tenenbaum et al.,
+2000; Belkin and Niyogi, 2003). Here, our point of departure is the following assumption: the high
+dimensional data includes low dimensional non-Gaussian components, and the other components
+are Gaussian. This assumption follows the rationale that in most real-world applications, the ‘signal’ or ‘information’ contained in the high-dimensional data is essentially non-Gaussian, while the
+‘rest’ can be interpreted as high dimensional Gaussian noise.
+1.1 Setting and General Principle
+We want to emphasize from the beginning that we do not assume the Gaussian components to be of
+smaller order of magnitude than the signal components; all components are instead typically of the
+same amplitude. This setting therefore excludes the use of dimensionality reduction methods based
+on the assumption that the data lies, say, on a lower dimensional manifold, up to some small noise.
+In fact, this type of methods addresses a different kind of problem altogether.
+Under our modeling assumption, therefore, the task is to recover the relevant non-Gaussian
+components. Once such components are identified and extracted, various tasks can be applied in the
+data analysis process, say, data visualization, clustering, denoising or classification.
+If the number of Gaussian components is at most one and all the non-Gaussian components are
+mutually independent, independent component analysis (ICA) techniques (see, e.g., Comon, 1994;
+Hyv¨arinen et al., 2001) are relevant to identify the non-Gaussian subspace. Unfortunately, however,
+this is often a too strict assumption on the data.
+The framework we consider is on the other hand very close to that of projection pursuit (denoted
+PP in short in the sequel) algorithms (Friedman and Tukey, 1974; Huber, 1985; Hyv¨arinen et al.,
+2001). The goal of projection pursuit methods is to extract non-Gaussian components in a general setting, i.e., the number of Gaussian components can be more than one and the non-Gaussian
+components can be dependent.
+Projection pursuit methods typically proceed by fixing a single index which measures the nonGaussianity (or ’interessingness’) of a projection direction. This index is then optimized over all
+248
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+possible directions of projection; the procedure can be repeated iteratively (over directions orthogonal to the first ones already found) to find a higher dimensional projection of the data as needed.
+However, it is known that some projection indices are suitable for finding super-Gaussian components (heavy-tailed distribution) while others are suited for identifying sub-Gaussian components
+(light-tailed distribution) (Hyv¨arinen et al., 2001). Therefore, traditional PP algorithms may not
+work effectively if the data contains, say, both super- and sub-Gaussian components.
+To summarize: existing methods for the setting we consider typically proceed by defining an
+appropriate interestingness index, and then compute a projection that maximizes this index (projection pursuit methods, and some ICA methods). The philosophy that we would like to promote in
+this paper is in a sense different: in fact, we do not specify what we are interested in, but we rather
+define what is not interesting (see also Jones and Sibson , 1987). Clearly, a multi-dimensional Gaussian subspace is a reasonable candidate for an undesired component (our idea could be generalized
+by defining, say, a Laplacian subspace to be uninformative). Having defined this uninteresting subspace, its (orthogonal) complement is by contrast interesting: this therefore precisely defines our
+target space.
+1.2 Presentation of the Method
+Technically, our new approach to identifying the non-Gaussian subspace uses a very general semiparametric framework. The proposed method, called non-Gaussian component analysis (NGCA),
+is essentially based on a central property stating that there exists a linear mapping h → β(h) ∈ Rd
+which, to any arbitrary (smooth) nonlinear function h : Rd → R , associates a vector β lying in
+the non-Gaussian target subspace. In practice, the vector β(h) has to be estimated from the data,
+giving rise to an estimation error. However, our main consistency result shows that this estimation
+error vanishes at a rate log(n)/n with the sample size n . Using a whole family of different
+nonlinear functions h then yields a family of different vectors β(h) which all approximately lie in,
+and span, the non-Gaussian subspace. We finally perform PCA on this family of vectors to extract
+the principal directions and estimate the target space.
+In practice, we consider functions of the particular form hω,a (x) = fa ( ω, x ) , where f is a
+function class parameterized, say, by a parameter a , and ω = 1 . Even for a fixed a , it is infeasible to compute values of β(hω,a ) for all possible values of ω (say, on a discretized net of the unit
+sphere), because of the cardinality involved. In order to choose a relevant value for ω (still for fixed
+a ), we then opt to use as a heuristic a well-known PP algorithm, FastICA (Hyv¨arinen, 1999). This
+was suggested by the surprising observation that the mapping ω → β(hω,a ) is then equivalent to a
+single iteration of FastICA (although this algorithm was built using different theoretical considerations); hence, in this special case, FastICA is exactly the same as iterating our mapping. In short,
+we use a PP method as a proxy to select the most relevant direction ω for a fixed a . This results in a
+particular choice of ωa , to which we apply the mapping once more, thus yielding βa = β(hωa ,a ) . Finally, we aggregate the different vectors βa obtained when varying a by applying PCA as indicated
+previously, in order to recover the target space.
+Thus, apart from the conceptual point, defining uninterestingness as the point of departure instead of interestingness, another way to look at our method is to say that it allows the combination
+of information coming from different indices: here the above function fa (for fixed a ) plays a role
+similar to that of a non-Gaussianity index in PP, but we do combine a rich family of such functions
+(by varying a and even by considering several function classes at the same time). The important
+249
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+point here is that, while traditional projection pursuit does not provide a well-founded justification
+for combining directions from using different indices, our framework allows to do precisely this –
+thus implicitly selecting, in a given family of indices, the ones which are the most informative for
+the data at hand.
+In the following section we will outline the theoretical cornerstone of the method, a novel semiparametric theory for linear dimension reduction. Section 3 discusses the algorithmic procedure and
+is conluded with theoretical results establishing statistical consistency of the method. In Section 4,
+we study on simulated and real data examples the behavior of the algorithm. A brief conclusion is
+given in Section 5.
+
+2. Theoretical Framework
+In this section, we give a theoretical basis for the non-Gaussian component search within a semiparametric framework. We present a population analysis, where expectations can in principle be
+calculated exactly, in order to emphasize the main idea and show how the algorithm is built. A more
+rigorous statistical study of the estimation error will be exposed later in section 3.5.
+2.1 Motivation
+Before introducing the semi-parametric density model which will be used as a foundation for developing our method, we motivate it by starting from elementary considerations. Suppose we are given
+a set of observations Xi ∈ Rd , (i = 1, . . . , n) obtained as a sum of a signal S and an independent
+Gaussian noise component N :
+X = S+N,
+(1)
+where N ∼ N (0, Γ) . Note that no particular structural assumption is made about the noise covariance matrix Γ .
+Assume the signal S is contained in a lower-dimensional linear subspace E of dimension m <
+d . Loosely speaking, we would like to project X linearly so as to eliminate as much of the noise as
+possible while preserving the signal information. An important issue for the analysis of the model
+(1) is a suitable representation of the density of X which reflects the low dimensional structure of
+the non-Gaussian signal. The next lemma presents a generic representation of the density p for the
+model (1).
+Lemma 1 The density p(x) for the model (1) with the m -dimensional signal S and an independent
+Gaussian noise N can be represented as
+p(x) = g(T x)φΓ (x)
+where T is a linear operator from Rd to Rm , g(·) is some function on Rm and φΓ (x) is the density
+of the Gaussian component.
+The formal proof of this lemma is given in the Appendix. Note that the above density representation is not unique, as the parameters g, T, Γ are not identifable from the density p. However, the
+null suspace (kernel) K(T ) of the linear operator T is an identifiable parameter. In particular, is
+useful to notice that if the noise N is standard normal, then the operator T can be taken equal to the
+projector on the signal space E . Therefore, in this case, K(T ) coincides with E ⊥ , the orthogonal
+250
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+complementary subspace to E . In the general situation with “colored” Gaussian noise, the signal
+space E does not coincide with the orthogonal complementary of the kernel I = K(T )⊥ of the
+operator T . However, the density representation of Lemma 1 shows that the the subspace K(T )
+is non-informative and contains only noise. The original data can then be projected orthogonally
+onto I , which we call the non-Gaussian subspace, without loss of information. This way, we are
+preserving the totality of the signal information. This definition implements the general point of
+view outlined in the introduction, namely: we define what is considered uninteresting; the target
+space is then defined indirectly as the orthogonal of the uninteresting component.
+2.2 Relation to ICA
+An equivalent view of the same model is to decompose the noise N appearing in Eq.(1) into a
+component N1 belonging to the signal space E and an independent component N2 ; it can then be
+shown that N2 belongs to the subspace K(T ) defined above. In this view, the space I is orthogonal
+to the independent noise component, and projecting the data onto I amounts to cancelling this
+independent noise component by an orthogonal projection.
+In the present paper, we assume that we wish to project the data orthogonally, i.e., that the
+Euclidean geometry of the input space is meaningful for the data at hand, and that we want to
+respect it while projecting. An alternative point of view would be to disregard the input space
+geometry altogether, and to first map the data linearly to a reference space where it has covariance
+identity (“whitening” transform), which would be closer to a traditional ICA analysis. This would
+have on the one hand the advantage of resulting in an affine invariant procedure, but, on the other
+hand, the disadvantage of losing the information of the original space geometry. It is relatively
+straightforward to adapt the procedure to fit into this framework. For simplicity, we will stick to our
+original goal of orthogonal projection in the original space.
+2.3 Main Model
+Based on the above motivation, we assume to be dealing with an unknown probability density
+function p(x) on Rd which can put under the form
+p(x) = g(T x)φΓ (x),
+
+(2)
+
+where T is an unknown linear mapping from Rd to Rm with m ≤ d , g is an unknown function on
+Rm , and φΓ is a centered1 Gaussian density with covariance matrix Γ .
+Note that the semi-parametric model (2) includes as particular cases both the pure parametric
+( m = 0 ) and purely non-parametric ( m = d ) models. For practical purposes, however, we are
+effectively interested in an intermediate case where d is large and m is relatively small. In what
+follows, we denote by I the m -dimensional linear subspace in Rd generated by the adjoint operator
+T∗:
+I = K(T )⊥ = ℑ(T ∗ ) ,
+where ℑ(·) denotes the range of an operator. We call I the non-Gaussian subspace.
+The proposed goal is therefore to estimate I by some subspace I computed from an i.i.d. sample {Xi }ni=1 following the distribution with density p(x) . In this paper, we assume the effective
+1. It is possible to handle a more general situation where the Gaussian part has an unknown mean parameter θ in
+addition to the unknown covariance Γ . For simplicity of exposition, we consider here only the case θ = 0 .
+
+251
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+dimension m to be known or fixed a priori by the user. Note that we do not estimate Γ nor g
+when estimating I . We measure the closeness of the two subspaces I and I by the following error
+function:
+
+E (I , I ) = (2m)−1 ΠI − ΠI
+
+2
+Frob
+
+m
+
+= m−1 ∑ (Id − ΠI )vi 2 ,
+
+(3)
+
+i=1
+
+where ΠI denotes the orthogonal projection on I , ·
+orthonormal basis of I and Id is the identity matrix.
+
+Frob
+
+is the Frobenius norm, {vi }m
+i=1 is an
+
+2.4 Key Result
+The main idea underlying our approach is summed up in the following Proposition (the proof is
+given in Appendix A.2). Whenever variable X has covariance2 matrix identity, this result allows,
+from an arbitrary smooth real function h on Rd , to find a vector β(h) ∈ I .
+Proposition 2 Let X be a random variable whose density function p(x) satisfies Eq.(2) and suppose that h(x) is a smooth real function on Rd . Assume furthermore that Σ = E XX = Id . Then,
+under mild regularity conditions on h , the following vector β(h) belongs to the target space I :
+β(h) = E [Xh(X) − ∇h(X)] .
+
+(4)
+
+In the general case where the covariance matrix Σ is different from identity, provided it is nondegenerated, we can apply a whitening operation (also known as Mahalanobis transform). Namely,
+1
+let us put Y = Σ− 2 X the “whitened” data; the covariance matrix of Y is then identity. Note that if
+the density function of X is of the form
+p(x) = g(T x)φΓ (x),
+then by change of variable the density function of Z = AX is given by
+q(z) = cA g(TA−1 z)φAΓA (z),
+where cA is a normalization constant depending on A .
+1
+This identity applied to A = Σ− 2 and the previous proposition allow to conclude that
+1
+
+βY (h) = E [∇h(y) − yh(y)] ∈ J = ℑ(Σ 2 T ∗ )
+and therefore that
+1
+
+γ(h) = Σ− 2 βY (h) ∈ I = ℑ(T ∗ ) ,
+1
+
+where I is the non-Gaussian index space for the initial variable X , and J = Σ 2 I the transformed
+non-Gaussian space for the whitened variable Y .
+2. Here and in the sequel, with some abuse we call Σ = E XX
+the non-Gaussian part of the data to be centered.
+
+252
+
+the covariance matrix, even though we do not assume
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+h1
+
+h(x)
+
+h2
+
+^
+β4
+
+^
+β1
+
+^
+β2
+
+h3
+h4
+
+I
+
+h5
+
+^
+β3
+
+^
+β5
+
+x
+
+Figure 1: The NGCA main idea: from a varied family of real functions, compute a family of vectors
+belonging to the target space up to small estimation error.
+
+3. Procedure
+We now use the key proposition established in the previous section to design a practical algorithm
+in order to identify the non-Gaussian subspace. The first step is to apply the whitening transform to
+the data (where the true covariance matrix Σ is estimated by the empirical covariance Σ ). We then
+estimate the “whitened” non-Gaussian space J by some J (this will be described next); this space
+1
+is then finally pulled back in the original space by application of Σ− 2 . To simplify the exposition,
+in this section we will forget about the whitening/dewhitening steps and always implicitly assume
+that we are dealing directly with the whitened data: every time we refer to the non-Gaussian space
+1
+it is therefore to be understood that we refer to J = Σ 2 I , corresponding to the whitened data Y .
+3.1 Principle of the Method
+In the previous section, we have proved that for an arbitrary function h satisfying mild smoothness
+conditions, it is possible to construct a vector β(h) which lies in the non-Gaussian subspace. However, since the unknown density p(x) is used (via the expectation operator) to define β by Eq.(2),
+one cannot directly use this formula in practice: it is then natural to approximate it by replacing the
+true expectation by the empirical expectation. This gives rise to the estimated vector
+β(h) =
+
+1 n
+∑ Yi h(Yi ) − ∇h(Yi ) ,
+n i=1
+
+(5)
+
+which we expect to be close to the non-Gaussian subspace up to some estimation error. At this
+point, the natural next step is to consider a whole family of functions {hi }ni=1 , giving rise to an
+associated vector family of {βi }Li=1 , all lying close to the target subspace, where βi := β(hi ) . The
+final step is to recover the non-Gaussian subspace from this set. For this purpose, we suggest to
+use the principal directions of this family, i.e. to apply PCA (although other algorithmic options are
+certainly avalaible for this task). This general idea is illustrated on Figure 1.
+3.2 Normalization of the Vectors
+When extracting information on the target subspace from the set of vectors {βi }Li=1 , attention should
+be paid to how the functions {hi }Li=1 are normalized. As can be seen from its definition, the operator which maps a function h to β(h) (and also its empirical counterpart β(h) ) is linear. Therefore,
+if, for example, one of the functions {hi }Li=1 is multiplied by an arbitrarily large scalar, the associ253
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Figure 2: For the same estimation error represented as a confidence ball of radius ε , estimated
+vectors with higher norm give a more precise information about the true target space.
+
+ated β(h) could have an arbitrarily large norm: this is likely to influence heavily the procedure of
+principal direction extraction applied to the whole family.
+To prevent this problem, the functions {hi }Li=1 should be normalized in some way or other.
+Several possibilities can come to mind, like using the supremum or L2 norm of h or of ∇h . We
+argue here that a sensible way to normalize functions is such that the average squared deviation
+(estimation error) of β(h) to its mean is of the same order for all functions h considered. This
+has a first direct intuitive interpretation in terms of making the length of each estimated vector
+proportional to its associated signal-to-noise ratio. We argue in more detail that the norm of β(h)
+after normalization is directly linked to the amount of information brought by this vector about the
+target subspace.
+Namely, if we measure the information that is brought by a certain vector β(h) about the target
+space J through the angle θ(β(h)) between the vector and the space, we have
+β(h) − β(h) ≥ dist(β(h), J ) = sin(θ(β(h))) β(h) .
+Suppose we have ensured by renormalization that σ(h)2 = E
+
+β(h) − β(h)
+
+(6)
+2
+
+is constant and in-
+
+dependent of h , and assume that this results in β(h) − β(h) 2 being bounded by some constant
+with high probability. It entails that sin(θ(β(h))) β(h) is bounded independently of h . We expect,
+in this situation, that the bigger β , the smaller is sin(θ) , and therefore the more reliable the information about J . This intuition is illustrated in Figure 2, where the estimation error is represented
+by a confidence ball of equal size for all vectors.3
+Therefore, at least at an intuitive level, it appears appropriate to use σ(h) as a renormalization.
+Note that this is just the square root of the trace of the covariance matrix of β(h) , and therefore
+easy to estimate in practice from its empirical counterpart. In section 3.5, we give actual theoretical
+confidence bounds for β − β which justify this intuition in a more rigorous manner.
+Finally, to confirm this idea on actual data, we plot in the top row Figure 3 the distribution of
+β on an illustrative data set using the normalization scheme just described. In order to investigate
+3. Of course, the situation depicted in Figure 2 is idealized: we actually expect (from the Central Limit Theorem)
+that β − β has approximately a Gaussian distribution with some non-spherical variance, giving rise to a confidence
+ellipsoid rather than a confidence ball. To obtain a spherical error ball, we would have to apply a (linear) error
+whitening transform separately to each β(h) . However, in that case the error whitening transform would be different
+for each h , and the information of the vector family about the target subspace would then be lost. To preserve
+this information, only a scalar normalization is adequate, which is why we recommend the normalization scheme
+explained here.
+
+254
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+the relation between the norm of the (normalized) β and the amount of information on the nonGaussian subspace brought by β , we plot in the right part of Figure 3 the relation between β and
+ΠJ β / β = cos(θ(β)) . As expected, the vectors β with highest norm are indeed much closer
+to the non-Gaussian subspace in general. Furthermore, vectors β with norm close to zero appear
+to bear almost no information about the non-Gaussian space, which is consistent with the setting
+depicted in Figure 2: whenever an estimated vector β has norm smaller than the estimation error ε ,
+its confidence ball contains the origin, which means that it brings no useable information about the
+direction of the non-Gaussian subspace.
+These findings motivate two important points for the algorithm:
+1. It should be beneficial to actively search for functions h which yield an estimated β(h) with
+higher norm, since these are more informative about the target space J ;
+2. The vectors β with norm below a certain threshold ε can be discarded as they are noninformative. So far, the theoretical bounds presented below in section 3.5 are not precise
+enough to give a canonical value for this threshold: we therefore recommend that it be determined by a preliminary calibration procedure. For this, we consider independent Gaussian
+data: in this case, β = 0 for any h and thus β represents pure estimation noise. A reasonable choice for the threshold is therefore the 95th percentile (say) of this distribution, which
+we expect to reject a large majority of the noninformative vectors.
+
+3.3 Using FastICA as Preprocessing to Find Promising Functions
+When considering a parametrized family of functions {hω } , it is a desirable goal to search the
+parameter space to find indices ω such that β(hω ) has a high norm, as proposed in the last section.
+From now on we will restrict our attention to functions of the form
+hω (x) = f ( ω, x ) ,
+
+(7)
+
+where ω ∈ Rd , ω = 1 , and f is a smooth real function of a real variable. Clearly, it is not feasible
+to sample the entire parameter space for ω as soon as it has more than a few dimensions, and it is not
+obvious a priori to find parameters ω such that β(hω ) has a high norm. Remember however that we
+do not need to find an exact maximum of this norm over the parameter space. We merely want to find
+parameters such that the associated norm is preferably high, because they bring more information;
+this may also involve heuristics. Naturally, good heuristics should be able to find parameters giving
+rise to vectors with higher norm, bringing more information on the subspace and ultimately better
+practical results; nevertheless, the underlying theoretical motivation stays unchanged regardless of
+the way the functions are picked.
+A particularly relevant heuristic for choosing ω comes naturally with a closer look at Eq.(5)
+when we plug in functions of the specific form given by Eq.(7):
+β(hω ) =
+
+1 n
+∑ Yi f ( ω,Yi ) − f ( ω,Yi )ω .
+n i=1
+
+(8)
+
+It is interesting to notice that this equation precisely coincides with one iteration of a well-known
+projection pursuit algorithm, FastICA (Hyv¨arinen, 1999). More precisely, FastICA consists in iter255
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+1
+
+1.5
+
+0.9
+
+0.8
+
+1
+0.7
+
+cos(θ)
+
+0.5
+
+0
+
+0.6
+
+0.5
+
+0.4
+
+−0.5
+0.3
+
+0.2
+
+−1
+
+0.1
+
+−1.5
+0
+
+−2.5
+
+−2
+
+−1.5
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+^ 2
+||β||
+
+2.5
+
+3
+
+3.5
+
+4
+
+1
+
+10
+
+0.9
+
+8
+
+0.8
+
+6
+0.7
+
+cos(θ)
+
+4
+2
+0
+
+0.6
+
+0.5
+
+0.4
+
+−2
+0.3
+
+−4
+0.2
+
+−6
+0.1
+
+−8
+0
+
+−10
+−10
+
+−5
+
+0
+
+5
+
+0
+
+5
+
+10
+
+10
+
+^
+||β||
+
+15
+
+20
+
+25
+
+1
+
+15
+
+0.9
+
+0.8
+
+10
+0.7
+
+cos(θ)
+
+5
+
+0
+
+−5
+
+0.6
+
+0.5
+
+0.4
+
+0.3
+
+0.2
+
+−10
+0.1
+
+−15
+
+0
+
+−20
+
+−15
+
+−10
+
+−5
+
+0
+
+5
+
+10
+
+15
+
+20
+
+0
+
+5
+
+10
+
+^
+||β||
+
+15
+
+20
+
+25
+
+30
+
+Figure 3: Illustrative plots of the method, applied to toy data of type (A) (See section 4.1). Left
+column: Distribution of β projected on a direction belonging to the target space J (abscissa) and a direction orthogonal to it (ordinate). Right column: β (after normalization) vs. cos(θ(β, J )) . From top to bottom rows: random draw of functions, after 1 -step,
+and after 4 -step of FastICA preprocessing. β ’s are normalized as described in section
+3.2.
+
+256
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+ating the following update rule to form a sequence ω1 , . . . , ωT :
+ωt+1 ∝
+
+1 n
+∑ Yi f ( ωt ,Yi ) − f ( ωt ,Yi )ωt
+n i=1
+
+(9)
+
+where the sign ∝ indicates that vector ωt+1 is renormalized to be of unit norm.
+Note that the FastICA procedure is derived from quite a different theoretical setting of what
+we considered here (see, e.g., Hyv¨arinen et al., 2001); its goal is in principle to optimize a nonGaussianity measure E [F( ω, x )] (where F is such that F formally coincides with our f above)
+and the solution is reached by an approximate Newton method giving rise to the update rule of
+Eq.(9), repeated until convergence.
+This formal identity leads us to adopt the FastICA methodology as a heuristic for our method.
+Since finding an actual optimum point is not needed, convergence is not an issue, so that we only
+iterate the update rule of Eq.(9) for a fixed number of iterations T to find a relevant direction ωT .
+Finally we apply Eq.(8) one more time to this choice of parameter, so that the procedure finally
+outputs β(hωT ) . On Figure 3, we plot the effect of a few iterations of this preprocessing for the
+method, applied on toy data and see that it leads to a significant improvement.
+Paradoxically, if the convergence of this FastICA preprocessing is too good, there is in principle
+a risk that all vectors β end up in the vicinity of one single “best” direction instead of spanning
+the whole target space: the preprocessing would then have the opposite effect of what is wished,
+namely impoverishing the vector family. One possible remedy against this is to apply so-called
+batch FastICA, which consists in iterating equation (9) on a m -dimensional system of vectors,
+which is orthonormalized anew before each new iteration. In our practical experiments we did
+not observe any significant change in the results when using this refinement, so we mention this
+possibility only as a matter of precaution. We suspect two mitigating factors against this possible
+unwished behavior are that (1) it is known that FastICA does not converge to a global maximum, so
+that we probably find vectors in the vicinity of different local optima and (2) the “optimal” directions
+depend on the function f used and we combine a large number of such functions.
+In the next section, we will describe the full algorithm, which consists in applying the procedure
+just described to different choices of the function f . Since we are using projection pursuit as a
+heuristic to find suitable parameters ω for a fixed f , the theoretical setting proposed here can
+therefore also be seen as a suitable framework for combining projection pursuit results when using
+different index functions f .
+3.4 Full Procedure
+The previous sections have been devoted to detailing some key points of the procedure. We now
+gather these points and describe the full algorithm. We previously considered the case of a basis
+function family hω (y) = f ( ω, y ) . We now consider a finite family of possible choices { fk }Lk=1
+which are then combined.
+In the implementation tested, we have used the following forms of the functions fk :
+(1)
+
+fσ (z) = z3 exp −
+
+z2
+2σ2
+
+,
+
+(Gauss-Pow3)
+
+(2)
+
+fb (z) = tanh(bz),
+
+(Hyperbolic Tangent)
+
+(3)
+
+(Fourier4 )
+
+fa (z) = exp (iaz) ,
+257
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+More precisely, we consider discretized ranges for σ ∈ [σmin , σmax ] , b ∈ [0, B] , and a ∈ [0, A] ,
+giving rise to a finite collection { fk } (which therefore includes simultaneously functions of the
+three different above families). Note that using z3 and Hyperbolic Tangent functions is inspired by
+the classical PP algorithms (including FastICA) where these indices are used. We multiplied z3 by
+a Gaussian factor in order to satisfy the boundedness assumption needed to control the estimation
+error (see Theorem 3 and 4 below). Furthermore, the introduction of the parameter σ2 allows for a
+richer family. Finally, the Fourier functions were introduced as they constitute a rich and important
+family. A pseudocode for the NGCA algorithm is described in Figure 4.
+3.5 Theoretical Bounds on the Statistical Estimation Error
+In this section we tackle the question of controlling the estimation error when approximating the
+vectors β(h) by their empirical estimations β(h) from a rigorous theoretical point of view. These
+results were derived with the following goals in mind:
+• A cornerstone of the algorithm is that we consider a whole family h1 , . . . , hL of functions and
+pick selected members from it. In order to justify this from a statistical point of view, we
+therefore need to control the estimation error not for a single function h and the associated
+β(h) , but instead uniformly over the function family. For this, a simple control of, e.g., the
+averaged squared deviation E β − β 2 for each individual h is not sufficient: we need a
+stronger result, namely an exponential control of the deviation probability. This allows, by
+the union bound, to obtain a uniform control over the whole family with a mild (logarithmic)
+dependence on the cardinality of the family.
+• We aim at making the covariance trace σ2 directly appear into the main bounding terms
+of our error control. This provides a more solid justification to the renormalization scheme
+developed in section 3.2, where we have used arguments based on a non rigorous intuition.
+The choice to involve directly the empirical covariance in the bound instead of the population
+one was made to emphasize that estimation error for the covariance itself is also taken into
+account for the bound.
+• While the control of the deviation of an empirical average of the form given in Eq.(5) is a
+very classical problem, we want to explicitly take into account the effect of the empirical
+whitening/dewhitening using the empirical covariance matrix Σ . This complicates matters
+noticeably since this whitening is itself data-dependent.
+• Our goal was not to obtain tight confidence intervals or even exact asymptotical behavior.
+There is a number of ways in which our results could be substantially refined, for example
+obtaining uniform bounds over continuous (instead of finite) families of functions using covering number arguments; showing asymptotical uniform central limit properties for a precise
+study of the typical deviations, etc. Here, we tried to obtain simple, while still mathematically rigorous, results, covering essential statistical foundations of our method: consistency
+and order of the convergence rate.
+In the sequel, for a matrix A , we denote A its operator norm.
+4. In practice, separated into real and complex parts (sine and cosine).
+
+258
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Input: Data points (Xi ) ∈ Rd , dimension m of target subspace.
+Parameters: Number T of FastICA iterations; threshold ε .
+Whitening.
+The data Xi is recentered by subtracting the empirical mean.
+Let Σ denote the empirical covariance matrix of the data sample (Xi ) ;
+1
+put Yi = Σ− 2 Xi the empirically whitened data.
+Main Procedure.
+Loop on k = 1, . . . , L :
+Draw ω0 at random on the unit sphere of Rd .
+Loop on t = 1, . . . , T : [FastICA loop]
+1 n
+Put βt ← ∑ Yi fk ( ωt−1 , Yi ) − fk ( ωt−1 , Yi )ωt−1 .
+n i=1
+Put ωt ← βt / βt .
+End Loop on t
+Let Nk be the trace of the empirical covarariance matrix of βT :
+2
+2
+1 n
+Nk = ∑ Yi fk ( ωT −1 , Yi ) − fk ( ωT −1 , Yi )ωT −1 − βT .
+n i=1
+Store v(k) ← βT ∗ n/Nk . [Normalization]
+End Loop on k
+Thresholding.
+From the family v(k) , throw away vectors having norm smaller than threshold ε .
+PCA step.
+Perform PCA on the set of remaining v(k) .
+Let J be the space spanned by the first m principal directions.
+Pull back in original space.
+1
+I = Σ− 2 J .
+Output: I .
+
+Figure 4: Pseudocode of the NGCA algorithm.
+
+259
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Analysis of the estimation error with exact whitening. We start by considering an idealized
+1
+case where whitening is done using the true covariance matrix Σ : Y = Σ− 2 X .
+In this case we have the following control of the estimation error:
+Theorem 3 Let {hk }Lk=1 be a family of smooth functions from Rd to R . Assume that
+supy,k max ( ∇hk (y) , hk (y) ) < B and that X has covariance matrix Σ with Σ−1 ≤ K 2 , and is
+such that for some λ0 > 0 the following inequality holds:
+E [exp (λ0 X )] ≤ a0 < ∞.
+
+(10)
+1
+
+Denote h(y) = yh(y) − ∇h(y) . Suppose X1 , . . . , Xn are i.i.d. copies of X and let Yi = Σ− 2 Xi . If we
+define
+1 n
+1 n
+(11)
+βY (h) = ∑ h(Yi ) = ∑ Yi h(Yi ) − ∇h(Yi ) ,
+n i=1
+n i=1
+and
+σY2 (h) =
+
+1 n
+∑ h(Yi ) − βY (h)
+n i=1
+
+2
+
+,
+
+(12)
+
+then for any δ < 14 , with probability at least 1 − 4δ the following bounds hold simultaneously for
+all k ∈ {1, . . . , L} :
+dist βY (hk ), J ≤ 2
+
+σY2 (hk )
+
+log(Lδ−1 ) + log d
+log(nLδ−1 ) log(Lδ−1 )
++C
+3
+n
+n4
+
+,
+
+and
+1
+
+dist Σ− 2 βY (hk ), I ≤ 2K
+
+σY2 (hk )
+
+log(Lδ−1 ) + log d
++C
+n
+
+log(nLδ−1 ) log(Lδ−1 )
+3
+
+n4
+
+,
+
+where dist(γ, I ) denotes the distance between a vector γ and the subspace I , and C,C are constants depending only on the parameters (d, λ0 , a0 , B, K) .
+Comments.
+1. The above inequality tells us that the rate of convergence of the estimated vectors to the target
+space is in this case of order n−1/2 (classical “parametric” rate). Furthermore, the theorem
+gives us an estimation of the relative size of the estimation error for different functions h
+through the empirical factor σY (h) in the principal term of the bound. As announced in our
+initial goals, this therefore gives a rigorous foundation to the intuition exposed in section 3.2
+for vector renormalization.
+2. Also following our goals, we obtained a uniform control of the estimation error over a finite
+family with a logarithmic dependence in the cardinality. This does not correspond exactly to
+the continuous families we use in practice but comes close enough if we consider adequate
+parameter discretization. We will comment on this in more detail after the next theorem.
+260
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Whitening using empirical covariance. When Σ is unknown (which is in general the case), we
+use instead the empirical covariance matrix Σ . Here, we will show that, under a somewhat stronger
+assumption on the distribution of X and on the functions h , we are still able to obtain a convergence
+rate of order at most log(n)/n towards the index space I .
+1
+Let us denote Yi = Σ− 2 Xi the empirically whitened datapoints, h(y) = yh(y) − ∇h(y) as previously, and
+1 n
+1 n
+(13)
+βY (h) = ∑ h(Yi ) = ∑ Yi h(Yi ) − ∇h(Yi ) ;
+n i=1
+n i=1
+finally, let us denote
+1
+
+γ(h) = Σ− 2 βY (h) ,
+
+σY2 (h) =
+
+and
+
+1 n
+∑ h(Yi ) − βY (h)
+n i=1
+
+2
+
+.
+
+We then have the following theorem:
+Theorem 4 Let us assume the following :
+(i) There exists λ0 > 0, a0 > 0 such that
+E exp λ0 X
+
+2
+
+= a0 < ∞ ;
+
+(ii) The covariance matrix Σ of X is such that Σ−1 ≤ K 2 ;
+(iii) supk,y max ( ∇hk (y) , hk (y) ) < B ;
+(iv) The functions hk (y) = ∇hk (y) − yhk (y) are all Lipschitz with constant M .
+Then for big enough n , with probability at least 1 − n4 − 4δ the following bounds hold true
+simultaneously for all k ∈ {1, . . . , L} :
+dist(βY (hk ), J ) ≤ C1
+
+log(nLδ−1 ) log(Lδ−1 )
+d log n
+log(Lδ−1 ) + log d
++ 2 σY2 (hk )
++C2
+,
+3
+n
+n
+n4
+
+and
+dist(γ(hk ), I ) ≤ C1
+
+d log n
++ 2K
+n
+
+σY2 (hk )
+
+log(nLδ−1 ) log(Lδ−1 )
+log(Lδ−1 ) + log d
+,
++C2
+3
+n
+n4
+
+where C1 ,C1 are constants depending on parameters (λ0 , a0 , B, K, M) only and C2 ,C2 on
+(d, λ0 , a0 , B, K, M) .
+Comments.
+1. Theorem 4 implies that the vectors γ(hk ) obtained from any h(x) converge to the unknown
+non-Gaussian subspace I uniformly at a rate of order log(n)/n .
+2. The condition (i) is a restrictive assumption as it excludes some densities with heavy tails. We
+are considering weakening this assumption in future developments.
+261
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+3. In the actual algorithm, we consider a family of functions of the form hω (x) = f ( ω, x ) ,
+with ω on the unit sphere of Rd . Suppose we approximate ω by its nearest neighbor ω on a
+regular grid of scale ε . Then we only have to apply the bound to a discretized family of size
+L = O (ε1−d ) , giving rise only to an additional factor in the bound of order d log ε−1 . Taking
+for example ε = 1/n (the fact that the function family depends on n is not a problem since
+the bounds are valid for any fixed n ), this ensures convergence of the discretized functions
+√
+to the initial continuous family while introducing only in an additional factor d log n in
+the bound: this does not change fundamentally the order of the bound since there is already
+√
+another d log n term present.
+4. For both Theorems 3 and 4, we have given bounds for estimation of both I and J , that is,
+in terms of the initial data and of the “whitened” data. The result in terms of the initial data
+ensures the overall consistency of the approach, but the convergence in the whitened space is
+equally interesting since we use it as the main working space for the algorithm and the bound
+itself is more precise.
+5. Comparing to Theorem 3 obtained for exact whitening, we see in the present case that there
+is an additional term of principal order in n coming from the estimation error of Σ , with
+a multiplicative factor which unfortunately is not known accurately. This means that the
+renormalization scheme is not completely justified in this case, although we feel the idealized
+situation of Theorem 3 already provides some strong argument in this direction. However,
+the present result suggests that the accuracy of the normalization could probably be further
+improved.
+
+4. Numerical Results
+We now turn to numerical evaluations of the NGCA method: first on simulated data, where the
+generating distribution is precisely known, then on exemplary, realistic data. All of the experiments
+presented below, without exception, where obtained with exactly the same set of parameters: a ∈
+[0, 4] for the Fourier functions; b ∈ [0, 5] for the Hyperbolic Tangent functions; σ2 ∈ [0.5, 5] for the
+Gauss-pow3 functions. Each of these ranges was divided into 1000 equispaced values, thus yielding
+a family { fk } of size 4000 (Fourier functions count twice because of the sine and cosine parts). The
+preliminary calibration procedure described in the end of section 3.2 suggested to take ε = 1.5 as
+the threshold under which vectors are not informative (strictly speaking, the threshold should be
+calibrated separately for each function f but we opted here for a single threshold for simplicity).
+Finally we fixed the number of FastICA iterations T = 10 . With this choice of parameters and 1000
+data points in the sample, the computation time is typically of the order of less than 10 seconds on
+a modern PC under our Matlab implementation.
+4.1 Tests in a Controlled Setting
+For testing our algorithm and comparing it with PP, we performed numerical experiments using
+various synthetic data. Here, we report exemplary results using the following 4 data sets. Each data
+set includes 1000 samples in 10 dimensions. The generating distribution consists in 8 independent
+standard Gaussian components and 2 non-Gaussian components generated as follows:
+262
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+(A)
+
+(B)
+
+(C)
+
+(D)
+
+Figure 5: Densities of non-Gaussian components. The data sets are: (a) 2D independent Gaussian
+mixtures, (b) 2D isotropic super-Gaussian, (c) 2D isotropic uniform and (d) dependent
+1D Laplacian + 1D uniform.
+−3
+
+2.5
+
+x 10
+
+0.16
+
+0.03
+
+0.03
+
+0.025
+
+0.025
+
+0.02
+
+0.02
+
+0.015
+
+0.015
+
+0.01
+
+0.01
+
+0.005
+
+0.005
+
+0.14
+
+2
+0.12
+0.1
+
+1.5
+
+0.08
+
+1
+
+0.06
+0.04
+
+0.5
+0.02
+
+0
+
+PP(pow3)
+
+PP(tanh)
+
+0
+
+NGCA
+
+PP(pow3)
+
+PP(tanh)
+
+(A)
+
+0
+
+NGCA
+
+PP(pow3)
+
+PP(tanh)
+
+(B)
+
+0
+
+NGCA
+
+PP(pow3)
+
+(C)
+
+PP(tanh)
+
+NGCA
+
+(D)
+
+Figure 6: Boxplots of the error criterion E (I , I ) .
+−3
+
+x 10
+
+0.12
+
+0.03
+
+0.1
+
+0.025
+
+0.08
+
+0.02
+
+0.014
+
+0.012
+
+1.5
+
+0.06
+
+0.04
+
+PP (pow3)
+
+1
+
+PP (pow3)
+
+0.01
+
+PP (pow3)
+
+PP (pow3)
+
+2
+
+0.015
+
+0.01
+
+0.008
+
+0.006
+
+0.004
+
+0.5
+0.02
+
+0
+
+0
+
+0.5
+
+1
+
+1.5
+
+0
+
+2
+
+NGCA
+
+0.005
+
+0
+
+0.02
+
+0.04
+
+0.06
+
+0.08
+
+0.1
+
+0
+
+0.12
+
+0.002
+
+0
+
+0.005
+
+0.01
+
+NGCA
+
+−3
+
+x 10
+
+0.015
+
+0.02
+
+0.025
+
+0
+
+0.03
+
+0
+
+0.002
+
+0.004
+
+NGCA
+
+0.006
+
+0.008
+
+0.01
+
+0.012
+
+0.014
+
+0.01
+
+0.012
+
+0.014
+
+NGCA
+
+−3
+
+x 10
+
+0.12
+
+0.03
+
+0.1
+
+0.025
+
+0.08
+
+0.02
+
+0.014
+
+2
+0.012
+
+0.06
+
+PP (tanh)
+
+1
+
+PP (tanh)
+
+0.01
+
+PP (tanh)
+
+PP (tanh)
+
+1.5
+
+0.015
+
+0.04
+
+0.01
+
+0.02
+
+0.005
+
+0.008
+
+0.006
+
+0.004
+
+0.5
+
+0
+
+0
+
+0.5
+
+1
+
+NGCA
+
+(A)
+
+1.5
+
+0
+
+2
+−3
+
+x 10
+
+0
+
+0.02
+
+0.04
+
+0.06
+
+0.08
+
+0.1
+
+0.12
+
+0
+
+0.002
+
+0
+
+0.005
+
+0.01
+
+0.015
+
+0.02
+
+0.025
+
+0.03
+
+0
+
+0
+
+0.002
+
+0.004
+
+0.006
+
+0.008
+
+NGCA
+
+NGCA
+
+NGCA
+
+(B)
+
+(C)
+
+(D)
+
+Figure 7: Performance comparison plots (for error criterion E (I , I ) ) of NGCA versus FastICA;
+top: versus pow3 index; bottom: versus tanh index.
+
+263
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+(A) Simple Gaussian Mixture: 2 -dimensional independent Gaussian mixtures, with the density
+of each component given by
+1
+1
+φ−3,1 (x) + φ3,1 (x) .
+(14)
+2
+2
+(B) Dependent super-Gaussian: 2 -dimensional isotropic distribution with density proportional to
+exp(− x ) .
+(C) Dependent sub-Gaussian: 2 -dimensional isotropic uniform with constant positive density for
+x ≤ 1 and 0 otherwise.
+(D) Dependent super- and sub-Gaussian: 1 -dimensional Laplacian with density proportional to
+exp(−|xLap |) and 1 -dimensional dependent uniform U(c, c + 1) , where c = 0 for |xLap | ≤
+log 2 and c = −1 otherwise.
+For each of these situations, the non-Gaussian components are additionally rescaled coordinatewise
+by a fixed factor so that each coordinate has unit variance. The profiles of the density functions of
+the non-Gaussian components in the above data sets are described in Figure 5.
+We compare the following three methods in the experiments: PP with ‘pow3’ or ‘tanh’ index5
+(denoted by PP(pow3) and PP(tanh), respectively), and the proposed NGCA.
+Figure 6 shows boxplots of the error criterion E (I , I ) defined in Eq.(3) obtained from 100
+runs. Figure 7 shows comparison of the errors obtained by different methods for each individual
+trial. Because PP tends to get trapped into local optima of the index function it optimizes, we
+restarted it 10 times with random starting points and took the subspace obtaining the best index
+value. However, even when it is restarted 10 times, PP (especially with the ‘pow3’ index) still gets
+caught in local optima in a small percentage of cases (we also tried up to 500 restarts but it led to
+negligible improvement).
+For the simplest data set (A), NGCA is comparable or slightly better than PP methods. It
+is known that PP(tanh) is suitable for finding super-Gaussian components (heavy-tailed distribution) while PP(pow3) is suitable for finding sub-Gaussian components (light-tailed distribution)
+(Hyv¨arinen et al., 2001). This can be observed in the data sets (B) and (C): PP(tanh) works well for
+the data set (B) and PP(pow3) works well for the data set (C), although the upper-quantile is very
+large for the data set (C) (because of PP getting trapped in local minima). The sample-wise plots of
+Figure 7 confirm that NGCA is on average on par with, or slightly better than, PP with the ‘correct’
+non-Gaussianity index, without having to prefix such a non-Gaussianity index. For the data set (C),
+NGCA appears to be marginally worse than PP(pow3) (excluding those cases where PP fails due
+to local minima: the corresponding points are outside the range of the figure), but the difference
+appears hardly significant. The superiority of the index adaptation feature of NGCA can be clearly
+observed in the data set (D), which includes both sub- and super-Gaussian components. Because of
+this composition, there is no single best non-Gaussianity index for this data set, and the proposed
+NGCA gives significantly lower error than that of either PP method.
+5. We used the deflation mode of the FastICA algorithm (Hyv¨arinen et al., 2001) as an implementation of PP. The
+‘pow3’ flavor is equivalent to a kurtosis based index: in other words, in this case, FastICA iteratively maximizes the
+kurtosis. On the other hand, the ‘tanh’ flavor uses a robust index which is appropriate in particular for heavy-tailed
+data.
+
+264
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Failure modes. We now try to explore the limits of the method and the conditions under which
+estimation of the target space will fail. First, we study the behaviour of NGCA again compared
+with PP as the total dimension of the data increases. We use the same synthetic data sets with 2dimensional non-Gaussian components, while the number of Gaussian components increases. The
+averaged errors over 100 experiments are depicted in Figure 8. In all cases, we seem to observe a
+sharp phase transition between a good behaviour regime and a failure mode where the procedure
+is unable to estimate the correct subspace. In 3 out of 4 cases, however, we observe that the phase
+transition to the failure mode occurs for a higher dimension for NGCA than for the PP methods,
+which indicates better robustness of NGCA.
+1
+
+0.9
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.9
+
+0.8
+
+0.8
+
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.7
+
+0.7
+
+0.6
+Error
+
+Error
+
+0.6
+0.5
+
+0.5
+0.4
+
+0.4
+0.3
+
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+0
+10
+
+15
+
+20
+
+25
+30
+35
+Total Dimension
+
+40
+
+45
+
+0
+10
+
+50
+
+15
+
+20
+
+(A)
+
+25
+30
+35
+Total Dimension
+
+40
+
+45
+
+50
+
+40
+
+45
+
+50
+
+(B)
+
+1
+
+0.9
+
+0.9
+
+0.8
+
+0.8
+
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.7
+
+0.7
+
+0.6
+Error
+
+Error
+
+0.6
+0.5
+
+0.5
+0.4
+
+0.4
+0.3
+
+0.3
+
+0.1
+0
+10
+
+0.2
+
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.2
+
+15
+
+20
+
+25
+30
+35
+Total Dimension
+
+40
+
+45
+
+0.1
+50
+
+(C)
+
+0
+10
+
+15
+
+20
+
+25
+30
+35
+Total Dimension
+
+(D)
+
+Figure 8: Results when the total dimension of the data increases.
+
+In the synthetic data sets used so far, the data was always generated with a covariance matrix
+equal to identity. Another interesting setting to study is the robustness with respect to bad conditioning of the covariance matrix. We consider again a fixed-dimension setting, with 2 non-Gaussian
+and 8 gaussian dimensions.
+While the non-Gaussian coordinates always have variance unity, the standard deviation of the 8
+Gaussian dimensions now follows the geometrical progression 10−r , 10−r+2r/7 , . . . , 10r . Thus, the
+higher r , the worse conditioned is the total covariance matrix.
+265
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+0.9
+
+0.4
+0.35
+
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.8
+
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.7
+0.3
+
+0.6
+Error
+
+Error
+
+0.25
+0.2
+0.15
+
+0.5
+0.4
+0.3
+
+0.1
+
+0.2
+
+0.05
+
+0.1
+
+0
+0
+
+0.5
+
+1
+1.5
+Log10 noise scaling range
+
+0
+0
+
+2
+
+0.5
+
+10
+
+(A)
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.6
+0.5
+
+0.4
+
+0.4
+
+Error
+
+Error
+
+2
+
+0.7
+
+0.5
+
+0.3
+
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+0
+
+1
+1.5
+noise scaling range
+
+(B)
+
+0.7
+0.6
+
+Log
+
+0.5
+
+1
+1.5
+Log10 noise scaling range
+
+2
+
+(C)
+
+0
+0
+
+NGCA
+PP(pow3)
+PP(tanh)
+
+0.5
+
+1
+1.5
+Log10 noise scaling range
+
+2
+
+(D)
+
+Figure 9: Results when the Gaussian (noise) components have different scales (the standard deviations follow a geometrical progression on [10−r , 10r ] , where r is the parameter on the
+abscissa).
+
+266
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+The results are depicted in Figure 9, where we observe again a transition to a failure mode when
+the covariance matrix is too badly conditioned. Although NGCA still appears as the best method,
+we observe that, on 3 out of 4 data sets, the transition to failure mode seems to happen roughly at
+the same point as for PP methods. This suggests that there is no or only little added robustness of
+NGCA with respect to PP in this regard. However, this result is not entirely surprising, as we expect
+this type of failure mode to be caused by a too large estimation error in the covariance matrix and
+therefore in the whitening/dewhitening steps. Since these steps are common to NGCA and the PP
+algorithms, it seems logical to expect a parallel evolution of their errors.
+4.2 Example of Application for Realistic Data: Visualization and Clustering
+We now give an example of application of our methodology to visualization and clustering of realistic data. We consider here “oil flow” data, which has been obtained by numerical simulation of
+a complex physical model. This data was already used before for testing techniques of dimension
+reduction (Bishop et al., 1998). The data is 12-dimensional and it is not known a priori if some
+dimensions are more relevant. Here our goal is to visualize the data and possibly exhibit a clustered
+structure. Furthermore, it is known that the data is divided into 3 classes. We show classes with
+different marker types but the class information is not used in finding the directions (i.e., the process
+is unsupervised).
+We compare the NGCA methodology described in the previous section, projection pursuit
+(“vanilla” FastICA) using the tanh or the pow3 index, and Isomap (non-linear projection method,
+see Tenenbaum et al., 2000). The results are shown on Figure 10. A 3D projection of the data
+was computed using these methods, which was in turn projected in 2D to draw the figure; this last
+projection was chosen manually so as to make the cluster structure as visible as possible in each
+case.
+We see that the NGCA methodology gives a much more relevant projection than PP using either
+tanh or pow3 alone: we can distinguish 10-11 clusters versus at most 5 for the PP methods and 7-8
+for Isomap. Furthermore, the classes are clearly separated only on the NGCA projection; on the
+other ones, they are partially confounded in one single cluster. Finally, we confirm, by applying the
+projection found to held-out test data (i.e., data not used to determine the projection), that the cluster
+structure is relevant and not due to some overfitting artifact. This, in passing, shows one advantage
+of a linear projection method, namely that it can be extended to new data in a straightforward way.
+Presumably, an important difference between the NGCA projection and the others comes from
+the Fourier functions, since they are not present in either of the PP methods. It can be confirmed
+by looking at the vector norms that Fourier functions are more relevant for this data set; they gave
+rise to estimated vectors with generally higher norms and had consequently a sizable influence of
+the choice of the projection. One could object that we have been merely lucky for this specific data
+because Fourier functions happened to be more relevant, and neither PP method uses this index. A
+possible suggestion for a fair comparison is to use the PP algorithm with a Fourier index. However,
+beside the fact that this index is not generally used in classical PP methods, the results would be
+highly dependent of the specific frequency parameter chosen, so we did not make experiments
+in that direction (by contrast, the NGCA methodology allows to combine vectors obtained from
+different frequencies). On the other hand, another route to investigate the relevance of this objection
+is to look at the results obtained by the NGCA method if Fourier functions are not used – thus only
+considering Gauss-pow3 and tanh. In this case, we still expect an improvement over PP because
+267
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+FastICA, tanh index
+
+FastICA, pow3 index
+
+NGCA (training data)
+
+NGCA (held-out test data)
+
+NGCA without Fourier functions
+
+Isomap
+
+Figure 10: 2D projection of the “oil flow” data obtained by different algorithms. Different marker
+types/colors indicate the different classes (this information was not used to find the projections). For the middle right panel, the 2D projection found from the middle left panel
+was used to visualize additional held out test data.
+268
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+NGCA is combining indices (as well as combining over the parameters ranges σ2 and b ). This
+is confirmed in Figure 10: even without the relevant Fourier functions, NGCA yields a projection
+where 8 clusters can be distinguished, and the classes are much more clearly separated than with PP
+methods. Finally, a visual comparison with the results obtained by Bishop et al. (1998) demonstrated
+that the projection found by our algorithm exhibits a clearer clustered structure; moreover, ours is a
+purely linear projection whereas the latter reference was a nonlinear data representation
+Further analysis on clustering performance with additional data sets are given in the Appendix
+and underline the usefulness of our method.
+
+5. Conclusion
+We proposed a new semi-parametric framework for constructing a linear projection to separate an
+uninteresting multivariate Gaussian ‘noise’ subspace of possibly large amplitude from the ‘signalof-interest’ subspace. Our theory provides generic consistency results on how well the non-Gaussian
+directions can be identified (Theorem 4). To estimate the non-Gaussian subspace from the set of
+vectors obtained, PCA is finally performed after suitable renormalization and elimination of uninformative vectors. The key ingredient of our NGCA method is to make use of the gradient computed
+for the nonlinear basis function h(x) in Eq.(11) after data whitening. Once the low-dimensional
+‘signal’ part is extracted, we can use it for a variety of applications such as data visualization, clustering, denoising or classification.
+Numerically, we found comparable or superior performance to, e.g., FastICA in deflation mode
+as a generic representative of the family of PP algorithms. Note that, in general, PP methods need
+to pre-specify a projection index used to search for non-Gaussian components. By contrast, an
+important advantage of our method is that we are able to simultaneously use several families of
+nonlinear functions; moreover, inside a same function family, we are able to use an entire range
+of parameters (such as frequency for Fourier functions). Thus, our new method provides higher
+flexibility, and less restricting assumptions a priori on the data. In a sense, the functional indices
+that are the most relevant for the data at hand are automatically selected.
+Future research will adapt the theory to simultaneously estimate the dimension of the nonGaussian subspace. Extending the proposed framework to non-linear projection scenarios (Cox and
+Cox, 1994; Sch¨olkopf et al., 1998; Roweis and Saul, 2000; Tenenbaum et al., 2000; Belkin and
+Niyogi, 2003; Harmeling et al., 2003) and to finding the most discriminative directions using labels
+are examples for which the current theory could be taken as a basis.
+
+Acknowledgements: The authors would like to thank Stefan Harmeling for discussions and J.-F.
+Cardoso for suggesting us the pre-whitening step for increased efficiency and robustness. We would
+also like to thank anonymous reviewers for many insightful comments, in particular pointing out the
+ICA interpretation. We acknowledge partial financial support by DFG, BMBF (under Grant FKZ
+01GQ0415) and the EU NOE PASCAL (EU # 506778). G.B. and M.S. also thank the Alexander
+von Humboldt foundation for partial financial support.
+269
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Appendix A. Proofs of the Theorems
+A.1 Proof of Lemma 1
+Suppose first that the noise N is standard normal. Denote by ΠE the projector from Rd to Rm
+which corresponds to the subspace E . Let also E ⊥ be the subspace complementary to E and ΠE ⊥
+mean the projector on E ⊥ . The standard normal noise can be decomposed as N = N1 N2 where
+N1 = ΠE N and N2 = ΠE ⊥ N are independent noise components. Similarly, the signal X can be
+decomposed as
+X = (ΠE S + N1 )
+
+N2
+
+where we have used the model assumption that the signal S is concentrated in E and it is independent of N . It is clear that the density of ΠE S + N1 in Rm can be represented as the product
+g(x1 )φ(x1 ) for some function g and the standard normal density φ(x1 ) , x1 ∈ Rm . The independence of N1 and N2 yields the in the similar way for x = (x1 , x2 ) with x1 = ΠE x and x2 = ΠE ⊥ x
+that p(x) = g(x1 )φ(x1 )φ(x2 ) = g(x1 )φ(x) . Note that for the linear mapping T = ΠE characterizes
+the signal subspace E . Namely, E is the image ℑ(T ∗ ) of the dual operator T ∗ while E ⊥ is the
+null subspace (kernel) of T : E ⊥ = K(T ) .
+Next we drop the assumption of the standard normal noise and assume only that the covariance
+matrix Γ of the noise is nondegenerated. Multiplying the both sides of the equation (1) by
+the matrix Γ−1/2 leads to Γ−1/2 X = Γ−1/2 S + N where N = Γ−1/2 N is standard normal. The
+transformed signal X = Γ−1/2 S belongs to the subspace E = Γ−1/2 E . Therefore, the density
+of X can be represented as p(x) = g(ΠE x)φ(x) where ΠE is the projector corresponding to E .
+Coming back the variable x yields the density of X in the form p(x) = g(T x)φ(Γ−1/2 x) where
+T = ΠE Γ−1/2 .
+
+A.2 Proof of Proposition 2
+For any function ψ(x) , it holds that
+Z
+
+ψ(x + u)p(x)dx =
+
+Z
+
+ψ(x)p(x − u)dx,
+
+if the integrals exists. Under mild regularity conditions on p(x) and ψ(x) allowing differentiation
+under the integral sign, differentiating this with respect to u gives
+Z
+
+∇ψ(x)p(x)dx = −
+
+Z
+
+ψ(x)∇p(x)dx.
+
+(15)
+
+Let us take the following function
+ψh (x) := h(x) − x E [Xh(X)] ,
+whose gradient is
+∇ψh (x) = ∇h(x) − E [Xh(X)] .
+
+The vector β(h) is the expectation of −∇ψh . From Eq.(15) and using ∇p(x) = ∇ log p(x) p(x) , we
+have
+Z
+β(h) = ψh (x)∇ log p(x) p(x)dx.
+270
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Applying Eq.(2) to the above equation yields
+Z
+
+β(h) =
+
+ψh (x)∇ log g(T x) p(x)dx −
+
+= T∗
+
+Z
+
+Z
+
+ψh (x)Γ−1 x p(x)dx
+Z
+
+ψh (x)∇g(T x)φθ,Γ (x)dx − Γ−1 xψh (x)p(x)dx.
+
+(16)
+
+= Id , we get
+
+Under the assumption E XX
+
+E [Xψh (X)] = E [Xh(X)] − E XX
+
+E [Xh(X)] = 0,
+
+that is, the second term of Eq.(16) vanishes. Since the first term of Eq.(16) belongs to I by the
+definition of I , we finally have β(h) ∈ I .
+
+A.3 Proof of Theorem 3
+For a fixed function h, we will essentially apply Lemma 5 stated below for each coordinate of βY (h) .
+1
+Denoting the k -th coordinate of a vector v by v(k) , and y = Σ− 2 x , we have
+h(k) (x) = [∇h(y) − yh(y)](k) ≤ B(1 + y ) ≤ B (1 + K x ) .
+It follows that h(k) (x) is such that
+E exp
+
+λ0 (k)
+h (x)
+BK
+
+≤ a0 exp
+
+λ0
+K
+
+,
+
+and hence satisfies the assumption of Lemma 5. Denoting by σ2k the sample variance of h(k) , we
+apply the lemma with δ = δ/d , obtaining by the union bound that with probability at least 1 − 4δ ,
+for all 1 ≤ k ≤ d :
+βY − βY
+
+(k)
+
+2
+
+≤ 4σ2k
+
+log dδ−1
+log2 (nδ−1 ) log2 δ−1
+,
++C1 (λ0 , a0 , B, d, K)
+3
+n
+n2
+
+where we have used the inequality (a + b)2 ≤ 2(a2 + b2 ) , and C1 denotes some function depending
+only on
+quantities.
+Now summing over the coordinates, taking the square root and
+√
+√ the indicated
+√
+using a + b ≤ a + b leads to:
+βY − βY ≤ 2
+
+σY2 (h)
+
+log δ−1 + log d
+log(nδ−1 ) log δ−1
++C2 (λ0 , a0 , B, d, K)
+3
+n
+n4
+
+,
+
+(17)
+
+with probability at least 1 − 4δ . To turn this into a uniform bound over the family {hk }Lk=1 , we
+simply apply this inequality separately to each function in the family with δ = δ/L. This leads to
+the first announced inequality of theorem. We obtain the second one by multiplying the first by
+1
+Σ− 2 to the left and using the assumption on Σ−1 .
+
+271
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Lemma 5 Let X be a real random variable such that for some λ0 > 0 :
+E [exp (λ0 |X|)] ≤ a0 < ∞.
+Let X1 , . . . , Xn denote an i.i.d. sequence of copies of X . Let µ = E [X] , µ = n1 ∑ni=1 Xi and σ2 =
+1
+2
+2n(n−1) ∑i= j (Xi − X j ) be the sample variance.
+
+Then for any δ <
+constant:
+|µ − µ| ≤
+
+1
+4
+
+the following holds with probability at least 1 − 4δ , where c is a universal
+log δ−1
+n
+
+2σ2 log δ−1
+−1
++ cλ−1
+0 max 1, log na0 δ
+n
+
+3
+4
+
++
+
+log δ−1
+n
+
+.
+
+Proof For A > 0 denote X A = X1{|X| ≤ A} . We decompose
+1 n
+1 n
+1 n
+Xi − µ ≤ ∑ Xi − XiA + ∑ XiA − E X A + E X − X A
+∑
+n i=1
+n i=1
+n i=1
+
+;
+
+these three terms will be denoted by T1 , T2 , T3 . By Markov’s inequality, it holds that
+P [|X| > t] ≤ a0 exp (−λ0t) ,
+Fixing A = log nδ−1 a0 /λ0 for the rest of the proof, it follows by taking t = A in the above
+inequality that for any 1 ≤ i ≤ n :
+δ
+P XiA = Xi ≤ .
+n
+By the union bound, we then have XiA = Xi for all i , and therefore T1 = 0 , except for a set ΩA of
+probability bounded by δ .
+We now deal with the third term: we have
+T3 = |E [X1{|X| > A}]| ≤ E [X1{X > A}] =
+
+Z ∞
+0
+
+P [X1{X > A} > t] dt
+
+≤ AP [X > A] +
+
+Z ∞
+A
+
+a0 exp (−λ0t) dt
+
+exp (−λ0 A)
+≤ a0 A + λ−1
+0
+δ
+1 + log nδ−1 a0 .
+=
+nλ0
+−1
+Finally, for the second term, since X A ≤ A = λ−1
+0 log nδ a0 , Bernstein’s inequality ensures
+that with probability as least 1 − 2δ the following holds:
+
+1 n A
+∑ Xi − E X A
+n i=1
+
+≤
+
+log nδ−1 a0 log δ−1
+2Var [X A ] log δ−1
++2
+.
+n
+λ0 n
+
+We finally turn to the estimation of Var X A . The sample variance of X A is given by
+(σA )2 =
+
+1
+∑ XiA − X jA
+2n(n − 1) i=
+j
+272
+
+2
+
+.
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Note that (σA )2 is an unbiased estimator of Var X A . Furthermore, replacing XiA by Xi A in the
+above expression changes this quantity at most of 4A2 /n since XiA appears only in 2(n − 1) terms.
+Therefore, application of the bounded difference (a.k.a. McDiarmid’s) inequality (McDiarmid ,
+1989) to the random variable σA yields that with probability 1 − δ we have
+(σA )2 − Var X A
+
+≤ 4A2
+
+log δ−1
+;
+n
+
+finally, except for samples in the set ΩA which we have already excluded above, we have σA = σ .
+Gathering these inequalities lead to the conclusion.
+
+A.4 Proof of Theorem 4
+In this proof we will denote by C(·) a factor depending only on the quantities inside the parentheses,
+and whose exact value can vary from line to line.
+From Lemmas 9 and 10 below, we conclude that for big enough n , the following inequality is
+satisfied with probability 1 − 2/n:
+1
+
+1
+
+Σ− 2 − Σ− 2 ≤ C(a0 , λ0 , K)
+
+d log n
+;
+n
+
+(18)
+
+also, it is a a weaker consequence of Lemmas 7 and 8 that the following inequalities hold with
+probability at least 1 − 1/n each (again for n big enough):
+1 n
+∑ Xi ≤ C(a0 , λ0 ) ,
+n i=1
+1 n
+∑ Xi
+n i=1
+
+2
+
+(19)
+
+≤ C(a0 , λ0 ) .
+
+(20)
+
+Let us denote Ω the set of samples where (18), (19) and (20) are satisfied simultaneously; from the
+above, we conclude that for large enough n , the set Ω contains the sample with probability at least
+1 − 4/n. For the remainder of the proof, we suppose that this condition is satisfied.
+For any function h, we have
+βY − βY ≤ βY − βY + βY − βY .
+Note that (up to some changes in the constants) the assumption on the Laplace transform is stronger
+than the assumption of Theorem 3; hence equation (17) in the proof of this theorem holds and we
+have with probability at least 1 − 4δ , for any function in the family {hk }Lk=1 :
+βY − βY ≤ 2 σY2 (h)
+
+log (Lδ−1 ) + log d
++C(λ0 , a0 , B, d, K)
+n
+273
+
+log(nLδ−1 ) log Lδ−1
+3
+
+n4
+
+. (21)
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+On the other hand, conditions (18) and (19) imply that for any function h in the family,
+βY − βY =
+
+1 n
+∑ h(Yi ) − h(Yi )
+n i=1
+
+≤
+
+M n
+∑ Yi −Yi
+n i=1
+
+≤
+
+1
+M −1
+Σ 2 − Σ− 2
+n
+
+n
+
+∑
+
+Xi
+
+i=1
+
+d log n
+.
+n
+
+≤ C(a0 , λ0 , K)M
+
+where in the first inequality, we have used the Lispchitz assumption on the function h.
+One remaining technicality is to replace the term σY (h) (which cannot be evaluated from the
+data since it depends on the exactly whitened data Yi ) in (21) by σY (h) , which can be evaluated
+from the data. For this use the following, holding for any function h in the family:
+σY2 (h) − σY2 (h) =
+
+1
+2n(n − 1)
+
+∑
+
+h(Yi ) − h(Y j )
+
+i= j
+
+2
+
+2
+
+− h(Yi ) − h(Y j )
+
+;
+
+let us now focus on one term of the above sum:
+h(Yi ) − h(Y j )
+
+2
+
+− h(Yi ) − h(Y j )
+
+2
+
+h(Yi ) − h(Y j ) + h(Yi ) − h(Y j )
+
+= h(Yi ) − h(Yi ) − h(Y j ) + h(Y j )
+≤ M2
+
+Yi − Yi + Y j − Y j
+1
+
+Yi −Y j + Yi − Y j
+1
+
+1
+
+1
+
+≤ M 2 Σ− 2 − Σ− 2
+
+Σ− 2 + Σ− 2
+d log n
+n
+
+≤ M 2C(a0 , λ0 , K)
+
+Xi
+
+2
+
+Xi + X j
+
++ Xj
+
+2
+
+2
+
+,
+
+where we have used the Cauchy-Schwarz inequality, the triangular inequality and the Lipschitz
+assumption on h at the third line. Summing this expression over i = j , and using condition (20),
+we obtain
+d log n
+σY2 (h) − σY2 (h) ≤ M 2C(a0 , λ0 , K)
+,
+n
+so that we can effectively replace σY by σY in (21) up to additional lower-order terms. This
+concludes the proof of the first inequality in the theorem.
+For the second inequality, we additionally write
+1
+
+1
+
+dist(γ(h), I ) ≤ Σ− 2 βY − Σ− 2 βY
+1
+
+1
+
+≤ Σ− 2 − Σ− 2
+
+1
+
+βY + Σ− 2
+
+1
+
+1
+
+βY − βY + Σ− 2 − Σ− 2
+
+βY − βY ;
+
+we now conclude using (18), the previous inequalities controlling βY − βY , the assumption on
+1
+
+Σ− 2
+
+and the fact that
+βY = E [Xh(X) − ∇h(X)] ≤ B(1 + E [ x ]) ≤ C(a0 , λ0 , B) .
+274
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Appendix B. Additional Proofs and Results
+We have used Bernstein’s inequality, which we recall here for completeness under the following
+form:
+Theorem 6 (Bernstein’s inequality) Suppose X1 , . . . , Xn are i.i.d. real random variables such that
+|X| ≤ b and VarX = σ2 . Then
+P
+
+n−1 ∑ Xi − E(Xi ) >
+i
+
+x
+x
+2σ2 + 2b
+≤ 2 exp(−x).
+n
+n
+1
+
+The following results concern the estimation of Σ− 2 , needed in the proof of Theorem 4. We divide
+this into 4 lemmas.
+Lemma 7 Let ξ1 , . . . , ξn be i.i.d. with E [ξ1 ] = m and assume log E [exp µ(ξ1 − m)] ≤ cµ2 /2 holds
+for all µ ≤ µ0 , for some positive constants c and µ0 . Then for sufficiently large n
+n
+
+P n−1/2 ∑ (ξi − m) > z ≤ e−c
+
+−1 z2 /2
+
+.
+
+i=1
+
+Proof This is an application of Chernoff’s bounding method:
+n
+
+Rn := log P n−1/2 ∑ (ξi − m) > z
+i=1
+
+≤
+=
+
+n
+√
+−µz n + log E exp ∑ µ(ξi − m)
+i=1
+
+√
+−µz n + n log E [exp µ(ξ1 − m)] ,
+
+where the above inequality is Markov’s. We select µ = zn−1/2 c−1 . For n sufficiently large, it holds
+that µ ≤ µ0 and by the lemma condition
+√
+Rn ≤ −µz n + ncµ2 /2 = −z2 c−1 /2.
+
+The goal of the following Lemma is merely to replace the assumption about the Laplace transform (in the previous Lemma) by a simpler assumption (existence of some exponential moment).
+This allows a simpler statement – as far as we are not really interested in the precise constants
+involved.
+275
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Lemma 8 Let X be a real random variable such that for some µ0 > 0 :
+E [exp(µ0 |X|)] = e0 < ∞.
+Then there exists c > 0 (depending only on µ0 and e0 ) such that
+∀µ ∈ R
+
+|µ| ≤ µ0 /2 ⇒ log E [exp (µ (X − E [X]))] ≤ cµ2 /2.
+
+Proof Note that X has finite expectation since |X| ≤ µ−1
+0 exp µ0 |X| . Taylor’s expansion gives that
+∀x ∈ R, ∀µ ∈ R, |µ| < µ0 /2 ⇒ exp(µx) ≤ 1 + µx +
+
+µ2 2
+x exp(|µ0 | |x| /2).
+2
+
+(22)
+
+There exists some constant c > 0 (depending on µ0 ) such that
+∀x ∈ R, x2 exp(|µ0 x| /2) ≤ c (exp(|µ0 x|)) .
+Using this and the assumption, taking expectation in (22) yields that for c = 21 ce0 > 0
+∀µ ∈ R, |µ| < µ0 /2 ⇒ E [exp(µX)] ≤ 1 + µE [X] + c µ2 ≤ exp µE [X] + c µ2 ,
+implying
+E [exp (µ (X − E [X]))] ≤ exp c µ2 ;
+taking logarithms on both sides yields the conclusion.
+1
+
+1
+
+The next two Lemmas, once combined, provide the confidence bound on Σ− 2 − Σ− 2
+we need for the proof of Theorem 4.
+
+which
+
+Lemma 9 Let X1 , . . . , Xn be i.i.d. vectors in Rd . Assume that, for some µ0 > 0 ,
+E exp µ0 X
+
+2
+
+= e0 < ∞ ;
+
+(23)
+
+denote Σ = E XX and Σ it empirical counterpart. Then for some constant κ depending only on
+(µ0 , e0 ) , and for big enough n ,
+R∗n := P
+
+Σ−Σ >
+
+2
+κd log n
+≤ .
+n
+n
+
+Proof Along this proof C, c will denote constants depending only on µ0 , e0 ; their exact value can
+change from line to line. Note that by definition of Σ and Σ ,
+1 n
+(Xi θ)2 − E
+∑
+n
+θ∈Bd i=1
+
+Σ − Σ = sup
+
+X θ
+
+2
+
+,
+
+where Bd denotes the unit ball of Rd . For ε < 1 , let Bd,ε denote a ε-packing set of Bd , that is,
+a discrete ε -separated set of points of Bd of maximum cardinality. By the maximality assumption
+and the triangle inequality, Bd,ε is also a 2ε-covering net of Bd . On the other hand, the ε-balls
+276
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+centered on these points are disjoint, and their union is included in the ball of radius (1 + ε) , so that
+a volume comparison allows us to conclude that #(Bd,ε )εd ≤ (1 + ε)d ≤ 2d . This shows that Bd,2ε
+is a 4ε-covering set of Bd of cardinality bounded by ε−d .
+Now, if θ, θ ∈ Bd are such that θ − θ ≤ 4ε , then we have
+n
+
+n
+
+i=1
+
+i=1
+
+∑ (Xi θ)2 − ∑ (Xi θ )2 =
+
+n
+
+∑ (Xi
+
+(θ − θ ))(Xi (θ + θ ))
+
+i=1
+n
+
+≤ 8ε ∑ Xi
+
+2
+
+,
+
+i=1
+
+where we have applied the Cauchy-Schwarz inequality at the last line.
+Now application of Lemmas 7 and 8 yields that for n large enough, with probability at least
+1 − 1/n ,
+n
+c log n
+≤C.
+n−1 ∑ Xi 2 ≤ E X 2 +
+n
+i=1
+The above implies that with probability at least 1 − 1/n ,
+sup
+
+θ,θ ∈Bd : θ−θ ≤2ε
+
+n−1/2
+
+n
+
+∑ (Xi
+
+i=1
+
+n
+√
+θ)2 − ∑ (Xi θ )2 ≤ Cε n .
+i=1
+
+We can also show a similar inequality about the corresponding expectation
+sup
+
+θ,θ ∈Bd : θ−θ ≤2ε
+
+n−1/2 E (X θ)2 − E (X θ )2
+
+√
+≤ Cε n .
+
+1
+
+We now select ε = n− 2 . Therefore, approximating any θ ∈ Bd by its nearest neighbour in Bd,2ε
+and using the above inequalitites, we obtain that
+n
+
+sup n−1/2 ∑ (Xi θ)2 − E
+
+X θ
+
+2
+
+≤
+
+n
+1
++ ∑ P n−1/2 ∑ (Xi θ)2 − E
+n θ∈Bd,2ε
+i=1
+
+X θ
+
+2
+
+≤
+
+1
+2
++ #(Bd,2ε ) exp{−0.5c−1 (κ −C)d log n} ≤
+n
+n
+
+R∗n ≤
+
+1
++P
+n
+
+θ∈Bd,2ε
+
+>
+
+κd log n −C
+
+>
+
+(κ −C)d log n
+
+i=1
+
+provided that κ is chosen so that c−1 (κ − C)d/2 > d/2 + 1 . Here we have again used Lemmas 7
+and 8, noting that for any θ ∈ Bd it holds that E exp µ0 θ X ≤ E [exp µ0 X ] < exp(µ0 ) + e0 by
+assumption.
+
+Lemma 10 Let A, B be two real positive definite symmetric matrices satisfying A − B ≤ ε with
+ε ≤ (2 A−1 )−1 . Then there exists a constant C such that
+1
+
+1
+
+A− 2 − B− 2 ≤ C A−1
+277
+
+3
+2
+
+ε.
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Proof
+Note that for M < 1 , it holds that
+1
+
+(I − M)− 2 =
+
+∑ γk Mk ,
+
+k≥0
+
+√
+with (γk ) ≥ 0 the coefficients of the power series development of the function 1/ 1 − x .
+Denote λmax (M), λmin (M) the biggest and smallest eigenvalue of a matrix M . Put K = A =
+λmax (A) and L = A−1 = λmin (A)−1 . Note that LK ≥ 1 . Put A = A/K, B = B/K . All eigenvalues
+of A belong to (0, 1] and therefore
+I −A
+
+= λmax (I − A ) = 1 − λmin (A ) = 1 − (LK)−1 .
+
+By the assumption that ε ≤ (2L)−1 , it holds that
+3
+,
+2
+
+λmax (B ) = K −1 B ≤ K −1 ( A + ε) ≤ 1 + (2LK)−1 ≤
+and that
+λmin (B ) ≥ K −1 (λmin (A) − ε) ≥ (2KL)−1 ,
+from this we deduce that
+I −B
+
+= max(λmax (B ) − 1, 1 − λmin (B )) ≤ max
+
+1
+, 1 − (2LK)−1
+2
+
+= 1 − (2LK)−1 .
+
+Putting A = I − A , B = I − B , we have ensured that A < 1 and B < 1 ; we can thus write
+1
+
+1
+
+A −2 −B −2 = I −A
+=
+
+− 21
+
+∑ γk (A
+
+k
+
+k≥1
+
+− I −B
+
+− 21
+
+k
+
+−B ).
+
+Noticing that
+k
+
+k
+
+A −B
+
+k−1
+
+=
+
+∑ A (A − B)B
+i
+
+k−1−i
+
+i=0
+
+k−1
+
+≤ k max
+
+A , B
+
+∑ kγk
+
+1 − (2LK)−1
+
+A −B
+
+we obtain
+1
+
+1
+
+A −2 −B −2 ≤ A −B
+=
+
+k≥1
+
+3
+1
+3
+ε1
+(2LK) 2 = CL 2 K 2 ε .
+K2
+
+From this we deduce that
+1
+
+1
+
+1
+
+1
+
+1
+
+3
+
+A− 2 − B− 2 = K − 2 A − 2 − B − 2 ≤ CL 2 ε.
+
+278
+
+k−1
+
+,
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+Appendix C. Clustering Results
+The goal of NGCA is to discover interesting structure in the data. It is naturally a difficult task to
+quantify this property precisely. In this appendix we try to make this apparent using clustering techniques. We apply a mean distance linkage clustering algorithm to data projected in lower dimension
+using various techniques: NGCA, FastICA, PCA, local linear embedding (LLE, Roweis and Saul,
+2000), Isomap (Tenenbaum et al., 2000).
+There is no single well-defined performance measure for the performance of clustering. Here
+we resort to indirect criteria that should however allow a comparative study. We consider the two
+following criteria:
+(1) Label cross-information. We apply clustering to benchmark data for which label information Y is available. Although this information is not used in determining the clustering, we will
+use it as a yardstick to measure whether the clustering gives rise to relevant structure discovery.
+We measure this by the scaled mutual information I(C,Y )/H(Y ), where C is the cluster labelling
+and the normalization ensures that the quantity lies between 0 and 1. Note that there is a priori no
+mathematical reason why clustering should be related to label information, but this is often the case
+for real data, so this can be a relevant criterion of structure discovery. A higher score indicates a
+better match between discovered cluster structure and label structure.
+(2) Stability. Recent attempts at formalizing criteria for clustering have proposed that clustering
+stability should be a relevant criterion for data clustering (see, e.g., Meinecke et al. , 2002; Lange
+et al., 2004). Again, this is only an indirect criterion, as, for example, a trivial clustering algorithm
+dividing the space without actually looking at the data would be very stable. But with this caveat in
+mind, it provides a relevant diagnostic tool. Here, we measured stability in the following way: the
+data is divided randomly into 2 groups of equal size on which we apply clustering. Then, the cluster
+labels obtained on group 1 are extended to group 2 by the nearest-neighbor rule and vice-versa.
+This thus gives rise to two different cluster labellings C1 ,C2 of the whole data and we measure their
+agreement through relative mutual information I(C1 ,C2 )/H(C1 ,C2 ) . Again, this score lies in the
+interval [0, 1] and a high score indicates better stability.
+
+Data set
+Oil
+Wine
+Vowel
+USPS
+
+Table 1: Description of data sets
+Nb. of Classes Nb. of samples Total dimension
+3
+2000
+12
+3
+178
+13
+11
+528
+10
+10
+7291
+30
+
+Projection Dim.
+3
+3
+3
+10
+
+We consider the “oil flow” data already presented in section 4.2, and additional data sets from
+the UCI classification repository, for which the features all take continuous values. (When there are
+features taking only discrete values, NGCA is inappropriate since these will generally be picked up
+as strongly non-Gaussian). Size and dimension of these data sets are given in Table 1.
+The results are depicted in Figure 11. On the Oil data set, NGCA works very well for both criteria (as was expected from the good visualization results of section 4.2). On the Wine data set, the
+different algorithms appear to be divided in two clear groups, with the performance in the first group
+(NGCA, Isomap, LLE) noticeably better than in the second (PCA, FastICA). NGCA belongs to the
+279
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+Oil Data: Class Label Information
+
+Oil Data: stability criterion
+
+1
+
+1
+
+0.9
+
+0.9
+
+0.8
+
+0.8
+
+0.7
+0.7
+0.6
+0.6
+0.5
+0.5
+0.4
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.3
+
+0.2
+
+0.1
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+14
+
+16
+
+18
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.4
+
+0.3
+
+0.2
+
+20
+
+0.1
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+14
+
+16
+
+Nb. of clusters
+
+Nb. of clusters
+
+Wine Data: Class Label Information
+
+Wine Data: Stability Criterion
+
+1
+
+18
+
+20
+
+0.8
+
+0.9
+
+0.7
+
+0.8
+0.6
+0.7
+0.5
+
+0.6
+
+0.5
+
+0.4
+
+0.4
+
+0.2
+
+0.1
+
+0
+
+0.3
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.3
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+14
+
+16
+
+18
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.2
+
+0.1
+
+20
+
+0
+
+2
+
+4
+
+6
+
+8
+
+Nb. of clusters
+
+10
+
+12
+
+14
+
+Vowel Data: Class Label Information
+
+20
+
+1
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.6
+
+0.5
+
+0.9
+
+0.8
+
+0.7
+
+0.4
+
+0.6
+
+0.5
+
+0.3
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.4
+0.2
+0.3
+0.1
+0.2
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+14
+
+16
+
+18
+
+20
+
+0.1
+
+2
+
+4
+
+6
+
+8
+
+Nb. of clusters
+
+10
+
+12
+
+14
+
+16
+
+18
+
+20
+
+Nb. of clusters
+
+USPS Data: Class Label Information
+
+USPS Data: Stability Criterion
+
+0.7
+
+0.7
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+
+0.6
+
+0.5
+
+0.6
+
+0.5
+
+0.4
+
+0.4
+
+0.3
+
+0.3
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0
+
+18
+
+Vowel Data: Stability Criterion
+
+0.7
+
+0
+
+16
+
+Nb. of clusters
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+14
+
+16
+
+18
+
+20
+
+0
+
+NGCA
+PCA
+LLE
+Isomap
+FastICA−tanh
+FastICA−pow3
+Org.Data
+2
+
+Nb. of clusters
+
+4
+
+6
+
+8
+
+10
+
+12
+
+Nb. of clusters
+
+Figure 11: Clustering results
+
+280
+
+14
+
+16
+
+18
+
+20
+
+N ON -G AUSSIAN C OMPONENTS OF A H IGH -D IMENSIONAL D ISTRIBUTION
+
+better group although the best methods appear to be the non-linear projections LLE and Isomap.
+The results of the Vowel data set are probably the most difficult to interpret, as most methods appear
+to be relatively close. Isomap appears as the winner method in this case, with NGCA quite close
+in terms of label cross-information and in the middle range for stability. Finally, for the USPS data
+set we used the 30 first principal components obtained by Kernel-PCA and a polynomial kernel of
+degree 3. In this case, PCA gives better results in terms of label cross-information with NGCA a
+close second, while NGCA is the clear winner in terms of stability.
+To summarize: NGCA performed very well in 2 of the 4 data sets tried (Oil data and USPS), and
+was in the best group of methods for the Wine Data and had average performance on the last data set.
+Even when NGCA is outperformed by nonlinear methods LLE and Isomap, it generally achieves a
+comparable performance though being a linear method, which has other advantages such as clearer
+geometrical interpretation, direct extension to additional data if needed, and possible assessment of
+variable importance in original space.
+
+References
+M. Belkin and P. Niyogi. Laplacian eigenmaps for dimensionality reduction and data representation. Neural
+Computation, 15(6):1373–1396, 2003.
+C. M. Bishop, M. Svensen and C. K. I. Wiliams. GTM: The generative topographic mapping. Neural
+Computation, 10(1):215–234, 1998.
+C. M. Bishop and G. D. James. Analysis of multiphase flow using dual-energy gamma densitometry and
+neural networks. Nuclear Instruments and Methods in Physics Research, A327:580–593, 1993.
+P. Comon. Independent component analysis—a new concept? Signal Processing, 36:287–314, 1994.
+T. F. Cox and M. A. A. Cox. Multidimensional Scaling. Chapman & Hall, London, 2001.
+L. Devroye, L. Gy¨orfi, and G. Lugosi. A Probabilistic Theory of Pattern Recognition, Springer, 1996.
+B. Efron. Bootstrap methods: Another look at the jackknife. The Annals of Statistics, 7(1):1–26, 1979.
+J. H. Friedman and J. W. Tukey. A projection pursuit algorithm for exploratory data analysis. IEEE Transactions on Computers, 23(9):881–890, 1975.
+S. Harmeling, A. Ziehe, M. Kawanabe and K.-R. M¨uller. Kernel-based nonlinear blind source separation.
+Neural Computation, 15(5):1089–1124, 2003.
+P. J. Huber. Projection pursuit. The Annals of Statistics, 13:435–475, 1985.
+A. Hyv¨arinen. Fast and robust fixed-point algorithms for independent component analysis. IEEE Transactions
+on Neural Networks, 10(3):626–634, 1999.
+A. Hyv¨arinen, J. Karhunen and E. Oja. Independent Component Analysis. Wiley, 2001.
+M. C. Jones and R. Sibson. What is projection pursuit? Journal of the Royal Statistical Society, series A,
+150:1–36, 1987.
+C. McDiarmid. On the method of bounded differences, Surveys in Combinatorics, London Math. Soc.
+Lecture Notes Series 141:148–188, 1989.
+281
+
+¨
+B LANCHARD , K AWANABE , S UGIYAMA , S POKOINY AND M ULLER
+
+F. Meinecke, A. Ziehe, M. Kawanabe, and K.-R. M¨uller. A resampling approach to estimate the stability of one-dimensional or multidimensional independent components. IEEE Transactions on Biomedical
+Engineering, 49:1514–1525, 2002.
+S. Roweis and L. Saul. Nonlinear dimensionality reduction by locally linear embedding. Science, 290(5500):
+2323–2326, 2000.
+T. Lange, V. Roth, M. L. Braun and J. M. Buhmann. Stability-based validation of clustering solutions. Neural
+Computation, 16(6):1299-1323, 2004.
+B. Sch¨olkopf, A. J. Smola and K.–R. M¨uller. Nonlinear component analysis as a kernel eigenvalue problem.
+Neural Computation, 10(5):1299–1319, 1998.
+J. B. Tenenbaum, V. de Silva and J. C. Langford. A global geometric framework for nonlinear dimensionality
+reduction. Science, 290(5500):2319–2323, 2000.
+
+282
+
+

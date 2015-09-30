@@ -1,0 +1,1053 @@
+GESwarm: Grammatical Evolution for the Automatic
+Synthesis of Collective Behaviors in Swarm Robotics
+Eliseo Ferrante
+
+Edgar Duéñez-Guzmán
+
+eferrant@ulb.ac.be
+Ali Emre Turgut
+
+duenez@bio.kuleuven.be
+Tom Wenseleers
+
+myaman@thk.edu.tr
+
+tom.wenseleers@bio.kuleuven.be
+
+Socioecology and Social
+Evolution - KULeuven
+59 Naamsestraat - bus 2466
+3000 Leuven, Belgium
+
+Mechatronics Department THK University
+Turkkusu Campus
+06790 Ankara, Turkey
+
+Socioecology and Social
+Evolution - KULeuven
+59 Naamsestraat - bus 2466
+3000 Leuven, Belgium
+
+Socioecology and Social
+Evolution - KULeuven
+59 Naamsestraat - bus 2466
+3000 Leuven, Belgium
+
+ABSTRACT
+
+General Terms
+
+In this paper we propose GESwarm, a novel tool that can
+automatically synthesize collective behaviors for swarms of
+autonomous robots through evolutionary robotics. Evolutionary robotics typically relies on artificial evolution for
+tuning the weights of an artificial neural network that is then
+used as individual behavior representation. The main caveat
+of neural networks is that they are very difficult to reverse
+engineer, meaning that once a suitable solution is found, it
+is very difficult to analyze, to modify, and to tease apart the
+inherent principles that lead to the desired collective behavior. In contrast, our representation is based on completely
+readable and analyzable individual-level rules that lead to a
+desired collective behavior.
+The core of our method is a grammar that can generate
+a rich variety of collective behaviors. We test GESwarm by
+evolving a foraging strategy using a realistic swarm robotics
+simulator. We then systematically compare the evolved collective behavior against an hand-coded one for performance,
+scalability and flexibility, showing that collective behaviors
+evolved with GESwarm can outperform the hand-coded one.
+
+Algorithms, Design
+
+Categories and Subject Descriptors
+I.2.11 [Computing Methodologies]: Artificial Intelligence—
+Distributed Artificial Intelligence; I.2.9 [Computing Methodologies]: Artificial Intelligence—Robotics; I.2.8 [Computing
+Methodologies]: Artificial Intelligence—Problem Solving,
+Control Methods, and Search
+
+Permission to make digital or hard copies of all or part of this work for
+personal or classroom use is granted without fee provided that copies are
+not made or distributed for profit or commercial advantage and that copies
+bear this notice and the full citation on the first page. To copy otherwise, to
+republish, to post on servers or to redistribute to lists, requires prior specific
+permission and/or a fee.
+GECCO’13, July 6–10, 2013, Amsterdam, The Netherlands.
+Copyright 2013 ACM 978-1-4503-1963-8/13/07 ...$15.00.
+
+Keywords
+swarm robotics, evolutionary robotics, genetic programming
+
+1.
+
+INTRODUCTION
+
+Swarm robotics is the study and the design of collective
+behaviors for swarms of autonomous robots [25, 4]. The
+desired collective behavior is the result of local interactions
+among robots and between robots and the environment. The
+goal in swarm robotics is to design collective behaviors that
+are flexible (to different environments), robust (to robot failures) and scalable (to different swarm and problem sizes).
+Swarm robotics relies on principles such as self-organization
+and local interaction rather than on centralized coordination and global communication. Despite all these advantages, swarm robotics suffers from the so-called design problem [30]: given the desired macroscopic collective behavior,
+it is not trivial to design the corresponding individual behaviors and interaction rules.
+Several approaches have been proposed to tackle the design problem in swarm robotics. A common approach is to
+use automatic design methods to derive automatically individual behaviors and interactions given some macroscopic
+description of the collective behavior or task [4]. Evolutionary robotics [19] is the most commonly used automatic design framework in swarm robotics. In evolutionary robotics,
+evolutionary algorithms are used to find collective behaviors
+that maximize a fitness function, which is used to evaluate
+the performance of the entire swarm. To represent the individual behavior of a robot, artificial neural networks (ANNs)
+are typically used, which directly map the robots’ sensory
+inputs into actuators values. Despite their generality, ANNs
+suffer from a major drawback: they are very difficult to reverse engineer. Thus, it is not easy to either obtain insights
+on the evolved principles responsible for the self-organized
+collective behavior or to modify the latter in order to comply
+with different requirements.
+
+In this paper, we make a step forward into the realization of an automatic design tool for swarm robotics able to
+produce analyzable and modifiable collective behaviors. We
+propose GESwarm, a method based on Grammatical Evolution (GE) [21] and on a novel generative grammar that is
+able to synthesize a rich variety of swarm robotics collective
+behaviors. In GESwarm, it is possible to provide a set of
+low-level individual behaviors, well tested in simulation and
+potentially also on real robots, that through an evolutionary
+process are combined until more complex collective behaviors are generated. The evolved individual behavior is a set
+of rules responsible for switching from one low-level behavior
+to another in response to internal states and local environmental conditions. These evolved rules can be easily read,
+analyzed and modified due to their intuitive representation.
+We present a case study of foraging task as validation
+for this method. Robots have to collect objects present
+at a source location and drop them at the goal location.
+After analyzing the evolutionary performance of the algorithm, we perform systematic experiments in which we compare the evolved collective behaviors against a hand-coded
+one. Additionally, we perform experiments in different conditions than the ones used during evolution, showing that
+the evolved collective behavior generalizes well.
+The remaining of the paper is organized as follows. Section 2 introduces GESwarm. Section 3 presents the experimental setup and the results of our experiments. Section 4
+presents a discussion in which we enframe GESwarm in
+the literature of automatic design methodologies for swarm
+robotics. In Section 5, we conclude the paper and we discuss
+possible future directions.
+
+2.
+
+GESWARM
+
+GESwarm combines concepts derived from three different
+disciplines: formal language theory [10], evolutionary computation [8] and swarm robotics [4]. The space of strings of
+a formal grammar is used as the search space for the evolutionary algorithm. These strings are abstract syntax trees
+used as individual behaviors for the robots, and represent
+a set of rules that are used to combine low-level behaviors
+taken from a repertoire. A GA is used to evaluate the collective behaviors produced out of these individual behaviors,
+until a solution with good performance is found.
+In this section we provide details on how this process is
+carried out: first we explain the type of behavioral representation that can be generated by the grammar (Section 2.1),
+then we describe the GESwarm grammar and how it can
+generate such collective behaviors through evolution (Section 2.2).
+
+2.1
+
+Behavioral representation
+
+We assume that each robot in the swarm is executing the
+same individual behavior, which is a set R composed of an
+arbitrary number nR of rules Ri :
+R = {Ri } , i ∈ {1, . . . , nR }.
+Each rule has the following form:
+
+The intuitive interpretation of a rule is: if all the preconditions in Pi are met, and if the robot is executing any of the
+low-level behaviors contained in Bi , all actions contained in
+Ai are executed. We now explain what preconditions, lowlevel behaviors and actions are.
+A precondition Pj is something that can be true or false
+about the environment. Currently, GESwarm allows for
+boolean preconditions, but can be extended to include preconditions comparing variables to natural numbers. Example of preconditions are: PON AREAX (which is true if the
+robot is on top of a given area AREAX and false otherwise),
+PSEES OBSTACLE (which is true if the robot sees obstacles
+close-by or false otherwise), PIS CLOSE TO(k ) (which is true
+if the robot sees k objects or other robots and false otherwise), etc. Preconditions are meant to be simple sensorial
+pre-processing steps, depending on the available robot technology. For the experiments in this paper, and to be faithful
+to the swarm robotics philosophy, we only use preconditions
+that can be implemented using the on-board sensors of the
+robots we considered. The set of preconditions of rule Ri
+is assumed to be the conjunction P ∈Pi P (logical “and”)
+of all the preconditions in Pi , that is, rule Ri is activated
+(and the corresponding actions executed) only if all preconditions are met. Consistent with the above definition, if the
+set of preconditions is empty (Pi = ∅), it is assumed to be
+satisfied.
+A low-level behavior1 Bk is a primitive that a robot can
+execute for a given amount of time and that has closed-loop
+feedback from sensors. Examples of low-level behaviors are:
+BPHOTOTAXIS (the robot moves in the direction of the highest light intensity), BRANDOM WALK (the robot executes a
+directed random walk), BFOLLOW COLOR(c) (the robot moves
+in the direction of a given color c, which could be static or
+signaled by other robots), etc. In a rule Ri , Bi can contain
+more than one behavior. Rule Ri is activated only if the
+robot is executing any of the behaviors in Bi . If the set of
+behaviors is empty (B = ∅), the rule is considered activated
+regardless of the behavior the robot is currently executing.
+An action Al is a control event that, differently from a
+behavior, is executed only during a specific time-step and
+lacks closed-loop feedback from sensors. Each action is associated with a probability value pl . Probabilistic control
+events have been extensively used in swarm robotics in order
+to increase flexibility [27, 15]. Provided that preconditions
+Pi are met and the robot is executing one of the behaviors
+in Bi , the action is executed with probability pl in any given
+timestep. Delayed execution of actions is achieved by values
+of pl smaller than 1. Actions can be one of two types. The
+first type is behavior change, or AB . With AB actions, the
+robot can switch from one behavior to another. Therefore,
+AB actions are always followed by an argument indicating
+the behavior to switch to. The other type is internal state
+change, or AIS . These actions are used to either produce
+some immediate response by the robot (i.e. turning on its
+LEDs or dropping an object that has been collected earlier) or to change its propension to do something (i.e. to
+collect more objects or to go past a given obstacle in the environment). AIS actions are followed by two arguments, the
+first indicating the internal state variable to change and the
+
+Ri = Pi × Bi × Ai ,
+that is, is composed of an arbitrary number of preconditions
+Pj ∈ Pi , low-level behaviors Bk ∈ Bi and actions Al ∈ Ai ,
+with j ∈ {1, . . . , niP }, k ∈ {1, . . . , niB }, l ∈ {1, . . . , niA }.
+
+1
+In the following, we will refer to Bk as “low-level behavior” or simply “behavior”, as it is a different concept from
+“individual behavior” (the entire rule set in our case) and
+“collective behavior” (induced by the individual behavior).
+
+second indicating the variable’s new value. Both types of actions are executed in order. For example, if a rule contains
+two AB with pl = 1, the robot will switch to the behavior
+contained in the second action.
+
+2.2
+
+R → R R|R
+R → P BA
+
+(2)
+(3)
+
+be empty, ε is interpreted both as empty list and as end
+of a list. Production rules 7 and 8 only produce terminal
+symbols: they describe what a precondition (a logical evaluation of a given precondition variable Pname ) and a behavior
+(a behavior variable Bname ) are. Production rule 9 expands
+to one of two possible non-terminal symbols, thus selecting
+between behavior change actions (AB ) and internal state
+change actions (AIS ). Finally, production rules 10 and 11
+describe what these two action are. In both cases, the first
+part of the expansion sets the value of the probability p associated with the action to the provided real number value .
+For AB , this assignment is followed by the behavior Bname
+to change to, while for AIS it is followed by an internal state
+assignment.
+GESwarm uses the above grammar to generate candidate
+solutions that can be evolved via GE. Each of the initial
+set of candidate solutions is produced from the grammar
+by successively selecting a random production rule to apply
+(starting from S) until a valid string has been produced. In
+Section 3.1 we give more details on the experimental setup
+used for GE and for the swarm robotics simulations.
+
+P
+B
+
+→ P P|ε
+→ B B|ε
+
+(4)
+(5)
+
+3.
+
+A
+
+→
+
+(6)
+
+P
+B
+
+→ Pname == true|Pname == false
+→ Bname
+
+Grammatical evolution
+
+GESwarm is based on Grammatical Evolution (GE) [21].
+GE is related to Genetic Programming [14] (GP), which
+deals with the automatic synthesis of computer programs
+using evolutionary computation. The main difference between the two is that GE employs a grammar to evolve programs for arbitrary languages [21] as opposed to GP which
+is bound to a specific language such as LISP. GESwarm uses
+GE and a formal grammar to evolve a set of rules R as the
+ones described in Section 2.1. The GESwarm grammar is
+the following:
+S
+
+→
+
+R
+
+A A|A
+
+A → AB |AIS
+AB → p = value , Bname
+AIS
+
+→ p = value , ISname = new value
+
+(1)
+
+(7)
+(8)
+(9)
+(10)
+(11)
+
+To understand this grammar, recall that formal grammars
+are made of production rules, each consisting in a left-hand
+side and a right-hand side separated by the symbol “→”. The
+left-hand side contains one non-terminal symbol. The righthand side contains one or more terminal or non-terminal
+symbols that can be either concatenated or separated by
+the special “or” (“|”) symbol. The difference between terminal and non-terminal symbols is that non-terminal symbols
+are further expanded by a production rule whereas terminal
+symbols are not.
+The first rule of a formal grammar always expands the
+special non terminal S. In our case, S is expanded in the
+non-terminal R that represents a set of rules (Expansion 1).
+In the following expansions, each non terminal can be expanded to either groups of non-terminal and terminal symbols or to groups of terminal symbols alone. The grammar
+has completed producing a valid string only when all nonterminals have been expanded. We now explain how the
+GESwarm grammar can produce valid swarm robotics collective behaviors.
+The production rule 2 denotes a list-type expansion: it
+says that R can only be expanded as a list of rules R of
+arbitrary length. To produce a list of n rules, one applies
+the R R part of the rule recursively n − 1 times, and lastly
+expands R into the sole terminal R, thus terminating the
+list. Production rule 3 defines that a rule R is a set of preconditions P followed by a set of behaviors B followed by
+a set of actions A. Production rules 4, 5 and 6 are also
+list-type expansions that correspond to P, B and A being
+lists of preconditions (P ), behaviors (B) and actions (A),
+respectively. Since both preconditions and behaviors can
+
+EXPERIMENTS WITH EVOLUTION OF
+FORAGING
+
+In this section, we show how GESwarm can be used to successfully generate swarm robotics collective behaviors. As a
+case study, we use GESwarm to evolve a foraging collective
+behavior.
+
+3.1
+
+Experimental setup
+
+We now explain the setup used to carry out the experiments, by describing the swarm robotics experimental setup
+(Section 3.1.1) used for executing the foraging simulations
+and the configuration of the evolutionary algorithm (Section 3.1.2).
+
+3.1.1
+
+Robotic setup
+
+We consider a foraging scenario in the arena depicted in
+Figure 1a. A swarm of N robots has to collect items from
+a region of the arena that we call source and bring them to
+another region that we call nest. In the source, 5 objects
+are placed. New objects are generated at a random location every time one is picked up by a robot, so that there
+are always 5 items present at the source. A light source is
+located far north, beyond the borders of the arena and allows robots to execute the phototaxis and anti-phototaxis
+behaviors necessary to navigate the arena.
+The experiments were carried out using the ARGoS simulator [23]. ARGoS is an open-source simulator2 capable of
+simulating up to tens of thousands of robots in real time
+by exploiting modern multi-core computers and a pluginbased architecture. The robot involved in the experiments
+is a simulated version of the foot-bot robot [3], which is a
+differential-drive, non-holonomic, mobile robot. The physical foot-bot robot is depicted in Figure 1b.
+We implemented the following low-level behaviors that,
+recombined by GESwarm, can produce the desired higher
+level foraging strategy. These behaviors exploit only the
+sensors and actuators shown in Figure 1b. The output of
+these behaviors are vectors that point to a target direction.
+2
+
+http://iridia.ulb.ac.be/argos
+
+Range and bearing
+Gripper
+Light and proximity sensors
+Wheels and ground sensors
+
+(a)
+
+(b)
+
+Figure 1: Experimental setup. (a) A snapshot of the ARGoS simulator that illustrates our experimental setup. (b) The real
+foot-bot robot and the sensor/actuators that were used.
+R1 :
+P1
+B1
+A1
+R2 :
+P2
+B2
+A2
+R3 :
+P3
+B3
+A3
+R4 :
+P4
+B4
+A4
+
+If not holding an object and not at the source, go to the source
+PON SOURCE == false
+PHAS OBJECT == false
+ε
+AB
+p=1
+BPHOTOTAXIS
+If arrived at the source and not holding an object, start looking for objects
+PON SOURCE == true
+PHAS OBJECT == false
+BPHOTOTAXIS
+AB
+p=1
+BRANDOM WALK
+AIS
+p=1
+ISWANT OBJECT ← true
+If holding an object, go back to the nest
+PHAS OBJECT == true
+BRANDOM WALK
+BPHOTOTAXIS
+AB
+p=1
+BANTI −PHOTOTAXIS
+If arrived at the nest and still holding an object, drop it and start random walk
+PON NEST == true
+PHAS OBJECT == true
+BRANDOM WALK
+BANTI −PHOTOTAXIS
+AB
+p=1
+BRANDOM WALK
+AIS
+p=1
+ISDROP OBJECT ← true
+
+Table 1: The hand-coded individual behavior
+
+BPHOTOTAXIS This behavior only uses the light sensor. The
+output vector points toward the direction with the
+highest perceived light intensity.
+BANTI −PHOTOTAXIS This behavior also only uses the light
+sensor. The output vector points toward the lowest
+perceived light intensity.
+BRANDOM WALK This behavior doesn’t use any sensor. The
+output is a random unit vector that remains constant
+for a random amount of time.
+These output vectors are post-processed by adding an obstacle avoidance vector. The obstacle avoidance vector is
+computed using two sensors: the proximity sensors for sensing the walls and the range and bearing sensors to sense
+other robots. The obstacle avoidance vector points away
+from the aggregate of the relative positions of all sensed objects. The integrated output vector is then used to obtain
+the two output speeds which are then applied to robot’s
+wheels, as in [6].
+
+Additionally, a combination of ground and light sensor
+are also used to detect whether the robot is on the source,
+on the nest or somewhere else. This information is used to
+evaluate the preconditions PON SOURCE and PON NEST used
+in the rule set. Finally, a virtual simulated gripper sensor
+is used to let the robot pick-up and drop objects. When
+a robot picks-up an object, the precondition PHAS OBJECT
+evaluates as true.
+We use 4 robots. When assesing scalability and flexibility,
+we use up to 20 robots. The total allotted time for the
+foraging task is 5000 simulated seconds.
+
+3.1.2
+
+Evolutionary setup
+
+We use an existing library called GEVA [20] for GE. GEVA
+maps the GESwarm rules into strings of integers. We execute a total of 10 evolutionary runs. Each evolutionary run
+lasts 1000 generations and involves 100 individuals. Since
+swarm robotics simulations are stochastic, each individual
+is evaluated 3 times. We use a single-point crossover with
+probability 0.3 and a mutation probability of 0.05. Crossover
+and mutation are applied directly to the string of integers
+
+Performance for different evolved behaviors and comparison with handcoded
+
+140
+
+*
+
+*
+
+*
+
+*
+
+*
+
+*
+
+*
+
+120
+
+Total food at nest
+
+100
+80
+60
+40
+20
+0
+
+(a)
+
+HC
+
+EVO 1
+
+EVO 2
+
+EVO 3
+
+EVO 4
+
+EVO 5
+
+EVO 6
+
+Collective behavior
+
+EVO 7
+
+EVO 8
+
+EVO 9
+
+EVO 10
+
+(b)
+
+Figure 2: Results obtained with GESwarm used to evolve foraging. (a) shows the value of the fitness of the best individual
+found so far as a function of generation time, for the the 10 evolutionary runs. A good foraging collective behavior was evolved
+in all runs but one. (b) shows the results of evaluating 50 times all evolved (EVO X) and the hand-coded (HC) collective
+behaviors. We report the total number of collected objects in the allotted time. The dashed horizontal line represents the
+baseline performance (i.e. the mean performance of the HC collective behavior). Seven out of the ten evolved collective
+behaviors, denoted by *, outperform significantly (p − value < 0.001) the hand-coded collective behavior.
+
+representing the rules. We choose a generational-type of
+replacement with 5% elitism. Generational-type is used instead of steady-state type because it allows for massive parallelization of the simulations on a computer cluster. We
+use roulette-wheel selection, that is, the probability that an
+individual is selected for reproduction (which may involve
+mutation and crossover) is proportional to its fitness relative to the fitness of all individuals.
+The fitness function used is simply the total number of
+objects collected during one simulation. The same quantity was also used to validate the evolved collective behavior
+(Section 3.2.1 and Section 3.2.2).
+
+3.2
+
+Results
+
+We now analyze the ten evolved collective behaviors (Section 3.2.1) against the hand-coded collective behavior shown
+in Table 1, and further analyze EVO 8, the best evolved collective behavior (Section 3.2.2).
+
+3.2.1
+
+The evolved collective behaviors
+
+In Figure 2a we show the fitness of the evolved collective
+behaviors as a function of the generations. For each run,
+we report the fitness of the best individual obtained so far.
+The collective behaviors obtained by the end of the runs
+are all functional solutions for the foraging problem, as can
+be seen by their ability to successfully collect a significant
+number of objects. This highlights a strength of GESwarm:
+all evolutionary runs obtain a functional collective behavior.
+We compare the performance of all evolved collective behaviors against the hand-coded collective behavior. We evaluated the performance of all 10 evolved collective behaviors
+(EVO X) and of the hand-coded one (HC) 50 times each.
+These experiments were performed in the same environmental setting used in the evolutionary runs. Results are reported in Figure 2b. Here, HC is significantly (p − value <
+0.001) outperformed by seven out of the ten evolved collective behaviors, has performance comparable to two other
+collective behaviors, and performs better than only one of
+
+them (EVO 6). In this latter case, the evolutionary process
+could not get past a local optimum (Figure 2a). However,
+this happened only in one out of the ten cases.
+The best evolved collective behavior, EVO 8, is reported
+in Table 2. By reverse engineering EVO 8, we are able to
+pinpoint the reason why it outperforms HC. In HC, robots
+arrive at the source and immeditely switch to random walk
+to search for objects. In contrast, in EVO 8 the switching
+to random walk happens probabilistically after reaching the
+source. This is because, although rule R1 attempts to switch
+to random walk, rule R4 will prevent this until the robot
+reaches the source. This gives EVO 8 two advantages: First,
+robots are more likely to have all of their random walk fully
+contained within the source area. Second, they can run into
+items in the source even before starting a random walk.
+
+3.2.2
+
+Scalability and flexibility analysis
+
+We further analyze the performance of EVO 8. We executed two sets of experiments. In both sets, we analyzed
+the performance of the system with larger swarm sizes compared to the one used during evolution (scalability analysis).
+In the first set, we keep the robot density the same (≈ 0.23
+robots/m2 ), and increase the environment width and the object availability accordingly. In the second set, we increase
+the robot density by a factor of 4 (≈ 0.9 robots/m2 ) and
+reduced the object availability at the source by a factor of 2
+(flexibility analysis). Both the width and the length of the
+environment had to be modified to achieve this. As a side
+effect, the overall performance of the scalability and flexibility analyses cannot be directly compared. For statistical
+strength, 50 runs for each setting were executed.
+Figure 3a and Figure 3b summarize the results of the scalability and flexibility analyses, respectively. The first thing
+that can be noticed is that the best evolved controller continues to outperform the hand-coded one in all cases. Evolved
+collective behaviors generalize well to different conditions
+other than the ones used during the evolutionary process.
+Further observations can also be made: in both sets, and for
+
+R1 :
+P1
+B1
+A1
+R2 :
+P2
+B2
+A2
+R3 :
+P3
+B3
+A3
+R4 :
+P4
+B4
+A4
+
+The switch to random walk is probabilistic and can happen only when in route to the source
+ε
+BPHOTOTAXIS
+AB
+p = 0.05
+B ← BRANDOM WALK
+If going to the nest and reached the nest, drop any object and go back to the source
+PON NEST == true
+BRANDOM WALK
+BANTI −PHOTOTAXIS
+AB
+p=1
+BPHOTOTAXIS
+AIS
+p=1
+ISDROP OBJECT ← true
+Whenever holding an object, the robot should go back to the nest
+PHAS OBJECT == true
+BRANDOM WALK
+BPHOTOTAXIS
+AB
+p = 0.1
+BANTI −PHOTOTAXIS
+Robots always move towards source if not there yet
+PON SOURCE == false
+BRANDOM WALK
+BPHOTOTAXIS
+AB
+p = 1.0
+BPHOTOTAXIS
+AB
+p = 0.001
+BANTI −PHOTOTAXIS
+
+Table 2: The best evolved collective behavior EVO 8.
+
+Flexibility analysis
+1000
+
+550
+
+900
+
+500
+
+800
+
+450
+
+Total food at nest
+
+Total food at nest
+
+Scalability analysis
+600
+
+400
+350
+300
+250
+
+700
+600
+500
+400
+300
+
+200
+
+200
+
+150
+HC: 5
+
+Evo: 5
+
+HC: 10
+
+Evo: 10
+
+Behavior: Number of robots
+
+HC: 20
+
+Evo: 20
+
+(a)
+
+HC: 5
+
+Evo: 5
+
+HC: 10
+
+Evo: 10
+
+HC: 20
+
+Evo: 20
+
+Behavior: Number of robots
+
+(b)
+
+Figure 3: Further analysis of the best evolved collective behavior. Comparison between the best evolved collective behavior,
+Evo 8, against the handcoded collective behavior. Experiments were performed with 5, 10 and 20 robots. In (a) the density of
+robots was kept the same to the one where the controller was evolved. In (b) we show results executed in a slightly different
+environment, in which the robot density is increased and object availability is decreased. As it can be seen, EVO 8 always
+outperforms the handcoded collective behavior.
+
+both collective behaviors, performance scale approximately
+linearly with respect to the swarm size. This is also true for
+experiments with higher density of robots (Figure 3b), showing that both collective behaviors are not strongly affected
+by robot-to-robot interference and decreased availability of
+resources.
+
+4.
+
+DISCUSSION AND RELATED WORK
+
+Automatic design methods have been, for decades, the
+holy grail for roboticists and swarm roboticists. Automatic
+generation of behaviors is very useful with tasks that have
+not been completely defined in advance or that can change
+over time. Furthermore, they are even more useful in swarm
+robotics, as they could ease the derivation of microscopic
+behaviors and interaction rules given the macroscopic objective. While significant progress has been achieved in automatic design methods, there is still no consensus on which
+method yields the best results. We classify automatic de-
+
+sign methodologies in two main frameworks: reinforcement
+learning and evolutionary robotics.
+In Reinforcement Learning (RL), a single agent or robot
+learns a behavior by trial-and-error interactions with the
+environment and receiving rewards and punishment from
+it. An elegant and unified mathematical framework has
+been developed [12]. In the multi-robot systems and swarm
+robotics, however, less success has been reported (the reader
+can refer to the review in [22]). Indeed, in a swarm we
+typically have a macroscopic objective, but reinforcement
+learning and performance evaluation are performed at the
+individual level. Hence, the main issue is the spatial credit
+assignment, that is, the decomposition of the global reward
+into individual rewards [32]. Some works addressed this issue via experiments with few robots (2 to 4), using communication or signaling to share the reward [17, 16].
+Evolutionary robotics (ER) has received more attention
+than RL within swarm robotics. This is partly because
+
+ER can deal with the spatial credit assignment problem
+in a natural way. In fact, generally one considers homogeneous swarms (all robots use the same individual behavior) and the fitness is the performance of the entire swarm.
+Although this is the most common approach, Waibel, et
+al [31] introduced two taxonomies: level of selection categorizing works as individual-level versus swarm-level; and
+swarm composition categorizing works as homogeneous versus heterogeneous swarms. In particular, GESwarm, as presented here, falls under the swarm-level and homogeneous
+categories. This restriction, however, need not apply in general.
+In evolutionary swarm robotics, several principles and collective behaviors have been studied. We here summarize
+some of the most representative work in the field. In [2], the
+authors used robots capable of attaching to each other and
+successfully evolved coordinated motion. The evolved behavior was ported to real robots, where they showed that
+four physically-connected robots could navigate together,
+explore a complex environment and avoid obstacles. In [27],
+the authors considered the aggregation behavior. They performed experiments both with evolutionary methods and
+with a probabilistic hand-coded controller, showing that the
+former can outperform the latter. In [9], the authors evolved
+both solitary and collective object transport behaviors. They
+showed that in general evolution was favoring collective transport involving robots that attached to each other. In [24],
+the authors successfully evolved a social learning behavior,
+in which the robots were able to switch between two behaviors either via environmental stimuli or via communication
+among them. The evolution of communication was also considered in [1], in which the emergence of signaling is needed
+in order for the robots to categorize two types of environments. In [31], the authors successfully evolved solitary and
+cooperative foraging also using real robots. In [5], the authors used an evolutionary algorithm to generate collective
+behaviors for a team of robot football players. In [28], the
+authors evolved a collective foraging behavior that relies on
+very simple sensing mechanisms. The behavior produced a
+dynamic chain of robots connecting the source of objects to
+the nest. The formed chain could dynamically adapt to a
+moving source. In [7] the authors evolved an aggregation
+behavior having robots gathering at different shelters. The
+evolved behavior was compared to a model of collective decision making displayed by cockroaches based on differential
+equations.
+The evolutionary robotics work described above all used
+artificial neural networks (ANNs) as the representation of
+the microscopic behavior of each robot. The advantage of
+ANNs is their generality, in the sense that, in principle, they
+do not bias the behavior to a particular class. However, the
+complexity of the behavior is restricted by the size of the
+neural network and by whether it is recurrent or not. Recurrent ANNs encode an internal memory by connecting output
+neurons back to input neurons. In swarm robotics, purely
+reactive, memory-less behaviors are often (although not always) enough to guarantee self-organizing properties (such
+as [28]), and this explains the prevalence of non-recurrent
+ANNs over recurrent ones.
+The main drawback of ANNs is their difficulty in being
+reverse engineered and analyzed. Only a few studies have
+tried to attempt this, and only for very simple collective
+behaviors [29] or small neural networks [18]. In addition
+
+to this, the size and topology of the neural network is often fixed a priori, with a few recent exceptions [26]. To
+overcome these difficulties, using an alternative behavioral
+representation to ANNs has been suggested. For instance,
+Hettiarachchi [11] used evolutionary computation to tune
+the parameters of a microscopic behavior represented using artificial virtual physics, in order to perform obstacle
+avoidance with a swarm of robots. In another example, the
+authors used evolutionary computation to find finite state
+machines used to evolve collision avoidance and gate trespassing in a swarm of robots [13]. GESwarm is similar in
+principle to these latter two studies: it represents a further
+effort in finding an alternative representation that is reverseengineerable and suitable for evolving collective behaviors
+for swarm robotics. Additionally, in GESwarm the size of
+the representation is not fixed in advance, as an arbitrary
+number of rules made of an arbitrary number of components
+can, in principle, evolve.
+
+5.
+
+CONCLUSIONS AND FUTURE WORK
+
+In this article, we presented GESwarm, a new method for
+the automatic synthesis of collective behaviors for swarm
+robotics. GESwarm uses evolutionary computation to combine a set of low-level behaviors into more complex strategies
+that can be reverse engineered. We presented an experimental validation, where GESwarm was used to successfully
+evolve ten foraging collective behaviors, whereby 7 out of
+10 significantly outperformed a hand-coded foraging collective behavior, 2 performed similarly, and only 1 performed
+worse (while still solving the required task). This shows that
+GESwarm is capable of generating functional collective behaviors with a high degree of success. The best evolved collective behavior was further analyzed, showing that it could
+generalize well to different conditions such as increased number of robots and increased robot density.
+Further research directions involve extensions of GESwarm
+to evolve: rules that represent virtual physics-based interactions; rules that fully exploit internal states of the robots
+by allowing for collective behaviors that adapt to changing environmental conditions or that require memory; and
+rules that include additional real-valued parameters used to
+further characterize preconditions and low-level behaviors.
+Such extensions would significantly broaden the range of collective behaviors that can be automatically synthesized.
+
+6.
+
+ACKNOWLEDGMENTS
+
+This work was supported by the ESF “H2SWARM” program and by the Fund for Scientific Research (FWO) - Flanders.
+
+7.
+
+REFERENCES
+
+[1] C. Ampatzis, E. Tuci, V. Trianni, and M. Dorigo.
+Evolution of signaling in a multi-robot system:
+categorization and communication. 16(1):5–26, 2008.
+[2] G. Baldassarre, V. Trianni, M. Bonani, F. Mondada,
+M. Dorigo, and S. Nolfi. Self-organized coordinated
+motion in groups of physically connected robots.
+37(1):224–239, 2007.
+[3] M. Bonani, V. Longchamp, S. Magnenat, P. R´etornaz,
+D. Burnier, G. Roulet, F. Vaussard, H. Bleuler, and
+F. Mondada. The MarXbot, a miniature mobile robot
+opening new perspectives for the collective-robotic
+
+[4]
+
+[5]
+
+[6]
+
+[7]
+
+[8]
+
+[9]
+
+[10]
+
+[11]
+
+[12]
+
+[13]
+
+[14]
+
+[15]
+
+[16]
+
+[17]
+
+[18]
+
+[19]
+
+research. In 2010 IEEE/RSJ International Conference
+on Intelligent Robots and Systems (IROS 2010), pages
+4187–4193, Piscataway, NJ, 2010. IEEE Press.
+M. Brambilla, E. Ferrante, M. Birattari, and
+M. Dorigo. Swarm robotics: a review from the swarm
+engineering perspective. Swarm Intelligence, pages
+1–41, 2013.
+I. Feh´erv´
+ari and W. Elmenreich. Evolving neural
+network controllers for a team of self-organizing
+robots. Journal of Robotics, 2010:1–10, 2010.
+E. Ferrante, A. E. Turgut, C. Huepe, A. Stranieri,
+C. Pinciroli, and M. Dorigo. Self-organized flocking
+with a mobile robot swarm: a novel motion control
+method. Adaptive Behavior, 20(6):460–477, 2012.
+G. Francesca, M. Brambilla, V. Trianni, M. Dorigo,
+and M. Birattari. Analysing an evolved robotic
+behaviour using a biological model of collegial decision
+making. In C. B. Tom Ziemke and J. Hallam, editors,
+From Animals to Animats 12, volume 7426, pages
+381–390, 2012.
+D. E. Goldberg. Genetic algorithms in search,
+optimization, and machine learning. Addison-Wesley,
+Reading, MA, 1989.
+R. Groß and M. Dorigo. Evolution of solitary and
+group transport behaviors for autonomous robots
+capable of self-assembling. 16(5):285–305, 2008.
+M. Harrison. Introduction to formal language theory.
+Addison-Wesley series in computer science.
+Addison-Wesley Pub. Co., 1978.
+S. D. Hettiarachchi. Distributed evolution for swarm
+robotics. PhD thesis, University of Wyoming, Laramie,
+WY, 2007.
+L. P. Kaelbling, M. L. Littman, and A. W. Moore.
+Reinforcement learning: a survey. Journal of Artificial
+Intelligence Research, 4:237–285, 1996.
+L. K¨
+onig, S. Mostaghim, and H. Schmeck.
+Decentralized evolution of robotic behavior using finite
+state machines. International Journal of Intelligent
+Computing and Cybernetics, 2(4):695–723, 2009.
+J. Koza. Genetic Programming: vol. 1 , On the
+programming of computers by means of natural
+selection. Complex Adaptive Systems Series. Mit
+Press, 1992.
+T. H. Labella, M. Dorigo, and J.-L. Deneubourg.
+Division of labour in a group of robots inspired by
+ants’ foraging behaviour. 1(1):4–25, 2006.
+M. J. Matari´c. Reinforcement learning in the
+multi-robot domain. Autonomous Robots, 4(1):73–83,
+1997.
+M. J. Matari´c. Using communication to reduce locality
+in distributed multi-agent learning. Journal of
+Experimental and Theoretical Artificial Intelligence,
+10(3):357–369, 1998.
+G. Morlino, A. Sterbini, and S. Nolfi. Development of
+abstract categories in embodied agents. In G. Kampis,
+˜ ary, editors, Advances in
+I. Karsai, and E. SzathmA
+Artificial Life. Darwin Meets von Neumann, volume
+5777 of Lecture Notes in Computer Science, pages
+213–221. Springer Berlin Heidelberg, 2011.
+S. Nolfi and D. Floreano. Evolutionary robotics.
+
+[20]
+
+[21]
+
+[22]
+
+[23]
+
+[24]
+
+[25]
+
+[26]
+
+[27]
+
+[28]
+
+[29]
+
+[30]
+
+[31]
+
+[32]
+
+Intelligent Robots and Autonomous Agents. MIT
+Press, Cambridge, MA, 2000.
+M. O’Neill, E. Hemberg, C. Gilligan, E. Bartley,
+J. McDermott, and A. Brabazon. GEVA: grammatical
+evolution in Java. ACM SIGEVOlution, 3(2):17–22,
+2008.
+M. O’Neill and C. Ryan. Grammatical evolution:
+evolutionary automatic programming in an arbitrary
+language. Genetic Programming Series. Springer
+London, Limited, 2003.
+L. Panait and S. Luke. Cooperative multi-agent
+learning: the state of the art. Autonomous Agents and
+Multi-Agent Systems, 11(3):387–434, 2005.
+C. Pinciroli, V. Trianni, R. O’Grady, G. Pini,
+A. Brutschy, M. Brambilla, N. Mathews, E. Ferrante,
+G. Di Caro, F. Ducatelle, M. Birattari, L. M.
+Gambardella, and M. Dorigo. ARGoS: a modular,
+parallel, multi-engine simulator for multi-robot
+systems. Swarm Intelligence, 6(4):271–295, 2012.
+G. Pini and E. Tuci. On the design of
+neuro-controllers for individual and social learning
+behaviour in autonomous robots: an evolutionary
+approach. Connection Science, 20(2–3):211–230, 2008.
+E. Sahin. Swarm robotics: From sources of inspiration
+to domains of application. In E. Sahin and W. Spears,
+editors, Swarm Robotics Workshop: State-of-the-art
+Survey, number 3342 in Lecture Notes in Computer
+Science, pages 10–20, Berlin, 2005. Springer Verlag.
+F. Silva, P. Urbano, and A. Christensen. odNEAT: an
+algorithm for distributed online, onboard evolution of
+robot behaviours. In A. Christoph, B. David M.,
+O. Charles, and P. Robert T., editors, Proc
+International Conference on the Simulation and
+Synthesis of Living Systems (ALIFE XIII), pages
+251–258, 2012.
+O. Soysal, E. Bah¸ceci, and E. S
+¸ ahin. Aggregation in
+swarm robotic systems: evolution and probabilistic
+control. Turkish Journal of Electrical Engineering and
+Computer Sciences, 15(2):199–225, 2007.
+V. Sperati, V. Trianni, and S. Nolfi. Self-organised
+path formation in a swarm of robots. Swarm
+Intelligence, 5(2):97–119, 2011.
+V. Trianni and S. Nolfi. Self-organising sync in a
+robotic swarm. a dynamical system view. IEEE
+Transactions on Evolutionary Computation, Special
+Issue on Swarm Intelligennce, 13(4):722–741, 2009.
+V. Trianni and S. Nolfi. Engineering the evolution of
+self-organizing behaviors in swarm robotics: A case
+study. Artificial Life, 17(3):183–202, 2011.
+M. Waibel, L. Keller, and D. Floreano. Genetic team
+composition and level of selection in the evolution of
+cooperation. IEEE Transactions on Evolutionary
+Computation, 13(3):648–660, 2009.
+D. H. Wolpert and K. Tumer. An introduction to
+collective intelligence. Technical Report
+NASA-ARC-IC-99-63, NASA Ames Research Center,
+1999.
+
+

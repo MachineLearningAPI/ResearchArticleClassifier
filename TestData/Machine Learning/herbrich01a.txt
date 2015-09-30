@@ -1,0 +1,2847 @@
+Journal of Machine Learning Research 1 (2001) 245–279
+
+Submitted 02/01; Published 8/01
+
+Bayes Point Machines
+Ralf Herbrich
+
+RHERB @ MICROSOFT. COM
+
+Microsoft Research, St George House, 1 Guildhall Street, CB2 3NH Cambridge, United Kingdom
+
+Thore Graepel
+
+GURU @ CS . TU - BERLIN . DE
+
+Technical University of Berlin, Franklinstr. 28/29, 10587 Berlin, Germany
+
+Colin Campbell
+
+C . CAMPBELL @ BRISTOL . AC . UK
+Department of Engineering Mathematics, Bristol University, BS8 1TR Bristol, United Kingdom
+
+Editor: Christopher K. I. Williams
+
+Abstract
+Kernel-classifiers comprise a powerful class of non-linear decision functions for binary classification. The
+support vector machine is an example of a learning algorithm for kernel classifiers that singles out the consistent classifier with the largest margin, i.e. minimal real-valued output on the training sample, within the set
+of consistent hypotheses, the so-called version space. We suggest the Bayes point machine as a well-founded
+improvement which approximates the Bayes-optimal decision by the centre of mass of version space. We
+present two algorithms to stochastically approximate the centre of mass of version space: a billiard sampling
+algorithm and a sampling algorithm based on the well known perceptron algorithm. It is shown how both
+algorithms can be extended to allow for soft-boundaries in order to admit training errors. Experimentally, we
+find that — for the zero training error case — Bayes point machines consistently outperform support vector
+machines on both surrogate data and real-world benchmark data sets. In the soft-boundary/soft-margin case,
+the improvement over support vector machines is shown to be reduced. Finally, we demonstrate that the realvalued output of single Bayes points on novel test points is a valid confidence measure and leads to a steady
+decrease in generalisation error when used as a rejection criterion.
+
+1. Introduction
+Kernel machines have recently gained a lot of attention due to the popularisation of the support vector machine (Vapnik, 1995) with a focus on classification and the revival of Gaussian processes for regression
+(Williams, 1999). Subsequently, support vector machines have been modified to handle regression (Smola,
+1998) and Gaussian processes have been adapted to the problem of classification (Williams and Barber, 1998;
+Opper and Winther, 2000). Both schemes essentially work in the same function space that is characterised
+by kernels and covariance functions, respectively. Whilst the formal similarity of the two methods is striking,
+the underlying paradigms of inference are very different. The support vector machine was inspired by results
+from statistical/PAC learning theory while Gaussian processes are usually considered in a Bayesian framework. This ideological clash can be viewed as a continuation in machine learning of the by now classical
+disagreement between Bayesian and frequentistic statistics (Aitchison, 1964). With regard to algorithmics
+the two schools of thought appear to favour two different methods of learning and predicting: the support
+vector community — as a consequence of the formulation of the support vector machine as a quadratic programming problem — focuses on learning as optimisation while the Bayesian community favours sampling
+schemes based on the Bayesian posterior. Of course there exists a strong relationship between the two ideas,
+in particular with the Bayesian maximum a posteriori (MAP) estimator being the solution of an optimisation
+problem.
+In practice, optimisation based algorithms have the advantage of a unique, deterministic solution and the
+availability of the cost function as an indicator of the quality of the solution. In contrast, Bayesian algorithms
+based on sampling and voting are more flexible and enjoy the so-called “anytime” property, providing a
+
+c 2001 R. Herbrich, T. Graepel, C. Campbell .
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+relatively good solution at any point in time. Often, however, they suffer from the computational costs of
+sampling the Bayesian posterior.
+In this paper we present the Bayes point machine as an approximation to Bayesian inference for linear
+classifiers in kernel space. In contrast to the Gaussian process viewpoint we do not define a Gaussian prior
+on the length w of the weight vector. Instead, we only consider weight vectors of length w = 1 because
+it is only the spatial direction of the weight vector that matters for classification. It is then natural to define a
+uniform prior on the resulting ball-shaped hypothesis space. Hence, we determine the centre of mass of the
+resulting posterior that is uniform in version space, i.e. in the zero training error region. It should be kept
+in mind that the centre of mass is merely an approximation to the real Bayes point from which the name of
+the algorithm was derived. In order to estimate the centre of mass we suggest both a dynamic system called
+a kernel billiard and an approximative method that uses the perceptron algorithm trained on permutations
+of the training sample. The latter method proves to be efficient enough to make the Bayes point machine
+applicable to large data sets.
+An additional insight into the usefulness of the centre of mass comes from the statistical mechanics
+approach to neural computing where the generalisation error for Bayesian learning algorithms has been calculated for the case of randomly constructed and unbiased patterns x (Opper and Haussler, 1991). Thus if ζ
+is the number of training examples per weight and ζ is large, the generalisation error of the centre of mass
+scales as 0.44/ζ whereas scaling with ζ is poorer for the solutions found by the linear support vector machine
+(scales as 0.50/ζ; see Opper and Kinzel, 1995), Adaline (scales as 0.24/ ζ; see Opper et al., 1990) and
+other approaches.
+Of course many of the viewpoints and algorithms presented in this paper are based on extensive previous
+work carried out by numerous authors in the past. In particular it seems worthwhile to mention that linear
+classifiers have been studied intensively in two rather distinct communities: The machine learning community
+and the statistical physics community. While it is beyond the scope of this paper to review the entire history
+of the field we would like to emphasise that our geometrical viewpoint as expressed later in the paper has
+been inspired by the very original paper “Playing billiard in version space” by P. Ruján (Ruján, 1997). Also,
+in that paper the term “Bayes point” was coined and the idea of using a billiard-like dynamical system for
+uniform sampling was introduced. Both we (Herbrich et al., 1999a,b, 2000a) and Ruján and Marchand (2000)
+independently generalised the algorithm to be applicable in kernel space. Finally, following a theoretical
+suggestion of Watkin (1993) we were able to scale up the Bayes point algorithm to large data sets by using
+different perceptron solutions from permutations of the training sample.
+The paper is structured as follows: In the following section we review the basic ideas of Bayesian inference with a particular focus on classification learning. Along with a discussion about the optimality of the
+Bayes classification strategy we show that for the special case of linear classifiers in feature space the centre
+of mass of all consistent classifiers is arbitrarily close to the Bayes point (with increasing training sample size)
+and can be efficiently estimated in the linear span of the training data. Moreover, we give a geometrical picture of support vector learning in feature space which reveals that the support vector machine can be viewed
+as an approximation to the Bayes point machine. In Section 3 we present two algorithms for the estimation
+of the centre of mass of version space — one exact method and an approximate method tailored for large
+training samples. An extensive list of experimental results is presented in Section 4, both on small machine
+learning benchmark datasets as well as on large scale datasets from the field of handwritten digit recognition.
+In Section 5 we summarise the results and discuss some theoretical extensions of the method presented. In
+order to unburden the main text, the lengthy proofs as well as the pseudocode have been relegated to the
+appendix.
+We denote n–tuples by italic bold letters (e.g. x = (x1 , . . . , xn )), vectors by roman bold letters (e.g. x),
+random variables by sans serif font (e.g. X) and vector spaces by calligraphic capitalised letters (e.g. X ).
+The symbols P, E and I denote a probability measure, the expectation of a random variable and the indicator
+function, respectively.
+
+246
+
+BAYES P OINT M ACHINES
+
+2. A Bayesian Consideration of Learning
+In this section we would like to revisit the Bayesian approach to learning (see Buntine, 1992; MacKay,
+1991; Neal, 1996; Bishop, 1995, for a more detailed treatment). Suppose we are given a training sample
+z = (x, y) = ((x1 , y1 ) , . . . , (xm , ym )) ∈ (X × Y )m of size m drawn iid from an unknown distribution PZ = PXY .
+Furthermore, assume we are given a fixed set H ⊆ Y X of functions h : X → Y referred to as hypothesis
+space. The task of learning is then to find the function h∗ which performs best on new yet unseen patterns
+z = (x, y) drawn according to PXY .
+m
+X is a mapDefinition 1 (Learning Algorithm) A (deterministic) learning algorithm A : ∞
+m=1 Z → Y
+ping from training samples z of arbitrary size m ∈ N to functions from X to Y . The image of A, i.e.
+{A (z) | z ∈ Z m } ⊆ Y X , is called the effective hypothesis space HA,m of the learning algorithm A for the
+training sample size m ∈ N. If there exists a hypothesis space H ⊆ Y X such that for every training sample
+size m ∈ N we have HA,m ⊆ H we shall omit the indices on H .
+
+In order to assess to quality of a function h ∈ H we assume the existence of a loss function l : Y × Y → R+ .
+The loss l (y, y ) ∈ R+ is understood to measure the incurred cost when predicting y while the true output was
+y . Hence we always assume that for all y ∈ Y , l (y, y) = 0. A typical loss function for classification is the so
+called zero-one loss l0−1 defined as follows.
+Definition 2 (Zero-One Loss) Given a fixed output space Y , the zero-one loss is defined by
+l0−1 y, y := Iy=y .
+Based on the concept of a loss l, let us introduce several quality measures for hypotheses h ∈ H .
+Definition 3 (Generalisation and Training Error) Given a probability measure PXY and a loss l : Y ×
+
+Y → R+ the generalisation error R [h] of a function h : X → Y is defined by
+R [h] := EXY [l (h (X) , Y)] .
+
+Given a training sample z = (x, y) ∈ (X × Y )m of size m and a loss l : Y × Y → R+ the training error
+Remp [h, z] of a function h : X → Y is given by
+Remp [h, z] :=
+
+1 m
+∑ l (h (xi ) , yi ) .
+m i=1
+
+Clearly, only the generalisation error R [h] is appropriate to capture the performance of a fixed classifier h ∈ H
+on new patterns z = (x, y). Nonetheless, we shall see that the training error plays a crucial role as it provides
+an estimate of the generalisation error based on the training sample.
+Definition 4 (Generalisation Error of Algorithms) Suppose we are given a fixed learning algorithm A :
+∞
+m
+X
+m=1 Z → Y . Then for any fixed training sample size m ∈ N the generalisation error Rm [A] of A is
+defined by
+Rm [A] := EZm [R [A (Z)]] ,
+that is, the expected generalisation error of the hypotheses found by the algorithm.
+Note that for any loss function l : Y × Y → R+ a small generalisation error Rm [A] of the algorithm A
+guarantees a small generalisation error for most randomly drawn training samples z because by Markov’s
+inequality we have for ε > 0,
+PZm (R [A (Z)] > ε · EZm [R [A (Z)]]) ≤
+
+1
+.
+ε
+
+Hence we can view Rm [A] also as a performance measure of A’s hypotheses for randomly drawn training
+samples z. Finally, let us consider a probability measure PH over the space of all possible mappings from X
+to Y . Then, the average generalisation error of a learning algorithm A is defined as follows.
+247
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+Definition 5 (Average Generalisation Error of Algorithms) Suppose we are given a fixed learning algom
+X
+rithm A : ∞
+m=1 Z → Y . Then for each fixed training sample size m ∈ N the average generalisation error
+Rm [A] of A is defined by
+Rm [A] := EH EZm |H=h EX EY|X=x,H=h [l ((A (Z)) (x) , Y)]
+
+,
+
+(1)
+
+that is, the average performance of the algorithm’s A solution learned over the random draw of training
+samples and target hypotheses.
+The average generalisation error is the standard measure of performance of an algorithm A if we have little
+knowledge about the potential function h∗ that labels all our data expressed via PH . Then, the measure (1)
+averages out our ignorance about the unknown h∗ thus considering performance of A on average.
+There is a noticeable relation between Rm [A] and Rm [A] if we assume that given a measure PH , the
+conditional distribution of outputs y given x is governed by1
+PY|X=x (y) = PH (H (x) = y) .
+
+(2)
+
+Under this condition we have that
+Rm [A] = Rm [A] .
+This result, however, is not too surprising taking into account that under the assumption (2) the measure PH
+fully encodes the unknown relationship between inputs x and outputs y.
+2.1 The Bayesian Solution
+In the Bayesian framework we are not simply interested in h∗ := argminh∈H R [h] itself but in our knowledge
+or belief in h∗ . To this end, Bayesians use the concept of prior and posterior belief, i.e. the knowledge of h∗
+before having seen any data and after having seen the data — which in the current case is our training sample
+z. It is well known that under consistency rules known as Cox’s axioms (Cox, 1946) beliefs can be mapped
+onto probability measures PH . Under these rather plausible conditions the only consistent way to transfer
+prior belief PH into posterior belief PH|Zm =z is therefore given by Bayes’ theorem:
+PH|Zm =z (h)
+
+=
+
+PZm |H=h (z)
+EH PZm |H=h (z)
+
+· PH (h) =
+
+PYm |Xm =x,H=h (y)
+EH PYm |Xm =x,H=h (y)
+
+· PH (h) .
+
+(3)
+
+The second expression is obtained by noticing that
+PZm |H=h (z) = PYm |Xm =x,H=h (y) PXm |H=h (x) = PYm |Xm =x,H=h (y) PXm (x)
+because hypotheses do not have an influence on the generation of patterns. Based on a given loss function
+l we can further decompose the first term of the numerator of (3) — known as the likelihood of h. Let us
+assume that the probability of a class y given an instance x and an hypothesis h is inverse proportional to the
+exponential of the loss incurred by h on x. Thus we obtain
+PY|X=x,H=h (y)
+
+=
+
+1
+exp (−β · l (h (x) , y))
+=
+exp (−β · l (h (x) , y))
+∑ exp (−β · l (h (x) , y )) C (x)
+
+y ∈Y
+
+=
+
+if l (h (x) , y) := l0−1 (h (x) , y) = 0
+
+1
+1+exp(−β)
+exp(−β)
+1+exp(−β)
+
+if l (h (x) , y) := l0−1 (h (x) , y) = 1
+
+,
+
+(4)
+
+where C (x) is a normalisation constant which in the case of the zero-one loss l0−1 is independent2 of x and
+β ≥ 0 controls the assumed level of noise. Note that the loss used in the exponentiated loss likelihood function
+1. In fact, it already suffices to assume that EY|X=x [l (y, Y)] = EH [l (y, H (x))], i.e. the prior correctly models the conditional distribution
+of the classes as far as the fixed loss is concerned.
+2. Note that for loss functions with real-valued arguments this need not be the case which makes a normalisation independent of x
+quite intricate (see Sollich, 2000, for a detailed treatment).
+
+248
+
+BAYES P OINT M ACHINES
+
+is not to be confused with the decision-theoretic loss used in the Bayesian framework, which is introduced
+only after a posterior has been obtained in order to reach a risk optimal decision.
+Definition 6 (PAC Likelihood) Suppose we are given an arbitrary loss function l : Y × Y → R+ . Then, we
+call the function
+(5)
+PY|X=x,H=h (y) := Iy=h(x) ,
+of h the PAC likelihood for h. Note that (5) is the limiting case of (4) for β → ∞.
+Assuming the PAC likelihood it immediately follows that for any prior belief PH the posterior belief PH|Zm =z
+simplifies to
+PH (h)
+if h ∈ V (z)
+PH (V (z))
+PH|Zm =z (h) =
+,
+(6)
+0
+if h ∈
+/ V (z)
+where the version space V (z) is defined as follows (see Mitchell, 1977, 1982).
+Definition 7 (Version Space) Given an hypothesis space H ⊆ Y X and a training sample z = (x, y) ∈ (X × Y )m
+of size m ∈ N the version space V (z) ⊆ H is defined by
+V (z) := h ∈ H | ∀i ∈ {1, . . . , m} : h (xi ) = yi .
+Since all information contained in the training sample z is used to update the prior PH by equation (3) all that
+will be used to classify a novel test point x is the posterior belief PH|Zm =z .
+2.2 The Bayes Classification Strategy
+In order to classify a new test point x, for each class y the Bayes classification strategy3 determines the
+loss incurred by each hypothesis h ∈ H applied to x and weights it according to its posterior probability
+PH|Zm =z (h). The final decision is made for the class y ∈ Y that achieves the minimum expected loss, i.e.
+Bayesz (x) := argmin EH|Zm =z [l (H (x) , y)] .
+
+(7)
+
+y∈Y
+
+This strategy has the following appealing property.
+Theorem 8 (Optimality of the Bayes Classification Strategy) Suppose we are given a fixed hypothesis space
+
+H ⊆ Y X . Then, for any training sample size m ∈ N, for any symmetric loss l : Y × Y → R+ , for any two
+
+measures PH and PX , among all learning algorithms the Bayes classification strategy Bayesz given by (7)
+minimises the average generalisation error Rm [Bayesz ] under the assumption that for each h with PH (h) > 0
+∀y ∈ Y : ∀x ∈ X :
+
+EY|X=x,H=h [l (y, Y)] = l (y, h (x)) .
+
+(8)
+
+Proof Let us consider a fixed learning algorithm A. Then it holds true that
+Rm [A]
+
+= EH EZm |H=h EX EY|X=x,H=h [l ((A (Z)) (x) , Y)]
+= EX EH EZm |H=h EY|X=x,H=h [l ((A (Z)) (x) , Y)]
+= EX EZm EH|Zm =z EY|X=x,H=h [l ((A (Z)) (x) , Y)]
+= EX EZm EH|Zm =z [l ((A (Z)) (X) , H (X))]
+
+,
+
+(9)
+
+where we exchanged the order of expectations over X in the second line, applied the theorem of repeated
+integrals (see, e.g. Feller, 1966) in the third line and finally used (8) in the last line. Using the symmetry
+of the loss function, the inner-most expression of (9) is minimised by the Bayes classification strategy (7)
+3. The reason we do not call this mapping from X to Y a classifier is that the resulting mapping is (in general) not within the hypothesis
+space considered beforehand.
+
+249
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+for any possible training sample z and any possible test point x. Hence, (7) minimises the whole expression
+which proves the theorem.
+In order to enhance the understanding of this result let us consider the simple case of l = l0−1 and Y =
+{−1, +1}. Then, given a particular classifier h ∈ H having non-zero prior probability PH (h) > 0, by assumption (8) we require that the conditional distribution of classes y given x is delta peaked at h (x) because
+EY|X=x,H=h (l0−1 (y, Y))
+
+= l0−1 (y, h (x)) ,
+
+PY|X=x,H=h (−y) = Iy=h(x) ,
+PY|X=x,H=h (y) = Ih(x)=y .
+Although for a fixed h ∈ H drawn according to PH we do not know that Bayesz achieves the smallest generalisation error R [Bayesz ] we can guarantee that on average over the random draw of h’s the Bayes classification strategy is superior. In fact, the optimal classifier for a fixed h ∈ H is simply h itself4 and in general
+Bayesz (x) = h (x) for at least a few x ∈ X .
+2.3 The Bayes Point Algorithm
+Although the Bayes classification strategy is on average the optimal strategy to perform when given limited
+amount of training data z, it is computationally very demanding as it requires the evaluation of PH|Zm =z (l (H (x) , y))
+for each possible y at each new test point x (Graepel et al., 2000). The problem arises because the Bayes classification strategy does not correspond to any one single classifier h ∈ H . One way to tackle this problem is to
+require the classifier A (z) learned from any training sample z to lie within a fixed hypothesis space H ⊆ Y X
+containing functions h ∈ H whose evaluation at a particular test point x can be carried out efficiently. Thus
+if it is additionally required to limit the possible solution of a learning algorithm to a given hypothesis space
+H ⊆ Y X , we can in general only hope to approximate Bayesz .
+Definition 9 (Bayes Point Algorithm) Suppose we are given a fixed hypothesis space H ⊆ X Y and a fixed
+loss l : Y × Y → R+ . Then, for any two measures PX and PH , the Bayes point algorithm Abp is given by
+Abp (z) := argmin EX EH|Zm =z [l (h (X) , H (X))] ,
+h∈H
+
+that is, for each training sample z ∈ Z m the Bayes point algorithm chooses the classifier hbp := Abp (z) ∈ H
+that mimics best the Bayes classification strategy (7) on average over randomly drawn test points. The
+classifier Abp (z) is called the Bayes point.
+Assuming the correctness of the model given by (8) we furthermore remark that the Bayes point algorithm Abp
+is the best approximation to the Bayes classification strategy (7) in terms of the average generalisation error,
+i.e. measuring the distance of the learning algorithm A for H using the distance A − Bayes = Rm [A] −
+Rm [Bayes]. In this sense, for a fixed training sample z we can view the Bayes point hbp as a projection of
+Bayesz into the hypothesis space H ⊆ Y X .
+The difficulty with the Bayes point algorithm, however, is the need to know the input distribution PX for
+the determination of the hypothesis learned from z. This somehow limits the applicability of the algorithm as
+opposed to the Bayes classification strategy which requires only broad prior knowledge about the underlying
+relationship expressed via some prior belief PH .
+4. It is worthwhile mentioning that the only information to be used in any classification strategy is the training sample z and the prior
+PH . Hence it is impossible to detect which classifier h ∈ H labels a fixed m–tuple x only on the basis of the m labels y observed
+on the training sample. Thus, although we might be lucky in guessing h for a fixed h ∈ H and z ∈ Z m we cannot do better than the
+Bayes classification strategy Bayesz when considering the average performance — the average being taken over the random choice
+of the classifiers and the training samples z.
+
+250
+
+BAYES P OINT M ACHINES
+
+2.3.1 T HE BAYES P OINT FOR L INEAR C LASSIFIERS
+We now turn our attention to the special case of linear classifiers where we assume that N measurements of
+the objects x are taken by features φi : X → R thus forming a (vectorial) feature map φ : X → K ⊆ N2 =
+(φ1 (x) , . . . , φN (x)) . Note that by this formulation the special case of vectorial objects x is automatically
+taken care of by the identity map φ (x) = x. For notational convenience we use the shorthand notation5 x for
+φ (x) such that x, w := ∑Ni=1 φi (x) wi . Hence, for a fixed mapping φ the hypothesis space is given by
+
+W := {w ∈ K | w = 1 } .
+
+H := x → sign ( x, w ) w ∈ W ,
+
+(10)
+
+As each hypothesis hw is uniquely defined by its weight vector w we shall in the following consider prior
+beliefs PW over W , i.e. possible weight vectors (of unit length), in place of priors PH . By construction,
+the output space is Y = {−1, +1} and we furthermore consider the special case of l = l0−1 as defined by
+Definition 2. If we assume that the input distribution is spherically Gaussian in the feature space K of
+dimensionality d = dim (K ), i.e.
+1
+(11)
+f X (x) = d exp − x 2 ,
+π2
+then we find that the centre of mass
+EW|Zm =z [W]
+wcm =
+(12)
+EW|Zm =z [W]
+is a very good approximation to the Bayes point wbp and converges towards wbp if the posterior belief
+PW|Zm =z becomes sharply peaked (for a similar result see Watkin, 1993).
+Theorem 10 (Optimality of the Centre of Mass) Suppose we are given a fixed mapping φ : X → K ⊆ N2 .
+Then, for all m ∈ N, if PX possesses the density (11) and the prior belief is correct, i.e. (8) is valid, the
+average generalisation error of the centre of mass as given by (12) always fulfils
+Rm [Acm ] − Rm Abp
+where
+κ (ε) :=
+
+arccos(ε)
+π
+
+≤ EZm [κ (ε (Z))] ,
+
+− 1−ε
+2
+
+0.11
+
+if ε < 0.23
+,
+otherwise
+
+and
+ε (z) :=
+
+min
+
+w:PW|Zm =z (w)>0
+
+| wcm , w | .
+
+The lengthy proof of this theorem is given in Appendix A.1. The interesting fact to note about this result is
+that limε→1 κ (ε) = 0 and thus whenever the prior belief PW is not vanishing for some w,
+lim EZm [κ (ε (Z))] = 0 ,
+
+m→∞
+
+because for increasing training sample size the posterior is sharply peaked at the weight vector labelling the
+data6 . This shows that for increasing training sample size the centre of mass (under the posterior PW|Zm =z )
+is a good approximation to the optimal projection of the Bayes classification strategy — the Bayes point.
+Henceforth, any algorithm which aims at returning the centre of mass under the posterior PW|Zm =z is called
+a Bayes point machine. Note that in the case of the PAC likelihood as defined in Definition 6 the centre of
+mass under the posterior PW|Zm =z coincides with the centre of mass of version space (see Definition 7).
+5. This should not be confused with x which denotes the sample (x1 , . . . , xm ) of training objects.
+6. This result is a slight generalisation of the result in Watkin (1993) which only proved this to be true for the uniform prior PW .
+
+251
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+Û
+
+´ µ
+
+Ü ÜÛ
+
+Ü
+
+¼
+
+Û ÜÛ
+
+¼
+
+Figure 1: Shown is the margin a = γx (w) = x, w under the assumption that w = x = 1. At the same
+time, a (length of the dotted line) equals the distance of x from the hyperplane {x | x, w = 0 }
+(dashed line) as well as the distance of the weight vector w from the hyperplane {w | x, w = 0 }
+(dashed line). Note, however, that the Euclidean distance of w from the separating boundary
+w ∈ W | x, w = 0 equals b (a) where b is a strictly monotonic function of its argument.
+
+2.4 A (Pseudo) Bayesian Derivation of the Support Vector Machine
+In this section we would like to show that the well known support vector machine (Boser et al., 1992; Cortes,
+1995; Vapnik, 1995) can also be viewed as an approximation to the centre of mass of version space V (z) in
+the noise free scenario, i.e. considering the PAC likelihood given in Definition 6, and additionally assuming
+that
+∀xi ∈ x : xi = φ (xi ) = const.
+In order to see this let us recall that the support vector machine aims at maximising the margin γz (w) of the
+weight vector w on the training sample z given by
+γz (w) :=
+
+min
+
+i∈{1,...,m}
+
+yi xi , w
+1
+=
+w
+w
+
+min
+
+i∈{1,...,m}
+
+yi xi , w ,
+
+(13)
+
+γxi (w)
+
+which for all w of unit length is merely the minimal real-valued output (flipped to the correct sign) over the
+whole training sample. In order to solve this problem algorithmically one takes advantage of the fact that
+fixing the real-valued output to one (rather than the norm w of the weight vector w) renders the problem
+of finding the margin maximiser wSVM as a problem with a quadratic objective function ( w 2 = w w) under
+linear constraints (yi xi , w ≥ 1), i.e.
+wSVM
+
+:= argmax
+w∈W
+
+∝
+
+min
+
+i∈{1,...,m}
+
+argminw∈{v |min
+
+yi xi , w
+
+i∈{1,...,m} yi
+
+xi ,v =1 }
+
+(14)
+w
+
+2
+
+.
+
+(15)
+
+Note that the set of weight vectors in (15) are called the weight vectors of the canonical hyperplanes (see
+Vapnik, 1998, p. 412) and that this set is highly dependent on the given training sample. Nonetheless, the
+solution to (15) is (up to scaling) equivalent to the solution of (14) — a formulation much more amenable for
+theoretical studies.
+Interestingly, however, the quantity γxi (w) as implicitly defined in (13) is not only the distance of the
+point yi xi from the hyperplane having the normal w but also xi times the Euclidean distance of the point
+w from the hyperplane having the normal yi xi (see Figure 1). Thus γz (w) can be viewed as the radius of
+252
+
+BAYES P OINT M ACHINES
+
+the ball v ∈ W | w − v ≤ b (γz (w)) that only contains weight vectors in version space V (z). Here,
+b : R+ → R+ is a strictly monotonic function of its argument and its effect is graphically depicted in Figure
+1. As a consequence thereof, maximising the margin γz (w) over the choice of w returns the classifier wSVM
+that is the centre of the largest ball still inscribable in version space. Note that the whole reasoning relied
+on the assumption that all training points xi have a constant norm in feature space K . If this assumption is
+violated, each distance of a classifier w to the hyperplane having the normal yi xi is measured on a different
+scale and thus the points with the largest norm xi in feature space K have the highest influence on the
+resulting solution. To circumvent this problem is has been suggested elsewhere that input vectors should be
+normalised in feature space before applying any kernel method — in particular the support vector machine
+algorithm (see Herbrich and Graepel, 2001; Schölkopf et al., 1999; Joachims, 1998; Haussler, 1999). Furthermore, all indices ISV ⊆ {1, . . . , m} at which the minimum yi xi , wSVM in (14) is attained are the ones
+for which yi xi , w = 1 in the formulation (15). As the latter are called support vectors we see that the support vectors are the training points at which the largest inscribable ball touches the corresponding hyperplane
+w ∈ W | (yi xi , w = 0) .
+2.5 Applying the Kernel Trick
+When solving (15) over the possible choices of w ∈ W it is well known that the solution wSVM admits the
+following representation
+m
+
+wSVM = ∑ αi xi ,
+i=1
+
+that is the solution to (15) must live in the linear span of the training points. This follows naturally from the
+following theorem (see also Schölkopf et al., 2001).
+Theorem 11 (Representer Theorem) Suppose we are given a fixed mapping φ : X → K ⊆ N2 , a training
+sample z = (x, y) ∈ Z m , a cost function c : X m × Y m × Rm → R ∪ {∞} strictly monotonically decreasing in
+the third argument and the class of linear functions in K as given by (10). Then any wz ∈ W defined by
+wz := argmin c (x, y, ( x1 , w , . . . , xm , w ))
+
+(16)
+
+w∈W
+
+admits a representation of the form
+∃α ∈ Rm :
+
+m
+
+wz = ∑ αi xi .
+
+(17)
+
+i=1
+
+The proof is given in Appendix A.2. In order to see that this theorem applies to support vector machines note
+that (14) is equivalent to the minimiser of (16) when using
+c (x, y, ( x1 , w , . . . , xm , w )) = min −yi xi , w ,
+yi ∈y
+
+which is strictly monotonically decreasing in its third argument. A slightly more difficult argument is necessary to see that the centre of mass (12) can also be written as a minimiser of (16) using a specific cost function
+c. At first we recall that the centre of mass has the property of minimising EW|Zm =z w − W 2 over the
+choice of w ∈ W (see also (30)).
+Theorem 12 (Sufficiency of the linear span) Suppose we are given a fixed mapping φ : X → K ⊆ N2 . Let
+us assume that PW is uniform and PY|X=x,W=w (y) = f (sign (y x, w )), i.e. the likelihood depends on the
+m
+sign of the real-valued output y x, w of w. Let Lx := {∑m
+i=1 αi xi | α ∈ R } be the linear span of mapped
+data points {x1 , . . . , xm } and Wx := W ∩ Lx . Then for any training sample z ∈ Z m and any w ∈ W
+W
+
+w−v
+
+2
+
+dPW|Zm =z (v) = C ·
+253
+
+Wx
+
+w−v
+
+2
+
+dPW|Zm =z (v) ,
+
+(18)
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+that is, up to a constant C ∈ R+ that is independent of w it suffices to consider vectors of unit length in the
+linear span of the mapped training points {x1 , . . . , xm }.
+The proof is given in Appendix A.3. An immediate consequence of this theorem is the fact that we only
+need to consider the m–dimensional sphere Wx in order to find the centre of mass under the assumption of a
+uniform prior PW . Hence a loss function c such that (16) finds the centre of mass is given by
+c (x, y, ( x1 , w , . . . , xm , w )) = 2 1 −
+
+Rm
+
+∑ αi
+
+xi , w dPA|Zm =(x,y)
+
+where PA|Zm =z is only non-zero for vectors α such that ∑m
+i=1 αi xi = 1 and is independent of w.
+The tremendous advantage of a representation of the solution wz by (17) becomes apparent when considering the real-valued output of a classifier at any given data point (either training or test point)
+wz , x =
+
+m
+
+∑ αi xi , x
+
+i=1
+
+m
+
+m
+
+i=1
+
+i=1
+
+= ∑ αi xi , x = ∑ αi k (xi , x) .
+
+Clearly, all that is needed in the feature space K is the inner product function
+k (x, x) := φ (x) , φ (x) .
+
+(19)
+
+Reversing the chain of arguments indicates how the kernel trick may be used to find an efficient implementation. We fix a symmetric function k : X × X → R called kernel and show that there exists a feature mapping
+φk : X → K ⊆ N2 such that (19) is valid for all x, x ∈ X . A sufficient condition for k being a valid inner
+product function is given by Mercer’s theorem (see Mercer, 1909). In a nutshell, whenever the evaluation of
+k at any given sample (x1 , . . . , xm ) results in a positive semidefinite matrix Gi j := k (xi , x j ) then k is a so called
+Mercer kernel. The matrix G is called the Gram matrix and is the only quantity needed in support vector and
+Bayes point machine learning. For further details on the kernel trick the reader is referred to Schölkopf et al.
+(1999); Cristianini and Shawe-Taylor (2000); Wahba (1990); Vapnik (1998).
+
+3. Estimating the Bayes Point in Feature Space
+In order to estimate the Bayes point in feature space K we consider a Monte Carlo method, i.e. instead
+of exactly computing the expectation (12) we approximate it by an average over weight vectors w drawn
+according to PW|Zm =z and restricted to Wx (see Theorem 12) . In the following we will restrict ourselves to
+the PAC likelihood given in (5) and PW being uniform on the unit sphere W ⊂ K . By this assumption we
+know that the posterior is uniform over version space (see (6)). In Figure 2 we plotted an example for the
+special case of N = 3–dimensional feature space K .
+It is, however, already very difficult to sample uniformly from version space V (z) as this set of points
+lives on a convex polyhedron on the unit sphere in7 Wx . In the following two subsections we present two
+methods to achieve this sampling. The first method develops on an idea of Ruján (1997) (later followed up by
+a kernel version of the algorithm in Ruján and Marchand, 2000) that is based on the idea of playing billiards
+in version space V (z), i.e. after entering the version space with a very simple learning algorithm such as the
+kernel perceptron (see Algorithm 1) the classifier w is considered as a billiard ball and is bounced for a while
+within the convex polyhedron V (z). If this billiard is ergodic with respect to the uniform distribution over
+V (z), i.e. the travel time of the billiard ball spent in a subset W ⊆ V (z) is proportional to VW(z) , then averaging
+over the trajectory of the billiard ball leads in the limit of an infinite number of bounces to the centre of mass
+of version space.
+The second method presented tries to overcome the large computational demands of the billiard method
+by only approximately achieving a uniform sampling of version space. The idea is to use the perceptron
+7. Note that by Theorem 12 it suffices to sample from the projection of the version space onto Wx .
+
+254
+
+BAYES P OINT M ACHINES
+
+Figure 2: Plot of a version space (convex polyhedron containing the black dot) V (z) in a 3–dimensional
+feature space K . Each hyperplane is defined by a training example via its normal vector yi xi .
+
+learning algorithm in dual variables with different permutations Π : {1, . . . , m} → {1, . . . , m} so as to obtain
+different consistent classifiers wi ∈ V (z) (see Watkin, 1993, for a similar idea). Obviously, the number of
+different samples obtained is finite and thus it is impossible to achieve exactness of the method in the limit of
+considering all permutations. Nevertheless, we shall demonstrate that in particular for the task of handwritten
+digit recognition the achieved performances are comparable to state-of-the-art learning algorithms.
+Finally, we would like to remark that recently there have been presented other efficient methods to estimate the Bayes point directly (Rychetsky et al., 2000; Minka, 2001). The main idea in Rychetsky et al.
+(2000) is to work out all corners wi of version space and average over them in order to approximate the
+centre of mass of version space. Note that there are exactly m corners because the i–th corner wi satisfies
+x j , wi = 0 for all j = i and yi xi , wi > 0. If X = (x1 , . . . , xm ) is the N × m matrix of mapped training points
+x = (x1 , . . . , xm ) flipped to their correct side and we use the approach (17) for w this simplifies to
+X wi = X Xαi = Gαi = (0, . . . , 0, yi , 0 . . . , 0) =: yi ei
+where the r.h.s. is the i–th unit vector multiplied by yi . As a consequence, the expansion coefficients αi of the
+i–th corner wi can easily be computed as αi = yi G−1 ei and then need to be normalised such that wi = 1.
+The difficulty with this approach, however, is the fact that the inversion of the m×m Gram matrix G is O m3
+and is thus as computationally complex as support vector learning while not enjoying the anytime property
+of a sampling scheme.
+The algorithm presented in Minka (2001, Chapter 5) (also see Opper and Winther, 2000, for an equivalent
+method) uses the idea of approximating the posterior measure PW|Zm =z by a product of Gaussian densities
+so that the centre of mass can be computed analytically. Although the approximation of the cut-off posterior
+over PW|Zm =z resulting from the delta-peaked likelihood given in Definition 6 by Gaussian measures seems
+very crude at first glance, Minka could show that his method compares favourably to the results presented in
+this paper.
+3.1 Playing Billiards in Version Space
+In this subsection we present the billiard method to estimate the Bayes point, i.e. the centre of mass of version
+space when assuming a PAC likelihood and a uniform prior PW over weight vectors of unit length (the pseudo
+255
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+Û
+
+º
+
+Ý
+
+Ü Û
+
+¼
+
+Û
+
+Ü¿ Û
+
+Ý¿
+
+Û
+
+Ý¾
+
+Ü¾ Û
+
+¼
+¼
+
+¿
+½
+
+ÛÑ
+¼
+
+Û
+
+¾
+
+Ý½
+
+Ü½ Û
+
+¼
+
+Figure 3: Schematic view of the kernel billiard algorithm. Starting at b0 ∈ V (z) a trajectory of billiard
+ˆ cm of the
+bounces b1 , . . . , b5 , . . . is calculated and then averaged over so as to obtain an estimate w
+centre of mass of version space.
+
+code is given on page 275). By Theorem 12 each position b of the billiard ball and each estimate wi of the
+centre of mass of V (z) can be expressed as linear combinations of the mapped input points, i.e.
+m
+
+m
+
+w = ∑ αi xi ,
+
+b = ∑ γi xi ,
+
+i=1
+
+α, γ ∈ Rm .
+
+i=1
+
+Without loss of generality we can make the following ansatz for the direction vector v of the billiard ball
+m
+
+v = ∑ βi xi ,
+
+β ∈ Rm .
+
+i=1
+
+Using this notation inner products and norms in feature space K become
+m
+
+b, v = ∑
+
+m
+
+∑ γi β j k (xi , x j ) ,
+
+b
+
+2
+
+=
+
+i=1 j=1
+
+m
+
+∑
+
+γi γ j k (xi , x j ) ,
+
+(20)
+
+i, j=1
+
+where k : X × X → R is a Mercer kernel and has to be chosen beforehand. At the beginning we assume
+that w0 = 0 ⇔ α = 0. Before generating a billiard trajectory in version space V (z) we first run any learning
+algorithm to find an initial starting point b0 inside the version space (e.g. support vector learning or the kernel
+perceptron (see Algorithm 1)). Then the kernel billiard algorithm consists of three steps (see also Figure 3):
+1. Determine the closest boundary in direction vi starting from current position bi .
+Since it is computationally very demanding to calculate the flight time of the billiard ball on geodesics
+of the hyper-sphere Wx (see also Neal, 1997) we make use of the fact that the shortest distance in
+Euclidean space (if it exists) is also the shortest distance on the hyper-sphere Wx . Thus, we have for
+the flight time τ j of the billiard ball at position bi in direction vi to the hyperplane with normal vector
+y jx j
+bi , x j
+τj = −
+.
+(21)
+vi , x j
+After calculating all m flight times, we look for the smallest positive, i.e.
+c = argmin τ j .
+j∈{i | τi >0 }
+
+256
+
+BAYES P OINT M ACHINES
+
+Determining the closest bounding hyperplane in Euclidean space rather than on geodesics causes problems if the surface of the hyper-sphere Wx is almost orthogonal to the direction vector vi , in which case
+τc → ∞. If this happens we randomly generate a direction vector vi pointing towards the version space
+V (z). Assuming that the last bounce took place at the hyperplane having normal yc xc this condition
+can easily be checked by
+(22)
+yc vi , xc > 0 .
+Note that since the samples are taking from the bouncing points the above procedure of dealing with
+the curvature of the hyper-sphere does not constitute an approximation but is exact. An alternative
+method of dealing with the problem of the curvature of the hyper-sphere W can be found in Minka
+(2001, Section 5.8)
+2. Update the billiard ball’s position to bi+1 and the new direction vector to vi+1 .
+The new point bi+1 and the new direction vi+1 are calculated from
+bi+1
+vi+1
+
+= bi + τc vi ,
+vi , xc
+= vi − 2
+xc .
+xc 2
+
+(23)
+(24)
+
+Afterwards the position bi+1 and the direction vector vi+1 need to be normalised. This is easily achieved
+by equation (20).
+3. Update the centre of mass wi of the whole trajectory by the new line segment from bi to bi+1 calculated
+on the hyper-sphere Wx .
+Since the solution w∞ lies on the hyper-sphere Wx (see Theorem 11) we cannot simply update the
+centre of mass using a weighted vector addition. Let us introduce the operation ⊕µ acting on vectors
+of unit length. This function has to have the following properties
+s ⊕µ t
+t − s ⊕µ t
+
+2
+
+= 1,
+= µ t−s ,
+
+s ⊕µ t = ρ1 ( s, t , µ) s + ρ2 ( s, t , µ) t ,
+ρ1 ( s, t , µ) ≥ 0 , ρ2 ( s, t , µ) ≥ 0 .
+This rather arcane definition implements a weighted addition of s and t such that µ is the fraction
+between the resulting chord length t − s ⊕µ t and the total chord length t − s . In Appendix A.4
+it is shown that the following formulae for ρ1 ( s, t , µ) and ρ2 ( s, t , µ) implement such a weighted
+addition
+µ2 − µ2 s, t − 2
+,
+s, t + 1
+
+ρ1 ( s, t , µ)
+
+= µ −
+
+ρ2 ( s, t , µ)
+
+= −ρ1 ( s, t , µ) s, t ± µ2 (1 − s, t ) − 1 .
+
+By assuming a constant line density on the manifold V (z) the whole line between bi and bi+1 can be
+represented by the midpoint m on the manifold V (z) given by
+m=
+
+bi + bi+1
+.
+bi + bi+1
+
+Thus, one updates the centre of mass of the trajectory by
+wi+1 = ρ1
+
+wi , m ,
+
+Ξi
+Ξi + ξ i
+257
+
+wi + ρ2
+
+wi , m ,
+
+Ξi
+Ξi + ξi
+
+m,
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+where ξi = bi − bi+1 is the length of the trajectory in the i–th step and Ξi = ∑ij=1 ξ j for the accumulated length up to the i–th step. Note that the operation ⊕µ is only an approximation to addition
+operation we sought because an exact weighting would require the arc lengths rather than chord lengths.
+As a stopping criterion we suggest computing an upper bound on ρ2 , the weighting factor of the new part of
+the trajectory. If this value falls below a pre-specified threshold (TOL) we stop the algorithm. Note that the
+increase in Ξi will always lead to termination.
+3.2 Large Scale Bayes Point Machines
+Clearly, all we need for estimating the centre of mass of version space (12) is a set of unit length weight
+vectors wi drawn uniformly from V (z). In order to save computational resources it might be advantageous
+to achieve a uniform sample only approximately. The classical perceptron learning algorithm offers the
+possibility to obtain up to m! different classifiers in version space simply by learning on different permutations
+of the training sample. Of course due to the sparsity of the solution the number of different classifiers obtained
+is usually considerably less.
+A classical theorem to be found in Novikoff (1962) guarantees the convergence of this procedure and
+furthermore provides an upper bound on the number t of mistakes needed until convergence. More precisely,
+if there exists a classifier wSVM with margin γz (wSVM ) > 0 (see (13)) then the number of mistakes until
+convergence — which is an upper bound on the sparsity of the solution — is not more than ς2 γ−2
+z (wSVM ),
+where ς is the smallest real number such that xi K ≤ ς. The quantity γz (wSVM ) is maximised for the
+solution wSVM found by the support vector machine, and whenever the support vector machine is theoretically
+justified by results from learning theory (see Shawe-Taylor et al., 1998; Vapnik, 1998) the ratio ς2 γ−2
+z (wSVM )
+is considerably less than m, say d
+m. Algorithmically, we can benefit from this sparsity by the following
+“trick”: since
+m
+
+w = ∑ αi xi
+i=1
+
+all we need to store is the m–dimensional vector α. Furthermore, we keep track of the m–dimensional vector
+o of real-valued outputs
+oi = xi , wt =
+
+m
+
+∑ α j k (xi , x j )
+
+j=1
+
+of the current solution at the i–th training point. By definition, in the beginning α = o = 0. Now, if oi yi < 0
+we update αi by αi + yi and update o by o j ← o j + yi k (xi , x j ) which requires only m kernel calculations (the
+evaluation of the i–th row of the Gram matrix G). In summary, the memory requirement of this algorithm
+is 2m and the number of kernel calculations is not more than d · m. As a consequence, the computational
+requirement of this algorithm is no more than the computational requirement for the evaluation of the margin
+γz (wSVM )! We suggest to use this efficient perceptron learning algorithm in order to obtain samples wi for
+the computation of the centre of mass (12).
+In order to investigate the usefulness of this approach experimentally, we compared the distribution of
+generalisation errors of samples obtained by perceptron learning on permuted training samples with samples
+obtained by a full Gibbs sampling (see Graepel and Herbrich, 2001, for details on the kernel Gibbs sampler).
+For computational reasons, we used only 188 training patterns and 453 test patterns of the classes “1” and
+“2” from the MNIST data set8 . In Figure 4 (a) and (b) we plotted the distribution over 1000 random samples
+using the kernel9
+5
+k x, x = x, x + 1 .
+(25)
+Using a quantile-quantile (QQ) plot technique we can compare both distributions in one graph (see Figure 4
+(c)). These plots suggest that by simple permutation of the training sample we are able to obtain a sample
+of classifiers exhibiting a similar distribution of generalisation error to the one obtained by time-consuming
+Gibbs sampling.
+8. This data set is publicly available at http://www.research.att.com/~yann/ocr/mnist/.
+9. We decided to use this kernel because it showed excellent generalisation performance when using the support vector machine.
+
+258
+
+0.02
+
+0.03
+
+0.04
+
+0.05
+
+0.06
+
+0.08
+0.06
+0.02
+0.00
+
+0
+0.01
+
+0.04
+
+kernel perceptron
+
+300
+100
+
+200
+
+frequency
+
+300
+200
+0
+
+100
+
+frequency
+
+400
+
+400
+
+500
+
+0.10
+
+BAYES P OINT M ACHINES
+
+0.00
+
+0.02
+
+0.04
+
+generalisation error
+
+0.06
+
+0.08
+
+0.10
+
+0.01
+
+0.02
+
+generalisation error
+
+(a)
+
+0.03
+
+0.04
+
+0.05
+
+kernel Gibbs sampler
+
+(b)
+
+(c)
+
+Figure 4: (a) Histogram of generalisation errors (estimated on a test set) using a kernel Gibbs sampler. (b)
+Histogram of generalisation errors (estimated on a test set) using a kernel perceptron. (c) QQ plot
+of distributions (a) and (b). The straight line indicates that the two distributions only differ by an
+additive and multiplicative constant, i.e. they exhibit the same rate of decay.
+
+A very advantageous feature of this approach as compared to support vector machines are its adjustable
+time and memory requirements and the “anytime” availability of a solution due to sampling. If the training
+sample grows further and we are not able to spend more time learning, we can adjust the number of samples
+w used at the cost of slightly worse generalisation error (see also Section 4).
+3.3 Extension to Training Error
+To allow for training errors we recall that the version space conditions are given by
+m
+
+yi xi , w = yi ∑ α j k (xi , x j ) > 0 .
+
+∀ (xi , yi ) ∈ z :
+
+(26)
+
+j=1
+
+Now we introduce the following version space conditions in place of (26):
+m
+
+yi ∑ α j k (xi , x j ) > −λyi αi k(xi , xi ) ,
+
+∀ (xi , yi ) ∈ z :
+
+(27)
+
+j=1
+
+where λ ≥ 0 is an adjustable parameter related to the “softness” of version space boundaries.
+Clearly, considering this from the billiard viewpoint, equation (27) can be interpreted as allowing penetration of the walls, an idea already hinted at in Ruján (1997). Since the linear decision function is invariant
+under any positive rescaling of expansion coefficients α, a factor αi on the right hand side makes λ scale invariant as well. Although other ways of incorporating training errors are conceivable our formulation allows
+for a simple modification of the algorithms described in the previous two subsections. To see this we note
+that equation (27) can be rewritten as
+m
+
+∀ (xi , yi ) ∈ z :
+
+yi
+
+∑ α j (1 + λIi= j ) k (xi , x j )
+
+> 0.
+
+j=1
+
+Hence we can use the above algorithms but with an additive correction to the diagonal terms of the Gram matrix . This additive correction to the kernel diagonals is similar to the quadratic margin loss used to introduce
+a soft margin during training of support vector machines (see Cortes, 1995; Shawe-Taylor and Cristianini,
+2000). Another insight into the introduction of soft boundaries comes from noting that the distance between
+two points xi and x j in feature space K can be written
+xi − x j
+
+2
+
+=
+
+xi
+
+2
+
++ xj
+
+259
+
+2
+
+− 2 xi , x j ,
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+1
+
+1
+
+1
+
+0.5
+
+0.5
+
+0.5
+
+0
+
+0
+
+0
+
+−0.5
+
+−0.5
+
+−0.5
+
+−1
+
+−1
+
+1
+
+−1
+
+1
+0.5
+
+1
+0.5
+
+1
+0.5
+
+0
+
+−1
+
+−1
+
+1
+
+1
+
+0.5
+
+0.5
+
+0
+
+0
+
+0
+
+−0.5
+
+−0.5
+
+−0.5
+
+−1
+
+−1
+
+1
+
+−1
+
+1
+0.5
+
+1
+0.5
+
+1
+0.5
+
+0
+
+−1
+
+λ=1
+
+1
+
+1
+
+1
+
+λ = 1.5
+
+0.5
+0
+
+−0.5
+
+−0.5
+−1
+
+−1
+
+0
+
+0
+
+−0.5
+
+−0.5
+
+0.5
+
+0.5
+
+0
+
+0
+−1
+
+−0.5
+
+λ = 0.5
+
+0.5
+
+−0.5
+
+0
+
+−0.5
+
+−0.5
+−1
+
+−1
+
+λ=0
+
+1
+0.5
+
+0
+
+0
+
+−0.5
+
+−0.5
+−1
+
+0.5
+
+1
+0.5
+
+0
+
+0
+
+−0.5
+
+−0.5
+−1
+
+−1
+
+λ=2
+
+−1
+
+λ = 2.5
+
+Figure 5: Parameter spaces for a two dimensional toy problem obtained by introducing training error via an
+additive correction to the diagonal term of the kernel matrix. In order to visualise the√resulting
+parameter space we fixed m = 3 and normalised all axes by the product of eigenvalues λ1 λ2 λ3 .
+See text for further explanation.
+
+which in the case of points of unit length in feature space becomes 2 (1 + λ − k (xi , x j )). Thus, if we add λ
+to the diagonal elements of the Gram matrix, the points become equidistant for λ → ∞. This would give the
+resulting version space a more regular shape. As a consequence, the centre of the largest inscribable ball
+(support vector machine solution) would tend towards the centre of mass of the whole of version space.
+We would like to recall that the effective parameter space of weight vectors considered is given by
+m
+
+Wx := w = ∑ αi xi
+i=1
+
+w
+
+2
+
+m
+
+=∑
+
+m
+
+∑ αi α j
+
+xi , x j = 1
+
+.
+
+i=1 j=1
+
+In terms of α this can be rewritten as
+α ∈ Rm α Gα = 1
+
+Gi j = xi , x j = k (xi , x j ) .
+
+Let us represent the Gram matrix by its spectral decomposition, i.e. G = UΛU where U U = I and Λ =
+diag (λ1 , . . . , λm ) being the diagonal matrix of eigenvalues λi . Thus we know that the parameter space is the
+set of all coefficients α = U α which fulfil
+α ∈ Rm : α Λα = 1 .
+This is the defining equation of an m–dimensional axis parallel ellipsoid. Now adding the term λ to the
+diagonal of G makes G a full rank matrix (see Micchelli, 1986). In Figure 5 we plotted the parameter space
+for a 2D toy problem using only m = 3 training points. Although the parameter space is 3–dimensional for
+all λ > 0 we obtain a pancake like parameter space for small values of λ. For λ → ∞ the set α of admissible
+coefficients becomes the m–dimensional ball, i.e. the training examples become more and more orthogonal
+with increasing λ. The way we incorporated training errors corresponds to the choice of a new kernel given
+by
+kλ (x, x) := k (x, x) + λ · Ix=x .
+260
+
+BAYES P OINT M ACHINES
+
+......... . . .......... ...........................
+. ......... ..
+...
+...........
+...
+. .......
+...
+.........
+........
+...
+...
+..
+...
+.. ..
+.... ............. .................. ....
+.............................
+.
+
+.............
+.. ...... ........... .....
+........ . .
+...
+...........
+...
+... ... .
+...
+... ....
+...
+...
+..
+...
+..
+..
+..
+..
+...
+..
+...
+...
+.
+...
+..
+..
+..
+...
+...
+..
+.
+...
+..
+.
+....
+.
+......
+...
+. .. .
+...
+.... .
+..
+......
+..
+....
+..
+.... .
+.....
+....
+...... ...
+........
+.
+
+Figure 6: Version spaces V (z) for two 3–dimensional toy problems. (Left) One can see that the approximation of the Bayes point (diamond) by the centre of the largest inscribable ball (cross) is reasonable
+if the version space is regularly shaped. (Right) The situation changes in the case of an elongated
+and asymmetric version space V (z).
+
+Finally, note that this modification of the kernel has no effect on new test points x ∈
+/ x that are not elements
+of the training sample x. For an explanation of the effect of λ in the context of Gaussian processes see Opper
+and Winther (2000).
+
+4. Experimental Results
+In this section we present experimental results both on University of California, Irvine (UCI) benchmark
+datasets10 and on two bigger task of handwritten digit recognition, namely US postal service (USPS) and
+modified National Institute of Standards (MNIST) digit recognition tasks. We compared our results to the
+performance of a support vector machine using reported test set performance from Rätsch et al. (2001) (UCI)
+Schölkopf (1997, p. 57) (USPS) and Cortes (1995) (MNIST). All the experiments were done using Algorithm
+2 in Appendix B.
+4.1 Artificial Data
+For illustration purposes we setup a toy dataset of 10 training and 10000 test points in R3 . The data points
+were uniformly generated in [−1, 1]3 and labelled by a randomly generated linear decision rule using the
+kernel k (x, x) = x, x . In Figures 6 we illustrate the potential benefits of a Bayes point machine over a
+support vector machine for elongated version spaces. By using the billiard algorithm to estimate the Bayes
+point (see Subsection 3.1), we were able to track all positions bi where the billiard ball hits a version space
+boundary. This allows us to easily visualise the version spaces V (z). For the example illustrated in Figure
+6 (right) the support vector machine and Bayes point solutions with hard margins/boundaries are far apart
+resulting in a noticeable reduction in generalisation error of the Bayes point machines (8.0%) compared to
+the support vector machine (15.1%) solution whereas for regularly shaped version spaces (Figure 6 (left)) the
+difference is negligible (6.1% to 6.0%).
+10. publicly available at http://www.ics.uci.edu/~mlearn/MLRepository.html.
+
+261
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+1
+Y
+0
+−1
+
+−1
+
+0
+
+Y
+
+1
+
+2
+
+BPM
+
+2
+
+SVM
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+−2
+
+−1
+
+X
+
+0
+
+1
+
+2
+
+X
+
+Figure 7: Decision functions for a 2D toy problem of a support vector machine (SVM) (left) and Bayes point
+machine (BPM) (right) using hard margins (λ = 0) and RBF kernels with σ = 1. Note that the
+Bayes point machine result in a much “flatter” function sacrificing margin (γz (wSVM ) = 0.036 →
+γz (wcm ) = 0.020) for smoothness.
+
+In a second illustrative example we compared the “smoothness” of the resulting decision function when
+using kernels both with support vector machines and Bayes point machines. In order to model a non-linear
+decision surface we used the radial basis function (RBF) kernel
+k (x, x) = exp −
+
+x−x
+2σ2
+
+2
+
+.
+
+(28)
+
+Figure 7 shows the resulting decision functions in the hard margin/boundary case. Clearly, the Bayes point
+machine solution appears much smoother than the support vector machine solution although its geometrical
+margin of 0.020 is significantly smaller.
+The above examples should only be considered as aids to enhance the understanding of the Bayes point
+machines algorithm’s properties rather than strict arguments about general superiority.
+4.2 UCI Benchmark Datasets
+To investigate the performance on real world datasets we compared hard margin support vector machines to
+Bayes point machines with hard boundaries (λ = 0) when using the kernel billiard algorithm described in
+Subsection 3.1. We studied the performance on 5 standard benchmarking datasets from the UCI Repository,
+and banana and waveform, two toy datasets (see Rätsch et al., 2001). In each case the data was randomly
+partitioned into 100 training and test sets in the ratio 60%:40%. The means and standard deviations of the
+average generalisation errors on the test sets are presented as percentages in the columns headed SVM (hard
+margin) and BPM (λ = 0) in Table 1. As can be seen from the results, the Bayes point machine outperforms
+support vector machines on almost all datasets at a statistically significant level. Note, however, that the
+result of the t-test is strictly valid only under the assumption that training and test data were independent —
+an assumption which may be violated by the procedure of splitting the one data set into 100 different pairs of
+training and test sets (Dietterich, 1998). Thus, the resulting p–values should serve only as an indication for
+the significance of the result.
+In order to demonstrate the effect of positive λ (soft boundaries) we trained a Bayes point machine with
+soft boundaries and compared it to training a support vector machine with soft margin using the same Gram
+262
+
+BAYES P OINT M ACHINES
+
+Heart
+Thyroid
+Diabetes
+Waveform
+Banana
+Sonar
+Ionosphere
+
+SVM (hard margin)
+25.4±0.40
+5.3±0.24
+33.1±0.24
+13.0±0.10
+16.2±0.15
+15.4±0.37
+11.9±0.25
+
+BPM (hard boundary)
+22.8±0.34
+4.4±0.21
+32.0±0.25
+12.1±0.09
+15.1±0.14
+15.9±0.38
+11.5±0.25
+
+σ
+10.0
+3.00
+5.0
+20.0
+0.5
+1.0
+1.5
+
+p-value
+1.00
+1.00
+1.00
+1.00
+1.00
+0.01
+0.99
+
+Table 1: Experimental results on seven benchmark datasets. We used the RBF kernel given in (28) with
+values of σ found optimal for SVMs. Shown is the estimated generalisation error in percent. The
+standard deviation was obtained on 100 different runs. The final column gives the p–values of
+a paired t–test for the hypothesis “BPM is better than SVM” indicating that the improvement is
+statistically significant.
+
+matrix (see equation (27)). It can be shown that such a support vector machine corresponds to a soft margin
+support vector machine where the margin slacks are penalised quadratically (see Cortes, 1995; Shawe-Taylor
+and Cristianini, 2000; Herbrich, 2001). In Figure 8 we have plotted the generalisation error as a function of λ
+for the toy problem from Figure 6 and the dataset heart using the same setup as in the previous experiment.
+We observe that the support vector machine with an 2 soft margin achieves a minimum of the generalisation
+error which is close to, or just above, the minimum error which can be achieved using a Bayes point machine
+with positive λ. This may not be too surprising taking the change of geometry into account (see Section 3.3).
+Thus, also the soft margin support vector machine approximates Bayes point machine with soft boundaries.
+Finally we would like to remark that the running time of the kernel billiard was not much different from
+the running time of our support vector machine implementation. We did not use any chunking or decomposition algorithms (see, e.g. Osuna et al., 1997; Joachims, 1999; Platt, 1999) — which in case of support vector
+machines would have decreased the running time by orders of magnitudes. The most noticeable difference in
+running time was with the waveform and banana dataset where we are given m = 400 observations. This can
+be explained by the fact that the computational effort of the kernel billiard method is O B · m2 where B is the
+number of bounces. As we set our tolerance criterion TOL for stopping very low (≈ 10−4 ), the approximate
+number B of bounces for these datasets was B ≈ 1 000. Hence, in contrast to the computational effort of
+using the support vector machines of O m3 the number B of bounces lead to a much higher computational
+demand when using the kernel billiard.
+4.3 Handwritten Digit Recognition
+For the two tasks we now consider our inputs are n × n grey value images which were transformed into n2 –
+dimensional vectors by concatenation of the rows. The grey values were taken from the set {0, . . . , 255}.
+All images were labelled by one of the ten classes “0” to “9”. For each of the ten classes y = {0, . . . , 9} we
+ran the perceptron algorithm L = 10 times each time labelling all training points of class y by +1 and the
+remaining training points by −1. On a Pentium III 500 MHz with 128 MB memory each learning trial took
+10 − 20 minutes (MNIST) or 1 − 2 minutes (USPS), respectively11 . For the classification of a test image x
+11. Note, however, that we made use of the fact that ≈ 40% of the grey values of each image are 0 since they encode background.
+Therefore, we encoded each image as an index-value list which allows much faster computation of the inner products x, x and
+speeds up the algorithm by a factor of 2–3.
+
+263
+
+20
+
+classification error
+
+10
+
+22
+
+24
+
+SVM
+BPM
+
+18
+
+SVM
+BPM
+
+16
+
+5
+
+classification error
+
+15
+
+26
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+0
+
+1
+
+2
+
+3
+
+4
+
+0.0
+
+0.2
+
+0.4
+
+λ
+
+0.6
+
+0.8
+
+1.0
+
+λ
+
+Figure 8: Comparison of soft boundary Bayes point machine with soft margin support vector machine. Plotted is the generalisation error versus λ for a toy problem using linear kernels (left) and the heart
+dataset using RBF kernels with σ = 3.0 (right). The error bars indicate one standard deviation of
+the estimated mean.
+
+we calculated the real-valued output of all 100 different classifiers12 by
+m
+
+fi (x)
+
+=
+
+x, wi
+=
+wi x
+
+∑ (αi ) j k (x j , x)
+
+j=1
+m
+
+m
+
+,
+
+∑ ∑ (αi )r (αi )s k (xr , xs ) k (x, x)
+
+r=1 s=1
+
+where we used the kernel k given by (25). Here, (αi ) j refers to the expansion coefficient corresponding to the
+i–th classifier and the j–th data point. Now, for each of the ten classes we calculated the real-valued decision
+of the Bayes point estimate wcm,y by13
+fbp,y (x) = x, wcm,y =
+
+1 L
+∑ x, wi+yL .
+L i=1
+
+In a Bayesian spirit, the final decision was carried out by
+hbp (x) := argmax fbp,y (x) .
+y∈{0,...,9}
+
+Note that fbp,y (x) can be interpreted as an (unnormalised) approximation of the posterior probability that x is
+of class y when restricted to the function class (10) (see Platt, 2000). In order to test the dependence of the
+generalisation error on the magnitude maxy fbp,y (x) we fixed a certain rejection rate r ∈ [0, 1] and rejected the
+set of r · 10 000 test points with the smallest value of maxy fbp,y (x).
+MNIST Handwritten Digits In the first of our large scale experiment we used the full MNIST dataset
+with 60 000 training examples and 10 000 test examples of 28 × 28 grey value images of handwritten digits.
+The plot resulting from learning only 10 consistent classifiers per class and rejection based on the realvalued output of the single Bayes points is depicted in Figure 9 (left). As can be seen from this plot, even
+without rejection the Bayes point has excellent generalisation performance when compared to support vector
+machines which achieve a generalisation error of14 1.4%. Furthermore, rejection based on the real-valued
+12. For notational simplicity we assume that the first L classifiers are classifiers for the class “0”, the next L for class “1” and so on.
+13. Note that in this subsection y ranges from {0, . . . , 9}.
+14. The result of 1.1% with the kernel (25) and a polynomial degree of four could not be reproduced and is thus considered invalid
+(personal communication with P. Haffner). Note also that the best results with support vector machines were obtained when using
+a soft margin.
+
+264
+
+0.045
+0.04
+
+0.06
+
+0.08
+
+0.035
+
+generalisation error
+0.02
+
+0.015
+
+0.00
+
+0.025
+
+0.010
+0.006
+0.002
+
+generalisation error
+
+0.014
+
+BAYES P OINT M ACHINES
+
+0.10
+
+rejection rate
+
+0.00
+
+0.02
+
+0.04
+
+0.06
+
+0.08
+
+0.10
+
+rejection rate
+
+MNIST
+
+USPS
+
+Figure 9: Generalisation error as a function of the rejection rate for the MNIST and USPS data set. (Left)
+For MNIST, the support vector machine achieved 1.4% without rejection as compared to 1.46% for
+the Bayes point machine. Note that by rejection based on the real-valued output the generalisation
+error could be reduced to 0.1% indicating that this measure is related to the probability of misclassification of single test points. (Right) On USPS, the support vector machine achieved 4.6%
+without rejection as compared to 4.73% for the Bayes point machine.
+
+output fbp (x) turns out to be excellent thus reducing the generalisation error to 0.1%. One should also bear
+in mind that the learning time for this simple algorithm was comparable to that of support vector machines
+which need ≈ 8 hours per digit15 (see Platt, 1999, p. 201, Table 12.2).
+USPS Handwritten Digits In the second of our large scale experiments we used the USPS dataset with
+7 291 training examples an 2 007 test examples of 16 × 16 grey value images of handwritten digits. The
+resulting plot of the generalisation error when rejecting test examples based on the real-valued outputs of
+the single Bayes points is shown in Figure 9 (right). Again, the resulting classifier has a generalisation error
+performance comparable to support vector machines whose best results are 4.5% when using a soft margin
+and 4.6% in the hard margin scenario. In Figure 10 we plotted the 25 most commonly used images xi ∈ x
+with non-zero coefficients (α j )i across the 100 different classifiers learned. Though no margin maximisation
+was performed it turns out that in accordance with the “support vector philosophy” these are the hard patterns
+in the datasets with respect to classification. Moreover, as can be seen from the 1–st, 6–th and 8–th example
+there is clearly noise in the dataset which could potentially be taken into account using the techniques outlined
+in Subsection 3.3 at no extra computational cost.
+
+5. Discussion and Conclusion
+In this paper we presented two estimation methods for the Bayes point for linear classifiers in feature spaces.
+We showed how the support vector machine can be viewed as an (spherical) approximation method to the
+Bayes point hyperplane. By randomly generating consistent hyperplanes playing billiards in version space we
+showed how to stochastically approximate this point. In the field of Markov Chain Monte Carlo methods such
+approaches are known as reflective slice sampling (Neal, 1997). Current investigations in this field include
+the question of ergodicity of such methods. The second method of estimating the Bayes point consists of
+running the perceptron algorithm with several permutation of the training sample in order to average over the
+sample thereby obtained. By its inherent simplicity it is much more amenable to large scale problems and in
+particular compares favourably to state-of-the-art methods such as support vector learning.
+15. Recently, DeCoste and Schölkopf (2002) demonstrated that an efficient implementation of the support vector machine reduces the
+amount of learning time to ≈ 1 hour per digit.
+
+265
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+39/5
+
+33/3
+
+32/6
+
+31/4
+
+31/8
+
+31/7
+
+31/3
+
+30/5
+
+30/7
+
+29/4
+
+29/4
+
+28/9
+
+28/4
+
+28/2
+
+28/4
+
+27/7
+
+27/4
+
+27/8
+
+27/4
+
+27/4
+
+27/2
+
+26/3
+
+26/6
+
+26/4
+
+26/2
+
+Figure 10: Shown are the 25 most commonly used examples xi ∈ x (non-zero coefficients (α j )i for many
+j ∈ {1, . . . , 100}) from the USPS dataset across the 100 different classifiers learned using the perceptron learning algorithm. The two numbers below each digit give the number of classifiers they
+appeared in and the true class y ∈ {0, . . . , 9} in the training sample. Interestingly, in accordance
+with the philosophy behind support vectors these are the “hardest” patterns with respect to the
+classification task although no explicit margin maximisation was performed.
+
+266
+
+BAYES P OINT M ACHINES
+
+The centre of mass approach may also be viewed as a multidimensional extension of the Pitman estimator
+(Pitman, 1939) if the weight vector w is thought of as a location parameter to be estimated from the data.
+Unfortunately, neither the centre of mass of version space nor the support vector solution are invariant under
+general linear transformations of the data but only under the class of orthogonal transformations (see, e.g.
+Schölkopf, 1997). For the centre of mass this is due to the normalisation of the weight vector. Note that it is
+this normalisation that makes it conceptually hard to incorporate a bias dimension into our framework.
+We presented a derivation of the Bayes point as the optimal projection of the Bayes classification strategy.
+This strategy is known to be the optimal strategy, i.e. the classification strategy which results in classifications
+with the smallest generalisation error, when considering the generalisation error on average over the random
+draw of target hypothesis according to the prior PH . It is worthwhile to mention, however, that recent results
+in the PAC community allow one to obtain performance guarantees for the Bayesian classification strategy
+even for single target hypotheses h ∼ PH which hold for most random draws of the training sample used
+(see McAllester, 1998, 1999). The results indicate that the fraction of the volume of parameter space to the
+volume of version space plays a crucial role in the generalisation error of Bayesian classifiers. It could be
+shown elsewhere (Herbrich et al., 1999b) that these bounds can be extended to single classifiers and then
+involve the volume of the largest point symmetric body around the classifier fully contained in version space
+(see Figure 2). These results may additionally motivate the centre of mass as a classifier with good volume
+ratio and thus good generalisation. The results also indicate that under circumstances where the shape of the
+version space is almost spherical the classical support vector machine gives the best result (see, e.g. Herbrich
+and Graepel, 2001).
+In a series of experiments it has been shown that the Bayes point, i.e. the centre of mass of version space,
+has excellent generalisation performance — even when only broadly approximated by the average classifier
+found with simple perceptrons. Furthermore, it was be demonstrated that the real-valued output of the Bayes
+point on new test points serves as a reliable confidence measure on its prediction. An interesting feature of the
+Bayes point seems to be that the “hardest” patterns in the training sample tend to have the largest contribution
+in the final expansion too. This is in accordance with the support vector philosophy although the Bayes point
+machine algorithm does not perform any kind of margin maximisation explicitly.
+Bayes points in feature space constitute an interesting bridge between the Bayesian approach to machine
+learning and statistical learning theory. In this paper we have shown that they outperform hard margin support vector machines. It is well known that the introduction of a soft margin improves the generalisation
+performance of support vector machines on most datasets by allowing for training errors. Consequently,
+we introduced a mechanism for Bayesian learning with training errors admitted. A comparison of the generalisation performance of the two types of systems shows that they exhibit a much closer generalisation
+performance than in the hard boundary/margin case.
+Although it is generally believed that sparsity in terms of the expansion coefficients α is an indicator for
+good generalisation (see, e.g. Littlestone and Warmuth, 1986; Herbrich et al., 2000b) the algorithms presented
+show that also dense classifiers exhibit a good generalisation performance. An interesting question arising
+from our observation is therefore, which properties of single classifiers in version space are responsible for
+good generalisation?
+
+Acknowledgements
+This work was partially done during a research stay of Ralf Herbrich at University of Bristol and Royal
+Holloway University London in 1998. He would like to thank Colin Campbell and John Shawe-Taylor for the
+excellent research environment and also for the warm hospitality during that stay. We are also greatly indebted
+to Matthias Burger, Søren Fiig Jarner, Ulrich Kockelkorn, Klaus Obermayer, Manfred Opper, Craig Saunders,
+Peter Bollmann-Sdorra, Matthias Seeger, John Shawe-Taylor, Alex Smola, Jason Weston, Bob Williamson
+and Hugo Zaragoza for fruitful and inspiring discussions. Special thanks go to Patrick Haffner for pointing out
+the speed improvement by exploiting sparsity of the MNIST and USPS images and to Jun Liao for pointing
+out a mistake in Algorithm 2. Finally we would like to thank Chris Williams and the three anonymous
+reviewers for their comments and suggestions that greatly improved the manuscript.
+267
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+ÜÜÛ
+¼
+
+¼
+
+«
+Ú
+
+«
+Û
+
+ÜÜÚ
+¼
+
+¼
+
+Figure 11: The fraction of points on the circle which are differently classified by w and v is depicted by the
+arccos( w,v )
+α
+solid black arc. Note that this fraction is in general given by 2α
+.
+2π = π =
+π
+
+Appendix A. Proofs
+A.1 Convergence of Centre of Mass to the Bayes Point
+In this section we present the proof of Theorem 10. We start with a simple lemma.
+Lemma 13 (Generalisation Error for Spherical Distributions in Feature Space) Suppose we are given a
+fixed mapping φ : X → K ⊆ N2 resulting in {x := φ (x) | x ∈ X }. Furthermore let us assume that PX is
+governed by (11). Then, for all w, w = 1, and v, v = 1, it holds true that
+EX [l0−1 (sign ( X, w ) , sign ( X, v ))] =
+
+arccos ( w, v )
+.
+π
+
+Proof For a fixed value r ∈ R+ let us consider all x such that x 2 = r2 . Given w ∈ K and v ∈ K we consider
+the projection Pw,v : K → K into the linear space spanned by w and v and its complement P⊥
+w,v , i.e.
+∀x ∈ K :
+
+x = Pw,v (x) + P⊥
+w,v (x) .
+
+Then for w (and v) it holds true that
+sign ( x, w ) = sign
+= sign
+
+Pw,v (x) + P⊥
+w,v (x) , w
+Pw,v (x) , w + P⊥
+w,v (x) , w
+
+= sign ( Pw,v (x) , w ) .
+Hence for any value of r ∈ R+ the notion of Figure 11 applies and gives
+∀r ∈ R+ :
+
+EX|
+
+X =r [l0−1 (sign (
+
+X, w ) , sign ( X, v ))] =
+
+268
+
+arccos ( w, v )
+.
+π
+
+BAYES P OINT M ACHINES
+
+Thus integrating over r results in
+EX [l0−1 (sign ( X, w ) , sign ( X, v ))]
+
++∞
+
+arccos ( w, v )
+2
+√ exp −r2 ·
+dr
+π
+π
+0
+arccos ( w, v )
+.
+π
+
+=
+=
+
+According to Definition 9 and the previous lemma, in order to find the Bayes point wbp for a given training
+sample z we need to find the vector v which minimises the following function
+EX EW|Zm =z [l0−1 (sign ( X, v ) , sign ( X, W ))]
+= EW|Zm =z [EX [l0−1 (sign ( X, v ) , sign ( X, W ))]]
+= EW|Zm =z
+
+arccos ( v, W )
+π
+
+subject to the constraint v = 1. Hence we have to determine the saddle point of the following Lagrangian
+Lexact (v, α) = EW|Zm =z
+
+arccos ( v, W )
++ α ( v, v − 1) ,
+π
+
+w.r.t. v and α. The difficulty with this expression, however, is that by
+
+
+W
+ + 2αvbp = 0 ,
+∇v Lexact (v, α)|vbp = EW|Zm =z −
+2
+1 − vbp , W
+
+
+W
+,
+2αvbp = EW|Zm =z 
+2
+1 − vbp , W
+the resulting fix-point equations for all components vi are coupled because of the (1 − ( v, w )2 )− 2 term
+within the expectation thus involving all components. Nevertheless, we can find a good proxy for arccos ( v, w ) /π
+by (1 − v, w ) /2 (see Figure 12 on page 270). This is made more precise in the following lemma.
+1
+
+Lemma 14 (Quality of Euclidean Distance Proxy) Suppose we are given a fixed mapping φ : X → K ⊆ N2
+resulting in {x := φ (x) | x ∈ X }. Furthermore let us assume that PX is governed by (11). Given a fixed
+vector v ∈ K of unit length, i.e. v = 1, let us finally assume that
+min
+
+w:PW|Zm =z (w)>0
+
+| v, w | > ε .
+
+(29)
+
+Then we know that
+EW|Zm =z [EX [l0−1 (sign ( X, W ) , sign ( X, v ))]] ≤ EW|Zm =z
+EW|Zm =z [EX [l0−1 (sign ( X, W ) , sign ( X, v ))]] ≥ EW|Zm =z
+where
+κ (ε) :=
+
+arccos(ε)
+π
+
+− 1−ε
+2
+
+0.11
+
+269
+
+1
+W−v
+4
+1
+W−v
+4
+
+if ε < 0.23
+.
+otherwise
+
+2
+
++ κ (ε) ,
+
+2
+
+− κ (ε) ,
+
+1.0
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+0.0
+
+0.2
+
+0.4
+
+f(x)
+
+0.6
+
+0.8
+
+arccos(x)
+π
+1−x
+2
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+x
+
+Figure 12: Plot of the functions arccos (x) /π and (1 − x) /2 vs. x. As we can see, translating the latter function by not more than ≈ 0.11 shows that it is a both an upper and lower bound for arccos (x) /π
+and thus a reasonable proxy.
+
+Proof Using Lemma 13 we only need to show that under the assumption (29) it holds true that
+1
+v−w
+4
+
+2
+
+− κ (ε) ≤
+
+arccos ( v, w ) 1
+≤
+v−w
+π
+4
+
+2
+
++ κ (ε) .
+
+At first we notice that
+1
+v−w
+4
+
+2
+
+=
+
+1
+4
+
+v
+
+2
+
+− 2 v, w + w
+
+2
+
+=
+
+1 − v, w
+.
+2
+
+Thus let us determine the maximal difference in
+f (x) =
+
+arccos (x) 1 − x
+−
+π
+2
+
+√
+in the interval (−1, 1). A straightforward calculation
+reveals that the maximum occurs at x∗ = 1 − 4π−2 and
+√
+is 0.10 < f (x∗ ) < 0.11. Hence whenever ε < 1 − 1 − 4π−2 < 0.23 we can directly use f (x) which itself is
+in the worst case upper bounded by 0.11. Noticing that ∀x ∈ (0, 1) : f (x) = − f (−x) proves the lemma.
+If we replace arccos ( v, w ) /π by w − v 2 /4 on the basis of the previous lemma we obtain the simpler
+problem of determining the saddle point of the Lagrangian
+Lapprox (v, α) = EW|Zm =z
+
+1
+W−v
+4
+
+2
+
++α v v−1 .
+
+Taking the derivative w.r.t. v thus yields
+∇v Lapprox (v, α)
+
+vcm
+
+2αvcm
+
+1
+= EW|Zm =z − W + 2αvcm = 0 ,
+2
+1
+= EW|Zm =z W .
+2
+270
+
+(30)
+
+BAYES P OINT M ACHINES
+
+The value of α is determined by multiplying the whole expression by vcm and utilising the constraint vcm vcm =
+1, i.e.
+2αvcm vcm
+α
+
+1
+W, vcm
+2
+
+= 2α = EW|Zm =z
+
+1
+E m [ W, vcm ] .
+4 W|Z =z
+
+=
+
+Resubstituting this expression into (30) finally yields
+vcm =
+
+EW|Zm =z [W]
+1
+EW|Zm =z [W] =
+,
+4α
+EW|Zm =z [W] , vcm
+
+whose only solution is given by
+vcm =
+
+EW|Zm =z [W]
+
+.
+
+EW|Zm =z [W]
+
+A.2 Proof of Theorem 11
+Proof Given z = (x, y) ∈ Z m we consider the projection Px : W → K that maps all vectors of unit length in the
+linear span of the points {φ (x1 ) , . . . , φ (xm )} = {x1 , . . . , xm } and the projection P⊥
+x : W → K that maps into
+the complement of the linear span of {x1 , . . . , xm }. Thus, for any vector w ∈ K we have w = Px (w) + P⊥
+x (w)
+which immediately implies that for all (xi , yi ) ∈ z
+⊥
+xi , w = xi , Px (w) + P⊥
+x (w) = xi , Px (w) + xi , Px (w) = xi , Px (w) .
+
+Suppose wz is a minimiser of (16) but Px (wz ) = wz , i.e. Px (wz ) < wz = 1. Then
+c (x, y, ( x1 , wz ) , . . . , xm , wz ) = c (x, y, ( x1 , Px (wz ) ) , . . . , xm , Px (wz ) )
+> c x, y, Px (wz )
+x1 ,
+
+= c x, y,
+
+−1
+
+( x1 , Px (wz ) ) , . . . , xm , Px (wz )
+
+Px (wz )
+Px(wz )
+
+, . . . , xm ,
+
+Px (wz )
+Px(wz )
+
+,
+
+where the second line follows from the assumption that c is strictly monotonically decreasing in the third
+argument. We see that wz cannot be the minimiser of (16) and by contradiction it follows that the minimiser
+must admit the representation (17).
+
+A.3 Sufficiency of the Linear Span — Proof of Theorem 12
+Proof Let us rewrite the l.h.s. of (18)
+
+W
+
+w−v
+
+2
+
+dPW|Zm =z (v)
+
+=
+
+W
+
+2 (1 − w, v ) dPW|Zm =z (v)
+
+= 2−2
+= 2 − 2C
+
+∑
+
+m
+
+∏ Isign(yi xi ,v )=bi
+m
+
+W b∈{−1,+1} i=1
+
+∑
+
+b∈{−1,+1}m
+
+w, v dPW|Zm =z (v)
+
+m
+
+∏ Isign(yi xi ,v )=bi
+W
+i=1
+
+A(w,z,b)
+
+271
+
+w, v f (bi ) dv ,
+
+(31)
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+where the first line follows by the assumption that w, v ∈ W , the second line is true because only one summation b leads to a non-zero product and the third line follows from
+dPW|Zm =z (v)
+
+∏m
+i=1 f (sign (yi xi , v )) ·
+
+=
+
+W
+
+∏m
+i=1 f (sign (yi xi , u ))
+
+1
+W dw
+
+1
+
+du
+
+W dw
+
+dv
+
+m
+∏m
+i=1 f (sign (yi xi , v ))
+dv = C · ∏ f (bi ) dv .
+m
+W ∏i=1 f (sign (yi xi , u )) du
+i=1
+
+=
+
+Let us consider the expression A (w, z, b). For a fixed set z = (x, y) ∈ Z m let Px : W → K and P⊥
+x :W →
+K be the projection of unit length vectors into Lx and its orthogonal complement, respectively. Then, by
+construction we know that
+⊥
+yi xi , v = yi xi , Px (v) + P⊥
+x (v) = yi xi , Px (v) + yi xi , Px (v) = yi xi , Px (v) .
+
+As a consequence,
+sign yi xi , Px (v) + P⊥
+x (v)
+
+= bi ⇔ sign yi xi , Px (v) − P⊥
+x (v)
+
+= bi ,
+
+(32)
+
+which implies that
+A (w, z, b) =
+
+m
+
+∏ Isign(yi xi ,Px (v) )=bi
+
+w, Px (v) f (bi ) dv ,
+
+W i=1
+
+(33)
+
+because by (32) all the inner products with orthogonal components are vanishing. Noticing that ∀v ∈ W :
+Px (v) ≤ 1 we can rewrite (33) as
+A (w, z, b) =
+=
+
+K \Lx Lx
+
+I
+
+∏ Isign(yi xi ,u )=bi
+
+w, u f (bi ) du dv
+
+i=1
+
+1
+0
+
+m
+
+v+u =1
+
+K \Lx
+
+I
+
+v =1−r dv
+
+Lx
+
+I
+
+m
+
+u =r
+
+∏ Isign(yi xi ,u )=bi
+
+w, u f (bi ) du dr
+
+i=1
+
+Lastly, for all u with u = r we use the fact that
+m
+
+∏ Isign(yi xi ,u )=bi
+
+m
+
+w, u
+
+i=1
+
+= r · ∏ Isign(r·yi
+i=1
+m
+
+= r · ∏ Isign(yi
+i=1
+
+xi , ur
+
+xi , ur
+
+u
+)=bi w, r
+
+u
+)=bi w, r ,
+
+(34)
+
+that is the feasibility of a point u does not change under rescaling of u. Combining (34), (33) and (31) we
+have shown that there exists a constant C ∈ R+ such that
+W
+
+w−v
+
+2
+
+dPW|Zm =z (v) = C ·
+
+Wx
+
+w−v
+
+2
+
+dPW|Zm =z (v) .
+
+A.4 A derivation of the operation ⊕µ
+Let us derive operation ⊕µ acting on vectors of unit length. This function has to have the following properties
+(see Section 3.1)
+s ⊕µ t
+
+2
+
+t − s ⊕µ t
+s ⊕µ t
+ρ1 ≥ 0
+
+= 1,
+
+(35)
+
+= µ t−s ,
+= ρ1 s + ρ2 t ,
+
+(36)
+(37)
+
+,
+
+(38)
+
+272
+
+ρ2 ≥ 0 .
+
+BAYES P OINT M ACHINES
+
+= t
+
+2
+
+= 1. Inserting equation (37) into (35) results in
+
+ρ1 s + ρ2 t
+
+2
+
+= ρ1 s + ρ2 t, ρ1 s + ρ2 t = ρ21 + ρ22 + 2ρ1 ρ2 s, t = 1 .
+
+Here we assume that s
+
+2
+
+(39)
+
+In a similar fashion combining equation (37) and (36) gives
+t − s ⊕µ t
+
+2
+
+= µ2 t − s
+
+2
+
+(1 − ρ2 ) t − ρ1 s
+
+2
+
+= µ2 t − s
+
+2
+
+(1 − ρ2 )2 − 2 (1 − ρ2 ) ρ1 s, t + ρ21
+
+= 2µ2 (1 − s, t ) .
+
+(40)
+
+Note that equation (39) is quadratic in ρ2 and has the following solution
+ρ2
+
+= −ρ1 s, t ± ρ21 ( s, t )2 − ρ21 + 1 .
+
+(41)
+
+A
+
+Let us insert equation (41) into the l.h.s. of equation (40). This gives the following quadratic equation in ρ1
+(1 − ρ2 )2 − 2 (1 − ρ2 ) ρ1 s, t + ρ21
+(1 + ρ1 s, t − A) (1 − A − ρ1 s, t ) + ρ21
+
+=
+=
+
+(1 − A)2 − (ρ1 s, t )2 + ρ21 =
+2 − 2A = 2µ2 (1 − s, t ) .
+Solving this equation for ρ1 results in
+ρ1 = µ
+
+−
+
+µ2 − µ2 s, t − 2
+.
+s, t + 1
+
+Inserting this formula back into equation (41) we obtain
+ρ2 = −ρ1 s, t ± µ2 (1 − s, t ) − 1 .
+
+273
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+Appendix B. Algorithms
+Algorithm 1 Dual perceptron algorithm with permutation
+Require: A permutation Π : {1, . . . , m} → {1, . . . , m}
+Ensure: Existence of a version space V (z), a linearly separable training sample in feature space
+α=o=0
+repeat
+for i = 1, . . . , m do
+if yΠ(i) oΠ(i) ≤ 0 then
+αi ← αi + yΠ(i)
+for j = 1, . . . , m do
+oΠ( j) ← oΠ( j) + yΠ(i) k xΠ(i) , xΠ( j)
+end for
+end if
+end for
+until the if branch was never entered within the for loop
+return the expansion coefficients α
+
+274
+
+BAYES P OINT M ACHINES
+
+Algorithm 2 Kernel billiard algorithm (in dual variables)
+Require: A tolerance TOL ∈ [0, 1] and τmax ∈ R+
+Require: Existence of a version space V (z), a linearly separable training sample in feature space
+Ensure: for all i = 1, . . . , m, yi ∑mj=1 γ j k (xi , x j ) > 0
+α = 0, β = random, normalise β using equation (20)
+Ξ = ξmax = 0, pmin = 1
+while ρ2 (pmin , Ξ/ (Ξ + ξmax )) > TOL do
+repeat
+for i = 1, . . . , m do
+di = ∑mj=1 γ j k (x j , xi ), νi = ∑mj=1 β j k (x j , xi )
+τi = −di /νi
+end for
+c = argmini:τi >0 τi
+if τc ≥ τmax then
+β = random, but fulfils equation (22), normalise β using equation (20)
+else
+c=c
+end if
+until τc < τmax
+γ = γ + τc β, normalise γ using equation (20)
+βc = βc − 2νc /k (xc , xc )
+ζ = γ + γ , normalise ζ using equation (20)
+ξ=
+
+m
+∑m
+i=1 ∑ j=1 (γi − γi ) γ j − γ j k (xi , x j )
+
+m
+p = ∑m
+i=1 ∑ j=1 ζi α j k (xi , x j )
+Ξ
+Ξ
+α + ρ2 p, Ξ+ξ
+ζ
+α = ρ1 p, Ξ+ξ
+
+pmin = min (p, pmin ), ξmax = max (ξ, ξmax ), Ξ = Ξ + ξ, γ = γ
+end while
+return the expansion coefficients α
+
+275
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+References
+J. Aitchison. Bayesian tolerance regions (with discussion). Journal of the Royal Statistical Society – Series
+B, 26:161–175, 1964.
+C. M. Bishop. Neural Networks for Pattern Recognition. Clarendon Press, Oxford, 1995.
+B. E. Boser, I. M. Guyon, and V. N. Vapnik. A training algorithm for optimal margin classifiers. In D. Haussler, editor, Proceedings of the Annual Conference on Computational Learning Theory, pages 144–152,
+Pittsburgh, PA, July 1992. ACM Press.
+W. Buntine. A Theory of Learning Classification Rules. PhD thesis, University of Technology, Sydney,
+Autralia, 1992.
+C. Cortes. Prediction of Generalization Ability in Learning Machines. PhD thesis, Department of Computer
+Science, University of Rochester, 1995.
+R. Cox. Probability, frequency, and reasonable expectations. American Journal of Physics, 14:1–13, 1946.
+N. Cristianini and J. Shawe-Taylor. An Introduction to Support Vector Machines. Cambridge University
+Press, Cambridge, UK, 2000.
+D. DeCoste and B. Schölkopf. Training invariant support vector machines. Machine Learning, 2002. Accepted for publication. Also: Technical Report JPL-MLTR-00-1, Jet Propulsion Laboratory, Pasadena, CA,
+2000.
+T. G. Dietterich. Approximate statistical test for comparing supervised classification learning algorithms.
+Neural Computation, 10(7):1895–1924, 1998.
+W. Feller. An Introduction To Probability Theory and Its Application, volume 2. John Wiley and Sons, New
+York, 1966.
+T. Graepel and R. Herbrich. The kernel Gibbs sampler. In T. K. Leen, T. G. Dietterich, and V. Tresp, editors,
+Advances in Neural Information Processing Systems 13, pages 514–520, Cambridge, MA, 2001. MIT
+Press.
+T. Graepel, R. Herbrich, and K. Obermayer. Bayesian Transduction. In S. A. Solla, T. K. Leen, and K.-R.
+Müller, editors, Advances in Neural Information Processing Systems 12, pages 456–462, Cambridge, MA,
+2000. MIT Press.
+D. Haussler. Convolutional kernels on discrete structures. Technical Report UCSC-CRL-99-10, Computer
+Science Department, University of California at Santa Cruz, 1999.
+R. Herbrich. Learning Kernel Classifiers: Theory and Algorithms. MIT Press, 2001. in press.
+R. Herbrich and T. Graepel. A PAC-Bayesian margin bound for linear classifiers: Why SVMs work. In
+T. K. Leen, T. G. Dietterich, and V. Tresp, editors, Advances in Neural Information Processing Systems 13,
+pages 224–230, Cambridge, MA, 2001. MIT Press.
+R. Herbrich, T. Graepel, and C. Campbell. Bayes point machines: Estimating the Bayes point in kernel space.
+In Proceedings of IJCAI Workshop Support Vector Machines, pages 23–27, 1999a.
+R. Herbrich, T. Graepel, and C. Campbell. Bayesian learning in reproducing kernel Hilbert spaces. Technical
+report, Technical University of Berlin, 1999b. TR 99-11.
+
+276
+
+BAYES P OINT M ACHINES
+
+R. Herbrich, T. Graepel, and C. Campbell. Robust Bayes point machines. In Proceedings of ESANN 2000,
+pages 49–54, 2000a.
+R. Herbrich, T. Graepel, and J. Shawe-Taylor. Sparsity vs. large margins for linear classifiers. In Proceedings
+of the Annual Conference on Computational Learning Theory, pages 304–308, 2000b.
+T. Joachims. Text categorization with support vector machines: Learning with many relevant features. In
+Proceedings of the European Conference on Machine Learning, pages 137–142, Berlin, 1998. Springer.
+T. Joachims. Making large–scale SVM learning practical. In B. Schölkopf, C. J. C. Burges, and A. J. Smola,
+editors, Advances in Kernel Methods — Support Vector Learning, pages 169–184, Cambridge, MA, 1999.
+MIT Press.
+N. Littlestone and M. Warmuth. Relating data compression and learnability. Technical report, University of
+California Santa Cruz, 1986.
+D. J. C. MacKay. Bayesian Methods for Adaptive Models. PhD thesis, Computation and Neural Systems,
+California Institute of Technology, Pasadena, CA, 1991.
+D. A. McAllester. Some PAC Bayesian theorems. In Proceedings of the Annual Conference on Computational
+Learning Theory, pages 230–234, Madison, Wisconsin, 1998. ACM Press.
+D. A. McAllester. PAC-Bayesian model averaging. In Proceedings of the Annual Conference on Computational Learning Theory, pages 164–170, Santa Cruz, USA, 1999.
+J. Mercer. Functions of positive and negative type and their connection with the theory of integral equations.
+Philosophical Transactions of the Royal Society, London, A 209:415–446, 1909.
+C. A. Micchelli. Algebraic aspects of interpolation. Proceedings of Symposia in Applied Mathematics, 36:
+81–102, 1986.
+T. Minka. Expectation Propagation for approximative Bayesian inference. PhD thesis, MIT Media Labs,
+Cambridge, USA, 2001.
+T. M. Mitchell. Version spaces: a candidate elimination approach to rule learning. In Proceedings of the
+International Joint Conference on Artificial Intelligence, pages 305–310, Cambridge, Massachusetts, 1977.
+IJCAI.
+T. M. Mitchell. Generalization as search. Artificial Intelligence, 18(2):202–226, 1982.
+R. Neal. Bayesian Learning in Neural Networks. Springer, 1996.
+R. M. Neal. Markov chain Monte Carlo method based on ’slicing’ the density function. Technical report,
+Department of Statistics, University of Toronto, 1997. TR–9722.
+A. B. J. Novikoff. On convergence proofs on perceptrons. In Proceedings of the Symposium on the Mathematical Theory of Automata, volume 12, pages 615–622. Polytechnic Institute of Brooklyn, 1962.
+M. Opper and D. Haussler. Generalization performance of Bayes optimal classification algorithms for learning a perceptron. Physical Review Letters, 66:2677, 1991.
+M. Opper and W. Kinzel. Statistical Mechanics of Generalisation, page 151. Springer, 1995.
+M. Opper, W. Kinzel, J. Kleinz, and R. Nehl. On the ability of the optimal perceptron to generalize. Journal
+of Physics A, 23:581–586, 1990.
+M. Opper and O. Winther. Gaussian processes for classification: Mean field algorithms. Neural Computation,
+12(11):2655–2684, 2000.
+277
+
+H ERBRICH , G RAEPEL , C AMPBELL
+
+E. E. Osuna, R. Freund, and F. Girosi. Support vector machines: Training and applications. Technical report,
+Artificial Intelligence Laboratory, Massachusetts Institute of Technology, 1997. AI Memo No. 1602.
+E. J. G. Pitman. The estimation of the location and scale parameters of a continuous population of any given
+form. Biometrika, 30:391–421, 1939.
+J. Platt. Fast training of support vector machines using sequential minimal optimization. In B. Schölkopf,
+C. J. C. Burges, and A. J. Smola, editors, Advances in Kernel Methods — Support Vector Learning, pages
+185–208, Cambridge, MA, 1999. MIT Press.
+J. Platt. Probabilities for SV machines. In A. J. Smola, P. L. Bartlett, B. Schölkopf, and D. Schuurmans,
+editors, Advances in Large Margin Classifiers, pages 61–73, Cambridge, MA, 2000. MIT Press.
+G. Rätsch, T. Onoda, and K.-R. Müller. Soft margins for adaboost. Machine Learning, 42(3):287–320, 2001.
+P. Ruján. Playing billiards in version space. Neural Computation, 9:99–122, 1997.
+P. Ruján and M. Marchand. Computing the Bayes kernel classifier. In A. J. Smola, P. L. Bartlett, B. Schölkopf,
+and D. Schuurmans, editors, Advances in Large Margin Classifiers, pages 329–347, Cambridge, MA, 2000.
+MIT Press.
+M. Rychetsky, J. Shawe-Taylor, and M. Glesner. Direct Bayes point machines. In Proceedings of the International Conference on Machine Learning, 2000.
+B. Schölkopf. Support Vector Learning. R. Oldenbourg Verlag, München, 1997.
+Berlin. Download: http://www.kernel-machines.org.
+
+Doktorarbeit, TU
+
+B. Schölkopf, R. Herbrich, and A. J. Smola. A generalized representer theorem. In Proceedings of the Annual
+Conference on Computational Learning Theory, 2001.
+B. Schölkopf, S. Mika, C. Burges, P. Knirsch, K.-R. Müller, G. Rätsch, and A. Smola. Input space vs. feature
+space in kernel-based methods. IEEE Transactions on Neural Networks, 10(5):1000–1017, 1999.
+J. Shawe-Taylor, P. L. Bartlett, R. C. Williamson, and M. Anthony. Structural risk minimization over datadependent hierarchies. IEEE Transactions on Information Theory, 44(5):1926–1940, 1998.
+J. Shawe-Taylor and N. Cristianini. Margin distribution and soft margin. In A. J. Smola, P. L. Bartlett,
+B. Schölkopf, and D. Schuurmans, editors, Advances in Large Margin Classifiers, pages 349–358, Cambridge, MA, 2000. MIT Press.
+A. J. Smola. Learning with Kernels. PhD thesis, Technische Universität Berlin, 1998. GMD Research Series
+No. 25.
+P. Sollich. Probabilistic methods for support vector machines. In S. A. Solla, T. K. Leen, and K.-R. Müller,
+editors, Advances in Neural Information Processing Systems 12, pages 349–355, Cambridge, MA, 2000.
+MIT Press.
+V. Vapnik. The Nature of Statistical Learning Theory. Springer, New York, 1995. ISBN 0-387-94559-8.
+V. Vapnik. Statistical Learning Theory. John Wiley and Sons, New York, 1998.
+G. Wahba. Spline Models for Observational Data, volume 59 of CBMS-NSF Regional Conference Series in
+Applied Mathematics. SIAM, Philadelphia, 1990.
+T. Watkin. Optimal learning with a neural network. Europhysics Letters, 21:871, 1993.
+C. K. I. Williams. Prediction with Gaussian processes: From linear regression to linear prediction and beyond.
+In M. Jordan, editor, Learning and Inference in Graphical Models, pages 599–621. MIT Press, 1999.
+C. K. I. Williams and D. Barber. Bayesian classification with Gaussian processes. IEEE Transactions on
+Pattern Analysis and Machine Intelligence PAMI, 20(12):1342–1351, 1998.
+278
+
+

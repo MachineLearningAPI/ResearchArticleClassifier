@@ -1,0 +1,3091 @@
+Journal of Machine Learning Research 1 (2001) 311–355
+
+Submitted 8/00; Published 9/01
+
+Prior Knowledge and Preferential Structures in Gradient
+Descent Learning Algorithms∗
+Robert E. Mahony
+
+mahony@ieee.org
+
+Department of Engineering
+Australian National University,
+Canberra, ACT 0200, Australia.
+
+Robert C. Williamson
+
+Bob.Williamson@anu.edu.au
+
+Department of Telecommunications Engineering
+Research School of Information Sciences and Engineering
+Australian National University,
+Canberra, ACT 0200, Australia.
+
+Editor: Michael Kearns
+
+Abstract
+A family of gradient descent algorithms for learning linear functions in an online setting is
+considered. The family includes the classical LMS algorithm as well as new variants such as
+the Exponentiated Gradient (EG) algorithm due to Kivinen and Warmuth. The algorithms
+are based on prior distributions defined on the weight space. Techniques from differential
+geometry are used to develop the algorithms as gradient descent iterations with respect to
+the natural gradient in the Riemannian structure induced by the prior distribution. The
+proposed framework subsumes the notion of “link-functions”.
+Keywords: Gradient descent, exponentiated gradient algorithm, natural gradient, linkfunctions, Riemannian metric
+
+1. Introduction
+The LMS (least mean-square or Widrow-Hoff algorithm) (Clarkson, 1993) is very widely
+used in signal processing and various learning problems (Duda, Hart, and Stork, 2001).
+Recently some interesting variants of this algorithm including the Exponentiated Gradient
+(EG) algorithm have been developed by Kivinen and Warmuth (1997). The EG algorithm
+has been shown (both theoretically and experimentally) to have better performance in situations where the target weight vector is sparse. The theoretical framework used in that
+analysis is also relatively new (the so called mistake-bounded framework). An alternative
+analysis (Hill and Williamson, 1999, 2001) (analogous to more traditional ways of viewing LMS) essentially reproduces the conclusion that EG works well with a sparse target.
+More recently Grove et al. (1997), Warmuth and Jagota (1997), Kivinen and Warmuth
+(2001, 1998), Gentile and Littlestone (1999) and Gordon (1999a,b) have analyzed a range
+of general families of gradient descent algorithms inspired by the EG algorithm for both
+∗. An earlier version of parts of this work appeared in pages 197–202 of the Proceedings of the IEEE
+2000 Adaptive Systems for Signal Processing, Communication and Control Symposium (AS-SPCC)), S.
+Haykin and J. Principe (Eds), IEEE Press, New Jersey, 2000.
+c 2001 Robert Mahony and Robert Williamson.
+
+Mahony and Williamson
+
+classification and regression problems. There are several different viewpoints taken in these
+works, analyzing the algorithms in terms of Bregman divergences, matching loss functions
+and conjugate priors (for example). In general, such algorithms perform better on a particular class of problems related to prior knowledge of the target weight vector. It is natural to
+study the relationship between prior information and numerical learning algorithms in order
+to design effective learning algorithms for new classes of problems. Kivinen and Warmuth
+(1998) introduced the concept of ‘link functions’ in order to generalize the derivation of
+the EG algorithm. An alternative is the natural gradient learning framework developed by
+Amari (1998). Such a learning algorithm is well motivated as a stochastic gradient descent
+algorithm derived with respect to the maximally non-informative (or Fisher) information
+metric; see Amari (1985), Barndorff-Nielsen (1988), Murray and Rice (1993), Douglas and
+Amari (2000). These algorithms correspond to assuming a maximally non-informative (or
+Jeffery) prior distribution on the target weight vector.
+In this paper we present a new method to derive stochastic gradient algorithms that is
+closely linked to Bayesian prior information. The approach taken is to link prior distributions to a Riemannian structure on weight space that is called a preferential structure. In
+the case of product prior distributions the connection between a preferential structure and a
+Bayesian prior distribution may be made relatively precise. The framework proposed leads
+to a constructive method to design stochastic gradient descent algorithms that are adapted
+to perform well under certain prior assumptions. Once a stochastic gradient descent algorithm has been designed for a certain application the numerical cost of its implementation
+is of the same order as that of the LMS algorithm. A theorem is proved showing that
+(subject to some technical conditions) a stochastic gradient algorithm designed according
+to the framework proposed is, on average and when the prior assumptions hold true, locally the most efficient stochastic gradient descent algorithm. The preferential structure
+proposed provides an interpretation of the EG algorithm in terms of a product prior distribution that heavily weights zero against non-zero weight vector entries. The intuition
+associated with the prior weighting fits with the observed numerical advantages of the EG
+algorithm. Using the framework of prior distributions and preferential structures several
+new numerical learning algorithms are derived based on prior distributions of particular
+interest. Simulations are given comparing relative performance of the algorithms proposed.
+The proposed framework also provides an interpretation of the role played by link functions
+in the development of Kivinen and Warmuth (1998). The key contribution of the paper is
+in providing a new tool in the optimization of stochastic gradient descent algorithms for
+real world applications.
+Section 2 of the paper reviews the learning problem considered and relates the approach
+taken to the previous work of Amari (1997, 1998). In Section 3 general preferential structures are motivated and defined. Section 4 concentrates on the special case where the prior
+distribution in parameter space is a product distribution. The preferential (natural) gradient descent algorithm is introduced in Section 5. In Section 6 existing algorithms (such
+as the EG algorithm) are interpreted in terms of prior distributions and preferential structure. Section 7 shows the connection between “link functions” and the proposed framework.
+Some examples of different algorithms are presented in Section 8. An analysis of local performance of different learning algorithms is provided in Section 9. Results of simulation
+experiments for the examples considered in Section 8 are given in Section 10.
+312
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Finally, in order to aid readers unfamiliar with Riemannian geometry, in Appendix A
+we have presented a gentle introduction to the basic ideas used in this paper.
+
+2. Problem Formulation
+In this section the framework for the learning problem considered is presented. The conceptual difference between the proposed approach and that based on recent developments
+in statistical geometry (cf. Amari (1998)) is outlined. The gradient descent (or LMS)
+algorithm and the exponentiated gradient algorithms are presented.
+Consider the class of linear model relationships with inputs in RN and outputs in R;
+the set of maps
+x → w, x , x ∈ RN ,
+where w ∈ RN and w, x = wT x. For a sequence of data {x1 , x2 , ...} assume that there are
+associated outputs
+yk = w∗ , xk + ηk ,
+
+(1)
+
+generated by an unknown “true” system x → w∗ , x perturbed by noise ηk . Depending on
+the problem setting and the type of analysis to be attempted, different assumptions can be
+made on the noise. We do not make any assumptions here, but merely mention that there
+usually is noise because it will ultimately govern the tradeoff between convergence speed
+of the algorithms considered and their steady-state error (how much the estimates “jiggle
+about” the true weight vector w∗ ).
+The problem considered is to learn the unknown w∗ for the incoming data stream
+Sk := {(x1 , y1 ), (x2 , y2 ), . . . , (xk , yk )}.
+
+(2)
+
+In this paper we make no assumptions about the sequence (xk ) except in Section 9. (This is
+because apart from in that section we are not actually making a performance analysis.) This
+problem is known as a supervised learning problem since to obtain the training sequence
+Sk one needs both a set of trial data points {xk } and the measured outputs {yk } which
+would in practice be supplied by a “supervisor” (human or machine). In the presence of
+the noise ηk this problem becomes one of parametric statistical inference, that of finding
+the statistical model pw∗ which best explains the observed data.
+A learning rule is a method of determining a sequence of estimates {w1 , w2 , . . . , wk },
+where wk depends on Sk , which “learns” the parameter w∗ , that is wk → w∗ . Many
+practical learning algorithms proposed in the literature are based on stochastic gradient
+descent schemes; see for example Fine (1999), Hassoun (1995), Duda et al. (2001). Let
+yˆk := wk , xk .
+
+(3)
+
+denote the estimated output. The instantaneous loss function
+1
+L(yk , yˆk ) := (yk − yˆk )2 ,
+2
+313
+
+(4)
+
+Mahony and Williamson
+
+measures the mismatch between the training sample yk and the estimated output yˆk .
+The Gradient Descent GD learning rule updates the present estimate wk in the direction
+of steepest descent of the cost L(yk , yˆk )
+wk+1 = wk − sk
+
+∂L
+(yk , yˆk ).
+∂w
+
+(5)
+
+∂L
+∂L
+Here ∂w
+(yk , yˆk ) is the column vector of partial differentials ∂w
+i , for i = 1, . . . , N . The
+scalar sk ∈ R is a step-size scaling factor (or learning rate) which is chosen to control
+how large an update to wk is made. In most current learning applications the update
+is kept constant. The noise in (1) will locally perturb the convergence of the stochastic
+gradient algorithm, although, as long as the measurements are drawn from a non-degenerate
+distribution, the estimate wk converges asymptotically to a neighbourhood of w∗ (Solo and
+Kong, 1995). More specifically, it can be shown that under mild assumptions the stochastic
+gradient descent algorithm will follow a trajectory “close” to the trajectory of an “averaged
+equation”. The exact meaning of “close” depends on the details of the analysis (Solo and
+Kong, 1995), but the important point is that they are closer as the step size gets smaller and
+the noise gets smaller. Thus it is common practice in analysing or developing stochastic
+gradient descent algorithms to pretend at first there is no noise present, but afterwards
+check performance with noise. This is exactly the route we will adopt in the present paper.
+Thus we we assume that the measurement
+
+yk = w∗ , xk
+is unperturbed by noise. This assumption simplifies the presentation of the principal contribution of the paper: a geometric interpretation of a preferential structure on the parameter
+space.
+Recent developments in statistical geometry (Amari, 1985, Murray and Rice, 1993,
+Barndorff-Nielsen, 1988, Douglas and Amari, 2000) are based on providing a geometric
+interpretation of the problem of parametric statistical inference, the problem of computing
+one model among a parametrized set of statistical models which best describes an observed
+set of noisy measurements. The underlying paradigm is to find an intrinsic geometry for the
+problem (based on statistical precepts) which is independent of the particular parametrization of the statistical model. The key developments in statistical geometry revolve around a
+geometry on the space of conditional probabilities derived from a likelihood function and the
+associated affine action of the set of random variables acting on the space of probabilities.
+The Riemannian metric used is typically the Fisher metric (also known as the maximally
+non-informative metric). This metric is derived from cross-correlation of random variables
+and leads to an associated prior distribution known as the Jeffery prior or maximally noninformative prior. The more sophisticated geometry developed (involving parallel transport
+and affine connections) is related to invariance of various statistical divergence measures
+under the action of covariant differentiation.
+In the present paper we take a different approach. We assume that there is significant
+prior information available and that this information is coded directly in terms of the
+weight vectors for the learning problem. As a conseqeunce, the given parametrization (in
+this case the linear weight vector) of the problem contains important information. It is
+clear that the maximally non-informative geometry (generated by the Fisher metric) is not
+314
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+a suitable structure for analysis of the learning problem considered. To further simplify
+the development we restrict our analysis to the deterministic learning problem where the
+only statistical information that needs to be considered is the prior information. This
+perspective on the problem considered is quite different from that proposed by Amari (1998)
+and appears to provide a means to understand a number of known learning algorithms in a
+generic manner.
+Variations on the classical gradient descent or LMS algorithm (5) have been recently proposed as prototype learning algorithms. Of particular interest is the exponentiated gradient
+(EG) algorithm (Kivinen and Warmuth, 1997)
+wk+1 = diag(wk ) exp .(−sk
+
+∂L
+(yk , yˆk )),
+∂w
+
+(6)
+
+where the exponential function exp . of a vector is the vector of the exponentials of the
+separate entries, and diag(wk ) is the diagonal matrix with diagonal entries given by the
+entries of wk . Thus the ith entry of wk+1 is given by
+i
+wk+1
+= wki exp −sk
+
+∂L
+(yk , yˆk ) .
+∂wi
+
+It is known that the EG algorithm performs better than the GD algorithm if the true
+parameter w∗ contains relatively few non-zero entries (Kivinen and Warmuth, 1997). It
+is not surprising that it performs worse than the GD algorithm if the true parameter has
+many non-zero entries. Thus, to choose the most efficient learning algorithm for a given
+application one would exploit any prior knowledge available regarding the nature of the true
+weight vector to choose between the GD or the EG algorithm.
+The above discussion leads one to pose the question: How is it possible to use prior
+knowledge about the true weight vector in a given application to design a more efficient
+learning algorithm? The remainder of the paper is devoted to presenting an approach to
+answering this question. Before entering into the technicalities it is worth mentioning how
+the proposed results may be used in practice. For a real world problem involving a class of
+linear model relationships it is often very difficult to understand and model prior information
+based on physical arguments. However, it is generally a simple, if time consuming, matter to
+acquire data in real world operating environments. An estimate of the distribution of true
+weight vectors can then be inferred from the data by running a standard gradient descent
+algorithm and recording the weights it converges to and then estimating a distribution
+over those weights. The experimental prior distribution can then be used as the basis of
+an optimized design using the theory presented in the sequel. In particular, if the prior
+distribution obtained is a product distribution the preferential structure is given by (13)
+and the algorithm is given by (40) or an approximation of this equation. An example of this
+determination and use of an “empirical prior” has been presented by Martin et al. (2001).
+
+3. Preferential Structures and Prior Knowledge
+In this section an approach for encoding prior knowledge into learning algorithms by imposing a Riemannian geometry on parameter space is proposed. In the context of learning
+theory we propose to call this geometric structure a preferential structure.
+315
+
+Mahony and Williamson
+
+3.1 Riemannian Metrics
+A Riemannian metric on RN is a bilinear, positive definite inner product on each tangent
+space Tw Rn ∼
+= RN which varies smoothly in w. We denote a metric by
+·, ·
+
+w
+
+: T w RN × T w R N → R N
+
+that may be represented explicitly in the natural co-ordinates on RN by a positive definite
+matrix Gw > 0 at each point. Thus, for tangent vectors X, Y ∈ Tw RN
+X, Y
+
+w
+
+= X T Gw Y,
+
+and Gw > 0 is a smooth matrix function on RN . At the point w ∈ RN the metric can be
+thought of as a way to measure the length of vectors and angles between vectors in Tw RN .
+A Riemannian metric ·, · w on each Tw RN can be used to measure curve length on RN .
+Let γ : [0, 1] → RN be a smooth curve on RN . Then the length of γ is defined to be
+1
+
+γ(τ
+˙ ), γ(τ
+˙ )
+
+L(γ) :=
+
+γ(τ ) dτ.
+
+(7)
+
+0
+
+This extends to a classical metric δ(u, w) measuring distance between two points u, w ∈ RN
+via the infimum
+δ(u, w) :=
+
+inf
+
+L(γ),
+
+(8)
+
+γ∈H(u,w)
+
+where
+H(u, w) := {γ : [0, 1] → RN : γ(0) = u, γ(1) = w}.
+That is, δ(u, w) is the length of the shortest curve connecting u and w. To avoid confu˜ N to denote RN equipped with a non-Euclidean
+sion between Euclidean RN we will use R
+geometric structure.
+3.2 Encoding Prior Information
+By a linearization locally around any point w(0), a Riemannian metric may be written
+Gz := diag(µ21 , . . . , µ2N ) + O( z − w )
+for z ∈ U a neighbourhood of w and where µi > 0. Choosing two end points w(0) and
+w(1) that only vary in the ith component it is easily verified that the shortest length
+curve between these points is the straight line lying along the co-ordinate axis connecting
+them. The length of a curve lying along a co-ordinate axis wi is simply µi |wi (0) − wi (1)| =
+δ(w(0), w(1)). Thus, taking a unit length step in direction wi with respect to the new
+geometry translates into a scaled step of length µ1i in the original co-ordinates. That is
+δ(w(0), w(1)) = µi |wi (0) − wi (1)| = 1
+316
+
+⇔
+
+|wi (0) − wi (1)| =
+
+1
+µi
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Suppose now that one has some prior knowledge that indicates wi is likely to be a
+fairly good estimate of the ith component of the true parameter whereas wj may be a
+poor estimate. Then we may choose the metric Gz with µi
+µj so that a unit step
+(with respect to the new metric) in direction wi results in a relatively small change in the
+Euclidean distance while a unit step in direction wj results in a significant change Euclidean
+distance.1 Thus even if the instantaneous cost indicates large changes should be made in the
+direction wj (perhaps due to noisy data), the prior knowledge (in the form of the chosen
+metric) would ensure that only small steps (relative to the Euclidean metric) are made.
+Intuitively, if our prior knowledge is good and can be coded in this manner then a learning
+algorithm derived with respect to this new geometric structure should perform better than
+one which does not incorporate the prior knowledge in any manner. The insight provided
+by this example is directly applicable to infinitesimal learning steps at a point w ∈ RN since
+Gw is symmetric and can always be diagonalized locally (to O(w) terms in a neighbourhood
+of w). In Section 5 we show how to generate practical learning algorithms that respect the
+geometric structure generated by an arbitrary Riemannian metric.
+Definition 1 Consider a learning problem of the form outlined in Section 2. A preferential
+structure is a Riemannian metric on parameter space, called the preferential metric, that
+encodes certain prior knowledge for the learning problem. A learning problem along with a
+preferential structure is said to have a preferentially structured parameter space.
+This definition is clearly inadequate (so far) as a technical tool since it does not provide
+any quantitative manner to generate a preferential structure. In Section 4 a connection is
+drawn between product prior distributions and diagonal preferential structures that provides
+a quantitative connection for a large class of interesting problems.
+Remark 2 The definition of preferential structure proposed (Definition 1) makes no explicit reference to the underlying statistics of the problem (e.g. via the likelihood function).
+The information geometric structure presented by Amari (1985), Murray and Rice (1993),
+Barndorff-Nielsen (1988) satisfies Definition 1 given prior knowledge of the noise characteristics of the measurements and no prior distribution on the weights (Amari, 1998). The
+class of algorithms considered in the present paper follows from the assumption of deterministic measurements and a prior distribution on the weights.
+
+4. Product Distributions and Diagonal Preferential Metrics
+In this section we consider the situation when prior knowledge is quantified via a Bayesian
+prior probability distribution. There are numerous arguments (Robert, 1994) why this is
+a “good” way of encoding prior knowledge. Our goal in the present section is to relate a
+prior probability distribution over the parameter space to a preferential metric.
+We focus on the particular case where the prior is a product distribution in which case (as
+we show) there is a unique preferential metric that naturally recodes the prior distribution
+into a preferential structure. The actual application of these structures to gradient descent
+learning algorithms is considered in the next section.
+1. An illustrative example of this effect is given in Figures 7 and 8 for the particular geometry of the EG
+algorithm.
+
+317
+
+Mahony and Williamson
+
+Suppose a prior distribution (with density φ : RN → R+ ) for the true parameter w∗ is
+given and has the form
+N
+
+φi (wi ),
+
+φ(w) :=
+
+(9)
+
+i=1
+
+where each φi : R → R+ is itself a probability density for wi . Thus given a set Ω ⊆ Rn then
+the probability that w∗ ∈ Ω
+P (w∗ ∈ Ω) =
+
+φ(w)dw.
+
+(10)
+
+Ω
+
+Now suppose there exists a preferential metric (represented by Gw ) such that
+det(Gw ) = φ(w)2 .
+
+(11)
+
+Once again we can take a set Ω ⊆ Rn (Lesbegue measurable) and compute the area of Ω
+with respect to the preferential metric. The area is given by the integral (Boothby, 1986,
+pg. 240)
+Ap (Ω) :=
+
+det(Gw )dw
+
+(12)
+
+Ω
+
+(the p denotes “preferential”.) That is, the volume element in the new geometry is scaled
+by the factor det(Gw ) with respect to Lesbegue integration in the co-ordinates w. Thus,
+due to the assumed form of Gw ,
+Ap (Ω) =
+Ω
+
+φ(w)dw = P (w∗ ∈ Ω).
+
+In this sense area with respect to the preferential metric is equivalent to density with respect
+to the p.d.f. φ.
+If φ is large in a region then the associated metric should also be large, corresponding
+to large relative area of the region with respect to the preferential structure. Consequently,
+unit step updates (with respect to the preferential structure) in a gradient descent learning
+algorithm should translate into small updates of the parameters w. For example, even if the
+instantaneous cost indicates large changes should be made to the present estimates (perhaps
+due to noisy data), the prior knowledge (in the form of the preferential structure) ensures
+that only small steps (relative to the Euclidean metric) are made in areas corresponding
+to uniformly high p.d.f. φ. If the actual true parameter is such that it causes the descent
+steps to continue to force a change in an unlikely direction with respect to the preferential
+structure then convergence of the parameter wk → w∗ will be considerably slower than if
+the preferential structure was not present. This corresponds to having made the wrong
+prior assumptions about w∗ .
+We will show below (section 9) that the above intuitive justification is sound in a more
+precise sense: modification of a gradient descent algorithms by a preferential metric satisfying (11) leads to an algorithm with faster local convergence.
+318
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+4.1 Freedom in choosing Gw from φ
+Equation 11 will be satisfied by arbitrarily many Riemannian metrics for a given p.d.f. φ.
+However, for a product distribution (9) we propose the particular preferential metric
+
+
+φ1 (w)2 0 · · ·
+0
+
+
+..
+..
+
+
+.
+0
+.
+.
+Gw := 
+(13)
+
+
+..
+..
+
+
+.
+.
+0
+0
+· · · 0 φN (wN )2
+Certainly Gw satisfies (11). Moreover, it generalizes the product distribution structure of
+φ. To see this one must consider the probability of sets (events) Ω which have zero measure
+in RN . We will restrict our attention to sets Ω which are embedded submanifolds of RN . In
+general, let M be an embedded submanifold of RN and let Ω ⊆ M be a subset of M . With
+respect to the p.d.f. φ on RN then for any event Ω of this form P (Ω) = 0. However, the
+conditional probability P (Ω|M ) should not be zero. Moreover, this should be related to an
+area integral on M relative to the geometric structure inherited on M via the embedding
+M → RN from the preferential structure.
+We will say that a preferential structure agrees with a prior distribution φ if for any
+embedded submanifold of RN then
+P (Ω|M ) = AM
+p (Ω)
+where
+AM
+p (Ω) :=
+
+det(GM
+w )dw
+Ω
+
+where GM
+w is the metric projected onto the manifold M ; see (15) below. If this is true then
+the concept of length defined by the preferential metric (which is important for generating learning algorithms) agrees with conditional probability distributions in the particular
+case of 1-dimensional subspaces. Computing conditional probabilities for arbitrary lower
+dimensional sets is difficult and we shamelessly dodge this problem in the next lemma by
+restricting our attention to embedded manifolds lying orthogonal to the co-ordinate axis
+and exploiting the structure of the product measure.
+Lemma 3 Let φ be a product p.d.f. of the form (9) and let Gw be the preferential metric
+given by (13). Then for any embedded manifold M → RN which is orthogonal to a subset
+of the co-ordinate axes and any subset Ω ⊆ M one has
+P (Ω|M ) = AM
+p (Ω).
+
+(14)
+
+Furthermore, Gw is the unique metric for which this identity holds.
+Proof If an m-dimensional manifold M → RN is orthogonal to the co-ordinate axes
+then locally one can choose m co-ordinates z = (wi1 , . . . , wim )T ∈ Rm which act as local
+co-ordinates on M . Note that M is characterised locally by holding the remaining N − m
+co-ordinates constant (Boothby, 1986, pg. 75). Due to the nature of the product distribution
+319
+
+Mahony and Williamson
+
+the conditional p.d.f. on M is given by integrating out φ with respect to the N − m ‘nonactive’ co-ordinates to obtain
+m
+
+φM (wi1 , . . . , wim ) :=
+
+φik (wik )
+k=1
+
+Thus, written in terms of the local co-ordinates z the probability of Ω conditioned on M is
+the Lesbegue integral
+φM (z)dz.
+
+P (Ω|M ) =
+Ω
+
+We deliberately avoid the rigorous approach to dealing with conditional probabilties when
+the conditioning event has probability is zero; see for example (Shiryaev, 1996, Section II.7)
+or (Hoffmann-Jorgensen, 1994, Chapter 10). Chang and Pollard (1997) have presented an
+alternative formal approach.
+Think of the local co-ordinates as maps into RN via the correspondence wi : R → RN ,
+wik (z k ) := (0, . . . , 0, z k , 0, . . . , 0)T
+where z k occurs in the ik th entry of the vector. Thus, the local co-ordinate map around a
+point w0 ∈ M can be written as a vector function wM : Rm → RN
+wM (x) := wi1 (z 1 ) + · · · + wim (z m ) + w0 .
+1 , . . . , w N )T ∈ RN for the co-ordinates of w
+We write wM = (wM
+M ∈
+M
+preferential metric on M with respect to the local co-ordinates is
+
+φi1 (z 1 )2 0 · · ·
+0
+
+..
+.
+..
+
+0
+.
+M
+T
+
+Gw = dwM Gw dwM = 
+..
+.
+..
+
+0
+.
+0
+· · · 0 φiN (z m )2
+
+Here dwM ∈ RN ×m with entries (dwM )pq =
+that
+
+p
+∂wM
+∂z q ,
+
+RN . The induced
+
+
+
+
+.
+
+
+
+(15)
+
+p = 1, . . . , N , q = 1, . . . , m. Now observe
+
+m
+
+det(GM
+w )
+
+φik (z k )2 = (φM (z))2 .
+
+=
+k=1
+
+It follows from the definition of area on a Riemannian manifold (12) that P (Ω|M ) = AM
+p (Ω).
+To show uniqueness assume that Gw > 0 (with entries gij ) is an arbitrary preferential
+structure that satisfies (14). Observe firstly that the diagonal elements of Gw are uniquely
+defined by considering the case of one-dimensional manifolds orthogonal to the co-ordinate
+axis. This follows since the induced preferential metric is just the diagonal element gii while
+the conditional probability is φM (wi ).
+Consider an arbitrary two-dimensional submanifold orthogonal to the co-ordinate axis
+with local co-ordinates wi and wj . Then
+GM
+w =
+
+gii gij
+gji gjj
+320
+
+.
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+To ensure that (14) holds on all subsets Ω then locally on M one must have φM (wi , wj )2 =
+M
+i
+j
+i
+j
+det(GM
+w ) where φ (w , w ) = φi (w )φj (w ) is the product measure induced on the subspace
+spanned by the i and j co-ordinates. Computing the determinant yields
+det(GM
+w ) = gii gjj − gij gji
+2
+= φi (wi )2 φj (wj )2 − gij
+2
+= φM (wi , wj )2 − gij
+,
+
+where we have used symmetry of Gw as well as the identification of the diagonal elements
+with φi (wi )2 . Since M and Ω are arbitrary it follows that gij = 0 for all i = j.
+
+Remark 4 It should be noted that except for some changes in notation the development
+undertaken above is valid for any p.d.f. of the form
+N
+
+φ(w) =
+
+φi (w)
+i=1
+
+where each φi (w) is a probability distribution for wi on R but may depend on all the variables
+w. This is important since product measures φi (w) := φi (wi ) induce a preferential structure
+which is isometric to Euclidean space (cf. Section 7) whereas a more general product distribution, even though it induces a diagonal preferential metric, will not induce a Euclidean
+preferential structure.
+4.2 General Improper Priors
+In this subsection we explore the implications of φ(w) being an improper distribution (i.e.
+one for which Ω φ(w)dw = 1 and may in fact be infinite). There are two key reasons for
+doing this:
+1. The two main example algorithms we consider (standard Gradient Descent where
+φ(w) = 1 and the EG algorithm where φ(w) = 1/|w|) correspond to improper priors;
+2. In practice only a local comparison between performance of stochastic gradient descent
+learning algorithms is possible (a global comparison seems analytically intractable; cf.
+Section 9) and consequently only conditional probabilities, in a neighbourhood of a
+given point are considered. Thus, the question of improper or proper priors does not
+truly affect the conclusions of the paper.
+The above development has been undertaken for proper probability distributions φ and
+has looked for Riemannian metrics which correspond to these probability distributions.
+However, one may look at the problem in the opposite direction and ask the question, given
+a Riemannian metric g(w), then does the distribution
+φ(w) :=
+
+det(g(w))
+321
+
+(16)
+
+Mahony and Williamson
+
+mean anything in a probabilistic sense? Below we will argue that it does. Note that for
+an arbitrary Riemannian metric Gw the distribution φ generated is not in general a proper
+probseeability distribution; it is highly unlikely that
+A=
+
+Gw dw = 1.
+RN
+
+It can be interpreted as an improper distribution. Bayesian statisticians often deal with improper prior distributions; the most obvious one is the uniform measure over R. Whilst there
+are undoubtably technical difficulties arising from such improper priors (see e.g. Robert,
+1994), one can generally get away with their use as long as the posterior distributions are
+well defined. Furthermore, it is possible to reformulate the basis of Bayesian statistics
+to handle improper priors in a rigorous manner (Hartigan, 1983) albeit at the expense of
+considerable technicalities.
+Of course if A is finite then simply rescaling Gw provides a direct analogy of the development given above. However if A is infinite then a different argument is needed. If
+one wanted to compare the one event Ω ⊆ RN with respect to a uniform distribution (an
+improper distribution on RN ) or a non-uniform distribution φ then one could look at the
+ratio
+R(φ,1) (Ω) :=
+
+Ω φ(w)dw
+Ω 1dw
+
+.
+
+Thus, R(φ1 ,φ2 ) (Ω) is a ratio of likelihoods rather than an absolute probability. As long as
+the events considered always have finite non-zero weight with respect to the set Ω, then
+the ratio R(φ1 ,φ2 ) (Ω) is well defined. We will call distributions φ of the form (16) relative
+probability distributions. Such a distribution should always be thought of relative to a second
+distribution; in the sequel unless otherwise mentioned the relative distribution will always
+be the uniform distribution. Thus, in this context the ratio of φ(w)/1 can be thought of as
+the relative likelihood of the point w compared to the uniform distribution. We shall see
+in subsection 7.1 that rescaling φ(w) by multiplication by a scalar is equivalent to a simple
+change in the step size used.
+The machinery associated with improper distributions and relative probability distributions is natural in the analysis undertaken in this paper since the basic GD learning
+algorithm can be thought of a being associated with the uniform prior distribution. This
+can be seen heuristically by observing that the direction of update for the GD algorithm is
+totally unbiased by any modification of the direct steepest descent direction. In a probabilistic sense this is saying that w∗ ∈ RN is equally likely to be any point in RN and hence
+the best estimate of w∗ is based on minimizing the loss associated with the latest received
+data. By contrast, the EG algorithm update step is approximately taken in the direction
+of steepest descent for very small update steps, but the larger the update step then the
+more the distortion of the exponential tends to change the next estimate. We interpret this
+as taking account of prior information in the update step. (An explicit form for the prior
+associated with the EG algorithm is determined in section 6.2).
+In the sequel we will always be dealing with the performance of a given algorithm relative
+to the performance of some other algorithm. We will relate this relative performance back to
+relative probability densities and then to certain associated Riemannian metrics. Since the
+322
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+entire analysis is relative we will choose to adopt the following premise:2 The GD algorithm
+is the “best” or most approrpriate learning algorithm given that one has no prior knowledge
+of the true parameter. The GD algorithm is associated with the uniform improper prior and
+the Euclidean preferential metric.
+
+5. Learning Algorithms on Preferentially Structured Parameter Space
+In this section a method for generating learning algorithms is proposed based on a given
+preferential structure.
+Both the GD and EG learning algorithms (5) and (6) are stochastic gradient descent
+algorithms and use only first order differential information of L and a step size (learning
+rate) sk at each update. Consider a general learning algorithm of the form
+wk+1 = F (sk ,
+
+∂L
+, wk ),
+∂w
+
+(17)
+
+where F : R × RN × RN → RN . To make the learning algorithm sensible one would expect
+∂L
+∂L
+that if either sk = 0 or ∂w
+(yk , yˆk ) = 0 then F (sk , ∂w
+, wk ) = wk and that F is a locally
+continuous (or even differentiable) function of its arguments. If F is differentiable in the
+first variable then
+γ˜ (τ ) := F (τ,
+
+∂L
+, wk ),
+∂w
+
+is a C1 curve in RN which passes through wk for τ = 0. This leads one to study the class
+of curves
+γ(wk ,Vk ) : [0, sk ] → RN
+such that γ(wk ,Vk ) (0) = wk , γ˙ (wk ,Vk ) (0) = Vk and Vk is a function of the derivative information
+∂L
+∂w .
+Ignoring for the moment the question of how to choose sk and Vk , then one may ask
+exactly what is the best “curve” γ(wk ,Vk ) (·) to choose given a known preferential structure.
+For stochastic gradient descent algorithms, the aim is to converge as fast as possible to a
+neighbourhood of w∗ and then stay there. Setting wk+1 = γ(wk ,Vk ) (sk ) for fixed sk and Vk
+then one would like to maximise the distance
+δ(wk , wk+1 )
+taken at every step (cf. (8)) measured relative to the preferential structure!
+2. The term “best” in this definition is certainly dependent on the context of what constitutes a learning
+algorithm. Certainly if one were to consider simply the optimization problem of minimizing the loss over
+all target parameters then some more sophisticated update method (for example a Newton update) would
+tend to display better performance. Here we will restrict ‘learning algorithms’ to be effectively the class
+of algorithms which we generate in the sequel. Though this may appear to be a circular definition it is
+effectively the set of linear descent algorithms with respect to general Riemannian geometry. Only direct
+first order derivatives of the cost are used to generate the update information. Further modification of
+the update step is entirely due to prior information. The key point is not which sense GD is best in, but
+rather how we can modify GD simply taking it as the starting point — the appropriate algorithm for a
+uniform prior.
+
+323
+
+Mahony and Williamson
+
+Given that the vectors Vk and the scaling factors sk are chosen together to guarantee
+the learning algorithm is well behaved (for example in the sense that the sequence {wk } will
+converge to w∗ for reasonable data samples) then the curve γ should be chosen to maximise
+the distance traveled in the ‘direction’ Vk . By measuring distance relative to the preferential
+structure, prior information is directly incorporated into the update step.
+To derive a curve that generates an efficient learning algorithm it is important that the
+length of the curve is directly related to the step size sk and to the size of the vector Vk .
+This is natural for the step size since it is the path length parameter of the curve. However
+to ensure that length of the update curve is properly related to the size of the vector Vk
+then it is necessary to further require that the update curve γ evolves at a constant speed
+with respect to the preferential metric:
+γ(τ
+˙ ), γ(τ
+˙ )
+
+= Vk , V k
+
+γ(τ )
+
+wk ,
+
+τ ≥ 0.
+
+(18)
+
+By this argument, the ‘best’ curve to choose for the purpose of generating a learning algorithm is one that satisfies (18) whilst maximising δ(wk , wk+1 ) for given sk and Vk . Thinking
+of the question in reverse, then given two points wk and wk+1 one is searching for a curve
+γ of minimum length and constant velocity (with respect to the preferential structure) that
+connects the two points. Such length minimizing curves on a general Riemannian manifold
+are known as geodesics and are the analogues of straight lines in Euclidean space.
+5.1 Geodesics
+Geodesic curves on a Riemannian manifold can be defined as the solution of a ODE (Ordinary Differential Equation) in local co-ordinates which essentially ensures straightness of
+the solution curve with respect to the metric (Lee, 1997, pg. 68).
+ij where the base
+Denote the ijth entry of Gw by gij and the ijth entry of G−1
+w by g
+ij
+point w of gij (resp. g ) is inferred from context. Define
+Γkij =
+
+1
+2
+
+N
+
+g ks
+s=1
+
+∂gjs
+∂gsi ∂gij
+−
++
+j
+s
+∂w
+∂w
+∂wi
+
+.
+
+(19)
+
+The functions Γkij are known as the Christoffel symbols (Boothby, 1986, Lee, 1997). A
+geodesic curve γ := γ(wk ,Vk ) (τ ) satisfies the set of coupled second order ODEs (Lee, 1997,
+pg. 58)
+d2 γ k
++
+dτ 2
+
+N
+
+Γkij
+i,j=1
+
+dγ i dγ j
+= 0,
+dτ dτ
+
+(20)
+
+with initial conditions
+γ(0) = wk ,
+
+dγ
+= Vk .
+dτ
+
+Uniqueness and well definedness (at least for small τ ) follows from the classical theory of
+ODEs.
+324
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Generating the geodesic requires knowledge of tangent direction Vk . It seems natural to
+∂L
+. Formally, however, this derivative is not actually an
+choose Vk equal to the derivative − ∂w
+T
+
+∂L
+element of the tangent space of RN . Rather, Dw L = ∂w
+is the differential of L and is
+a row vector (co-tangent vector) and not a column vector (tangent vector). There is a one
+to one correspondence between tangent vectors V ∈ Tw RN ≈ RN ×1 and cotangent vectors
+W ∈ Tw∗ RN ≈ R1×N induced by the Riemannian metric via the unique correspondence of
+linear maps
+
+V, X
+
+w
+
+= W X, for any X ∈ Tw RN ≈ RN ×1 .
+
+For W = Dw L, the corresponding tangent vector is known as the gradient and is given in
+local co-ordinates by
+gradL = G−1
+w
+
+∂L
+.
+∂w
+
+(21)
+
+When the metric is simply the identity matrix then one obtains the classical Euclidean
+∂L
+gradient gradL = ∂w
+. As Amari (1997, 1998) has shown (in a slightly different setting)
+there are advantages to using Vk = −gradL where the gradient is taken with respect to the
+∂L
+preferential structure. Of course the negative Euclidean gradient − ∂w
+will always provide
+a descent direction for the cost L and will generate a sensible learning algorithm. Indeed,
+for any positive definite matrix Q > 0
+Vk = −Q−1
+
+∂L
+,
+∂w
+
+generates a descent direction. The general form of the learning algorithms studied in the
+remainder of the paper may now be presented.
+Let L be an instantaneous loss function associated with the learning problem given in
+Section 2. Let Gw be a preferential metric and let sk be a sequence of scalars which can be
+thought of as the effective learning rate. Then the learning algorithm studied is given by
+wk+1 = γ(wk ,−gradL) (sk ),
+
+(22)
+
+where γ(wk ,−gradL) is a geodesic curve with respect to the preferential structure (confer (20)).
+
+6. Preferential Structures for Two Common Learning Algorithms
+In this section some common learning algorithms are analyzed in terms of preferential structures. The gradient descent (GD) algorithm has an interpretation based on the standard
+Euclidean (or unbiased) preferential structure on Rn while the exponential gradient algorithm is related to a preferential metric of the form (13).
+6.1 Gradient Descent Algorithm
+Consider the un-biased or Euclidean preferential structure given by
+Gw = IN
+325
+
+Mahony and Williamson
+
+the Euclidean metric. This metric is associated with a uniform (improper) prior product
+distribution. The Christoffel symbols are zero, since the metric entries are constant, and
+geodesics are given by solutions
+d2 γ k
+= 0,
+dτ 2
+
+(23)
+
+which are of course just straight lines
+γ(wk ,Vk ) (τ ) := wk + τ Vk .
+The gradient of the loss L is simply gradL =
+verified that the GD algorithm is simply
+
+∂L
+∂w
+
+Thus, comparing with (5) it is easily
+
+wk+1 = γ(wk ,−gradL) (sk )
+∂L
+= wk − sk
+(yk , yˆk ).
+dw
+6.2 Exponentiated Gradient Algorithm
+In this subsection the EG (Exponentiated Gradient) algorithm is derived within the framework of preferential structures.
+Previous work (Kivinen and Warmuth, 1997, Hill and Williamson, 2001) has shown that
+the EG algorithm tends to perform well in the situation where only a few entries of the true
+parameter w∗ are non-zero. Considering the question in reverse one would heuristically wish
+to choose a preferential structure that emphasises regions where only a few co-ordinates are
+non-zero. We will choose such a structure and show the EG algorithm (almost) follows from
+such a choice.
+N
+Let RN
+∗ denote the positive cone in R
+N
+RN
+∗ = {u ∈ R : u > 0}.
+
+Consider the following preferential metric defined on RN
+∗
+ 1
+0 ···
+0
+(w1 )2
+
+..
+.
+..
+ 0
+.
+
+Gw =  .
+..
+.
+..
+ ..
+.
+1
+0
+· · · 0 (wN
+)2
+
+(24)
+
+
+
+
+
+
+
+
+(25)
+
+According to Section 4.2 this metric is associated with an improper product distribution on
+RN
+∗ of the form
+N
+
+φ(w) :=
+
+φi (w),
+i=1
+
+where each φi (w) is given by
+φi (w) :=
+326
+
+1
+.
+wi
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Thus, each component prior distribution is weighted more heavily near wi = 0 and thus
+the overall product density is weighted strongly near w = 0. (Some graphs illustrating this
+metric are given in Section A.)
+The diagonal structure of the preferential metric Gw makes it particularly easy to compute the Christoffel symbols. Recalling (19) the Christoffel symbols are
+Γpij =
+
+−1
+wp
+
+0
+
+if i = j = p.
+otherwise.
+
+Finally, recalling (20) the equation for the geodesic is
+d2 γ p
+1
+− p
+dτ 2
+γ
+
+dγ p
+dτ
+
+2
+
+= 0, for p = 1, . . . , N,
+
+(26)
+
+with initial conditions γ(0) = w and γ˙ = V for arbitrary w ∈ RN and V ∈ Tw RN . The
+particular structure of the Riemannian metric ensures that the N second order ODEs for
+the co-ordinates of γ are decoupled. It is easily verified by substitution that the solution of
+this equation for each co-ordinate is
+τ i
+V .
+wi
+
+(27)
+
+∂L
+∂L
+(yk , yˆk ) = −G−1/2
+.
+w
+∂w
+∂w
+
+(28)
+
+γ i (τ ) = wi exp
+Consider the descent direction
+Vk = −diag(wk )
+
+where wk denotes the kth iteration of the learning algorithm. Note that Vk = −gradLk with
+respect to the preferential structure Gw , however, Vk is certainly a descent direction since
+diag(w) > 0 is a positive definite matrix for w ∈ RN
+∗ . Along with the geodesic equation
+obtained above for the preferential structure chosen this choice of descent direction in (22)
+leads to the EG algorithm (6)
+wk+1 = γ(wk ,−diag(wk ) ∂L ) (sk ) = diag(wk ) exp . −sk
+∂w
+
+∂L
+(yk , yˆk )
+∂w
+
+= (6).
+
+Although Vk is not actually the negative gradient −gradL it is, however, closely related.
+According to the development undertaken in Section 5 it may be preferable to choose
+wk+1 = γ(wk ,−gradL) (sk ).
+which would be equivalent to choosing
+Vk = −gradL = −G−1
+w
+
+∂L
+.
+∂w
+
+This choice results in a the learning algorithm that we will call the ‘natural EG algorithm’
+wk+1 = γ(wk ,−gradL) (sk ) = diag(wk ) exp . −sk diag(wk )
+
+327
+
+∂L
+(yk , yˆk ) .
+∂w
+
+(29)
+
+Mahony and Williamson
+
+This raises the question: what is the effective difference between (6) and (29), or is one
+to be preferred somehow. One remark we can offer in this regard is that (29) might be
+preferred in so far as it allows a comparison with other gradient algorithms which use the
+natural gradient and thus differ only in the choice of φ. It is also apparent by inspecting
+the two algorithms and their behaviour in simulation that (29) pays more attention to the
+prior.
+
+7. Link Functions and Flat Preferential Structures
+In this section the general properties of product preferential structures are studied. It is
+shown that the link function analysis used in recent literature (Kivinen and Warmuth,
+1998) to analyse the EG algorithm can be obtained as a direct generalization of normal
+co-ordinates with respect to the preferential structure (25).
+Consider a product preferential metric of the form
+
+
+φ1 (w1 )2 0 · · ·
+0
+
+
+..
+..
+
+
+.
+0
+.
+
+,
+Gw = 
+(30)
+
+..
+.
+.
+.
+.
+
+
+.
+.
+.
+0
+· · · 0 φN (wN )2
+where φi : R → R are positive definite functions φi > 0. Note that each φi := φi (wi )
+is chosen to depend only on its associated variable. This is the situation where Gw is a
+preferential metric associated with a product prior
+N
+
+φi (wi ).
+
+φ(w) =
+i=1
+
+This structure has some special consequences for the geometry of learning algorithms derived
+according to the procedure outlined in Section 5. To distinguish between the preferential geometry and the classical Euclidean geometry on RN we denote the preferentially structured
+˜N.
+space by R
+ij where the base
+Denote the ijth entry of Gw by gij and the ijth entry of G−1
+w by g
+point w is inferred from context. Thus, gij = 0 = g ij except when i = j and
+gii = φi (wi )2 ,
+
+g ii =
+
+1
+.
+φi (wi )2
+
+Recalling (19) the Christoffel symbols are easily verified to be
+Γpij =
+
+dφi
+1
+(wi )
+φi (wi ) dwi
+
+0
+
+if i = j = p.
+otherwise.
+
+(31)
+
+Thus the Christoffel symbols for a product preferential metric always have a diagonal structure. Recalling (20) the general equation for a geodesic curve, then it is easily shown that
+the general geodesic equation in this case is a set of N decoupled second order ODEs
+γ¨ i +
+
+1 dφi (γ i ) i
+γ˙
+φi (γ i ) dγ i
+328
+
+2
+
+= 0.
+
+(32)
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+As a consequence the general geodesics are made up of independent evolution equations in
+each of the co-ordinates.
+Equation 32 can be simplified to obtain a set of simple first order, single variable ODEs.
+Note that
+dφi (γ i ) i dφi (γ i )
+γ˙ =
+=: φ˙i
+dγ i
+dt
+where we now think of φi (t) = φi (γ i (t)) as a function of t. Thus, the above equation for
+the geodesic becomes
+γ¨ i +
+
+φ˙ i i
+γ˙ = 0.
+φi
+
+Let z i = φi γ˙ i (i.e. z i (t) = φi (γ i (t))γ˙ i (t)). Then
+φ˙ i i
+γ˙ + γ¨ i
+φi
+
+z˙ i = φ˙ i γ˙ + φi γ¨ i = φi
+
+= 0,
+
+where the factorization by φi is always possible since the φi are positive definite functions.
+Substituting back into the definition of z i and rearranging terms yields the ODE
+γ˙ i =
+
+z i (0)
+φi (γ i )
+
+(33)
+
+z i (0) = φi (γ k (0))γ˙ i (0);
+
+γ i (0) = wi ;
+
+γ˙ i (0) = V i
+
+(34)
+
+Lemma 5 Suppose φi (w) > 0 for all w ∈ R. Then the solution of (33,34) is
+i
+i
+i
+γ i (t) = Φ−1
+i (tV φi (w ) + Φi (w ))
+
+where Φi =
+
+(35)
+
+φi (the indefinite integral of φ).
+
+Proof We write φ = φi for simplicity. The condition on φ implies Φ is invertible and
+thus (35) implies
+Φ(γ(t)) = tV φ(w) + Φ(w).
+Differentiating both sides we obtain
+∂
+∂
+Φ(γ(t)) = (tV φ(w) + Φ(w))
+∂t
+∂t
+⇒ φ(γ(t))γ(t)
+˙
+= V φ(w)
+V φ(w)
+φ(γ(0))γ(0)
+˙
+⇒
+γ(t)
+˙
+=
+=
+.
+φ(γ(t))
+φ(γ(t))
+Furthermore γ(0) = Φ−1 (Φ(w)) = w and γ(0)
+˙
+=
+
+329
+
+V φ(w)
+φ(γ(0))
+
+=V.
+
+(36)
+(37)
+(38)
+
+Mahony and Williamson
+
+One can readily check (by replacing Φ(w) by Φ(w) + c and Φ−1 (x) by Φ−1 (x − c)) that
+the constant of integration c effectively omitted in the definition of Φ does not change the
+solution γ(t).
+By setting V = −gradL, and since
+gradL = G−1
+w
+
+∂L
+−2
+1
+N ∂L
+= diag(φ−2
+1 (w ), . . . , φN (w ))
+∂w
+∂w
+
+(22) takes the general form
+i
+wk+1
+= Φ−1
+i
+
+When L is the squared loss (4),
+
+−sk
+
+∂L
+∂wi
+
+∂L
+∂wi
+
+wi =wki
+
+1
++ Φi (wki )
+φi (wki )
+
+(39)
+
+= −xik (yk − yˆk ) one obtains
+
+i
+wk+1
+= Φ−1
+i
+
+sk xik (yk − yˆk )
++ Φi (wki )
+φi (wki )
+
+(40)
+
+7.1 Rescaling of φ(w)
+As a sanity check, now consider what happens if we replace φ(w) by
+˜
+φ(w)
+:= βφ(w)
+
+(41)
+
+˜
+Φ(w)
+= βΦ(w)
+
+(42)
+
+˜ −1 (x) = Φ−1 (x/β)
+Φ
+
+(43)
+
+for some β > 0. Clearly we have
+
+and
+
+Substituting (41), (42) and (43) into (40) we see that we recover the orginial algorithm by
+˜ w = β 2 Gw .
+setting s˜k = β 2 sk . This makes sense when one recalls (see (30)): clearly G
+This simple analysis shows there is no intrinsic reason to insist that the distributions
+φ(w) are normalized as proper probability distributions.
+
+8. Examples of Possible New Learning Algorithms
+In this section we examine some examples of learning algorithms generated by certain
+specific preferential structures. In all cases the underlying learning problem is that presented
+in Section 5 (cf. (22)). The algorithms are in fact simply (40) for different choices of φ(w).
+The resulting φ, Φ and Φ−1 are collected together in table 1.
+330
+
+331
+
+Gaussian
+
+exp(α)
+
+Cauchy3/2
+
+Cauchy
+
+Cauchy1/2
+
+2 w2
+
+α>0
+
+sgn(w)
+1 − e−α|w|
+α
+√
+πerf(αw)
+2α
+
+1
+c
+1
+c
+
+1
+1
+1/(α−1)
+(1 − α) x
+
+ex
+
+Φ−1 (x)
+
+−
+
+sgn(x)
+ln(1 − α|x|)
+α
+√
+erf −1 (2αx/ π)
+α
+
+x2
+1 − x2
+
+tan(x)
+
+ x
+
+|x| ≤ 1
+ ,
+c
+sgn(x)e|x|−1
+
+
+, |x| ≤ 1
+c
+sinh(x)
+
+Table 1: Some possible choices of φ, Φ and Φ−1 for algorithm (40).
+
+e−α
+
+e−α|w|
+α>0
+
+w
+1 + w2
+
+1
+(1 + w2 )3/2
+√
+
+arctan(w)
+
+√
+1
+1 + w2
+
+|w| >
+
+sgn(w)(1 + ln(c|w|)),
+arcsinh(w)
+
+|w| ≤
+
+cw,
+
+1
+1
+α−1
+(1 − α) w
+
+ln(w)
+
+Φ(w)
+
+1
+1 + w2
+
+c>0
+
+1
+,c
+|w|
+
+EGclipped(c)
+
+min
+
+w>0
+α=1
+
+w>0
+
+Conditions
+
+1
+wα
+
+φ(w)
+1
+w
+
+EG(α)
+
+EGnatural
+
+Algorithm
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Mahony and Williamson
+
+8.1 EG (natural)
+Choose φ(w) = 1/w and thus from (40) and Table 1 one obtains the algorithm:
+i
+wk+1
+= exp sk xik (yk − yˆk )/wki + ln(wki )
+
+= wki exp sk xik (yk − yˆk )/wki
+which is equivalent to (29) with L being squared loss.
+This is the EG algorithm utilizing the natural gradient. It is only valid for w > 0. In
+order to use this algorithm to learn targets u that are not componentwise sign definite, the
+± trick as presented by Kivinen and Warmuth (1997) could be used.
+8.2 EG(α)
+Choose φ(w) = 1/wα (α = 1) and thus from (40) and Table 1 one obtains the algorithm:
+i
+wk+1
+
+1
+=
+1−α
+
+sk xik (yk
+
+−
+
+yˆk )(wki )α
+
+1
++
+(wi )α−1
+1−α k
+
+1
+1−α
+
+(44)
+
+Like the EG (natural) algorithm, this algorithm is only valid for wki > 0. It is easily verified
+that this algorithm approaches the behaviour of the GD algorithm as α → 0.
+Numerically implementing the algorithm it turns out that weights can tunnel through
+the infinite barrier at the origin due to the non-infintesimal step size used. In order to avoid
+problems which this causes (more likely for larger values of s), we have found it necessary
+to modify the algorithm to
+tk = sgn(wki )|wki |1−α + (|wki | + )α xik sk (yk − yˆk )
+i
+wk+1
+= sgn(tk )|tk |1/(1−α) .
+
+Here
+
+is some small number; we have used
+
+= 2 × 10−13 .
+
+8.3 EGclipped(c)
+In order to avoid the difficulties of the singularity at the origin with φEG , one can simply
+clip φ to c > 0 giving
+φc (w) = min c,
+
+1
+|w|
+
+.
+
+(45)
+
+One can show that
+Φc (w) =
+
+cw
+sgn(w)(1 + ln(c|w|))
+
+Φ−1
+c (w)
+
+=
+
+x
+c
+
+|w| ≤ 1c
+|w| > 1c .
+|x| ≤ 1
+
+sgn(x)e|x|−1
+c
+
+(46)
+
+(47)
+
+|x| > 1
+
+Observe that on a bounded domain, for all c < ∞, φc (w) can be made into a proper
+distribution (by rescaling). The limit as c → ∞ is improper though. This is analogous
+to how improper priors are sometimes treated in the Bayesian literature, as the limit of a
+sequence of proper priors (Akaike, 1980).
+332
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+8.4 exp(α)
+Choose φα (w) = exp(−α|w|), α > 0. By considering positive and negative cases separately
+one show
+Φα (w) =
+
+Φ−1
+α (x) =
+
+sgn(w)
+ln 1 − e−α|w|
+α
+
+−sgn(x)
+ln (1 − α|x|) ,
+α
+
+(48)
+
+|x| <
+
+1
+α
+
+(49)
+
+8.5 Cauchy Product Distribution
+Choose
+φi (wi ) :=
+
+1
+1 + (wi )2
+
+which is the Cauchy distribution (unnormalized). The variance of the Cauchy distribution
+is not defined and it is a classic example of a distribution with heavy tails. The product
+i
+N
+distribution φ(w) := N
+i=1 φi (w ) is a proper p.d.f. on R . Since the Cauchy distribution
+k
+does not have a singularity at w = 0 then the preferential structure is defined on all RN
+and there is no need to use ± algorithms like those developed for the EG algorithm (Kivinen
+and Warmuth, 1997).
+From (40) and Table 1 we obtain the algorithm:
+i
+wk+1
+= tan sk xik (yk − yˆk )(1 + (wki )2 ) + arctan(wki ) .
+
+(50)
+
+8.6 Elementwise Link Functions and Flat Preferential Structures
+Let E1 , E2 , . . . , EN be the unit vectors in RN . Let γ(w,V ) (s) denote the particular geodesic
+curve obtained as a solution of (33) for initial conditions γ(w,V ) (0) = w and γ˙ (w,V ) (0) = V .
+Then one can define a map
+˜N
+f : RN → R
+f (x) := γ(w,
+
+N
+i=1
+
+xi Ei ) (1)
+
+˜ N known as normal co-ordinates
+The map f (x) provides a set of local co-ordinates for R
+(Boothby, 1986). As we show below the map f is closely related to the concept of link
+functions commonly used to analyse learning algorithms such as the EG algorithm. The
+local co-ordinate frames induced are denoted
+∂
+:= df |x (Ei ),
+∂xi
+
+i = 1, . . . , N,
+
+˜ N then let ∇X Y denote the action of the Levi-Civita
+For any two vector fields X, Y on R
+connection of X on Y (Boothby, 1986, pp. 317). Since f is constructed from solutions to
+the geodesic equations then it follows directly that
+∇
+
+∂
+∂xi
+
+∂
+= 0,
+∂xi
+
+i = 1, . . . , N.
+
+333
+
+Mahony and Williamson
+
+In fact, using the structure of Γkij it is easily verified that
+∇
+
+∂
+∂xi
+
+∂
+= 0. i, j = 1, . . . , N.
+∂xj
+
+This property is not true of general Riemannian manifolds and is important since it implies
+˜ N is effectively Euclidean. In particular, taking a straight
+that the underlying geometry of R
+N
+line xk + sk Vk on R which is a geodesic in the Euclidean geometry then f maps this to a
+geodesic
+γ(s) = f (xk + sk Vk )
+˜ N . The fact that the base point xk need not be 0 is crucial in this relationship since it
+on R
+implies that the structure is unchanged for translations in RN . This will only occur if the
+˜ N is zero.
+intrinsic ‘curvature’ of R
+˜ N is that the normal co-ordinate mapping f
+A further consequence of the flatness of R
+is an isometry. That is that for any two vectors X, Y ∈ Tx RN then
+X T Y = X, Y = df X, df Y
+
+f (x)
+
+= (df X)T Gf (x) df Y.
+
+Conseqeuntly, the mapping f preserves the metric distance given by length of curves. Since
+f is an isometry one may as well take a standard learning algorithm on the simple Euclidean
+˜ N given in local Euclidean co-ordinates x ∈ RN (cf. Subsection 6.1)
+space R
+xk+1 = xk + sk V˜k
+
+(51)
+
+and obtain its associated learning algorithm on the desired space directly by the mapping
+wk = f (xk ). Of course the descent direction V˜k is the descent direction in local co-ordinates
+˜ N . Thus,
+x and must map via df to a chosen descent direction Vk ∈ Tf (xk ) R
+df (V˜k ) := Vk .
+The function f is serving the same role as the link functions commonly used to analyse and
+extend the EG algorithm (Kivinen and Warmuth, 1998).
+For example consider the EG algorithm where f = exp ., the vector exponential, is the
+standard link function used. Direct computations show df = diag(wk ) exp .(X) = w and
+− 1 ∂L
+hence V˜k = diag(w)−1 Vk . Choosing Vk = −Gw 2 ∂w
+according to (28) then it follows that
+˜ N = RN from (51) is
+V˜k = − ∂L . The learning algorithm obtained on R
+∗
+
+∂w
+
+wk+1 = f (xk+1 ) = f (xk + sk V˜k )
+= exp . xk + sk V˜k = diag(exp .(xk )) exp .(sk V˜k )
+= diag(wk ) exp .(−sk
+
+∂L
+).
+∂w
+
+Comparing with (6) it is seen that this is another to way to derive the EG algorithm.
+334
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Remark 6 In some recent literature (Warmuth and Jagota, 1997) the concept of link function has been developed in a co-ordinate by co-ordinate context. Thus, a link function is
+considered to be a map
+f i : R → R,
+where the same function f i := g is generally used for each co-ordinate. The development
+here is closely related since the product preferential structure ensures that the normal coordinates can always be decomposed into independent co-ordinate functions f i := f i (xi )
+obtained as solutions to the decoupled geodesic equations (33). The unified view presented
+in this paper provides a way of generalizing the link function results to obtain a better
+understanding of learning algorithms.
+Remark 7 Gordon (1999a, section 3.9.2) has also presented a (quite different) interpretation of algorithms such as GD and EG via Bayesian priors. He makes use of conjugate
+priors (see Robert, 1994) and his framework is rather different to ours. We have been unable to draw a formal connection between his work and ours. Furthermore, the machinery of
+conjugate priors is intrinsically restricted — it can not cover the range of prior distributions
+we can deal with. Whether there is a useful connection is left as an open problem.
+
+9. Comparing the Performance of Stochastic Descent Learning
+Algorithms.
+In this section the relative performance of two stochastic gradient descent learning algorithms derived with respect to diagonal preferential structure (associated with product
+distributions) are compared. The algorithms are compared for a target weight vector w∗
+drawn from the true product prior distribution that we assume is associated with one of
+the algorithms.
+The relative performance of two learning algorithms must be compared according to
+some criterion that is both computable and relevant to the desired qualitative behaviour of
+the algorithms. Kivinen and Warmuth (1997) proposed the ‘mistake-bounded framework’
+for analysing the EG algorithm. A more traditional analysis based on classical LMS analysis techniques has also been considered for the EG algorithm (Hill and Williamson, 1999,
+2001). Both approaches attempt to quantify the global performance of the algorithm considered. In this paper generic algorithms based on the stochastic gradient descent concept
+are considered. A stochastic gradient descent algorithm may be considered to be a sequence
+of Bayesian estimates of the true weight vector conditioned on a local neighbourhood of the
+previous estimate and based on the most recent data. That is, at each step one searches
+for the parameter wk+1 ∈ Br (wk ) that best describes the latest data received. The learning rate sk of a stochastic gradient algorithm is linked directly to the radius r of the ball
+which is used to condition the new estimate. A consequence of this perspective is that one
+should only seek to compare the relative local performance of stochastic gradient descent
+algorithms. It is to be hoped, however, that for most sensible classes of prior distributions
+good local performance will translate into good global performance. This justification, along
+with the practical simplicity and ease of implementation, motivates the use of stochastic
+335
+
+Mahony and Williamson
+
+gradient descent algorithms in learning applications. Conversely, if one wishes to solve the
+problem optimally then it is necessary to return to a full Bayesian analysis.3
+All stochastic gradient descent algorithms (for sufficiently small learning rate) display
+the same qualitative asymptotic convergence properties (Solo and Kong, 1995). The asymptotic error may differ depending on the relative sensitivity of the schemes and the particular
+learning rate used. High asymptotic sensitivity is usually linked to a fast learning rate and
+better transient performance of an algorithm. As a consequence asymptotic error analysis
+provides a poor measure of relative performance of two stochastic gradient descent learning
+algorithms.
+A tempting comparison of the transient performance between two learning algorithms is
+to take the expectation (with respect to the given prior distribution) of the rate of decrease
+of the loss function for the two algorithms across all possible weight vectors and all target
+vectors. Unfortunately, due to the local nature of the Bayesian interpretation of stochastic
+gradient algorithms a global average will not provide a suitable comparison, although, in
+certain specific cases the global average may well indicate the desired result. In this paper
+we will compare the expected decrease of the loss function over possible measurements and
+true weight vectors locally around each point in weight space.
+Assume that samples xk are drawn from a normalized uniform iid distribution with
+density φ and that the measurements yk are deterministic functions of xk . The expected
+value of the loss function over possible samples xk is
+ψ(w) := Exφk [L(yk , yˆk )]
+1
+=
+(yk − yˆk )2 φ(xk )dxk
+2 RN
+1
+=
+w − w∗ , xk 2 φ(xk )dxk
+2 RN
+1
+=
+(w − w∗ )T Exφk [xk xTk ](w − w∗ ).
+2
+
+(52)
+
+Since φ is normalized uniform iid then
+Exφk [xk xTk ] = IN
+where IN is the N × N identity matrix.
+Let p and q be two proper product prior distributions on a compact subset Ω ⊂ RN of
+weight space
+N
+
+N
+
+φip (w),
+
+p(w) =
+
+φiq (w).
+
+q(w) =
+
+i=1
+
+(53)
+
+i=1
+
+2
+1 2
+N 2
+Let Gp (w) := diag((φ1p )2 , . . . , (φN
+p ) ) and Gq (w) := diag((φq ) , . . . , (φq ) ) be diagonal
+preferential structures associated with the product distributions p and q.
+We will compare the behaviour of the averaged learning algorithms
+
+wk+1 = γ(wk ,−G† (w)−1 (wk −w∗ )) (sk† ),
+
+(54)
+
+3. Even if the reader does not completely buy the above argument, we have a backup: “we have performed
+a local analysis because a global analysis seems dauntingly difficult!”.
+
+336
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+derived from Eq. 22 for the metric G† (w) equal to either Gp (w) or Gq (w). The step-size sk†
+is either skp or skq depending on the algorithm. The step-size scaling factor is chosen to scale
+the relative volume induced by each probability distribution to equal a constant
+(skp )N
+(skq )N
+volBr (wk )
+volB1 (wk )
+=
+=
+= rN
+p(w)
+q(w)
+volΩ
+volΩ
+
+(55)
+
+where volBr (0) denotes the (Euclidean) volume of a ball of radius r > 0. For r sufficiently
+small the probability of the event Bs†k (wk ) (denoting the ball with respect to the preferential
+†
+
+structure †) under the relevant prior distribution is normalized
+N
+
+Pp (Bspk (wk )) =
+p
+
+B pk (wk )
+
+p(z)dz ≈
+i=1
+
+sp
+
+=
+
+(skp )N
+skp
+p(w
+)
+=
+k
+(φip )2
+p(wk )
+
+(skq )N
+volBr (0)
+=
+≈ Pq (Bsqk (wk )).
+q
+volΩ
+q(w)
+
+Thus, the step-size scaling factor is adjusted so that, based on the prior information under
+which an algorithm is derived, there is a fixed probability that the true weight vector lies
+in the set in which the next update of the algorithm is chosen. The scaling factor r which
+is associated with the uniform distribution on the compact set Ω provides a useful ‘knob’
+with which to tune the performance of a class of learning algorithms. In the simulations
+(cf. Section 10) we compare two new algorithms with standard Gradient Descent (which
+has φ(w) = 1) and thus choose sknew = skGD (φnew (w))1/N .
+The following approximation of (54) holds for sufficiently small step-size sk†
+wk+1 = wk − sk† G† (wk )−1 (wk − w∗ ) + O (sk† )2 ||G† ||22 ,
+To bound the error due to the approximation it is necessary to reduce the scalar r that
+bounds maximum step length. Note that sk† ∝ r (cf. Eq. 55) and the above equation may
+be written
+wk+1 = wk − sk† G† (wk )−1 (wk − w∗ ) + O r2 ,
+
+(56)
+
+2
+where the constant associated with the O(r2 ) term scales as supw∈Ω ||G−1
+† (w)||2 .
+Let
+
+∆ψ† (wk ) := ψ† (wk+1 ) − ψ† (wk )
+
+(57)
+
+denote the decrease of the averaged loss function at step k+1 with respect to the preferential
+structure G† . From (56) we obtain
+2
+1
+1
+wk − sk† G† (w)−1 (wk − w∗ ) − w∗ − (wk − w∗ )2 + O(r2 )
+2
+2
+= −sk† (wk − w∗ )T G† (w)−1 (wk − w∗ ) + O(r2 ).
+
+∆ψ† (wk ) =
+
+Since G† (w) = diag{(φi† )2 } is a diagonal preferential structure then we can write
+N
+
+∆ψ† (wk ) =
+
+−sk†
+i=1
+
+(wi − w∗i )2
++ O(r2 )
+(φi† )2
+
+337
+
+(58)
+
+Mahony and Williamson
+
+Theorem 8 Consider the learning problem outlined in Section 2 restricted to a compact
+subset Ω ⊂ Rn . Assume that the samples are chosen according to a normalized uniform
+iid process and let ψ be the averaged loss function (52). Let p and q be two product prior
+distributions (Eqn’s 53) for the true weight vector w∗ with associated diagonal preferential
+−1
+structures Gp (w) and Gq (w). Assume that supw∈Ω ||G−1
+p (w)||2 and supw∈Ω ||Gq (w)||2 are
+bounded from above. Let ∆ψ† be defined by (57). For any point wk ∈ Ω set
+Σp (wk ) = diag
+Ω
+
+(wki − w∗i )2 p(w∗ )dw∗
+
+If for all wk ∈ Ω
+p(wk ) < q(wk )
+
+(59)
+
+and
+1
+−1
+tr G−1
+q (wk )Σp (wk ) ≤ det Gq (wk )Σp (wk )
+N
+
+1
+N
+
+(60)
+
+then there exists r > 0 sufficiently small such that when skp and skq are chosen to satisfy (55)
+one has
+Ewp ∗ [∆ψp (wk )] < Ewp ∗ [∆ψq (wk )] < 0.
+
+(61)
+
+Proof For each wk ∈ Ω there exists an r1 (wk ) > 0 sufficiently small such that both
+Ewp ∗ [∆ψp (wk )] and Ewp ∗ [∆ψq (wk )] are negative. Since Ω is compact there exists r1 :=
+inf w∈Ω {r1 (w)} > 0. Let
+F := Ewp ∗ [∆ψp (wk )] − Ewp ∗ [∆ψq (wk )]
+N
+
+skp
+
+=−
+Ω
+N
+
+=
+i=1
+
+i=1
+
+(wki − w∗i )2
+p(w∗ )dw∗ +
+(φip (wk ))2
+
+skq
+skp
+−
+(φiq (wk ))2 (φip (wk ))2
+
+Ω
+
+N
+
+skq
+Ω
+
+i=1
+
+(wki − w∗i )2
+p(w∗ )dw∗ + O(r2 )
+(φiq (wk ))2
+
+(wki − w∗i )2 p(w∗ )dw∗ + O(r2 ).
+
+To improve readability the superscripts and subscripts k are dropped in the remainder
+of the proof and the base point w = wk is used. If no other argument is specified all
+probability distributions are evaluated at the point w = wk . Let
+µi :=
+
+sq
+(φiq )2
+
+Ω
+
+(wi − w∗i )2 p(w∗ )dw∗
+
+sq (φip )2
+ai :=
+.
+sp (φiq )2
+Observe that µi ≥ 0 for all i. Using these definitions then define
+N
+
+µi 1 −
+
+F (a) :=
+i=1
+
+338
+
+1
+ai
+
+.
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+where we consider F (a) as a function of the new variables {ai }. The variables ai may in
+turn be thought of as functions of the product prior distributions φip . Note that
+F (a) = F + O(r2 ).
+The approach taken is to show that for a fixed q = φiq distribution then the result
+holds for all product distributions p = φip satisfying the theorem conditions. The set of
+all such distributions is parameterized by the variables ai > 0, i = 1, . . . , N . By inspection,
+it is easily verified that
+F (a) → −∞ for ai → 0, i = 1, . . . , N.
+Since we need consider only the set {ai > 0 : i = 1, . . . , N } then there are no positive
+asymptotes of F (a) and consequently F (a) must have a global supremum.
+Note that µi > 0, i = 1, . . . , N are the scaled variances of the w∗i around the arbitrary
+reference point wi . Recalling Eq. 55 one has
+N
+i=1
+
+sN
+q
+ai = N
+sp
+
+2
+sN
+(φip )2
+p
+q p
+=
+=
+2
+(φiq )2
+sN
+q
+q
+p
+
+(62)
+
+This is the constraint on the variables ai introduced by the conditioning associated with
+the step-size selection. Using this constraint one may write
+
+
+N −1
+N −1
+1
+q
+F (a) =
+µi 1 −
++ µN 1 −
+aj  .
+ai
+p
+i=1
+
+j=1
+
+Computing the partial derivative of F (a) with respect to ai yields
+∂F (a)
+1
+q
+= µi
+− µN
+2
+∂ai
+(ai )
+p
+
+N −1
+j=1 aj
+
+ai
+
+.
+
+Thus, the critical points of F (a) are characterized by the condition
+q
+µi
+= µN
+ai
+p
+
+N −1
+
+aj =
+j=1
+
+µN
+,
+aN
+
+i = 1, . . . , N.
+
+(63)
+
+In particular, there is a unique critical point of F (a). It follows that this critical point must
+be the global maximum of F (a) on the set {ai > 0 | i = 1, . . . , N }. Evaluating the function
+F at the critical point one obtains
+Fcrit (w) := F (acrit ) + O(r2 )
+N −1
+
+µi − (N − 1)
+
+=
+i=1
+N
+
+µi − N
+
+=
+i=1
+
+µN
+µN
++ µN −
++ O(r2 )
+aN
+aN
+
+µN
++ O(r2 )
+aN
+339
+
+Mahony and Williamson
+
+where Fcrit (w) denotes the dependence on the base point w ∈ Ω of each critical value of
+F . Premultiplying the constraint in (62) by 1/ µi and evaluating at the critical point one
+obtains
+N
+i=1 ai
+N
+i=1 µi
+
+N
+
+aN
+µN
+
+=
+
+=
+
+p
+N
+i=1 µi
+
+q
+
+.
+
+Consequently, at a critical point one has
+1
+=
+aN
+
+1
+N
+
+q
+p
+
+1/N
+
+N
+i=1
+
+µi
+µN
+
+.
+
+It follows that
+N
+
+N
+
+Fcrit (w) ≤
+
+µi − N µN
+i=1
+
+i=1
+
+N
+
+µi − N
+
+q
+p
+
+µi
+
+i=1
+
+1
+N
+
+q
+p
+
+1/N
+
+N
+
+=
+
+1/N
+
+µi
+µN
+
+i=1
+
+1
+N
+
++ O(r2 )
+
++ O(r2 ).
+
+Multiplying condition (60) in the theorem statement by sq and exploiting the diagonal
+structure of the metric and the covariance matrix Σp yields
+1
+sq tr G−1
+q (wk )Σp (wk )
+N
+=
+
+=
+
+1
+N
+1
+N
+
+N
+i=1
+N
+
+sq
+(φiq )2
+
+Ω
+
+(wi − w∗i )2 p(w∗ )dw∗
+
+µi
+i=1
+
+≤ sq det G−1
+q (wk )Σp (wk )
+N
+
+=
+
+sq
+
+i=1
+
+1
+N
+
+i
+i 2
+Ω (w − w∗ ) p(w∗ )dw∗
+(φiq )2
+
+1
+N
+
+1
+N
+
+N
+
+µi
+
+=
+i=1
+
+Using this condition the value of Fcrit (w) may be overbounded by
+N
+
+Fcrit (w) ≤
+
+µi
+
+1−
+
+i=1
+
+q
+p
+
+1
+N
+
++ O(r2 )
+
+Applying Eq. 59 it follows that for all w ∈ Ω there exists a r2 (w) > 0 such that Fcrit (w) < 0.
+Set r2 = inf w∈Ω {r2 (w)} > 0. Choose r ≤ min{r1 , r2 }. It follows that Fcrit (w) < 0 and
+Ewp ∗ [∆ψq (wk )] < 0 for all w < 0. This completes the proof.
+
+340
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Remark 9 The set Ω used in Theorem 8 need not be the full set on which the probability
+distributions p and q are defined. In practice, for > 0 sufficiently small, one may choose
+Ωp = {w ∈ Ω p(w) < q(w) − and Eq. 60 holds}
+The set Ωp is then the set of target weight vectors w∗ on which the learning algorithm based
+on the prior distribution p outperforms that based on the prior distribution q.
+It is of interest to consider in more detail the two Conditions 59 and 60. Equation 59
+is a condition on the local value of the prior distribution. Ignoring the other conditions
+of theorem then this condition states that if the relative probability that the true weight
+vector is close to the present estimate is low then the algorithm designed according to
+the true prior distribution out performs its competitor. This should lead the algorithm to
+converge more quickly into a region in which the relative probability is comparable. If the
+relative probability that the true weight vector is close to the present estimate is high then
+nothing may be said about the relative performance of the algorithms. It should be noted
+that the reverse implication on performance is not a consequence of the theorem since the
+average descent properties of the algorithms are conditioned with respect to the true prior
+distribution. The second condition (Eq. 60) provides a link between the global and local
+properties of the distribution and the preferential structure. Condition (60) can be replaced
+by the underlying condition
+N
+
+N
+i=1 µi
+q
+>
+p
+NN N
+i=1 µi
+
+that is a sufficient condition to ensure that Fcrit is negative (for sufficiently small r > 0).
+We do not have a good interpretation of this condition.
+
+10. Simulations
+In this section we present some simulation results. In order to do so, it was necessary to
+decide on an appropriate way to compare the different algorithms, and in particular how to
+choose the step size parameter sk . The options available to choose sk include:
+• Following Amari (1998) one may argue that the asymptotic stability of the algorithm
+is an adaquate measure of performance. Thus, any sufficiently small step-size selection
+is satisfactory.
+• Pick the “optimal” sk = s according to Kivinen and Warmuth (1997). The way they
+do this depends on knowledge of the sequence of examples and the true weight vector.
+Even assuming knowledge of the process generating the examples, and the true weight
+vector, this optimal choice will depend on the length of the training sequence. Whilst
+there are ways of dealing with the fact that this choice requires knowledge of things
+impossible to know (see Kivinen and Warmuth, 1997, Section 5.1), it does seem a
+difficult way to proceed. After all, as Kivinen and Warmuth (1997, Section 9.2) say
+“In applying a learning algorithm, one is usually not so much concerned
+with the cumulative loss as with the quality of the final hypothesis.”
+341
+
+Mahony and Williamson
+
+• Adopt the standard signal processing method of comparison (cf. Hill and Williamson,
+1999, 2001): determine steady-state Mean Square Error (MSE) as a function of s,
+and then choose s to achieve a fixed steady-state MSE. Then compare algorithms in
+terms of their speed of convergence.
+• Adopt the choice implied by equation 55. This is in fact what we do in the present
+paper.
+
+Figure 1: Comparison of exp(α) (α = 0.9) algorithm with standard Gradient Descent. xk
+was drawn independently from a uniform distribution on [− 12 , 12 ]M , M = 1500.
+The step-size for the GD algorithm was sGD = 0.0001. Step size for exp(α)
+chosen according to (55) (see text). The target had the non-zero values inferrable
+from the diagram (approximately 1.6, 1.3, 1.1, 0.8,0.25, 0.2, -1.5), with all the
+remaining values zero (a fraction of 0.005 of the dimensions of w∗ were non-zero).
+Gaussian noise of standard deviation 0.06 was added to the yk sequence. Both
+1
+1
+algorithms were started from the initial condition ( 3000
+, . . . , 3000
+) . In the graphs,
+only the first 100 dimensions of wk have been plotted for the sake of clarity. (The
+remaining dimensions all had target values of zero.) The indicated Mean Square
+Errors (MSE) were estimated from the final fifth of the run.
+
+342
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Figure 2: Same as Figure 1 except with α = 0.1
+In the experiments reported, we used a fixed step size sGD for the standard Gradient
+Descent algorithm and then used (55) to determine sk for the comparison algorithm. The
+value of sGD was somewhat arbitrary, but chosen to ensure a clear stability margin for the
+GD algorithm.
+−α|wi | . Thus from (55)
+For the exp(α) algorithm, φ(w) = N
+i=1 e
+skexp(α)
+
+N
+
+N
+−α|wi |
+i=1 e
+
+=
+
+(sGD )N
+1
+α
+
+⇒ skexp(α) = sGD e− N
+
+N
+i=1
+
+|wki |
+
+(64)
+= sGD e−α
+
+Similarly for the EGclipped(c) algorithm, with φc (w) =
+skEGclipped(c) = sGD φc (wk )
+
+wk
+
+1 /N
+
+N
+1
+i=1 min(c, |wi | )
+
+(65)
+we choose
+(66)
+
+With reference to Figure 1, it can be seen that by 3000 iterations both algorithms have
+reached a “steady-state” where each component is being jiggled around the true value by
+the added noise. The key difference between the GD algorithm and the Exp(0.9) is that
+343
+
+Mahony and Williamson
+
+Figure 3: Same as Figure 1 except with α = 1.1
+the effective step size for the non-zero components is larger; or equivalently, the effective
+step size for the zero components is smaller, which is what leads to the smaller steady-state
+MSE even though the GD algorithm converges slower (taking around 2500 steps to reach a
+steady state, whereas Exp(0.9) reached steady state in around 1000 steps).
+The exp(α) and EGclipped(c) algorithms outperform the standard GD algorithm on
+the problems considered. This is not surprising given the choice of the prior. One can see
+that the convergence speed is qualitatively similar, but that the steady state MSE of the
+exp(α) and EGclipped(c) algorithms is rather smaller than that for the GD algorithm. It
+can also be seen that increasing c or α, leading to a more extreme prior distribution, leads to
+algorithms whose behaviour is noticeably different from the GD algorithm. Letting c → ∞
+in EGclipped(c) leads to the (natural gradient) EG algorithm. We have observed that the
+singularity at the origin in φ∞ (w) causes numerical difficulties.
+We also observed it was necessary to replace Φ−1
+α (x) given by (49) by
+˜ −1
+Φ
+α (x) = −sgn(x) ln(−α|x| + )/α
+where
+lems.
+
+(67)
+
+was chosen as 10−9 in the experiments reported in order to avoid numerical prob-
+
+344
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Figure 4: Comparison of the EGclipped(c) algorithm (c = 3), xk drawn iid uniformly on
+[− 12 , 12 ]M , (M = 300), sGD = 0.005. Step size for EGclipped(c) chosen according
+to (55) (see text). The target had the non-zero values inferrable from the diagram,
+with all the remaining values zero (a fraction of 0.01 of the dimensions of w∗ were
+non-zero). Gaussian noise of standard deviation 0.06 was added to the yk se1
+1
+quence. Both algorithms were started from the initial condition ( 3000
+, . . . , 3000
+).
+In the graphs, only the first 100 dimensions of wk have been plotted for the sake of
+clarity. (The remaining dimensions all had target values of zero.) The indicated
+Mean Square Errors (MSE) were estimated from the final fifth of the run.
+
+These numerical difficulties would be absent for any φ(w) satisfying
+c1 ≤ φ(w) ≤ c2
+for all w and some 0 < c1 < c2 < ∞.
+
+11. Conclusions
+We have shown how some new variants on the classical LMS algorithm can be interpreted in
+terms of a prior over the parameter space. The tools used to do so were based on a natural
+345
+
+Mahony and Williamson
+
+Figure 5: Same as Figure 1 except with c = 10.
+
+Riemannian structure. The results complement those developed in the area of information
+geometry. The simulation experiments illustrate that the interpretation via a prior is easy
+to reconcile with the actual behaviour of the algorithms. Previous work (Kivinen and
+Warmuth, 1997, Hill and Williamson, 2001) has shown how the EG algorithm can perform
+well in real situations where the target weight vector w∗ is sparse. The viewpoint developed
+here may well serve as a means for fine tuning the venerable LMS algorithm to better exploit
+prior knowledge one may have in a real problem. An advantage of the proposed framework
+is that, in the case of product prior distributions, it is a simple matter to generate algorithms
+optimized to the prior information available. An example of such an application as well
+as a simplified approximation to the algorithms developed in the present paper is given by
+Martin et al. (2001).
+There are several directions for further research on this topic. The most obvious are
+to consider a wider range of loss functions and to see if there is a closer connection with
+the work on Bregman divergences for analyzing these algorithms. One can also envisage
+combining the framework proposed in the present paper with techniques from information
+geometry in order to draw stronger connections with recent work such as that of Amari
+(1998). Indeed, it is reasonable to ask if one can derive a suitable geometry and associated
+346
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Figure 6: Same as Figure 1 except with c = 2.
+natural gradient algorithms with respect to both a prior distribution on the weights and
+the likelihood function associated with measurement noise?
+Another direction is to explore the connection (if any) with the prequential approach
+Dawid (1984), which studies sequential prediction from a viewpoint associated with Bayesian
+statistics.
+
+Acknowledgments
+This work was support by the Australian Research Council. RW would like to thank
+Manfred Warmuth for a discussion at COLT97 which provided a major impetus for this
+work. Thanks to the referees for some good suggestions which hopefully improved the
+readability of the paper.
+
+Appendix A. Background on Riemannian Geometry
+To obtain a better understanding of the subject it is necessary to enter into the details. An
+excellent quick overview of differential geometry and the basics of Riemannian metrics is
+347
+
+Mahony and Williamson
+
+given in (Helmke and Moore, 1994, appendix C). Good introductory texts have been written
+by Boothby (1986) and Lee (1997). A deeper knowledge can be obtain from Spivak (1979).
+Murray and Rice (1993) treat similar material and also discuss the geometry of statistical
+inference.
+The modern form of Riemannian geometry provides a language in which the structure of
+curved spaces can be analysed. Riemann was motivated by the ongoing effort to understand
+the significance of Euclid’s fifth postulate during the first half of the nineteenth century.
+This question must have been an important topic of discussion amongst all mathematicians
+of the time, however, Riemann’s early work was in the field of geometric properties of
+analytic functions of complex variables, conformal mappings and connectivity of surfaces.
+In 1854 he submitted a dissertation for his Habilitation on representing complex functions
+using trigonometric series. He was also required to give a public dissertation and submitted
+three possible topics to his examining committee. The first two topics were subjects in
+which he was recognized as having made significant contributions. He clearly expected to
+be asked to speak on this work and, perhaps in wishing to impress Gauss, a member of
+¨
+his Habilitation committee, he chose Uber
+die Hypothesen welche der Geometrie zu Grunde
+liegen (On the hypotheses that lie at the foundations of geometry)4 as his third topic. Gauss
+called his bluff and Riemann had only a few months in which to prepare material that would
+impress the Habilitation committee. He had never been one to restrict his claims to those
+for which he had a rigorous development and his lecture was a sweeping introduction to
+a vague form of a differentiable manifold, the concept of local quadratic forms, a general
+connection to the concept of curvature, and finally a discussion of the implications of these
+concepts to our understanding of the world we live in. He provided a first vision of modern
+differential geometry, Riemannian manifolds and general relativity wrapped up into a single
+incoherent view of the world. Fortunately, Gauss was present to grasp the importance of
+the material presented. An indication of the visionary nature of Riemann’s lecture is gained
+by noting that it took another sixty years before the concept of a differentiable manifold
+was properly developed in 1913 by Weyl (1923).
+The aim of Riemannian geometry is to provide an intrinsic understanding of geometry
+based on observations made within the manifold considered. This should be contrasted
+to an extrinsic interpretation of geometry such as is possible, for example, for a sphere
+embedded in R3 . The sphere is clearly curved, (from the perspective of an observer in the
+‘flat’ Euclidean space R3 ), and it is simple enough to develop measures of this curvature
+such as Euler’s principal curvatures5 that involve extrinsic measurements. The problem is
+considerably less clear if one imagines a mythical being living within 2-dimensional space
+on the surface of the sphere. A valid intrinsic understanding of geometry would allow
+such a creature to make measurements to determine whether they were living on ‘flat’
+Euclidean space compared to, for example, an extremely large sphere (eg. the polygonal
+creatures living in the world created by Abbot (1992)). Gauss certainly believed that this
+was possible and his work on the curvature of surfaces (Gauss, 1965) emphasizes that the
+4. A transcript of Riemann’s lecture was published in (Riemann, 1868). An English translation was made
+by Spivak and appears in volume 2 of his comprehensive treatise on geometry (Spivak, 1979). Our
+knowledge of this work came from the recent delightful book by McCleary (1994).
+5. The principal curvatures of a surface in R3 are the maximal and minimal curvature of all curves obtained
+by intersecting the surface with a plane (Euler, 1760).
+
+348
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+infinitesimal curvature of a surface (as measured by the product of the principal curvatures)
+is related to the difference between the sum of the angles of an infinitesimal triangle drawn
+at the point of interest from 180◦ . This is an intrinsic measure available to creatures living
+within the surface.
+The key concept of Riemannian geometry is the concept of independence of the measure
+of length (and volume) from the local coordinates used to measure position. Underlying
+this concept is the understanding that there are no ‘special’ coordinates for a manifold
+and consequently that a geometric property is intrinsic to that manifold if and only if it is
+invariant under coordinate transformations. The fundamental axiom that Riemann worked
+from was that the infinitesimal length of a curve should be a physical quantity independent
+of the mathematical representation of the manifold but quite possibly dependent on the
+point at which the measurement is taken. In modern language, the measure of length
+on the manifold must be invariant under changes in local coordinates. In order for this
+to be true, the explicit expression of the infinitesimal measure of length must depend on
+the coordinates used; otherwise they would not transform with changes in the coordinates.
+From this principle it it is possible to derive the expression
+n
+
+gij (x)dxi dxj
+
+ds =
+i,j=1
+
+where s denotes the curve parameterization and the gij (x) code the manner in which the
+length of the curve depends on the particular local coordinates {x1 , x2 , . . . , xn } used. The
+matrix G(x) = [gij (x)]i,j is called the Riemannian metric for the manifold considered.
+The properties of symmetry, non-degeneracy and positive definiteness of the matrix G(x)
+correspond to physical properties of measuring length, albeit the infinitesimal limit of length.
+Of course, infinitesimal length may be integrated along curves to obtain a classical distance
+metric on the space. A curve tracing out the shortest distance between any two points
+according to this metric is called a geodesic. Such curves would appear as straight lines to
+a creature living within the manifold.
+Using the above intuition is now possible to state the intrinsic difference between a
+curved Riemannian space and flat space. For Euclidean space there exists a ‘special’ coordinate system for which the infinitesimal length measure is expressed
+n
+
+ds =
+
+dxi dxi .
+i=1
+
+That is, the metric is gij (x) = δij (G(x) = I). Clearly, a manifold is intrinsically Euclidean
+(or ‘flat’) if there exists a set of coordinates for which the Riemannian metric is transformed
+to the identity matrix. Of course, this must hold equally at every point in the space. From
+symmetry there n(n − 1)/2 linearly independent functions that define gij (x), there are n
+degrees of freedom available by altering the coordinate function, and consequently there are
+n(n − 1)/2 components of gij (x) that cannot be arbitrarily fixed by variation in the coordinate chart. For example, for any two dimensional Riemannian manifold one may choose
+coordinates (locally) such that g11 = g22 = 1, however, the function g12 (x) = g21 (x) will in
+general be non-zero and non-constant. The set of all 2-dimensional Riemannian manifolds
+349
+
+Mahony and Williamson
+
+3
+
+2
+
+2
+1.5
+1
+0
+
+1
+
+−1
+0.5
+−2
+−3
+−3
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+0
+
+3
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+Figure 7: A grid of unit measure in the Euclidean coordinates associated with the EGalgorithm on the left maps to a grid of curvilinear coordinates in the weight
+space for the EG-algorithm on the right. Observe that the coordinate grid is
+compressed close to the axes corresponding to the property that a unit step of
+distance in this region only alters the actual weight vector w by a small amount.
+
+are (locally) parameterised by the function g12 (x). Euclidean space R2 corresponds to the
+case g12 (x) ≡ 0. The independent functions gij (x) are linked to the curvature of the space.
+An important observation is that the measure of length is dependent on the point
+at which the measurement is made in the manifold. An instructive example taken from
+the body of the paper is provided by considering the geometry used to analyze the EGalgorithm. The metric matrix is G(w) = diag( (w11 )2 , . . . , (w1n )2 ) (cf. Subsection 6.2) defined
+on the weight space wi > 0 for all i = 1, . . . , n. Transforming the coordinates according to
+u(w) := ln(w1 ), . . . , ln(w2 ) ,
+one obtains the constant Riemannian metric G(u) = In . Thus, the Riemannian structure
+introduced for the EG-algorithm is Euclidean of ‘flat’. Nevertheless, the geodesics in the
+original weight space are not straight lines.
+It is instructive to plot two examples of the mapping between the Euclidean coordinates
+u(w) introduced above and original weight space in the local coordinates w (cf. Figures
+7 and 8). In Figure 7 it is obvious that in the weight space the unit grid derived from
+the Euclidean coordinates gets compressed close to the i’th coordinate axis by a factor of
+1/(wi )2 = φ(wi ), the improper probability distribution that was introduced to model
+the prior knowledge assumed for the EG-algorithm. Thus, taking a unit step in this region
+results in very small changes in the weight vector coefficient wi . The second figure (Figure 8)
+shows the curvilinear nature of the geodesics in the weight space compared to the linear
+geodesics in the Euclidean coordinates for the EG-algorithm.
+The application of Riemannian geometry to statistical learning theory undertaken in this
+paper has a minor variant from classical Riemannian geometry. In statistical learning theory
+the weight vector w lives in a ‘special’ coordinate frame, namely, the coordinate frame that
+is linked to the linear model class of the learning problem. Thus, a preferential structure is
+given by a Riemannian metric defined with respect to ‘special’ coordinates corresponding
+to the weight vectors w used in the linear model class. In these coordinates the measure of
+350
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+3
+
+2
+
+2
+1.5
+1
+0
+
+1
+
+−1
+0.5
+−2
+−3
+−3
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+0
+
+3
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+Figure 8: An analogous plot to that shown in Figure 7 except that the Euclidean coordinates
+have been rotated by 45◦ . This plot shows the curvilinear nature of the geodesic
+coordinates induced by the EG preferential structure in weight space. A creature
+living within the weight space equipped with the EG potential stucture would
+observe the curves on the right drawn as straight lines shown in the grid on the
+left.
+
+length is certainly not constant. Thus, the geodesics appear curved when expressed in the
+coordinates w and the parameterization strongly contributes to the properties of the learning
+algorithm. The key observation is that the performance of the algorithm is measured in the
+‘special’ weight vector coordinates. This is contrasted to classical Riemannian geometry
+where all local coordinate charts are equally valid. If one were to discard the weight vector
+coordinate representation and use, for example, the Euclidean parameterization u := u(w)
+for the EG-algorithm it would be necessary to reparameterize the model class to obtain the
+same learning problem (cf. Section 2)
+x → exp(u), x , x ∈ RN ,
+for u. Thus, in a learning problem it is both the preferential structure and the structure of
+the model class that combined define the geometry of the problem.6
+It remains to comment on the issues involved in obtaining measurements of the Riemannian geometry of a manifold using only intrinsic measurements. Since an intrinsic
+measurement is made within the space a direct measure of distance is not sufficient to determine the important off diagonal metric structure. A differential measure, i.e. how the
+measure of length changes as a displacement is made, will provide information that can be
+used to infer the metric structure of the manifold. Riemann showed that this approach was
+sufficient to intrinsically compute the curvature of a manifold equipped with a infinitesimal
+quadratic distance measure (or Riemannian metric). As a consequence the curvature of a
+Riemannian manifold can be computed from first derivatives of the metric functions gij (x).
+The actual expressions in coordinate form are intricate and difficult to work with. It was
+Christoffel (1869) who introduced a formal representation of this structure in terms of a set
+6. An interesting consequence of this observation is that any non-singular parameterization of the learning
+problem x → f (u), x , (linear in the measurement x) can be represented as linear model class along
+with a preferential structure derived from the local coordinate chart w := f (u), u = f −1 (w).
+
+351
+
+Mahony and Williamson
+
+Figure 9: A triangle drawn in coordinated w of weight space.
+
+∠A
+∠B
+∠C
+Total
+
+Correct
+71.5◦
+37◦
+71.5◦
+180◦
+
+Incorrect
+108◦
+37◦
+108◦
+253◦
+
+Figure 10: A table showing the angles between vertices of the triangle shown in Figure 9.
+of symbols and transformation rules under change of coordinates. The Christoffel symbols
+can be used to compute intrinsic geometric properties of a Riemannian manifold such as
+curvature, parallel transport, geodesics, etc. In this paper, the Christoffel symbols are used
+simply to obtain an explicit ODE for the geodesic equations for the learning algorithms
+considered.
+A final remark on the measurement of angles on Riemannian manifolds is of interest.
+It was well understood by workers in the early nineteenth century that for 2-dimensional
+surfaces the sum of the internal angles of a triangle is linked to the curvature of the surface.
+Indeed, for a triangle the internal angles sum to a value that differs from 180◦ by a factor
+that depends only on the curvature and the area of the triangle. Of course the angles must
+be measured relative the Riemannian metric that defines the geometry. Thus, the angle
+between two vectors at a point in the space is
+∠u, v = arccos
+
+uT G(x)v
+1
+
+1
+
+(uT G(x)u) 2 (uT G(x)u) 2
+
+Consider the triangle drawn in Figure 9 constructed from geodesic curves for the geometry introduced for the EG-algorithm. Earlier it was shown that a smooth change of
+coordinates exists that transforms the metric into the Euclidean metric and hence that the
+space is flat. Computing the angles of the three points according to formulae above yields
+the correct values shown in Table A. As expected the correct calculation leads to total
+352
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+of 180◦ corresponding to the fact that the preferential structure for the EG-algorithm is
+flat. The incorrect values shown are the angles computed without using the Riemannian
+metric and correspond to the angles that one observes visually in Figure 9. Summing the
+incorrect angles yields something absurd. This example demonstrates the importance of
+the Riemannian metric in measuring angles as well as providing a measure of distance.
+
+References
+Edwin Abbot. Flatland: A Romance of Many Dimensions. Thrift editions. Dover pubn,
+1992. Unabridged version of the revised edition, 1884.
+Hirotugu Akaike. The interpretation of improper prior distributions as limits of data dependent proper prior distributions. Journal of the Royal Statistical Society, Series B, 42
+(1):46–52, 1980.
+Shun-ichi Amari. Differential-Geometrical Methods in Statistics. Springer, Berlin, 1985.
+Shun-ichi Amari. Neural learning in structured parameter spaces — natural riemannian
+gradient. In Advances in Neural Information Processing Systems 9, 1997.
+Shun-ichi Amari. Natural gradient works efficiently in learning. Neural Computation, 10:
+251–276, 1998.
+Ole E. Barndorff-Nielsen. Parametric Statistical Models and Likelihood. Springer, Berlin,
+1988.
+William M. Boothby. An Introduction to Differentiable Manifolds. Academic Press, London,
+1986.
+Joseph T. Chang and David Pollard. Conditioning as disintegration. Statistica Neelandica,
+51(3):287–317, 1997.
+¨
+Elwin Bruno Christoffel. Uber
+die Transfmoration der homogenen Differentialausdr¨
+ucke
+zweiten Grades. Crelle, 70:46–70, 1869.
+Peter M. Clarkson. Optimal and Adaptive Signal Processing. CRC Press, Boca Raton, 1993.
+A. Phil Dawid. Statistical theory: The prequential approach. Journal of the Royal Statistical
+Society, Series A, 147:278–292, 1984.
+Scott C. Douglas and Shun-ichi Amari. Natural-gradient adaptation. In Simon Haykin,
+editor, Unsupervised Adaptive Filtering. Volume 1: Blind Source Separation, pages 13–
+61, New York, 2000. John Wiley.
+Richard O. Duda, Peter E. Hart, and David G. Stork. Pattern Classification. John Wiley,
+New York, 2nd edition, 2001.
+Leonhard Euler. Recherches sur la courbure des surfaces. M´emoires de l’academie es
+Sciences, 16:119–143, 1760.
+353
+
+Mahony and Williamson
+
+Terrence L. Fine. Feedforward Neural Network Methodology. Springer, New York, 1999.
+Karl F. Gauss. General Investigations of Curved Surfaces. Raven Press, New York, USA,
+1965. Tranlated from material published in 1827.
+Claudio Gentile and Nick Littlestone. The robustness of the p-norm algorithms. In Proceedings of the 11th Annual Conference on Computational Learning Theory, pages 1–11,
+1999.
+Geoffrey J. Gordon. Approximate solutions to markov decision processes. PhD thesis,
+Department of Computer Science, Carnegie-Mellon University, 1999a.
+Geoffrey J. Gordon. Regret bounds for prediction problems. In Proceedings of the Twelfth
+Annual Conference on Computational Learning Theory, pages 29–40, 1999b.
+Adam J. Grove, Nick Littlestone, and Dale Schuurmans. General convergence results for
+linear discriminant updates. In Proceedings of the Tenth Annual Conference on Computational Learning Theory (COLT-97), pages 171–183. ACM Press, 1997.
+John A. Hartigan. Bayes Theory. Springer, New York, 1983.
+Mohamad H. Hassoun. Fundamentals of Artificial Neural Networks. MIT Press, Cambridge,
+MA, 1995.
+Uwe Helmke and John B. Moore. Optimization and Dynamical Systems. Springer, London,
+1994.
+Simon I. Hill and Robert C. Williamson. An analysis of the exponentiated gradient descent
+algorithm. In Proceedings of the International Symposium on Signal Processing and its
+Applications (ISSPA’99), pages 379–382, 1999.
+Simon I. Hill and Robert C. Williamson. Convergence of exponentiated gradient algorithms.
+IEEE Transactions on Signal Processing, 49(6):1208–1215, 2001.
+Jørgen Hoffmann-Jorgensen. Probability with a View Toward Statistics (Volume II). Chapman and Hall, New York, 1994.
+Jyrki Kivinen and Manfred K. Warmuth. Exponentiated gradient descent versus gradient
+descent for linear predictors. Information and Computation, 132(1):1–64, 1997.
+Jyrki Kivinen and Manfred K. Warmuth. Relative loss bounds for multidimensional regression problems. In Michael I. Jordan, Michael J. Kearns, and Sara A. Solla, editors,
+Advances in Neural Information Processing Systems 10, pages 287–293. MIT Press, 1998.
+Jyrki Kivinen and Manfred K. Warmuth. Relative loss bounds for multidimensional regression problems. Machine Learning, 45:301–329, 2001.
+John M. Lee. Riemannian Manifolds : An Introduction to Curvature, volume 176 of Graduate Texts in Mathematics. Springer-Verlag, New York, 1997.
+354
+
+Prior Knowledge and Gradient Descent Learning Algorithms
+
+Richard K. Martin, William A. Sethares, Robert C. Williamson, and C. Richard Johnson Jr.
+Exploiting sparsity in adaptive filters. Proceedings of 2001 Conference on Information
+Sciences and Systems, The Johns Hopkins University, March 2001. Extended version
+submitted to IEEE Transactions on Signal Processing, 2001.
+John McCleary. Geometry from a differentiable point of view. Cambridge University Press,
+Cambridge, UK, 1994.
+Michael K. Murray and John W. Rice. Differential Geometry and Statistics. Chapman and
+Hall, London, 1993.
+¨
+Bernhard Riemann. Uber
+die Hypothesen welche der Geometrie zu Grunde liegen. Abhandlungen der K¨
+oniglichen Gesellschaft der Wissenschaften zu G¨
+ottingen, 13, 1868.
+Christian P. Robert. The Bayesian Choice. Springer, New York, 1994.
+Albert N. Shiryaev. Probability. Springer, New York, 2nd edition, 1996.
+Victor Solo and Xuan Kong. Adaptive Signal Processing Algorithms. Prentice-Hall, Englewood Cliffs, 1995.
+Murray Spivak. A comprehensive introduction to differential geometry. Publish or Perish,
+Inc., Wilmington, Delaware, USA, 2nd edition, 1979. 5 volumes.
+Manfred K. Warmuth and Arun K. Jagota. Continuous and discrete-time nonlinear gradient
+descent: Relative loss bounds and convergence. Preprint, University of California, Santa
+Cruz. http://www.cse.ucsc.edu/˜manfred/pubs/differential.ps, September 1997.
+Hermann Weyl. Die Idee der Riemannschen Fl¨
+ache. Teubner, Liepzig, Germany, 1923.
+English translation: The concept of a Riemann surface, Addison-Wesley, Reading, Massachusetts, USA.
+
+355
+
+

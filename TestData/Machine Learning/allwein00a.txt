@@ -1,0 +1,4956 @@
+Journal of Machine Learning Research 1 (2000) 113-141
+
+Submitted 5/00; Published 12/00
+
+Reducing Multiclass to Binary:
+A Unifying Approach for Margin Classifiers
+Erin L. Allwein
+
+EALLWEIN @ SWRI . ORG
+
+Southwest Research Institute
+6220 Culebra Road
+San Antonio, TX 78228
+
+Robert E. Schapire
+
+SCHAPIRE @ RESEARCH . ATT. COM
+
+AT&T Labs ; Research
+Shannon Laboratory
+180 Park Avenue, Room A203
+Florham Park, NJ 07932
+
+Yoram Singer
+
+SINGER @ CS . HUJI . AC . IL
+
+School of Computer Science & Engineering
+Hebrew University, Jerusalem 91904, Israel
+
+Editor: Leslie Pack Kaelbling
+
+Abstract
+We present a unifying framework for studying the solution of multiclass categorization problems by reducing them to multiple binary problems that are then solved using a margin-based
+binary learning algorithm. The proposed framework unifies some of the most popular approaches
+in which each class is compared against all others, or in which all pairs of classes are compared
+to each other, or in which output codes with error-correcting properties are used. We propose a
+general method for combining the classifiers generated on the binary problems, and we prove a
+general empirical multiclass loss bound given the empirical loss of the individual binary learning
+algorithms. The scheme and the corresponding bounds apply to many popular classification learning algorithms including support-vector machines, AdaBoost, regression, logistic regression and
+decision-tree algorithms. We also give a multiclass generalization error analysis for general output
+codes with AdaBoost as the binary learner. Experimental results with SVM and AdaBoost show
+that our scheme provides a viable alternative to the most commonly used multiclass algorithms.
+
+1. Introduction
+Many supervised machine learning tasks can be cast as the problem of assigning elements to a finite
+set of classes or categories. For example, the goal of optical character recognition (OCR) systems
+is to determine the digit value (0 : : : 9) from its image. The number of applications that require
+multiclass categorization is immense. A few examples for such applications are text and speech
+categorization, natural language processing tasks such as part-of-speech tagging, and gesture and
+object recognition in machine vision.
+In designing machine learning algorithms, it is often easier first to devise algorithms for distinguishing between only two classes. Some machine learning algorithms, such as C4.5 (Quinlan,
+1993) and CART (Breiman, Friedman, Olshen, & Stone, 1984), can then be naturally extended to
+handle the multiclass case. For other algorithms, such as AdaBoost (Freund & Schapire, 1997;
+c 2000 AT&T Corp.
+
+A LLWEIN , S CHAPIRE & S INGER
+
+Schapire & Singer, 1999) and the support-vector machines (SVM) algorithm (Vapnik, 1995; Cortes
+& Vapnik, 1995), a direct extension to the multiclass case may be problematic. Typically, in such
+cases, the multiclass problem is reduced to multiple binary classification problems that can be solved
+separately. Connectionist models (Rumelhart, Hinton, & Williams, 1986), in which each class is
+represented by an output neuron, are a notable example: each output neuron serves as a discriminator between the class it represents and all of the other classes. Thus, this training algorithm is based
+on a reduction of the multiclass problem to k binary problems, where k is the number of classes.
+There are many ways to reduce a multiclass problem to multiple binary classification problems.
+In the simple approach mentioned above, each class is compared to all others. Hastie and Tibshirani (1998) suggest a different approach in which all pairs of classes are compared to each other.
+Dietterich and Bakiri (1995) presented a general framework in which the classes are partitioned into
+opposing subsets using error-correcting codes. For all of these methods, after the binary classification problems have been solved, the resulting set of binary classifiers must then be combined in
+some way. In this paper, we study a general framework, which is a simple extension of Dietterich
+and Bakiri’s framework, that unifies all of these methods of reducing a multiclass problem to a
+binary problem.
+We pay particular attention to the case in which the binary learning algorithm is one that is
+based on the margin of a training example. Roughly speaking, the margin of a training example is
+a number that is positive if and only if the example is correctly classified by a given classifier and
+whose magnitude is a measure of confidence in the prediction. Several well known algorithms work
+directly with margins. For instance, the SVM algorithm (Vapnik, 1995; Cortes & Vapnik, 1995) attempts to maximize the minimum margin of any training example. There are many more algorithms
+that attempt to minimize some loss function of the margin. AdaBoost (Freund & Schapire, 1997;
+Schapire & Singer, 1999) is one example: it can be shown that AdaBoost is a greedy procedure for
+minimizing an exponential loss function of the margins. In Section 2, we catalog many other algorithms that also can be viewed as margin-based learning algorithms, including regression, logistic
+regression and decision-tree algorithms.
+The simplest method of combining the binary classifiers (which we call Hamming decoding)
+ignores the loss function that was used during training as well as the confidences attached to predictions made by the classifier. In Section 3, we give a new and general technique for combining
+classifiers that does not suffer from either of these defects. We call this method loss-based decoding.
+We next prove some of the theoretical properties of these methods in Section 4. In particular,
+for both of the decoding methods, we prove general bounds on the training error on the multiclass
+problem in terms of the empirical performance on the individual binary problems. These bounds
+indicate that loss-based decoding is superior to Hamming decoding. Also, these bounds depend on
+the manner in which the multiclass problem has been reduced to binary problems. For the oneagainst-all approach, our bounds are linear in the number of classes, but for a reduction based on
+random partitions of the classes, the bounds are independent of the number of classes. These results
+generalize more specialized bounds proved by Schapire and Singer (1999) and by Guruswami and
+Sahai (1999).
+In Section 5, we prove a bound on the generalization error of our method when the binary learner
+is AdaBoost. In particular, we generalize the analysis of Schapire et al. (1998), expressing a bound
+on the generalization error in terms of the training-set margins of the combined multiclass classifier,
+and showing that boosting, when used in this way, tends to aggressively increase the margins of the
+training examples.
+114
+
+R EDUCING M ULTICLASS TO B INARY
+
+Finally, in Section 6, we present experiments using SVM and AdaBoost with a variety of
+multiclass-to-binary reductions. These results show that, as predicted by our theory, loss-based
+decoding is almost always better than Hamming decoding. Further, the results show that the most
+commonly used one-against-all reduction is easy to beat, but that the best method seems to be
+problem-dependent.
+
+2. Margin-based Learning Algorithms
+We study methods for handling multiclass problems using a general class of binary algorithms that
+attempt to minimize a margin-based loss function. In this section, we describe that class of learning
+algorithms with several examples.
+A binary margin-based learning algorithm takes as input binary labeled training examples
+(x1 y1 ) : : : (xm ym ) where the instances xi belong to some domain and the labels yi
+1 +1 . Such a learning algorithm uses the data to generate a real-valued function or hypothesis f :
+R where f belongs to some hypothesis space . The margin of an example (x y)
+with respect to f is yf (x). Note that the margin is positive if and only if the sign of f (x) agrees
+with y . Thus, if we interpret the sign of f (x) as its prediction on x, then
+
+f;
+
+X
+
+g
+X!
+
+2
+
+F
+
+m
+1X
+m yi f (xi) 0]]
+i=1
+
+is exactly the training error of f , where, in this case, we count a zero output (f (xi ) = 0) as a
+mistake. (Here and throughout this paper, ] is 1 if predicate holds and 0 otherwise.)
+Although minimization of the training error may be a worthwhile goal, in its most general form
+the problem is intractable (see for instance the work of H¨offgen and Simon (1992)). It is therefore
+often advantageous to instead minimize some other nonnegative loss function of the margin, that is,
+to minimize
+
+!
+
+m
+1X
+m L(yif (xi ))
+
+1
+
+(1)
+
+i=1
+
+0 ). Different choices of the loss function L and different
+for some loss function L : R
+algorithms for (approximately) minimizing Eq. (1) over some hypothesis space lead to various wellstudied learning algorithms. Below we list several examples. In the present work, we are not
+particularly concerned with the method used to achieve a small empirical loss since we will use
+these algorithms later in the paper as “black boxes.” We focus instead on the loss function itself
+whose properties will allow us to prove our main theorem on the effectiveness of output coding
+methods for multiclass problems.
+Support-vector Machines. For training data that may not be linearly separable, the supportvector machines (SVM) algorithm (Vapnik, 1995; Cortes & Vapnik, 1995) seeks a linear classifier
+f : R n R of the form f ( ) =
++ b that minimizes the objective function
+
+!
+
+x wx
+
+m
+1 jjwjj2 + C X
+i
+2 2
+i=1
+
+for some parameter C , subject to the linear constraints
+
+yi((xi
+
+w) + b)
+
+1; i
+115
+
+i
+
+0:
+
+A LLWEIN , S CHAPIRE & S INGER
+
+w is the minimizer of the regularized empirical loss function
+m
+1 jjwjj2 + C X
+(1 ; yi ((w xi ) + b))+
+2 2
+
+Put another way, the SVM solution for
+
+i=1
+
+f g
+
+where (z )+ = max z 0 . (For a more formal treatment see, for instance, the work of Sch¨olkopf et
+in the objective function is fundamental in
+al. (1998).) Although the role of the L2 norm of
+order for SVM to work, the analysis presented in the next section (and the corresponding multiclass
+algorithm) depends only on the loss function (which is a function of the margins). Thus, SVM can
+be viewed here as a binary margin-based learning algorithm which seeks to achieve small empirical
+risk for the loss function L(z ) = (1 z )+ .
+
+w
+
+;
+
+AdaBoost. The algorithm AdaBoost (Freund & Schapire, 1997; Schapire & Singer, 1999) builds
+a hypothesis f that is a linear combination of weak or base hypotheses ht :
+
+f (x) =
+
+X
+t
+
+t ht (x):
+
+The hypothesis f is built up in a series of rounds on each of which an ht is selected by a weak
+or base learning algorithm and t R is then chosen. It has been observed by Breiman (1997a,
+1997b) and other authors (Collins, Schapire, & Singer, 2000; Friedman, Hastie, & Tibshirani, 2000;
+Mason, Baxter, Bartlett, & Frean, 1999; R¨atsch, Onoda, & M¨uller, to appear; Schapire & Singer,
+1999) that the ht ’s and t ’s are effectively being greedily chosen so as to minimize
+
+2
+
+m
+1X
+e;yi f (xi ) :
+
+m i=1
+
+Thus, AdaBoost is a binary margin-based learning algorithm in which the loss function is L(z )
+
+e ;z .
+
+=
+
+AdaBoost with randomized predictions. In a little studied variant of AdaBoost (Freund & Schapire,
+1997), we allow AdaBoost to output randomized predictions in which the predicted label of a new
+example x is chosen randomly to be +1 with probability 1=(1 + e;2f (x) ). The loss suffered then
+is the probability that the randomly chosen predicted label disagrees with the correct label y . Let
+p(x) def
+= 1=(1 + e;2f (x) ). Then the loss is p(x) if y = 1 and 1 p(x) if y = +1. Using a simple
+algebraic manipulation, the loss can be shown to be 1=(1+ e2yf (x) ). So for this variant of AdaBoost,
+we set L(z ) = 1=(1 + e2z ). However, in this case, note that the learning algorithm is not directly
+attempting to minimize this loss (it is instead minimizing the exponential loss described above).
+
+;
+
+;
+
+Regression. There are various algorithms, such as neural networks and least squares regression,
+1 +1 ,
+that attempt to minimize the squared error loss function (y f (x))2 . When the y ’s are in
+this function can be rewritten as
+
+;
+
+f;
+
+(y ; f (x))2 = y2 (y ; f (x))2
+= (yy ; yf (x))2
+= (1 ; yf (x))2 :
+Thus, for binary problems, minimizing squared error fits our framework where L(z ) = (1
+116
+
+; z)2 .
+
+g
+
+R EDUCING M ULTICLASS TO B INARY
+
+Logistic regression. In logistic regression and related methods such as Iterative Scaling (Csisz´ar
+& Tusn´ady, 1984; Della Pietra, Della Pietra, & Lafferty, 1997; Lafferty, 1999), and LogitBoost (Friedman et al., 2000), one posits a logistic model for estimating the conditional probability of a positive
+label:
+
+Pr y = +1jx] =
+
+1
+
+1 + e;2f (x)
+
+:
+
+One then attempts to maximize the likelihood of the labels in the sample, or equivalently, to minimize the log loss
+
+; log(Pr yjx]) = log(1 + e;2yf (x) ):
+
+Thus, for logistic regression and related methods, we take L(z ) = log(1 + e;2z ).
+Decision trees. The most popular decision tree algorithms can also be naturally linked to loss
+functions. For instance, Quinlan’s C4.5 (1993), in its simplest form, for binary classification problems, splits decision nodes in a manner to greedily minimize
+
+X + p;j + p+j ! ; p;j + p+j !!
++ pj ln
+pj ln
+p+j
+p;j
+leaf j
+
+(2)
+
+;
+where p+
+j and pj are the fraction of positive and negative examples reaching leaf j , respectively.
+;
+The prediction at leaf j is then sign(p+
+j pj ). Viewed differently, imagine a decision tree that
+instead outputs a real number fj at each leaf with the intention of performing logistic regression as
+above. Then the empirical loss associated with logistic regression is
+
+;
+
+X +
+pj ln(1 + e;2f ) + p;j ln(1 + e2f ) :
+
+leaf j
+
+j
+
+j
+
+;
+This is minimized, over choices of fj , when fj = (1=2) ln(p+
+j =pj ). Plugging in this choice gives
+exactly Eq. (2), and thresholding fj gives the hard prediction rule used earlier. Thus, C4.5, in this
+simple form, can be viewed as a margin-based learning algorithm that is naturally linked to the loss
+function used in logistic regression.
+By similar reasoning, CART (Breiman et al., 1984), which splits using the Gini index, can be
+linked to the square loss function, while Kearns and Mansour’s (1996) splitting rule can be linked
+to the exponential loss used by AdaBoost.
+The analysis we present in the next section might also hold for other algorithms that tacitly
+employ a function of the margin. For instance, Freund’s BrownBoost algorithm (1999) implicitly
+uses an instance potential function that satisfies the condition we impose on L. Therefore, it can also
+be combined with output coding and used to solve multiclass problems. To conclude this section,
+we plot in Figure 1 some of the loss functions discussed above.
+3. Output Coding for Multiclass Problems
+In the last section, we discussed margin-based algorithms for learning binary problems. Suppose
+now that we are faced with a multiclass learning problem in which each label y is chosen from a set
+of cardinality k > 2. How can a binary margin-based learning algorithm be modified to handle a
+k-class problem?
+
+Y
+
+117
+
+A LLWEIN , S CHAPIRE & S INGER
+
+14
+
+14
+
+exp(−z)
+
+12
+
+(1−z)2
+
+12
+
+10
+
+10
+
+8
+
+8
+
+6
+
+6
+
+L(−z)
+
+L(−z)
+4
+
+4
+
+1/2*(L(−z)+L(z))
+
+1/2*(L(−z)+L(z))
+2
+
+2
+
+0
+−2.5
+
+L(z)
+
+L(0)
+−2
+
+−1.5
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+
+L(z)
+
+L(0)
+2
+
+0
+−2.5
+
+2.5
+
+3.5
+
+−2
+
+−1.5
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+6
+
+(1−z)+
+
+log(1+exp(−2*z))
+
+3
+
+5
+
+L(−z)
+2.5
+
+4
+2
+
+L(−z)
+3
+1.5
+
+1/2*(L(−z)+L(z))
+2
+
+1/2*(L(−z)+L(z))
+
+1
+
+L(0)
+1
+
+0.5
+
+L(0)
+
+L(z)
+0
+−2.5
+
+−2
+
+−1.5
+
+−1
+
+−0.5
+
+0
+
+0.5
+
+1
+
+1.5
+
+2
+
+0
+−2.5
+
+2.5
+
+−2
+
+−1.5
+
+−1
+
+−0.5
+
+0
+
+L(z)
+0.5
+
+1
+
+1.5
+
+2
+
+2.5
+
+Figure 1: Some of the margin-based loss functions discussed in the paper: the exponential loss
+used by AdaBoost (top left); the square loss used in least-squares regression (top right);
+the “hinge” loss used by support-vector machines (bottom left); and the logistic loss used
+in logistic regression (bottom right).
+
+Several solutions have been proposed for this question. Many involve reducing the multiclass
+problem, in one way or another, to a set of binary problems. For instance, perhaps the simplest
+, we
+approach is to create one binary problem for each of the k classes. That is, for each r
+apply the given margin-based learning algorithm to a binary problem in which all examples labeled
+y = r are considered positive examples and all other examples are considered negative examples.
+We then end up with k hypotheses that somehow must be combined. We call this the one-against-all
+approach.
+
+2Y
+
+Another approach, suggested by Hastie and Tibshirani (1998), is to use the given binary learning
+, we run the
+algorithm to distinguish each pair of classes. Thus, for each distinct pair r1 r2
+learning algorithm on a binary problem in which examples labeled y = r1 are considered positive,
+and those labeled y = r2 are negative. All other examples are simply ignored. Again, the k2
+hypotheses that are generated by this process must then be combined. We call this the all-pairs
+approach.
+
+2Y
+
+M 2 f;
+
+;
+
+A more general suggestion on handling multiclass problems was given by Dietterich and Bakiri (1995).
+with a row of a “coding matrix”
+1 +1 k ` for
+Their idea is to associate each class r
+some `. The binary learning algorithm is then run once for each column of the matrix on the induced
+binary problem in which the label of each example labeled y is mapped to M (y s). This yields `
+
+2Y
+
+118
+
+g
+
+R EDUCING M ULTICLASS TO B INARY
+
+M
+
+hypotheses fs . Given an example x, we then predict the label y for which row y of matrix
+is
+“closest” to (f1 (x) : : : f` (x)). This is the method of error correcting output codes (ECOC).
+In this section, we propose a unifying generalization of all three of these methods applicable to any margin-based learning algorithm. This generalization is closest to the ECOC approach
+of Dietterich and Bakiri (1995) but differs in that the coding matrix is taken from the larger set
+1 0 +1 k ` . That is, some of the entries M (r s) may be zero, indicating that we don’t care
+how hypothesis fs categorizes examples with label r .
+Thus, our scheme for learning multiclass problems using a binary margin-based learning algorithm works as follows. We begin with a given coding matrix
+
+f;
+
+g
+
+A
+
+M 2 f;1 0 +1gk ` :
+A
+
+For s = 1 : : : `, the learning algorithm is provided with labeled data of the form (xi M (yi s))
+for all examples i in the training set but omitting all examples for which M (yi s) = 0. The
+R.
+algorithm uses this data to generate a hypothesis fs :
+is a k k matrix in which all diagonal elements
+For example, for the one-against-all approach,
+k matrix in which
+is a k
+are +1 and all other elements are 1. For the all-pairs approach,
+2
+has +1 in row r1 , 1 in
+each column corresponds to a distinct pair (r1 r2 ). For this column,
+row r2 and zeros in all other rows.
+As an alternative to calling repeatedly, in some cases, we may instead wish to add the column
+index s as a distinguished attribute of the instances received by , and then learn a single hypothesis
+on this larger learning problem rather than ` hypotheses on smaller problems. That is, we provide
+with instances of the form ((xi s) M (yi s)) for all training examples i and all columns s for
+1 ::: `
+R.
+which M (yi s) = 0. Algorithm then produces a single hypothesis f :
+However, for consistency with the preceding approach, we define fs (x) to be f (x s). We call these
+two approaches in which is called repeatedly or only once the multi-call and single-call variants,
+respectively.
+We note in passing that there are no fundamental differences between the single and multi-call
+variants. Most previous work on output coding employed the multi-call variant due to its simplicity.
+The single-call variant becomes handy when an implementation of a classification learning algo1 : : : ` R is available. We describe
+rithm that outputs a single hypothesis of the form f :
+experiments with both variants in Section 6.
+For either variant, the algorithm attempts to minimize the loss L on the induced binary problem(s). Recall that L is a function of the margin of an example so the loss of fs on an example xi
+with induced label M (yi s)
+1 +1 is L(M (yi s) fs (xi )). When M (yi s) = 0, we want to
+entirely ignore the hypothesis fs in computing the loss. We can define the loss to be any constant in
+this case, so, for convenience, we choose the loss to be L(0) so that the loss associated with fs on
+example i is L(M (yi s) fs (xi )) in all cases.
+Thus, the average loss over all choices of s and all examples i is
+
+A
+
+M
+
+;
+
+X!
+
+A
+
+A
+
+6
+
+M
+
+M
+
+;
+
+;
+
+A
+
+A
+
+X f
+
+g!
+
+A
+
+X f
+
+g!
+
+A
+
+2 f;
+
+g
+
+m X
+`
+1 X
+L(M (yi s) fs(xi )):
+m`
+
+(3)
+
+i=1 s=1
+
+We call this the average binary loss of the hypotheses fs on the given training set with respect to
+and loss L. It is the quantity that the calls to have the implicit intention of
+coding matrix
+
+M
+
+A
+
+119
+
+A LLWEIN , S CHAPIRE & S INGER
+
+minimizing. We will see in the next section how this quantity relates to the misclassification error
+of the final classifier that we build on the original multiclass training set.
+Let (r ) denote row r of M and let (x) be the vector of predictions on an instance x:
+
+M
+
+f
+
+f (x) = (f1(x) : : : f`(x)):
+
+Y
+
+Given the predictions of the fs ’s on a test point x, which of the k labels in should be predicted?
+While several methods of combining the fs ’s can be devised, in this paper, we focus on two that are
+very simple to implement and for which we can analyze the empirical risk of the original multiclass
+problem. The basic idea of both methods is to predict with the label r whose row (r ) is “closest”
+to the predictions (x). In other words, predict the label r that minimizes d( (r ) (x)) for some
+distance d. This formulation begs the question, however, of how we measure distance between the
+two vectors.
+One way of doing this is to count up the number of positions s in which the sign of the prediction
+fs(x) differs from the matrix entry M (r s). Formally, this means our distance measure is
+
+M
+M f
+
+f
+
+dH (M(r) f (x)) =
+
+` 1 ; sign(M (r s)f (x))
+X
+s
+
+(4)
+2
+where sign(z ) is +1 if z > 0, ;1 if z < 0, and 0 if z = 0. This is essentially like computing
+Hamming distance between row M(r ) and the signs of the fs (x)’s. However, note that if either
+M (r s) or fs(x) is zero then that component contributes 1=2 to the sum. For an instance x and a
+matrix M , the predicted label y^ 2 f1 : : : k g is therefore
+y^ = arg min
+r dH (M(r) f (x)) :
+
+s=1
+
+We call this method of combining the fs ’s Hamming decoding.
+A disadvantage of this method is that it ignores entirely the magnitude of the predictions which
+can often be an indication of a level of “confidence.” Our second method for combining predictions
+takes this potentially useful information into account, as well as the relevant loss function L which
+is ignored with Hamming decoding. The idea is to choose the label r that is most consistent with
+the predictions fs (x) in the sense that, if example x were labeled r , the total loss on example (x r )
+would be minimized over choices of r
+. Formally, this means that our distance measure is the
+total loss on a proposed example (x r ):
+
+2Y
+
+dL(M(r) f (x)) =
+
+`
+X
+
+s=1
+
+L(M (r s)fs (x)) :
+
+Analogous to Hamming decoding, the predicted label y^
+
+(5)
+
+2 f1 : : : kg is
+
+y^ = arg min
+r dL (M(r) f (x)) :
+
+We call this approach loss-based decoding. An illustration of the two decoding methods is given in
+Figure 2. The figure shows the decoding process for a problem with 4 classes using an output code
+of length ` = 7. For clarity we denote in the figure the entries of the output code matrix by +, and
+0 (instead of +1, 1 and 0). Note that in the example, the predicted class of the loss-based decoding
+(which, in this case, uses exponential loss) is different than that of the Hamming decoding.
+We note in passing that the loss-based decoding method for log-loss is the well known and
+widely used maximum-likelihood decoding which was studied briefly in the context of ECOC by
+Guruswami and Sahai (1999).
+
+;
+
+;
+
+120
+
+R EDUCING M ULTICLASS TO B INARY
+
+Sign of Binary Classifiers
++
+
+-
+
+-
+
+-
+
+-
+
+-
+
++
+
+Output of Binary Classifiers
+0.5 -7 -1 -2 -10 -12 9
+
+-
+
+0
+
+-
+
+-
+
++
+
+-
+
+-
+
+D=3.5
+
++
+
+-
+
+0
+
++
+
++
+
++
+
+-
+
+D=4.5
+
++
+
+0
+
+-
+
+-
+
+-
+
++
+
++
+
+D=1.5
+
+-
+
+-
+
++
+
+0
+
+-
+
+-
+
++
+
+D=2.5
+
+-
+
+0
+
+-
+
+-
+
++
+
+-
+
+-
+
+D= 30,133
+
++
+
+-
+
+0
+
++
+
++
+
++
+
+-
+
+D=192,893
+
++
+
+0
+
+-
+
+-
+
+-
+
++
+
++
+
+D=162,757
+
+-
+
+-
+
++
+
+0
+
+-
+
+-
+
++
+
+D=
+
+Class 3
+(Prediction)
+
+Class 4
+(Prediction)
+
+5.4
+
+Figure 2: An illustration of the multiclass prediction procedure for Hamming decoding (top) and
+loss-based decoding (bottom) for a 4-class problem using a code of length 7. The exponential function was used for the loss-based decoding.
+
+4. Analysis of the Training Error
+In this section, we analyze the training error of the output coding methods described in the last
+section. Specifically, we upper bound the training error of the two decoding methods in terms of the
+average binary loss as defined in Eq. (3), as well as a measure of the minimum distance between
+any pair of rows of the coding matrix. Here, we use a simple generalization of the Hamming
+1 0 +1 . Specifically, we define the distance between two rows
+distance for vectors over the set
+1 0 +1 ` to be
+
+u v 2 f;
+
+g
+
+f;
+
+g
+
+8
+` >
+< 0 if us = vs ^ us 6= 0 ^ vs 6= 0
+X
+1 if u 6= v ^ u 6= 0 ^ v 6= 0
+(u v) =
+: 1=2 if uss = 0s_ vs s= 0 s
+s=1 >
+` 1;u v
+X
+s s
+=
+s=1
+
+= ` ; 2u
+
+2
+
+v:
+
+Our analysis then depends on the minimum distance
+
+between pairs of distinct rows:
+
+= minf (M(r1 ) M(r2 )) : r1 6= r2 g:
+(6)
+;
+For example, for the one-against-all code, = 2. For the all-pairs code, = ( k2 ; 1)=2 + 1, since
+every two rows r1 r2 have exactly one component with opposite signs (M(r1 s) = ;M(r2 s)
+121
+
+A LLWEIN , S CHAPIRE & S INGER
+
+M(r s) 6= 0) and for the rest at least one component of the two is 0 (M(r s) = 0 or
+M(r2 s) 1= 0). For a random matrix with components chosen uniformly over either1f;1 +1g or
+f;1 0 +1g, the expected value of (M(r1 ) M(r2 )) for any distinct pair of rows is exactly `=2.
+and
+
+Intuitively, the larger , the more likely it is that decoding will “correct” for errors made by
+individual hypotheses. This was Dietterich and Bakiri’s (1995) insight in suggesting the use of
+output codes with error-correcting properties. This intuition is reflected in our analysis in which a
+larger value of gives a better upper bound on the training error. In particular, Theorem 1 states that
+the training error is at most `= times worse than the average binary loss of the combined hypotheses
+(after scaling the loss by L(0)). For the one-against-all matrix, `= = `=2 = k=2 which can be large
+if the number of classes is large. On the other hand, for the all-pairs matrix or for a random matrix,
+`= is close to the constant 2, independent of k.
+We begin with an analysis of loss-based decoding. An analysis of Hamming decoding will
+follow as a corollary. Concerning the loss L, our analysis assumes only that
+
+L(z) + L(;z) L(0) > 0
+2
+
+2
+
+(7)
+
+R . Note that this property holds if L is convex, although convexity is by no means a
+for all z
+necessary condition. Note also that all of the loss functions in Section 2 satisfy this property. The
+property is illustrated in Figure 1 for four of the loss functions discussed in that section.
+Theorem 1 Let " be the average binary loss (as defined in Eq. (3)) of hypotheses f1 : : : f` on a
+1 0 +1 k `
+given training set (x1 y1 ) : : : (xm ym ) with respect to the coding matrix
+and loss L, where k is the cardinality of the label set . Let be as in Eq. (6). Assume that L
+satisfies Eq. (7) for all z R . Then the training error using loss-based decoding is at most
+
+M 2 f;
+
+Y
+
+2
+
+`"
+L(0) :
+
+Proof: Suppose that loss-based decoding incorrectly classifies an example
+some label r = y for which
+
+6
+
+g
+
+dL (M(r) f (x)) dL(M(y) f (x)):
+
+Let
+
+(x y).
+
+Then there is
+(8)
+
+S = fs : M (r s) 6= M (y s) ^ M (r s) 6= 0 ^ M (y s) 6= 0g
+be the set of columns of M in which rows r and y differ and are both non-zero. Let
+S0 = fs : M (r s) = 0 _ M (y s) = 0g
+be the set of columns in which either row r or row y is zero. Let zs = M (y s)fs (x) and zs0 =
+M (r s)fs (x). Then Eq. (8) becomes
+`
+X
+
+s=1
+which implies
+
+X
+s2S S0
+
+L(z0 )
+s
+
+L(zs0 )
+
+`
+X
+
+s=1
+
+L(zs )
+
+X
+s2S S0
+
+122
+
+L(zs)
+
+R EDUCING M ULTICLASS TO B INARY
+
+since zs
+
+= zs0 if s 62 S
+
+S0 . This in turn implies that
+`
+X
+
+s=1
+
+2
+
+;
+
+X
+
+L(zs)
+
+s2S S0
+
+L(zs )
+
+1 X (L(z 0 ) + L(z ))
+s
+2 s2S S0 s
+
+X 0
+= 12
+(L(zs ) + L(zs ))
+s2S
+X
++ 12 (L(zs0 ) + L(zs )):
+s2S0
+
+(9)
+
+;
+
+L(0). Thus, the first term
+If s S then zs0 = zs and, by assumption, (L( zs ) + L(zs ))=2
+of Eq. (9) is at least L(0) S . If s S0 , then either zs = 0 or zs0 = 0. Either case implies that
+L(zs0 ) + L(zs) L(0). Thus, the second term of Eq. (9) is at last L(0) S0 =2.
+Therefore, Eq. (9) is at least
+
+j j
+
+2
+
+j j
+
+L(0) jS j + jS20 j = L(0) (M(r)
+
+M(y))
+
+L(0):
+
+In other words, a mistake on training example (xi yi ) implies that
+
+`
+X
+
+s=1
+
+L(M (yi s)fs(xi ))
+
+L(0)
+
+so the number of training mistakes is at most
+
+m X
+`
+1 X
+m`"
+L(0) i=1 s=1 L(M (yi s)fs (xi)) = L(0)
+
+and the training error is at most `"=( L(0)) as claimed.
+As a corollary, we can give a similar but weaker theorem for Hamming decoding. Note that
+we use a different assumption about the loss function L, but one that also holds for all of the loss
+functions described in Section 2.
+Corollary 2 Let f1
+
+M 2 f;1 0
+
+: : : f` be a set of hypotheses on a training set (x1 y1 ) : : : (xm ym), and let
+k
++1g ` be a coding matrix where k is the cardinality of the label set Y . Let be as
+
+in Eq. (6). Then the training error using Hamming decoding is at most
+
+m X
+`
+1 X
+(1 ; sign(M (yi s)fs (xi ))) :
+m
+i=1 s=1
+
+(10)
+
+Moreover, if L is a loss function satisfying L(z ) L(0) > 0 for z < 0 and " is the average binary
+loss with respect to this loss function, then the training error using Hamming decoding is at most
+
+2`" :
+L(0)
+123
+
+(11)
+
+A LLWEIN , S CHAPIRE & S INGER
+
+;
+
+Proof: Consider the loss function H (z ) = (1 sign(z ))=2. From Eqs. (4) and (5), it is clear
+that Hamming decoding is equivalent to loss-based decoding using this loss function. Moreover, H
+satisfies Eq. (7) for all z so we can apply Theorem 1 to get an upper bound on the training error of
+
+m X
+`
+2 X
+H (M (yi s)fs(xi ))
+m
+
+(12)
+
+i=1 s=1
+
+which equals Eq. (10).
+0 then H (z ) 1 L(z )=L(0), and if z > 0 then
+For the second part, note that if z
+H (z ) = 0 L(z )=L(0). This implies that Eq. (12) is bounded above by Eq. (11).
+Theorem 1 and Corollary 2 are broad generalizations of similar results proved by Schapire and
+Singer (1999) in a much more specialized setting involving only AdaBoost. Also, Corollary 2
+generalizes some of the results of Guruswami and Sahai (1999) that bound the multiclass training
+error in terms of the training (misclassification) error rates of the binary classifiers.
+The bounds of Theorem 1 and Corollary 2 depend implicitly on the fraction of zero entries in
+the matrix. Intuitively, the more zeros there are, the more examples that are ignored and the harder
+is all zeros, then is fairly large
+it should be to drive down the training error. At an extreme, if
+(`=2) but learning certainly should not be possible. To make this dependence explicit, let
+
+M
+
+T = f(i s) : M (yi s) = 0g
+
+j j
+
+be the set of pairs i s inducing examples that are ignored during learning. Let q = T =(m`) be the
+fraction of ignored pairs. Let " be the average binary loss restricted to the pairs not ignored during
+training:
+
+" = jT1cj
+
+where T c
+
+X
+
+(i s)2T c
+
+L(M (yi s)fs(xi ))
+
+= f(i s) : M (yi s) 6= 0g. Then the bound in Theorem 1 can be rewritten
+
+0
+
+1
+
+` 1 @ X L(0) + X L(M (y s)f (x ))A = ` q + (1 ; q) " :
+i
+s i
+L(0) m` (i s)2T
+L(0)
+(i s)62T
+Similarly, let be the fraction of misclassification errors made on Tc :
+
+X
+= jT1cj
+M (yi s) 6= sign(fs (xi ))]]:
+(i s)2T c
+
+The first part of Corollary 2 implies that the training error using Hamming decoding is bounded
+above by
+
+` (q + 2(1 ; q) ):
+
+M
+
+We see from these bounds that there are many trade-offs in the design of the coding matrix .
+On the one hand, we want the rows to be far apart so that will be large, and we also want there to
+be few non-zero entries so that q will be small. On the other hand, attempting to make large and
+q small may produce binary problems that are difficult to learn, yielding large (restricted) average
+binary loss.
+124
+
+R EDUCING M ULTICLASS TO B INARY
+
+5. Analysis of Generalization Error for Boosting with Loss-based Decoding
+The previous section considered only the training error using output codes. In this section, we
+take up the more difficult task of analyzing the generalization error. Because of the difficulty of
+obtaining such results, we do not have the kind of general results obtained for training error which
+apply to a broad class of loss functions. Instead, we focus only on the generalization error of using
+AdaBoost with output coding and loss-based decoding. Specifically, we show how the margintheoretic analysis of Schapire et al. (1998) can be extended to this more complicated algorithm.
+Briefly, Schapire et al.’s analysis was proposed as a means of explaining the empirically observed tendency of AdaBoost to resist overfitting. Their theory was based on the notion of an
+example’s margin which, informally, measures the “confidence” in the prediction made by a classifier on that example. They then gave a two-part analysis of AdaBoost: First, they proved a bound on
+the generalization error in terms of the margins of the training examples, a bound that is independent of the number of base hypotheses combined, and a bound suggesting that larger margins imply
+lower generalization error. In the second part of their analysis, they proved that AdaBoost tends to
+aggressively increase the margins of the training examples.
+In this section, we give counterparts of these two parts of their analysis for the combination of
+AdaBoost with loss-based decoding. We also assume that the single-call variant is used as described
+in Section 3. The result is essentially the AdaBoost.MO algorithm of Schapire and Singer (1999)
+(specifically, what they called “Variant 2”).
+is given. The algorithm
+This algorithm works as follows. We assume that a coding matrix
+works in rounds, repeatedly calling the base learning algorithm to obtain a base hypothesis. On each
+round t = 1 : : : T , the algorithm computes a distribution Dt over pairs of training examples and
+where = 1 : : : ` . The base learning
+columns of the matrix , i.e., over the set 1 : : : m
+algorithm uses the training data (with binary labels as encoded using ) and the distribution Dt to
+1 +1 . (In general, ht ’s range may be R , but here, for
+obtain a base hypothesis ht :
+simplicity, we assume that ht is binary valued.) The error t of ht is the probability with respect to
+Dt of misclassifying one of the examples. That is,
+
+M
+
+M
+
+f
+
+X L ! f;
+
+t
+
+g L
+
+L f
+
+g
+
+M
+
+g
+
+= Pr(i s) Dt M (yi s) 6= ht (xi s)]
+=
+
+m X
+`
+X
+
+i=1 s=1
+
+Dt (i s) M (yi s) 6= ht (xi s)]]:
+
+The distribution Dt is then updated using the rule
+
+Dt+1 (i s) = Dt (i s) exp(; tZM (yi s)ht (xi s)) :
+(13)
+t
+Here, t = (1=2) ln((1 ; t )= t ) (which is nonnegative, assuming, as we do, that t 1=2), and Zt
+is a normalization constant ensuring that Dt+1 is a distribution. It is straightforward to show that
+q
+Zt = 2 t (1 ; t ):
+(14)
+(The initial distribution is chosen to be uniform so that D1 (i s) = 1=(m`).)
+After T rounds, this procedure outputs a final classifier H which, because we are using lossbased decoding, is
+
+H (x) = arg min
+y2Y
+
+`
+X
+s=1
+
+exp ;M (y s)
+125
+
+T
+X
+t=1
+
+t ht (x
+
+!
+
+s) :
+
+(15)
+
+A LLWEIN , S CHAPIRE & S INGER
+
+We begin our margin-theoretic analysis with a definition of the margin of this combined multiclass classifier. First, let
+
+(f
+
+!
+
+`
+X
+1
+1
+x y) = ; ln ` e; M (y s)f (x s) :
+s=1
+
+If we let
+
+=
+and
+
+f (x s) = 1
+
+T
+X
+t=1
+T
+X
+t=1
+
+t
+
+(16)
+
+t ht (x
+
+s)
+
+(17)
+
+we can then rewrite Eq. (15) as
+
+H (x) = arg max
+(f x y):
+y2Y
+
+(18)
+
+Since we have transformed the argument of the minimum in Eq. (15) by a strictly decreasing func(1= ) ln(x=`)) to arrive at Eq. (18) it is clear that we have not changed the
+tion (namely, x
+definition of H . This rewriting has the effect of normalizing the argument of the maximum in
+Eq. (18) so that it is always in the range 1 +1]. We can now define the margin for a labeled
+example (x y ) to be the difference between the vote (f x y ) given to the correct label y , and
+the largest vote given to any other label. We denote the margin by f (x y ). Formally,
+
+7! ;
+
+;
+
+M
+
+Mf (x y) = 12 (f x y) ; max
+(f x r)
+r6=y
+where the factor of 1=2 simply ensures that the margin is in the range ;1 +1]. Note that the margin
+
+is positive if and only if H correctly classifies example (x y ).
+Although this definition of margin is seemingly very different from the one given earlier in the
+paper for binary problems (which is the same as the one used by Schapire et al. in their comparatively simple context), we show next that maximizing training-example margins translates into a
+better bound on generalization error, independent of the number of rounds of boosting.
+be the base-hypothesis space of
+1 +1 -valued functions on
+. We let co( )
+Let
+denote the convex hull of :
+
+H
+
+f; g
+H (
+X
+co(H) = f : x 7!
+h h(x) j
+h
+
+h
+
+0
+
+X
+h
+
+h=1
+
+X L
+)
+
+H
+
+H
+
+where it is understood that each of the sums above is over the finite subset of hypotheses in for
+which h > 0. Thus, f as defined in Eq. (17) belongs to co( ).
+. We
+We assume that training examples are chosen i.i.d. from some distribution on
+write probability or expectation with respect to a random choice of an example (x y ) according to
+as PrD ] and ED ]. Similarly, probability and expectation with respect to an example chosen
+uniformly at random from training set S is denoted PrS ] and ES ].
+We can now prove the first main theorem of this section which shows how the generalization
+error can be usefully bounded when most of the training examples have large margin. This is very
+similar to the results of Schapire et al. (1998) except for the fact that it applies to loss-based decoding
+for a general coding matrix .
+
+H
+
+D
+
+M
+
+126
+
+D
+
+X Y
+
+R EDUCING M ULTICLASS TO B INARY
+
+D
+
+Y
+
+Theorem 3 Let
+be a distribution over X
+, and let S be a sample of m examples chosen
+independently at random according to . Suppose the base-classifier space has VC-dimension
+d, and let > 0. Assume that m d` 1 where ` is the number of columns in the coding matrix
+. Then with probability at least 1
+over the random choice of the training set S , every weighted
+average function f co( ) and every > 0 satisfies the following bound for all > 0:
+
+M
+
+D
+
+H
+
+;
+
+2 H
+
+! 1
+d log2 (`m=d) + log(1= ) 1=2 A :
+2
+m
+
+0
+] + O @ p1
+
+PrD Mf (x y) 0] PrS Mf (x y)
+
+Proof: To prove the theorem, we will first need to define the notion of a sloppy cover, slightly
+of real-valued functions over
+, a training set
+specialized for our purposes. For a class
+S
+of size m, and real numbers
+> 0 and
+0, we say that a function class
+^ is an -sloppy -cover of with respect to S if, for all F in , there exists F^ in ^ with
+PrS F^ (x y) F (x y) >
+. Let (
+m) denote the maximum, over all training
+sets S of size m, of the size of the smallest -sloppy -cover of with respect to S .
+Using techniques from Bartlett (1998), Schapire et al. (1998, Theorem 4) give a theorem which
+states that, for > 0 and > 0, the probability over the random choice of training set S that there
+for which
+exists any function F
+
+F h
+
+X
+
+j
+
+F
+
+Y
+
+;
+
+j
+
+iF
+
+X Y
+
+F
+
+NF
+
+F
+
+F
+
+2F
+
+PrD F (x y) 0] > PrS F (x y)
+is at most
+
+]+
+
+2N (F =2 =8 2m)e; 2 m=32 :
+
+(19)
+
+We prove Theorem 3 by applying this result to the family of functions
+
+F = fMf : f 2 co(H) > 0g:
+To do so, we need to construct a relatively small set of functions that approximate all the functions
+in .
+We start with a lemma that implies that any function f can be approximated by f ^ for
+some ^ in the small finite set
+
+F
+
+M
+
+M
+
+E = lni ` : i = 1 : : : 2ln 2` :
+Lemma 4 For all
+
+> 0, there exists ^ 2 E
+
+such that for all f
+
+j (f x y) ; (f ^ x y)j
+127
+
+2 co(H) and for all x 2 X , r 2 Y ,
+:
+
+A LLWEIN , S CHAPIRE & S INGER
+
+Proof: Let
+
+for
+
+`
+X
+( z) = 1 ln 1` e zs
+
+z 2 R`. We claim first that, for any z, and for 0 <
+0 ( 2 z) ; ( 1 z)
+
+For the first inequality, it suffices to show that
+we find that
+
+!
+
+s=1
+
+1
+
+2,
+
+1 ; 1 ln `:
+1
+
+F( ) = (
+
+(20)
+
+2
+
+z) is nondecreasing. Differentiating,
+
+dF = ln ` + P`s=1 ps ln ps
+(21)
+2
+d
+Since entropy over ` symbols cannot exceed ln `, this quantity is
+
+P
+
+where ps = e zs = `s=1 e zs .
+nonnegative.
+For the second inequality of Eq. (20), it suffices to show that G(
+nonincreasing. Again differentiating (or reusing Eq. (21)), we find that
+
+)= (
+
+z) + (ln `)=
+
+is
+
+dG = P`s=1 ps ln ps
+2
+d
+
+which is nonpositive since entropy cannot be negative.
+min , then let ^ = (ln `)=(i ) be the largest element of
+So, if
+If i > 1 then
+
+E
+
+ln `
+
+`
+< (i ln
+; 1)
+
+(^ z)
+
+ln ` ;
+
+i
+
+E
+
+that is no bigger than .
+
+so
+
+0
+
+If i = 1, then
+
+(
+
+0
+
+z) ;
+(
+
+z) ;
+
+i
+
+1 ln `
+i ; (i ; 1)
+ln `
+ln `
+
+(^ z)
+
+It remains then only to handle the case that
+
+ln ` = :
+
+1 ln `
+;
+ln `
+is small. Assume that
+
+`
+X
+( z) = 1 ln 1` e zs
+s=1
+
+!
+
+`
+1 ln exp 2 + X
+2 ` s=1 zs
+`
+X
+= 2 + 1` zs :
+s=1
+128
+
+!!
+
+:
+
+z 2 ;1 +1]`. Then
+
+R EDUCING M ULTICLASS TO B INARY
+
+This is because, as proved by Hoeffding (1963), for any random variable X with a
+for > 0,
+
+h
+
+X
+
+E e
+
+i
+
+On the other hand, by Eq. (20),
+
+(
+
+exp
+
+z)
+
+2 (b ; a)2
+
+8
+
+!
+
+X
+
+b, and
+
++ E X] :
+
+z)
+
+lim
+(
+!0
+
+1 P`s=1 e z zs
+`
+= lim
+!0 1` P`s=1 e z
+`
+1X
+s
+
+s
+
+= ` zs
+s=1
+
+where the first equality uses l’Hˆopital’s rule. Thus, if
+so that
+
+`
+1X
+z
+
+` s=1
+
+which implies that
+
+(
+
+s
+
+z)
+
+< min E , then we take ^ = min E
+
+(^ z)
+
+2
+
+`
+1X
+^
+z
++
+s
+` s=1
+2
+
+j ( z) ; (^ z)j 2^
+(f x r) = ; ( z) with zs = ;M (r s)f (x s) 2 ;1 +1],
+
+z2 ;
+
+assuming
+1 +1]` . Since
+this completes the lemma.
+Let S be a fixed subset of
+of size m. Because
+has VC-dimension d, there exists a
+d
+^
+of
+of cardinality (e`m=d) that includes all behaviors on S . That is, for all h
+,
+subset
+^ ^ such that h(x s) = h^ (x s) for all (x y) S and all s . Now let
+there exists h
+
+X Y
+
+H H
+2H
+
+H
+
+2
+
+)
+N
+X
+1
+^
+CN = f : (x s) 7! N hi(x s) j hi 2 H
+(
+
+2L
+
+2H
+
+i=1
+
+be the set of unweighted averages of N elements in ^ , and let
+
+H
+F^N = fMf : f 2 CN 2 E g :
+We will show that F^N is a sloppy cover of F .
+Let f 2 co(H). Then we can write
+X
+f (x s) =
+
+P
+
+j
+
+j hj (x
+
+s)
+
+where j 0 and j j = 1. Because we are only interested in the behavior of f on points in S ,
+^.
+we can assume without loss of generality that each hj
+
+2H
+
+2X
+
+2C
+
+j
+2Y
+
+and some g
+Lemma 5 Suppose for some x
+N , we have that f (x
+s . Let > 0 and let ^
+be as in Lemma 4. Then for all y
+,
+
+2L
+
+2E
+
+jMf (x y) ; Mg ^(x y)j 2 :
+129
+
+s) ; g(x s)j
+
+for all
+
+A LLWEIN , S CHAPIRE & S INGER
+
+Proof: For all r
+
+(f
+
+2 Y,
+
+x r ) ; (g
+
+P
+
+exp (; M (r s)g(x s))
+x r) = 1 ln Ps exp
+(; M (r s)f (x s))
+s
+1 ln max exp (; M (r s)(g(x s) ; f (x s)))
+s
+= max
+s M (r s)(f (x s) ; g(x s))
+max
+s jM (r s)jjf (x s) ; g(x s)j
+
+where the first inequality uses the simple fact that
+and bi ’s. By the symmetry of this argument,
+
+P
+
+P
+
+( i ai )=( i bi )
+
+j (f x r) ; (g x r)j
+
+:
+
+Also, from Lemma 4,
+
+j (g x r) ; (g ^ x r)j
+
+so
+
+j (f x r) ; (g ^ x r)j 2
+
+2Y
+
+maxi ai =bi for positive ai ’s
+
+for all r
+. By definition of margin, this implies the lemma.
+Recall that the coefficients j are nonnegative and that they sum to one; in other words, they
+define a probability distribution over ^ . It will be useful to imagine sampling from this distribution.
+^
+^ is chosen in this manner. Then for fixed (x s), h^ (x s) is a
+Specifically, suppose that h
+1 +1 -valued random variable with expected value of exactly f (x s). Consider now choosing
+N such functions h^ 1 : : : h^ N independently at random, each according to this same distribution, and
+let g = (1=N ) N
+N . Let us denote by the resulting distribution over functions
+i=1 h^ i . Then g
+1 +1 -trials with expected value
+in N . Note that, for fixed (x s), g (x s) is the average of N
+f (x s).
+For any (x y ) S ,
+
+f;
+
+C
+
+g
+
+2H
+
+P
+
+H
+
+2C
+
+Q
+
+f;
+
+g
+
+2
+
+Prg Q jMf (x y) ; Mg ^(x y)j > 2 ]
+
+Prg Q 9s 2 L : jf (x s) ; g(x s)j > ]
+`
+X
+
+s=1
+
+Prg Q jf (x s) ; g(x s)j > ]
+
+2`e;N 2 =2 :
+These three inequalities follow, respectively, from Lemma 5, the union bound and Hoeffding’s
+inequality. Thus,
+
+Eg Q PrS jMf (x y) ; Mg ^(x y)j > 2 ]]
+= ES Prg Q jMf (x y) ; Mg ^(x y)j > 2 ]]
+2`e;N 2 =2 :
+
+2 CN such that
+PrS jMf (x y) ; Mg ^(x y)j > 2 ] 2`e;N 2 =2 :
+
+Therefore, there exists g
+
+130
+
+R EDUCING M ULTICLASS TO B INARY
+
+2
+We have thus shown that ^N is a 2`e;N =2 -sloppy 2 -cover of
+
+F
+
+N (F 2 2`e;N 2 =2 m) jF^N j
+
+e`m
+d
+
+F . In other words,
+dN
+
+ln ` :
+22
+
+Making the appropriate substitutions, this gives that Eq. (19) is at most
+
+16 ln ` 2e`m (32d= 2 ) ln(16`= ) e;m 2 =32 :
+2
+
+d
+
+0 16 ln l
+11=2
+2m !
+ln 2
+2
+d
+2
+e`m
+e`
+= 16 @ 8m + m 2 ln d ln d A :
+
+Let
+
+(22)
+
+p
+
+Note that the quantity inside the square root is at least 2d=(m 2 ) d=(me). Thus,
+16 d=(me).
+Using this approximation for the first occurrence of , it follows that Eq. (22) is at most .
+We have thus proved the bound of the theorem for a single given choice of > 0 with high
+probability. To prove that the bound holds simultaneously for all > 0, we can use exactly the
+same argument used by Schapire and Singer (1999) in the very last part of their Theorem 8.
+Thus, we have shown that large training-set margins imply a better bound on the generalization
+error, independent of the number of rounds of boosting. We turn now to the second part of our
+analysis in which we prove that AdaBoost.MO tends to increase the margins of the training examples, assuming that the binary errors t of the base hypotheses are bounded away from the trivial
+error rate of 1=2 (see the discussion that follows the proof). The theorem that we prove below is a
+direct analog of Theorem 5 of Schapire et al. (1998) for binary AdaBoost. Note that we focus only
+on coding matrices that do not contain zeros. A slightly weaker result can be proved in the more
+general case.
+
+M 2 f;
+
+Theorem 6 Suppose the base learning algorithm, when called by AdaBoost.MO using coding ma1 +1 k ` , generates hypotheses with weighted binary training errors 1 : : : T . Let
+trix
+be as in Eq. (6). Then for any
+0, we have that
+
+g
+
+PrS Mf (x y)
+where f and
+
+]
+
+t=1
+
+are as in Eqs. (16) and (17).
+
+Proof: Suppose, for some labeled example (x
+y for which
+there exists a label r
+
+2 Y ;f g
+
+1 ( (f
+2
+that is
+
+T q
+`Y
+2 1t ; (1 ; t )1+
+
+`
+X
+s=1
+
+y), Mf (x y)
+
+. Then, by definition of margin,
+
+x y) ; (f x r))
+
+e; M (r s)f (x s) e2
+131
+
+`
+X
+s=1
+
+e; M (y s)f (x s) :
+
+(23)
+
+A LLWEIN , S CHAPIRE & S INGER
+
+= M (y s)f (x s) ; and zs0 = M (r s)f (x s) +
+M (y s)g. Then Eq. (23) implies
+Let zs
+
+`
+X
+
+s=1
+
+`
+X
+
+e;zs
+
+s=1
+
+. Let S
+
+= fs 2 L : M (r s) 6=
+
+e;zs
+0
+
+and so
+
+`
+X
+s=1
+
+` e;z + e;z
+X
+
+e;zs
+
+s
+
+s=1
+
+X
+
+s2S
+
+=
+
+2S
+
+This is because, if s
+Therefore, if f
+
+then zs0
+
+M (x y)
+
+X
+
+s2S
+
+0
+
+s
+
+2
+e;zs + e;zs
+2
+;
+z
+e s + ezs jS j
+2
+0
+
+:
+
+= ;zs , and because x + 1=x 2 for all x > 0.
+then
+
+`
+X
+s=1
+
+e; M (y s)f (x s)
+
+Thus, the fraction of training examples i for which
+
+e; :
+
+Mf (xi yi )
+
+is at most
+
+m X
+`
+e X
+; M (yi s)f (xi s)
+m i=1 s=1 e
+!
+m X
+` 1
+T
+X
+X
+`e
+=
+exp ;
+t M (yi s)ht (xi s)
+t=1
+i=1 s=1 m`
+m X
+` Y
+T !
+X
+`e
+=
+Z D (i s)
+
+= `e
+
+i=1 s=1 t=1
+T !
+Y
+Zt :
+t=1
+
+T +1
+
+t
+
+(24)
+(25)
+(26)
+
+Here, Eq. (24) uses the definition of f and as in Eqs. (16) and (17). Eq. (25) uses the definition
+of DT +1 as defined recursively in Eq. (13). Eq. (26) uses the fact that DT +1 is a distribution. The
+theorem now follows by plugging in Eq. (14) and applying straightforward algebra.
+As noted by Schapire et al. (1998), this bound can be usefully understood if we assume that
+for all t. Then the upper bound simplifies to
+t 1=2
+
+;
+
+` q(1 ; 2 )1; (1 + 2 )1+
+
+T
+
+:
+
+If < , then the expression inside the parentheses is smaller than one so that the fraction of
+training examples with margin below drops to zero exponentially fast in T .
+132
+
+R EDUCING M ULTICLASS TO B INARY
+
+80
+
+80
+
+avg. binary error
+loss-based decoding
+Hamming decoding
+
+70
+
+avg. binary error
+loss-based decoding
+Hamming decoding
+
+70
+
+60
+
+60
+
+50
+
+50
+
+40
+
+40
+
+30
+
+30
+
+20
+
+20
+
+10
+
+10
+
+0
+
+0
+3
+
+4
+
+5
+6
+Number of classes
+
+7
+
+8
+
+3
+
+4
+
+5
+6
+Number of classes
+
+7
+
+8
+
+Figure 3: Comparison of the average binary error, the multiclass error using Hamming decoding,
+and the multiclass error using loss-based decoding with AdaBoost on synthetic data, using
+a complete code (left) and the one-against-all code (right).
+
+6. Experiments
+In this section, we describe and discuss experiments we have performed with synthetic data and
+with natural data from the UCI repository. We run both sets of experiments with two base-learners:
+AdaBoost and SVM. Two primary goals of the experiments are to compare Hamming decoding
+to loss-based decoding and to compare the performance of different output codes. We start with a
+description of an experiment with real-valued synthetic data which underscores the tradeoff between
+the complexity of the binary problems induced by a given output code and its error correcting
+properties.
+In the experiments with synthetic data, we generated instances according to the normal distribution with zero mean and a unit variance. To create a multiclass problem with k classes, we set
+k + 1 thresholds, denoted 0 1 : : : k , where 0 = 0 and k = . An instance x is associated
+x < j . For each k 3 : : : 8 we generated 10 sets of
+with class j if and only if j ;1
+examples, where each set was of size 100k . The thresholds were set so that exactly 100 examples
+will be associated with each class. Similarly, we generated the same number of test sets (of the same
+size) using the thresholds obtained for the training data to label the test data. We used AdaBoost as
+the base learner and set the number of rounds of boosting for each binary problem to 10 and called
+AdaBoost repeatedly for each column (multi-call variant). For weak hypotheses, we used the set of
+all possible threshold functions. That is, a weak hypothesis based on a threshold t would label an
+instance x as +1 if x < t and 1 otherwise.
+In Figure 3, we plot the test error rate as the function of k for two output coding matrices.
+The first is a complete code whose columns correspond to all the non-trivial partitions of the set
+1 : : : k into two subsets. Thus, this code is a matrix of size k (2k;1 1). The second code
+was the one-against-all code. For each code, we plot the average binary test error, the multiclass
+errors using Hamming decoding, and the multiclass errors using loss-based decoding. The graphs
+clearly show that Hamming decoding is inferior to loss-based decoding and yields much higher error
+rates. The multiclass errors of the two codes using loss-based decoding are comparable. While the
+multiclass error rate with the complete code is slightly lower than the error rate for the one-againstall code, the situation is reversed for the average binary errors. This phenomenon underscores the
+
+jj
+
+jj
+
+f
+
+2f
+
+1
+
+g
+
+;
+
+g
+
+;
+
+133
+
+A LLWEIN , S CHAPIRE & S INGER
+
+Problem
+dermatology
+satimage
+glass
+segmentation
+ecoli
+pendigits
+yeast
+vowel
+soybean
+thyroid
+audiology
+isolet
+letter
+
+#Examples
+Train Test
+366
+4435 2000
+214
+2310
+336
+7494 3498
+1484
+528
+462
+307
+376
+9172
+226
+6238 1559
+16000 4000
+
+#Attributes
+34
+36
+9
+19
+8
+16
+8
+10
+35
+29
+69
+617
+16
+
+#Classes
+6
+6
+7
+7
+8
+10
+10
+11
+19
+20
+24
+26
+26
+
+Table 1: Description of the datasets used in the experiments.
+tradeoff between the redundancy and correcting properties of the output codes and the difficulty of
+the binary learning problems it induces. The complete code has good error correcting properties;
+the distance between each pair of rows is = (l + 1)=2 = 2k;2 . However, many of the binary
+problems that the complete code induces are difficult to learn. The distance between each pair of
+rows in the one-against-all code is small: = 2. Hence, its empirical error bound according to
+Theorem 1 seems inferior. However, the binary problems it induces are simpler and thus its average
+binary loss " is lower than the average binary loss of the complete code and the overall result is
+comparable performance.
+Next, we describe experiments we performed with multiclass data from the UCI repository (Merz
+& Murphy, 1998). We used two different popular binary learners, AdaBoost and SVM. We chose
+the following datasets (ordered according to the number of classes): Dermatology, Satimage, Glass,
+Segmentation, E-coli, Pendigits, Yeast, Vowel, Soybean-large, Thyroid, Audiology, Isolet, Letterrecognition. The properties of the datasets are summarized in Table 1. In the SVM experiments, we
+skipped Audiology, Isolet, Letter-recognition, Segmentation, and Thyroid, because these datasets
+were either too big to be handled by our current implementation of SVM or contained many nominal
+features with missing values which are problematic for SVM. All datasets have at least six classes.
+When available, we used the original partition of the datasets into training and test sets. For the
+other datasets, we used 10-fold cross validation. For SVM, we used polynomial kernels of degree
+4 with the multi-call variant. For AdaBoost, we used decision stumps for base hypotheses. By
+modifying an existing package of AdaBoost.MH (Schapire & Singer, 1999) we were able to devise
+a simple implementation of the single-call variant that was described in Section 5. Summaries of
+the results using the different output codes described below are given in Tables 2 and 3.
+We tested five different types of output codes: one-against-all, complete (in which there is one
+column for every possible (non-trivial) split of the classes), all-pairs, and two types of random
+codes. The first type of random code has 10 log2 (k ) columns for a problem with k classes. Each
+
+d
+
+e
+
+134
+
+R EDUCING M ULTICLASS TO B INARY
+
+Problem
+dermatology
+satimage
+glass
+segmentation
+ecoli
+pendigits
+yeast
+vowel
+soybean
+thyroid
+audiology
+isolet
+letter
+
+One-vs-all
+5.0
+14.9
+31.0
+0.0
+21.5
+8.9
+44.7
+67.3
+8.2
+7.8
+26.9
+9.2
+27.7
+
+dermatology
+satimage
+glass
+segmentation
+ecoli
+pendigits
+yeast
+vowel
+soybean
+thyroid
+audiology
+isolet
+letter
+
+4.2
+12.1
+26.7
+0.0
+17.3
+4.6
+41.6
+56.9
+7.2
+6.5
+19.2
+5.3
+14.6
+
+dermatology
+satimage
+glass
+segmentation
+ecoli
+pendigits
+yeast
+vowel
+soybean
+thyroid
+audiology
+isolet
+letter
+
+4.2
+12.1
+26.7
+0.0
+15.8
+4.6
+41.6
+56.9
+7.2
+6.5
+19.2
+5.3
+14.6
+
+Hamming Decoding
+Complete
+All-Pairs
+Dense
+4.2
+3.1
+3.9
+12.3
+11.7
+12.3
+31.0
+28.6
+28.6
+0.1
+0.0
+0.1
+18.5
+19.1
+17.6
+8.6
+3.0
+9.3
+41.9
+42.5
+43.9
+59.3
+50.2
+62.6
+–
+9.0
+5.6
+–
+–
+12.3
+–
+23.1
+23.1
+–
+–
+10.8
+–
+7.8
+30.9
+Loss-based Decoding (L 1 )
+4.2
+3.1
+3.9
+12.4
+11.2
+11.9
+31.0
+27.1
+27.1
+0.1
+0.0
+0.1
+17.6
+18.8
+18.5
+8.6
+2.9
+8.8
+42.0
+42.6
+43.2
+59.1
+50.9
+61.9
+–
+8.8
+4.8
+–
+–
+12.0
+–
+23.1
+19.2
+–
+–
+10.1
+–
+7.4
+29.0
+Loss-based Decoding (Exp.)
+3.9
+3.1
+4.2
+12.3
+11.4
+12.0
+28.6
+27.6
+25.2
+0.0
+0.0
+0.0
+16.4
+18.2
+17.0
+7.2
+2.9
+8.1
+42.1
+42.3
+43.0
+54.1
+51.7
+60.0
+–
+8.8
+4.8
+–
+–
+11.4
+–
+23.1
+19.2
+–
+–
+9.4
+–
+7.1
+28.3
+
+Sparse
+3.6
+13.2
+27.1
+0.1
+19.7
+6.2
+49.5
+54.5
+8.0
+8.1
+23.1
+10.1
+27.1
+3.6
+11.9
+26.2
+0.7
+19.1
+6.8
+49.8
+54.1
+8.2
+8.0
+23.1
+9.8
+26.6
+3.1
+12.0
+29.0
+0.0
+17.9
+4.8
+49.3
+49.8
+5.6
+7.2
+19.2
+9.7
+22.3
+
+Table 2: Results of experiments with output codes with datasets from the UCI repository using AdaBoost as the base binary learner. For each problem five output codes were used and then
+evaluated (see text) with three decoding methods: Hamming decoding, loss-based decoding using AdaBoost with randomized predictions (denoted L1 ), and loss-based decoding
+using the exponential loss function (denoted Exp).
+135
+
+A LLWEIN , S CHAPIRE & S INGER
+
+Problem
+One-vs-all
+dermatology
+4.2
+satimage
+40.9
+glass
+37.6
+ecoli
+15.8
+pendigits
+3.9
+yeast
+73.9
+vowel
+60.4
+soybean
+20.5
+dermatology
+satimage
+glass
+ecoli
+pendigits
+yeast
+vowel
+soybean
+
+3.3
+40.9
+38.6
+16.1
+2.5
+72.9
+50.9
+21.0
+
+Hamming Decoding
+Complete All-Pairs
+Dense
+3.6
+3.1
+3.6
+14.3
+50.4
+15.0
+34.3
+29.5
+34.8
+14.2
+13.9
+15.2
+2.0
+26.2
+2.5
+42.4
+40.8
+42.5
+53.0
+39.2
+53.5
+–
+9.6
+9.0
+Loss-based Decoding
+3.6
+3.6
+3.9
+13.9
+27.8
+14.3
+34.8
+31.0
+34.8
+13.6
+13.3
+14.8
+1.9
+3.1
+2.1
+40.5
+40.9
+39.7
+51.3
+39.0
+51.7
+–
+10.4
+8.8
+
+Sparse
+2.5
+27.4
+32.4
+14.2
+2.6
+48.1
+50.2
+9.0
+3.1
+13.3
+32.4
+14.8
+2.7
+47.2
+47.0
+9.0
+
+Table 3: Results of experiments with output codes with datasets from the UCI repository using the
+support-vector machine (SVM) algorithm as the base binary learner. For each problem five
+different classes of output codes were tested were used and then evaluated with Hamming
+decoding and the appropriate loss-based decoding for SVM.
+
+f;
+
+g
+
+1 +1 . For brevity, we call these
+element in the code was chosen uniformly at random from
+dense random codes. We generated a dense random code for each multiclass problem by examining
+10,000 random codes and choosing the code that had the largest and did not have any identical
+1 0 +1 .
+columns. The second type of code, called a sparse code, was chosen at random from
+1
+1
+Each element in a sparse code is 0 with probability 2 and 1 or +1 with probability 4 each. The
+sparse codes have 15 log2 (k ) columns. For each problem, we picked a code with high value of
+by examining 10,000 random codes as before. However, now we also had to check that no code had
+a column or a row containing only zeros. Note that for some of the problems with many classes, we
+could not evaluate the complete and all-pairs codes since they were too large.
+
+d
+
+;
+
+e
+
+f;
+
+g
+
+We compared Hamming decoding to loss-based decoding for each of the five families of codes.
+The results are plotted in Figures 4 and 5. Each of the tested UCI datasets is plotted as a bar
+in the figures where height of the bar (possibly negative) is proportional to the test error rate of
+loss-based decoding minus the test error rate of Hamming decoding. The datasets are indexed
+1 2 : : : and are plotted in the order listed above. We tested AdaBoost with two loss functions
+for decoding: the exponential loss (denoted “Exp” in the figure and drawn in black) and the loss
+function 1=(1 + e2yf (x) ) (denoted “L1 ” and drawn in gray) which is the result of using AdaBoost
+136
+
+R EDUCING M ULTICLASS TO B INARY
+
+One-vs-all
+
+Complete
+
+0
+
+All-Pairs
+
+1
+
+Dense
+
+2
+
+Sparse
+
+1
+
+2
+
+0.5
+−2
+
+0
+
+1.5
+
+−4
+
+−1
+
+1
+
+1
+
+−6
+
+−8
+
+0
+
+Test error difference
+
+Test error difference
+
+0
+
+0.5
+
+−1
+−2
+
+0.5
+1.5
+
+−3
+
+0
+
+−10
+
+−4
+
+0.5
+
+−12
+
+−5
+
+−1
+
+−2
+
+2.5
+
+−1
+
+−2
+
+−3
+
+−3
+−4
+3.5
+L1
+Exp
+−14
+
+6
+
+6
+
+L1
+Exp
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−6
+
+6
+
+6
+
+L1
+Exp
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+1.5
+
+6
+
+6
+
+L1
+Exp
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−4
+
+6
+
+6
+
+L1
+Exp
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−5
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+Figure 4: Comparison of the test error using Hamming decoding and loss-based decoding when the
+binary learners are trained using AdaBoost. Two loss functions for decoding are plotted:
+the exponential loss (“Exp”, in black) and 1=(1 + e2yf (x) ) when using AdaBoost with
+randomized predictions (“L1 ”, in gray).
+One-vs-all
+
+Complete
+
+2
+
+All-Pairs
+
+0.5
+
+Dense
+
+5
+
+Sparse
+
+0.5
+
+2
+
+0
+0
+
+0
+
+0
+0
+
+−2
+0.5
+
+−2
+
+−5
+
+−4
+
+0.5
+−1
+−4
+
+−6
+
+−10
+−8
+
+1.5
+−1
+−6
+
+−15
+
+−10
+−2
+−12
+
+1.5
+−8
+
+−20
+
+2.5
+−14
+
+−10
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−2
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−25
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−3
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−16
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+Figure 5: Comparison of the test error using Hamming decoding and loss-based decoding when the
+binary learner is support vector machines.
+
+with randomized predictions. It is clear from the plots that loss-based decoding often gives better
+results than Hamming decoding for both SVM and AdaBoost. The difference is sometimes very
+significant. For instance, for the dataset Satimage, with the all-pairs code, SVM achieves 27:5%
+error with loss-based decoding while Hamming decoding results in an error rate of 50:4%. Similar
+results are obtained for AdaBoost. The difference is especially significant for the one-against-all and
+random dense codes. Note, however, that loss-based decoding based on AdaBoost with randomized
+predictions does not yield as good results as the straightforward use of loss-based decoding for
+AdaBoost with the exponential loss. This might be partially explained by the fact that AdaBoost
+with randomized predictions is not directly attempting to minimize the loss it uses for decoding.
+To conclude the section, we discuss a set of experiments that compared the performance of
+the different output codes. In Figures 6 and 7, we plot the test error difference for pairs of codes
+using loss-based decoding with SVM and AdaBoost as the binary learners. Each plot consist of a
+5 5 matrix of bar graphs. The rows and columns correspond, in order, to the five coding methods,
+namely, one-against-all, all-pairs, complete, random dense and random sparse. The bar graph in
+row i and column j shows the difference between the test error of coding method i minus the test
+error of coding method j for the datasets tested.
+For SVM, it is clear that the widely used one-against-all code is inferior to all the other codes we
+tested. (Note that many of the bars in the top row of Figure 6 correspond to large positive values.)
+One-against-all often results in error rates that are much higher than the error rates of other codes.
+For instance, for the dataset Yeast, the one-against-all code has an error rate of 72% while the error
+rate of all the other codes is no more than 47:1% (random sparse) and can be as low as 39:6%
+137
+
+A LLWEIN , S CHAPIRE & S INGER
+
+35
+
+35
+
+35
+
+30
+
+30
+
+30
+
+25
+
+25
+
+25
+
+30
+
+25
+
+10
+
+20
+
+15
+
+10
+
+Test error difference
+
+15
+
+Test error difference
+
+Test error difference
+
+Test error difference
+
+20
+
+One-vs-all
+
+20
+
+20
+
+15
+
+10
+
+15
+
+10
+
+5
+5
+
+5
+
+5
+
+0
+
+0
+
+0
+
+−5
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+5
+
+−5
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−5
+
+19
+
+15
+
+0
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−5
+
+19
+
+1
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+6
+
+0
+
+4
+
+10
+0.5
+−5
+
+2
+
+Complete
+
+−15
+
+Test error difference
+
+5
+−10
+
+0
+
+0
+
+0.5
+
+−20
+
+0
+
+−2
+
+−5
+−4
+−25
+−1
+−10
+
+−6
+
+−30
+
+−35
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−15
+
+19
+
+5
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+1.5
+
+15
+
+15
+
+10
+
+10
+
+5
+
+5
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−8
+
+19
+
+15
+
+0
+10
+−5
+
+−10
+
+−15
+
+All-Pairs
+
+0
+
+5
+
+0
+
+0
+
+−20
+−5
+
+−5
+
+−10
+
+−10
+
+−25
+−5
+−30
+
+−35
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+5
+
+−15
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−15
+
+19
+
+1.5
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−10
+
+15
+
+6
+
+0
+
+4
+
+10
+1
+−5
+
+2
+
+Dense
+
+0.5
+
+−15
+
+Test error difference
+
+5
+−10
+
+0
+
+0
+
+−20
+
+0
+
+−2
+
+−5
+−4
+−25
+0.5
+−10
+
+−6
+
+−30
+
+−35
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−1
+
+19
+
+5
+
+8
+
+0
+
+6
+
+−5
+
+4
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−15
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+−8
+
+19
+
+10
+
+8
+
+6
+
+−15
+
+−20
+
+4
+
+Test error difference
+
+Test error difference
+
+5
+
+−10
+
+0
+2
+
+0
+−5
+
+−2
+
+Sparse
+
+2
+
+0
+
+−2
+−10
+
+−25
+
+−30
+
+−4
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−6
+
+−4
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−15
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+−6
+
+6
+
+6
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+Figure 6: The difference between the test errors for pairs of error correcting matrices using support
+vector machines as the binary learners.
+
+(random dense). On the very few cases that the one-against-all performs better than one of the other
+codes, the difference is not statistically significant. However, there is no clear winner among the
+four other output codes. For AdaBoost, none of the codes is persistently better than the other and
+it seems that the best code to use is problem dependent. These results suggest that an interesting
+direction for research would be methods for designing problem specific output codes. Some recent
+progress in this direction was made by Crammer and Singer (2000).
+
+Acknowledgment
+Most of the research on this paper was done while all three authors were at AT&T Labs. Thanks to
+the anonymous reviewers for their careful reading and helpful comments. Part of this research was
+supported by the Binational Science Foundation under grant number 1999038.
+138
+
+R EDUCING M ULTICLASS TO B INARY
+
+3
+
+8
+
+2
+
+6
+
+4
+
+8
+
+2
+
+6
+
+0
+
+0
+
+4
+
+−2
+
+Test error difference
+
+One-vs-all
+
+Test error difference
+
+Test error difference
+
+4
+1
+
+−4
+2
+−6
+
+−1
+
+0
+
+−2
+
+−2
+
+2
+
+0
+
+−2
+
+−8
+−4
+−10
+−6
+
+−12
+
+−3
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−4
+
+26
+
+3
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−14
+
+5
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−8
+
+26
+
+4
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+6
+
+3
+4
+
+2
+
+4
+2
+
+2
+
+1
+
+Test error difference
+
+Complete
+
+0
+
+2
+
+1
+
+Test error difference
+
+Test error difference
+
+Test error difference
+
+3
+1
+
+0
+
+−1
+
+−2
+
+0
+
+−2
+
+−1
+−3
+
+0
+
+−4
+
+−4
+−2
+
+−1
+
+−6
+−5
+
+−3
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−2
+
+26
+
+4
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+2
+
+−6
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−8
+
+26
+
+5
+
+4
+
+2
+1
+
+2
+
+0
+0
+
+Test error difference
+
+Test error difference
+
+0
+0
+
+−2
+
+−2
+−5
+
+All-Pairs
+
+−1
+
+−4
+
+−10
+
+−6
+
+−2
+−8
+
+−4
+
+−15
+−10
+
+−3
+
+−12
+−6
+
+−20
+
+−4
+
+−14
+
+−8
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−5
+
+26
+
+14
+
+6
+
+12
+
+5
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−25
+
+26
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−16
+
+25
+
+12
+
+10
+20
+
+4
+
+10
+
+8
+
+4
+
+6
+
+2
+
+1
+
+0
+
+2
+
+15
+
+Test error difference
+
+6
+
+Test error difference
+
+Test error difference
+
+Test error difference
+
+3
+8
+
+Dense
+
+10
+
+4
+
+2
+
+0
+
+5
+
+0
+
+−1
+
+−2
+
+−2
+
+−4
+0
+
+−2
+
+−4
+
+−3
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−4
+
+26
+
+8
+
+−6
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−5
+
+26
+
+8
+
+6
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+−8
+
+26
+
+16
+
+8
+
+14
+
+6
+
+12
+
+4
+
+6
+
+4
+
+0
+
+−2
+
+10
+
+Test error difference
+
+Test error difference
+
+Test error difference
+
+4
+2
+
+2
+
+0
+
+−2
+
+2
+
+8
+
+0
+
+6
+
+−2
+
+4
+
+−4
+
+2
+
+−6
+
+Sparse
+
+−4
+0
+
+−8
+
+−8
+
+−4
+
+−6
+
+−2
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−6
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−4
+
+−10
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+−12
+
+6
+
+6
+
+7
+
+7
+
+8
+
+10
+
+10
+
+11
+
+19
+
+21
+
+24
+
+26
+
+26
+
+Figure 7: The difference between the test errors for pairs of error correcting matrices using AdaBoost for the binary learner.
+
+References
+Bartlett, P. L. (1998). The sample complexity of pattern classification with neural networks: the
+size of the weights is more important than the size of the network. IEEE Transactions on
+Information Theory, 44(2), 525–536.
+Breiman, L. (1997a). Arcing the edge. Tech. rep. 486, Statistics Department, University of California at Berkeley.
+Breiman, L. (1997b). Prediction games and arcing classifiers. Tech. rep. 504, Statistics Department,
+University of California at Berkeley.
+Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). Classification and Regression
+Trees. Wadsworth & Brooks.
+Collins, M., Schapire, R. E., & Singer, Y. (2000). Logistic regression, AdaBoost and Bregman
+distances. In Proceedings of the Thirteenth Annual Conference on Computational Learning
+Theory.
+139
+
+A LLWEIN , S CHAPIRE & S INGER
+
+Cortes, C., & Vapnik, V. (1995). Support-vector networks. Machine Learning, 20(3), 273–297.
+Crammer, K., & Singer, Y. (2000). On the learnability and design of output codes for multiclass
+problems. In Proceedings of the Thirteenth Annual Conference on Computational Learning
+Theory.
+Csisz´ar, I., & Tusn´ady, G. (1984). Information geometry and alternating minimization procedures.
+Statistics and Decisions, Supplement Issue, 1, 205–237.
+Della Pietra, S., Della Pietra, V., & Lafferty, J. (1997). Inducing features of random fields. IEEE
+Transactions Pattern Analysis and Machine Intelligence, 19(4), 1–13.
+Dietterich, T. G., & Bakiri, G. (1995). Solving multiclass learning problems via error-correcting
+output codes. Journal of Artificial Intelligence Research, 2, 263–286.
+Freund, Y. (1999). An adaptive version of the boost by majority algorithm. In Proceedings of the
+Twelfth Annual Conference on Computational Learning Theory, pp. 102–113.
+Freund, Y., & Schapire, R. E. (1997). A decision-theoretic generalization of on-line learning and an
+application to boosting. Journal of Computer and System Sciences, 55(1), 119–139.
+Friedman, J., Hastie, T., & Tibshirani, R. (2000). Additive logistic regression: a statistical view of
+boosting. The Annals of Statistics, 38(2), 337–374.
+Guruswami, V., & Sahai, A. (1999). Multiclass learning, boosting, and error-correcting codes. In
+Proceedings of the Twelfth Annual Conference on Computational Learning Theory, pp. 145–
+155.
+Hastie, T., & Tibshirani, R. (1998). Classification by pairwise coupling. The Annals of Statistics,
+26(2), 451–471.
+Hoeffding, W. (1963). Probability inequalities for sums of bounded random variables. Journal of
+the American Statistical Association, 58(301), 13–30.
+H¨offgen, K.-U., & Simon, H.-U. (1992). Robust trainability of single neurons. In Proceedings of
+the Fifth Annual ACM Workshop on Computational Learning Theory, pp. 428–439.
+Kearns, M., & Mansour, Y. (1996). On the boosting ability of top-down decision tree learning
+algorithms. In Proceedings of the Twenty-Eighth Annual ACM Symposium on the Theory of
+Computing.
+Lafferty, J. (1999). Additive models, boosting and inference for generalized divergences. In Proceedings of the Twelfth Annual Conference on Computational Learning Theory, pp. 125–133.
+Mason, L., Baxter, J., Bartlett, P., & Frean, M. (1999). Functional gradient techniques for combining
+hypotheses. In Smola, A. J., Bartlett, P. J., Sch¨olkopf, B., & Schuurmans, D. (Eds.), Advances
+in Large Margin Classifiers. MIT Press.
+Merz, C. J., & Murphy, P. M. (1998).
+UCI repository of machine learning databases.
+www.ics.uci.edu/ mlearn/MLRepository.html.
+140
+
+R EDUCING M ULTICLASS TO B INARY
+
+Quinlan, J. R. (1993). C4.5: Programs for Machine Learning. Morgan Kaufmann.
+R¨atsch, G., Onoda, T., & M¨uller, K.-R. (to appear). Soft margins for AdaBoost. Machine Learning.
+Rumelhart, D. E., Hinton, G. E., & Williams, R. J. (1986). Learning internal representations by error
+propagation. In Rumelhart, D. E., & McClelland, J. L. (Eds.), Parallel Distributed Processing
+– Explorations in the Microstructure of Cognition, chap. 8, pp. 318–362. MIT Press.
+Schapire, R. E., Freund, Y., Bartlett, P., & Lee, W. S. (1998). Boosting the margin: A new explanation for the effectiveness of voting methods. The Annals of Statistics, 26(5), 1651–1686.
+Schapire, R. E., & Singer, Y. (1999). Improved boosting algorithms using confidence-rated predictions. Machine Learning, 37(3), 297–336.
+Sch¨olkopf, B., Smola, A., Williamson, R., & Bartlett, P. (1998). New support vector algorithms.
+Tech. rep. NC2-TR-1998-053, NeuroColt2.
+Vapnik, V. N. (1995). The Nature of Statistical Learning Theory. Springer.
+
+141
+
+

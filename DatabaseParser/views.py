@@ -6,7 +6,7 @@ import os
 from DatabaseParser.models import WordTable, DocFreqTable, DocClass
 
 
-FREQ_THRESHOLD_PERCENT = 0.3
+FREQ_THRESHOLD_PERCENT = 0.7
 STOP_WORD_LIST_FILENAME = 'DatabaseParser/stopwordsList.txt'
 # Create your views here.
 PATH_TO_DATASET = '../TrainingData/'
@@ -33,6 +33,15 @@ def loadStopWords(filename):
     for word in words:
         stopWordDict[word] = True
     return stopWordDict
+
+def filterStopWords():
+	stopwords = loadStopWords(STOP_WORD_LIST_FILENAME)
+	for word in stopwords.keys():
+		print('Removing the stop word'+word+'....')
+		WordTable.objects.filter(word=word).delete()
+		DocFreqTable.objects.filter(word=word).delete()
+		print('Word '+word.upper()+' has been removed!!\n\n')
+	print('ALL STOP WORDS REMOVED!!!\n\n')
 
 def parseTextToDb(fileList):
     #load all stop words in main memory

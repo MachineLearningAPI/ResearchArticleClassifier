@@ -39,5 +39,6 @@ urlpatterns += patterns('GUI.views',
     url(r'^Bayesian/$','callBayesian'),
     url(r'^stopWords/$','getStop'),
     url(r'^loadText/$','loadTextFile'),
+    url(r'^filter/$','removeStopWords'),
 )
 

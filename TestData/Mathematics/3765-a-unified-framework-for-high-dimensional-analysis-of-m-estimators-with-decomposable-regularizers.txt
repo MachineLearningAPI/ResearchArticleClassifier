@@ -1,0 +1,768 @@
+A unified framework for high-dimensional analysis of
+M -estimators with decomposable regularizers
+
+Sahand Negahban
+Department of EECS
+UC Berkeley
+sahand n@eecs.berkeley.edu
+
+Pradeep Ravikumar
+Department of Computer Sciences
+UT Austin
+pradeepr@cs.utexas.edu
+
+Martin J. Wainwright
+Department of Statistics
+Department of EECS
+UC Berkeley
+wainwrig@eecs.berkeley.edu
+
+Bin Yu
+Department of Statistics
+Department of EECS
+UC Berkeley
+binyu@stat.berkeley.edu
+
+Abstract
+High-dimensional statistical inference deals with models in which the the number of parameters p is comparable to or larger than the sample size n. Since it
+is usually impossible to obtain consistent procedures unless p/n → 0, a line of
+recent work has studied models with various types of structure (e.g., sparse vectors; block-structured matrices; low-rank matrices; Markov assumptions). In such
+settings, a general approach to estimation is to solve a regularized convex program
+(known as a regularized M -estimator) which combines a loss function (measuring
+how well the model fits the data) with some regularization function that encourages the assumed structure. The goal of this paper is to provide a unified framework for establishing consistency and convergence rates for such regularized M estimators under high-dimensional scaling. We state one main theorem and show
+how it can be used to re-derive several existing results, and also to obtain several
+new results on consistency and convergence rates. Our analysis also identifies
+two key properties of loss and regularization functions, referred to as restricted
+strong convexity and decomposability, that ensure the corresponding regularized
+M -estimators have fast convergence rates.
+
+1
+
+Introduction
+
+In many fields of science and engineering (among them genomics, financial engineering, natural language processing, remote sensing, and social network analysis), one encounters statistical inference
+problems in which the number of predictors p is comparable to or even larger than the number of
+observations n. Under this type of high-dimensional scaling, it is usually impossible to obtain statistically consistent estimators unless one restricts to subclasses of models with particular structure.
+For instance, the data might be sparse in a suitably chosen basis, could lie on some manifold, or the
+dependencies among the variables might have Markov structure specified by a graphical model.
+In such settings, a common approach to estimating model parameters is is through the use of a
+regularized M -estimator, in which some loss function (e.g., the negative log-likelihood of the data)
+is regularized by a function appropriate to the assumed structure. Such estimators may also be
+interpreted from a Bayesian perspective as maximum a posteriori estimates, with the regularizer
+reflecting prior information. In this paper, we study such regularized M -estimation procedures,
+and attempt to provide a unifying framework that both recovers some existing results and provides
+1
+
+new results on consistency and convergence rates under high-dimensional scaling. We illustrate
+some applications of this general framework via three running examples of constrained parametric
+structures. The first class is that of sparse vector models; we consider both the case of “hard-sparse”
+models which involve an explicit constraint on the number on non-zero model parameters, and also
+a class of “weak-sparse” models in which the ordered coefficients decay at a certain rate. Second,
+we consider block-sparse models, in which the parameters are matrix-structured, and entire rows are
+either zero or not. Our third class is that of low-rank matrices, which arise in system identification,
+collaborative filtering, and other types of matrix completion problems.
+To motivate the need for a unified analysis, let us provide a brief (and hence necessarily incomplete)
+overview of the broad range of past and on-going work on high-dimensional inference. For the case
+of sparse regression, a popular regularizer is the 1 norm of the parameter vector, which is the sum of
+the absolute values of the parameters. A number of researchers have studied the Lasso [15, 3] as well
+as the closely related Dantzig selector [2] and provided conditions on various aspects of its behavior,
+including 2 -error bounds [7, 1, 21, 2] and model selection consistency [22, 19, 6, 16]. For generalized linear models (GLMs) and exponential family models, estimators based on 1 -regularized
+maximum likelihood have also been studied, including results on risk consistency [18] and model
+selection consistency [11]. A body of work has focused on the case of estimating Gaussian graphical
+models, including convergence rates in Frobenius and operator norm [14], and results on operator
+norm and model selection consistency [12]. Motivated by inference problems involving block-sparse
+matrices, other researchers have proposed block-structured regularizers [17, 23], and more recently,
+high-dimensional consistency results have been obtained for model selection and parameter consistency [4, 8].
+In this paper, we derive a single main theorem, and show how we are able to rederive a wide range
+of known results on high-dimensional consistency, as well as some novel ones, including estimation error rates for low-rank matrices, sparse matrices, and “weakly”-sparse vectors. Due to space
+constraints, many of the technical details are deferred to the full-length version of this conference
+paper.
+
+2
+
+Problem formulation and some key properties
+
+In this section, we begin with a precise formulation of the problem, and then develop some key
+properties of the regularizer and loss function. In particular, we define a notion of decomposability
+for regularizing functions r, and then prove that when it is satisfied, the error ∆ = θ − θ∗ of the
+regularized M -estimator must satisfy certain constraints We use these constraints to define a notion
+of restricted strong convexity that the loss function must satisfy.
+2.1
+
+Problem set-up
+
+Consider a random variable Z with distribution P taking values in a set Z. Let Z1n := {Z1 , . . . , Zn }
+denote n observations drawn in an i.i.d. manner from P, and suppose θ∗ ∈ Rp is some parameter
+of this distribution. We consider the problem of estimating θ∗ from the data Z1n , and in order to do
+so, we consider the following class of regularized M -estimators. Let L : Rp × Z n → R be some
+loss function that assigns a cost to any parameter θ ∈ Rp , for a given set of observations Z1n . Let
+r : Rp → R denote a regularization function. We then consider the regularized M -estimator given
+by
+θ
+
+∈ arg minp L(θ; Z1n ) + λn r(θ) ,
+θ∈R
+
+(1)
+
+where λn > 0 is a user-defined regularization penalty. For ease of notation, in the sequel, we adopt
+the shorthand L(θ) for L(θ; Z1n ). Throughout the paper, we assume that the loss function L is
+convex and differentiable, and that the regularizer r is a norm.
+Our goal is to provide general techniques for deriving bounds on the error θ−θ∗ in some error metric
+d. A common example is the 2 -norm d(θ−θ∗ ) := θ−θ∗ 2 . As discussed earlier, high-dimensional
+parameter estimation is made possible by structural constraints on θ∗ such as sparsity, and we will
+see that the behavior of the error is determined by how well these constraints are captured by the
+regularization function r(·). We now turn to the properties of the regularizer r and the loss function
+L that underlie our analysis.
+2
+
+2.2
+
+Decomposability
+
+Our first condition requires that the regularization function r be decomposable, in a sense to be
+defined precisely, with respect to a family of subspaces. This notion is a formalization of the manner
+in which the regularization function imposes constraints on possible parameter vectors θ∗ ∈ Rp . We
+begin with some abstract definitions, which we then illustrate with a number of concrete examples.
+Take some arbitrary inner product space H, and let · 2 denote the norm induced by the inner
+product. Consider a pair (A, B) of subspaces of H such that A ⊆ B ⊥ . For a given subspace A and
+vector u ∈ H, we let πA (u) := argminv∈A u − v 2 denote the orthogonal projection of u onto A.
+We let V = {(A, B) | A ⊆ B ⊥ } be a collection of subspace pairs. For a given statistical model,
+our goal is to construct subspace collections V such that for any given θ∗ from our model class, there
+exists a pair (A, B) ∈ V with πA (θ∗ ) 2 ≈ θ∗ 2 , and πB (θ∗ ) 2 ≈ 0. Of most interest to us are
+subspace pairs (A, B) in which this property holds but the subspace A is relatively small and B is
+relatively large. Note that A represents the constraints underlying our model class, and imposed by
+our regularizer. For the bulk of the paper, we assume that H = Rp and use the standard Euclidean
+inner product (which should be assumed unless otherwise specified).
+As a first concrete (but toy) example, consider the model class of all vectors θ∗ ∈ Rp , and the subspace collection T that consists of a single subspace pair (A, B) = (Rp , 0). We refer to this choice
+(V = T ) as the trivial subspace collection. In this case, for any θ∗ ∈ Rp , we have πA (θ∗ ) = θ∗ and
+πB (θ∗ ) = 0. Although this collection satisfies our desired property, it is not so useful since A = Rp
+is a very large subspace. As a second example, consider the class of s-sparse parameter vectors
+θ∗ ∈ Rp , meaning that θi∗ = 0 only if i ∈ S, where S is some s-sized subset of {1, 2, . . . , p}. For
+any given subset S and its complement S c , let us define the subspaces
+A(S) = {θ ∈ Rp | θS c = 0}, and B(S) = {θ ∈ Rp | θS = 0},
+and the s-sparse subspace collection S = {(A(S), B(S)) | S ⊂ {1, . . . , p}, |S| = s}. With this
+set-up, for any s-sparse parameter vector θ∗ , we are guaranteed that there exists some (A, B) ∈ S
+such that πA (θ∗ ) = θ∗ and πB (θ∗ ) = 0. In this case, the property is more interesting, since the
+subspaces A(S) are relatively small as long as |S| = s
+p.
+
+With this set-up, we say that the regularizer r is decomposable with respect to a given subspace pair
+(A, B) if
+r(u + z) = r(u) + r(z) for all u ∈ A and z ∈ B.
+(2)
+In our subsequent analysis, we impose the following condition on the regularizer:
+Definition 1. The regularizer r is decomposable with respect to a given subspace collection V,
+meaning that it is decomposable for each subspace pair (A, B) ∈ V.
+Note that any regularizer is decomposable with respect to the trivial subspace collection
+T = {(Rp , 0)}. It will be of more interest to us when the regularizer decomposes with respect to
+a larger collection V that includes subspace pairs (A, B) in which A is relatively small and B is
+relatively large. Let us illustrate with some examples.
+• Sparse vectors and 1 norm regularization. Consider a model involving s-sparse regression vectors θ∗ ∈ Rp , and recall the definition of the s-sparse subspace collection S discussed above. We
+claim that the 1 -norm regularizer r(u) = u 1 is decomposable with respect to S. Indeed, for
+any s-sized subset S and vectors u ∈ A(S) and v ∈ B(S), we have u + v 1 = u 1 + v 1 , as
+required.
+• Group-structured sparse matrices and 1,q matrix norms. Various statistical problems involve
+matrix-valued parameters Θ ∈ Rk×m ; examples include multivariate regression problems or
+(inverse) covariance matrix estimation. We can define an inner product on such matrices via
+k
+m
+Θ, Σ = trace(ΘT Σ) and the induced (Frobenius) norm i=1 j=1 Θ2i,j . Let us suppose
+th
+that Θ satisfies a group sparsity condition, meaning that the i row, denoted Θi , is non-zero only
+if i ∈ S ⊆ {1, . . . , k} and the cardinality of S is controlled. For a given subset S, we can define
+the subspace pair
+B(S) = Θ ∈ Rk×m | Θi = 0 for all i ∈ S c ,
+and A(S) = (B(S))⊥ ,
+For some fixed s ≤ k, we then consider the collection
+V = {(A(S), B(S)) | S ⊂ {1, . . . , k}, |S| = s},
+3
+
+which is a group-structured analog of the s-sparse set S for vectors. For any q ∈ [1, ∞], now
+k
+m
+suppose that the regularizer is the 1 / q matrix norm, given by r(Θ) = i=1 [ j=1 |Θij |q ]1/q ,
+corresponding to applying the q norm to each row and then taking the 1 -norm of the result. It
+can be seen that the regularizer r(Θ) = |||Θ|||1,q is decomposable with respect to the collection V.
+
+• Low-rank matrices and nuclear norm. The estimation of low-rank matrices arises in various contexts, including principal component analysis, spectral clustering, collaborative filtering, and matrix completion. In particular, consider the class of matrices Θ ∈ Rk×m that have
+rank r ≤ min{k, m}. For any given matrix Θ, we let row(Θ) ⊆ Rm and col(Θ) ⊆ Rk denote its
+row space and column space respectively. For a given pair of r-dimensional subspaces U ⊆ Rk
+and V ⊆ Rm , we define a pair of subspaces A(U, V ) and B(U, V ) of Rk×m as follows:
+A(U, V ) := Θ ∈ Rk×m | row(Θ) ⊆ V, col(Θ) ⊆ U ,
+
+B(U, V ) := Θ ∈ R
+
+k×m
+
+| row(Θ) ⊆ V , col(Θ) ⊆ U
+⊥
+
+⊥
+
+and
+
+(3a)
+
+.
+
+(3b)
+
+Note that A(U, V ) ⊆ B (U, V ), as is required by our construction. We then consider the collection V = {(A(U, V ), B(U, V )) | U ⊆ Rk , V ⊆ Rm }, where (U, V ) range over all pairs of
+r-dimensional subspaces. Now suppose that we regularize with the nuclear norm r(Θ) = |||Θ|||1 ,
+corresponding to the sum of the singular values of the matrix Θ. It can be shown that the nuclear
+norm is decomposable with respect to V. Indeed, since any pair of matrices M ∈ A(U, V ) and
+M ∈ B(U, V ) have orthogonal row and column spaces, we have |||M + M |||1 = |||M |||1 + |||M |||1
+(e.g., see the paper [13]).
+⊥
+
+Thus, we have demonstrated various models and regularizers in which decomposability is satisfied
+with interesting subspace collections V. We now show that decomposability has important consequences for the error ∆ = θ − θ∗ , where θ ∈ Rp is any optimal solution of the regularized
+M -estimation procedure (1). In order to state a lemma that captures this fact, we need to define the
+u,v
+dual norm of the regularizer, given by r∗ (v) := supu∈Rp r(u)
+. For the regularizers of interest, the
+dual norm can be obtained via some easy calculations. For instance, given a vector θ ∈ Rp and
+r(θ) = θ 1 , we have r∗ (θ) = θ ∞ . Similarly, given a matrix Θ ∈ Rk×m and the nuclear norm
+regularizer r(Θ) = |||Θ|||1 , we have r∗ (Θ) = |||Θ|||2 , corresponding to the operator norm (or maximal
+singular value).
+Lemma 1. Suppose θ is an optimal solution of the regularized M -estimation procedure (1), with
+associated error ∆ = θ−θ∗ . Furthermore, suppose that the regularization penalty is strictly positive
+with λn ≥ 2 r∗ (∇L(θ∗ )). Then for any (A, B) ∈ V
+r(πB (∆)) ≤ 3r(πB ⊥ (∆)) + 4r(πA⊥ (θ∗ )).
+
+This property plays an essential role in our definition of restricted strong convexity and subsequent
+analysis.
+2.3
+
+Restricted Strong Convexity
+
+Next we state our assumption on the loss function L. In general, guaranteeing that L(θ) − L(θ∗ )
+is small is not sufficient to show that θ and θ∗ are close. (As a trivial example, consider a loss
+function that is identically zero.) The standard way to ensure that a function is “not too flat” is via
+the notion of strong convexity—in particular, by requiring that there exist some constant γ > 0 such
+that L(θ∗ + ∆) − L(θ∗ ) − ∇L(θ∗ ), ∆ ≥ γ d2 (∆) for all ∆ ∈ Rp . In the high-dimensional setting,
+where the number of parameters p may be much larger than the sample size, the strong convexity
+assumption need not be satisfied. As a simple example, consider the usual linear regression model
+y = Xθ∗ + w, where y ∈ Rn is the response vector, θ∗ ∈ Rp is the unknown parameter vector,
+X ∈ Rn×p is the design matrix, and w ∈ Rn is a noise vector, with i.i.d. zero mean elements. The
+1
+least-squares loss is given by L(θ) = 2n
+y − Xθ 22 , and has the Hessian H(θ) = n1 X T X. It is
+easy to check that the p × p matrix H(θ) will be rank-deficient whenever p > n, showing that the
+least-squares loss cannot be strongly convex (with respect to d(·) = · 2 ) when p > n.
+
+Herein lies the utility of Lemma 1: it guarantees that the error ∆ must lie within a restricted set,
+so that we only need the loss function to be strongly convex for a limited set of directions. More
+precisely, we have:
+4
+
+Definition 2. Given some subset C ⊆ Rp and error norm d(·), we say that the loss function L
+satisfies restricted strong convexity (RSC) (with respect to d(·)) with parameter γ(L) > 0 over C if
+L(θ∗ + ∆) − L(θ∗ ) − ∇L(θ∗ ), ∆
+
+≥ γ(L) d2 (∆)
+
+for all ∆ ∈ C.
+
+(4)
+
+In the statement of our results, we will be interested in loss functions that satisfy RSC over sets
+C(A, B, ) that are indexed by a subspace pair (A, B) and a tolerance ≥ 0 as follows:
+C(A, B, ) := ∆ ∈ Rp | r(πB (∆)) ≤ 3r(πB ⊥ (∆)) + 4r(πA⊥ (θ∗ )),
+
+d(∆) ≥
+
+.
+
+(5)
+
+In the special case of least-squares regression with hard sparsity constraints, the RSC condition corresponds to a lower bound on the sparse eigenvalues of the Hessian matrix X T X, and is essentially
+equivalent to a restricted eigenvalue condition introduced by Bickel et al. [1].
+
+3
+
+Convergence rates
+
+We are now ready to state a general result that provides bounds and hence convergence rates for
+the error d(θ − θ∗ ). Although it may appear somewhat abstract at first sight, we illustrate that this
+result has a number of concrete consequences for specific models. In particular, we recover the best
+known results about estimation in s-sparse models with general designs [1, 7], as well as a number
+of new results, including convergence rates for estimation under q -sparsity constraints, estimation
+in sparse generalized linear models, estimation of block-structured sparse matrices and estimation
+of low-rank matrices.
+In addition to the regularization parameter λn and RSC constant γ(L) of the loss function, our
+general result involves a quantity that relates the error metric d to the regularizer r; in particular, for
+any set A ⊆ Rp , we define
+Ψ(A) :=
+
+sup
+
+r(u),
+
+(6)
+
+{u∈Rp | d(u)=1}
+
+so that r(u) ≤ Ψ(A)d(u) for u ∈ A.
+
+Theorem 1 (Bounds for general models). For a given subspace collection V, suppose that the regularizer r is decomposable, and consider the regularized M -estimator (1) with λn ≥ 2 r∗ (∇L(θ∗ )).
+Then, for any pair of subspaces (A, B) ∈ V and tolerance ≥ 0 such that the loss function L satisfies restricted strong convexity over C(A, B, ), we have
+d(θ − θ∗ ) ≤ max
+
+,
+
+1
+2 Ψ(B ⊥ ) λn +
+γ(L)
+
+2 λn γ(L) r(πA⊥ (θ∗ ))
+
+.
+
+(7)
+
+The proof is motivated by arguments used in past work on high-dimensional estimation (e.g., [9,
+14]); we provide the details in the full-length version. The remainder of this paper is devoted to illustrations of the consequences of Theorem 1 for specific models. In all of these uses of Theorem 1,
+we choose the regularization parameter as small as possible—namely, λn = 2 r∗ (∇L(θ∗ )). Although Theorem 1 allows for more general choices, in this conference version, we focus exclusively
+on the case when d(·) to be the 2 -norm, In addition, we choose a tolerance parameter = 0 for all
+of the results except for the weak-sparse models treated in Section 3.1.2.
+3.1
+
+Bounds for linear regression
+
+Consider the standard linear regression model y = Xθ∗ + w, where θ∗ ∈ Rp is the regression
+vector, X ∈ Rn×p is the design matrix, and w ∈ Rn is a noise vector. Given the observations
+(y, X), our goal is to estimate the regression vector θ∗ . Without any structural constraints on θ∗ ,
+we can apply Theorem 1 with the trivial subspace collection T = {(Rp , 0)} to establish a rate
+θ − θ∗ 2 = O(σ p/n) for ridge regression, which holds as long as X is full-rank (and hence
+requires n > p). Here we consider the sharper bounds that can be obtained when it is assumed that
+θ∗ is an s-sparse vector.
+5
+
+3.1.1
+
+Lasso estimates of hard sparse models
+
+More precisely, let us consider estimating an s-sparse regression vector θ∗ by solving the Lasso
+1
+program θ ∈ arg minθ∈Rp 2n
+y − Xθ 22 + λn θ 1 . The Lasso is a special case of our M 1
+estimator (1) with r(θ) = θ 1 , and L(θ) = 2n
+y − Xθ 22 . Recall the definition of the s-sparse
+subspace collection S from Section 2.2. For this problem, let us set = 0 so that the restricted strong
+convexity set (5) reduces to C(A, B, 0) = {∆ ∈ Rp | ∆S c 1 ≤ 3 ∆S 1 }. Establishing restricted
+strong convexity for the least-squares loss is equivalent to ensuring the following bound on the
+design matrix:
+Xθ 22 /n ≥ γ(L) θ
+
+2
+2
+
+for all θ ∈ Rp such that θS
+
+1
+
+≤ 3 θS
+
+1.
+
+(8)
+
+As mentioned previously, this condition is essentially the same as the restricted eigenvalue condition
+developed by Bickel et al. [1]. In very recent work, Raskutti et al. [10] show that condition (8) holds
+with high probability for various random ensembles of Gaussian matrices with non-i.i.d. elements.
+In addition to√the RSC condition, we assume that X has bounded column norms (specifically,
+Xi 2 ≤ 2 n for all i = 1, . . . , p), and that the noise vector w ∈ Rn has i.i.d. elements with zero-mean and sub-Gaussian tails (i.e., there exists some constant σ > 0 such that
+P[|wi | > t] ≤ exp(−t2 /2σ 2 ) for all t > 0). Under these conditions, we recover as a corollary of
+Theorem 1 the following known result [1, 7].
+Corollary 1. Suppose that the true vector θ∗ ∈ Rp is exactly s-sparse with support S, and that the
+2
+design matrix X satisfies condition (8). If we solve the the Lasso with λ2n = 16σ nlog p , then with
+probability at least 1 − c1 exp(−c2 nλ2n ), the solution satisfies
+θ − θ∗
+
+2
+
+8σ
+γ(L)
+
+≤
+
+s log p
+.
+n
+
+(9)
+
+Proof. As noted previously, the 1 -regularizer is decomposable for the sparse subspace collection
+S, while condition (8) ensures that RSC holds for all sets C(A, B, 0) with (A, B) ∈ S. We must
+verify that the given choice of regularization satisfies λn ≥ 2 r∗ (∇L(θ∗ )). Note that r∗ (·) = · ∞ ,
+and moreover that ∇L(θ∗ ) = X T w/n. Under the column normalization condition on the design
+
+matrix X and the sub-Gaussian nature of the noise, it follows that X T w/n ∞ ≤ 4σ 2 logn p with
+high probability. The bound in Theorem 1 is thus applicable, and it remains to compute the form
+that its different terms take in this special case. For the 1 -regularizer and the 2 error metric, we
+have Ψ(AS ) = |S|. Given the hard sparsity assumption, r(θS∗ c ) = 0, so that Theorem 1 implies
+s log p
+2 √
+8σ
+that θ − θ∗ 2 ≤ γ(L)
+sλn = γ(L)
+n , as claimed.
+3.1.2
+
+Lasso estimates of weak sparse models
+
+We now consider models that satisfy a weak sparsity assumption. More concretely, suppose that θ∗
+p
+q
+lies in the q -“ball” of radius Rq —namely, the set Bq (Rq ) := {θ ∈ Rp |
+i=1 |θi | ≤ Rq } for
+∗
+some q ∈ (0, 1]. Our analysis exploits the fact that any θ ∈ Bq (Rq ) can be well approximated by
+an s-sparse vector (for an appropriately chosen sparsity index s). It is natural to approximate θ∗ by
+a vector supported on the set S = {i | |θi∗ | ≥ τ }. For any choice of threshold τ > 0, it can be
+shown that |S| ≤ Rq τ −q , and it is optimal to choose τ equal to the same regularization parameter
+λn from Corollary 1 (see the full-length version for details). Accordingly, we consider the s-sparse
+n
+subspace collection S with subsets of size s = Rq λ−q
+n . We assume that the noise vector w ∈ R
+is as defined above and that the columns are normalized as in the previous section. We also assume
+that the matrix X satisfies the condition
+log p 12
+v 1
+for constants κ1 , κ2 > 0.
+(10)
+n
+Raskutti et al. [10] show that this property holds with high probablity for suitable Gaussian random
+matrices. Under this condition, it can be verified that RSC holds with γ(L) = κ1 /2 over the set
+Xv
+
+2
+
+≥ κ1 v
+
+2
+
+− κ2
+
+1
+
+2
+
+1−q/2
+
+16 σ log p
+C A(S), B(S), n ), where n = 4/κ1 + 4/κ1 )Rq2
+. The following result,
+n
+which we obtain by applying Theorem 1 in this setting, is new to the best of our knowledge:
+
+6
+
+Corollary 2. Suppose that the true vector θ∗ ∈ Bq (Rq ), and the design matrix X satisfies condi2
+tion (10). If we solve the Lasso with λ2n = 16σ nlog p , then with probability 1 − c1 exp(−c2 nλ2n ), the
+solution satisfies
+√
+1−q/2
+1
+16 σ 2 log p
+2
+2
+∗
+2
+θ − θ 2 ≤ Rq
++
+.
+(11)
+n
+γ(L)
+γ(L)
+We note that both of the rates—for hard-sparsity in Corollary 1 and weak-sparsity in Corollary 2—
+are known to be optimal1 in a minimax sense [10].
+3.2
+
+Bounds for generalized linear models
+
+Our next example is a generalized linear model with canonical link function, where the distribution
+of response y ∈ Y based on a predictor x ∈ Rp is given by p(y | x; θ∗ ) = exp(y θ∗ , x −
+a( θ∗ , X ) + d(y)), for some fixed functions a : R → R and d : Y → R, where x ∞ ≤ A, and
+|y| ≤ B. We consider estimating θ∗ from observations {(xi , yi )}ni=1 by 1 -regularized maximum
+n
+n
+1
+likelihood θ ∈ arg minθ∈Rp − n1 θ,
+i=1 yi xi + n
+i=1 a( θ, xi ) + θ 1 . This is a special
+n
+n
+case of our M -estimator (1) with L(θ) = − θ, n1 i=1 yi xi + n1 i=1 a( θ, xi ), and r(θ) =
+n×p
+th
+θ 1 . Let X ∈ R
+denote the matrix with i row xi . For analysis, we again use the s-sparse
+subspace collection S and = 0. With these choices, it can be verified that an appropriate version of
+the RSC will hold if the second derivative a is strongly convex, and the design matrix X satisfies a
+version of the condition (8).
+Corollary 3. Suppose that the true vector θ∗ ∈ Rp is exactly s-sparse with support S, and the
+model (a, X) satisfies an RSC condition. Suppose that we compute the 1 -regularized MLE with
+2 2
+λ2n = 32A Bn log p . Then with probability 1 − c1 exp(−c2 nλ2n ), the solution satisfies
+θ − θ∗
+
+2
+
+16AB
+γ(L)
+
+≤
+
+s log p
+.
+n
+
+(12)
+
+We defer the proof to the full-length version due to space constraints.
+3.3
+
+Bounds for sparse matrices
+
+In this section, we consider some extensions of our results to estimation of regression matrices.
+Various authors have proposed extensions of the Lasso based on regularizers that have more structure
+than the 1 norm (e.g., [17, 20, 23, 5]). Such regularizers allow one to impose various types of
+block-sparsity constraints, in which groups of parameters are assumed to be active (or inactive)
+simultaneously. We assume that the observation model takes on the form Y = XΘ∗ + W , where
+Θ∗ ∈ Rk×m is the unknown fixed set of parameters, X ∈ Rn×k is the design matrix, and W ∈
+Rn×m is the noise matrix. As a loss function, we use the Frobenius norm n1 L(Θ) = |||Y − XΘ|||2F ,
+and as a regularizer, we use the 1,q -matrix norm for some q ≥ 1, which takes the form |||Θ|||1,q =
+k
+i=1 (Θi1 , . . . , Θim ) q . We refer to the resulting estimator as the q-group Lasso. We define the
+quantity η(m; q) = 1 if q ∈ (1, 2] and η(m; q) = m1/2−1/q if q > 2. We then set the regularization
+parameter as follows:
+√
+4σ
+√
+[η(m; q) log k + Cq m1−1/q ] if q > 1
+n
+λn =
+4σ log(km)
+for q = 1.
+n
+Corollary 4. Suppose that the true parameter matix Θ∗ has non-zero rows only for indices i ∈ S ⊆
+{1, . . . , k} where |S| = s, and that the design matrix X ∈ Rn×k satisfies condition (8). Then with
+probability at least 1 − c1 exp(−c2 nλ2n ), the q-block Lasso solution satisfies
+|||Θ − Θ∗ |||F
+
+≤
+
+2
+Ψ(S)λn .
+γ(L)
+
+(13)
+
+1
+Raskutti et al. [10] show that the rate (11) is achievable by solving the computationally intractable problem
+of minimizing L(θ) over the q -ball.
+
+7
+
+The proof is provided in the full-length version;
+√ here we consider three special cases
+√ of the above
+result. A simple argument shows that Ψ(S) = s if q ≥ 2, and Ψ(S) = m1/q−1/2 s if q ∈ [1, 2].
+For q = 1, solving the group Lasso is identical solving a Lasso problem with sparsity sm and
+ambient dimension km, and the resulting upper bound
+
+8σ
+γ(L)
+
+s m log(km)
+n
+
+reflects this fact (compare
+
+to Corollary 1). For the case q = 2, Corollary 4 yields the upper bound
+
+8σ
+γ(L)
+
+s log k
+n
+
++
+
+sm
+n
+
+,
+
+k
+natural interpretation: the term s log
+captures the difficulty of finding the s nonn
+sm
+the total k, whereas the term n captures the difficulty of estimating the sm free
+
+which also has a
+zero rows out of
+parameters in the matrix (once the non-zero rows have been determined). We note that recent work
+√
+
+c m s log k
+σ
+by Lounici et al. [4] established the bound O( γ(L)
++ sm
+n
+n ), which is equivalent apart
+√
+s log k
+8σ
+from a term m. Finally, for q = ∞, we obtain the upper bound γ(L)
++ m ns .
+n
+
+3.4
+
+Bounds for estimating low rank matrices
+
+Finally, we consider the implications of our main result for the problem of estimating low-rank matrices. This structural assumption is a natural variant of sparsity, and has been studied by various
+authors (see the paper [13] and references therein). To illustrate our main theorem in this context, let us consider the following instance of low-rank matrix learning. Given a low-rank matrix
+Θ∗ ∈ Rk×m , suppose that we are given n noisy observations of the form Yi = Xi , Θ∗ + Wi ,
+where Wi ∼ N (0, 1) and A, B := trace(AT B). Such an observation model arises in system identification settings in control theory [13]. The following regularized M -estimator can be
+considered in order to estimate the desired low-rank matrix Θ∗ :
+n
+1
+|Yi − Xi , Θ) |2 + |||Θ|||1 ,
+(14)
+min
+Θ∈Rm×p 2n
+i=1
+where the regularizer, |||Θ|||1 , is the nuclear norm, or the sum of the singular values of Θ. Recall
+the rank-r collection V defined for low-rank matrices in Section 2.2. Let Θ∗ = U ΣW T be the
+singular value decomposition (SVD) of Θ∗ , so that U ∈ Rk×r and W ∈ Rm×r are orthogonal, and
+Σ ∈ Rr×r is a diagonal matrix. If we let A = A(U, W ) and B = B(U, W ), then, πB (Θ∗ ) = 0, so
+that by Lemma 1 we have that |||πB (∆)|||1 ≤ 3 |||πB ⊥ (∆)|||1 . Thus, for restricted strong convexity to
+hold it can be shown that the design matrices Xi must satisfy
+1
+n
+
+n
+i=1
+
+| Xi , ∆ |2 ≥ γ(L) |||∆|||2F
+
+for all ∆ such that |||πB (∆)|||1 ≤ 3 |||πB ⊥ (∆)|||1 ,
+
+(15)
+
+and satisfy the appropriate analog of the column-normalization condition. As with analogous conditions for sparse linear regression, these conditions hold w.h.p. for various non-i.i.d. Gaussian
+random matrices.2
+Corollary 5. Suppose that the true matrix Θ∗ has rank r
+min(k, m), and that the design √
+matrices
+√
+√ m,
+{Xi } satisfy condition (15). If we solve the regularized M -estimator (14) with λn = 16 k+
+n
+then with probability at least 1 − c1 exp(−c2 (k + m)), we have
+|||Θ − Θ∗ |||F ≤
+
+16
+γ(L)
+
+rk
++
+n
+
+rm
+.
+n
+
+(16)
+
+√
+√
+Proof. Note that if rank(Θ∗ ) = r, then |||Θ∗ |||1 ≤ r|||Θ∗ |||F so that Ψ(B ⊥ ) = 2r, since the
+subspace B(U, V )⊥ consists of matrices with rank at most 2r. All that remains is to show that
+λn ≥ 2 r∗ (∇L(Θ∗ )). Standard analysis gives that the dual norm to ||| · |||1 is the operator norm,
+||| · |||2 . Applying this observation we may construct a bound on the operator norm of ∇L(Θ∗ ) =
+n
+n
+1
+k
+m 1
+T 2
+| ≤ |||vuT |||2F = 1.
+i=1 Xi Wi . Given unit vectors u ∈ R and v ∈ R , n
+i=1 | Xi , vu
+n
+n
+Therefore, n1 i=1 (uT Xi v)Wi ∼ N (0, n1 ). A standard argument shows that the supremum over all
+√
+
+√
+
+√ m with probability at least 1−c1 exp(−c2 (k +m)),
+unit vectors u and v is bounded above by 8 k+
+n
+verifying that λn ≥ 2r∗ (∇L(Θ∗ )) with high probability.
+
+2
+This claim involves some use of concentration of measure and Gaussian comparison inequalities analogous
+to arguments in Raskutti et al. [10]; see the full-length length version for details.
+
+8
+
+References
+[1] P. Bickel, Y. Ritov, and A. Tsybakov. Simultaneous analysis of Lasso and Dantzig selector.
+Submitted to Annals of Statistics, 2008.
+[2] E. Candes and T. Tao. The Dantzig selector: Statistical estimation when p is much larger than
+n. Annals of Statistics, 35(6):2313–2351, 2007.
+[3] S. Chen, D. L. Donoho, and M. A. Saunders. Atomic decomposition by basis pursuit. SIAM J.
+Sci. Computing, 20(1):33–61, 1998.
+[4] K. Lounici, M. Pontil, A. B. Tsybakov, and S. van de Geer. Taking advantage of sparsity in
+multi-task learning. Arxiv, 2009.
+[5] L. Meier, S. Van de Geer, and P. B¨uhlmann. The group lasso for logistic regression. Journal
+of the Royal Statistical Society, Series B, 70:53–71, 2008.
+[6] N. Meinshausen and P. B¨uhlmann. High-dimensional graphs and variable selection with the
+Lasso. Annals of Statistics, 34:1436–1462, 2006.
+[7] N. Meinshausen and B. Yu. Lasso-type recovery of sparse representations for high-dimensional
+data. Annals of Statistics, 37(1):246–270, 2009.
+[8] G. Obozinski, M. J. Wainwright, and M. I. Jordan. Union support recovery in high-dimensional
+multivariate regression. Technical report, Department of Statistics, UC Berkeley, August 2008.
+[9] S. Portnoy. Asymptotic behavior of M-estimators of p regression parameters when p2 /n is
+large: I. consistency. Annals of Statistics, 12(4):1296–1309, 1984.
+[10] G. Raskutti, M. J. Wainwright, and B. Yu. Minimax rates of estimation for high-dimensional
+linear regression over q -balls. Technical Report arXiv:0910.2042, UC Berkeley, Department
+of Statistics, 2009.
+[11] P. Ravikumar, M. J. Wainwright, and J. Lafferty. High-dimensional Ising model selection using
+1 -regularized logistic regression. Annals of Statistics, 2008. To appear.
+[12] P. Ravikumar, M. J. Wainwright, G. Raskutti, and B. Yu. High-dimensional covariance estimation by minimizing 1 -penalized log-determinant divergence. Technical Report 767, Department of Statistics, UC Berkeley, September 2008.
+[13] B. Recht, M. Fazel, and P. A. Parrilo. Guaranteed minimum-rank solutions of linear matrix
+equations via nuclear norm minimization. Allerton Conference, 2007.
+[14] A.J. Rothman, P.J. Bickel, E. Levina, and J. Zhu. Sparse permutation invariant covariance
+estimation. Electron. J. Statist., 2:494–515, 2008.
+[15] R. Tibshirani. Regression shrinkage and selection via the lasso. Journal of the Royal Statistical
+Society, Series B, 58(1):267–288, 1996.
+[16] J. Tropp. Just relax: Convex programming methods for identifying sparse signals in noise.
+IEEE Trans. Info Theory, 52(3):1030–1051, March 2006.
+[17] B. Turlach, W.N. Venables, and S.J. Wright. Simultaneous variable selection. Technometrics,
+27:349–363, 2005.
+[18] S. Van de Geer. High-dimensional generalized linear models and the lasso. Annals of Statistics,
+36(2):614–645, 2008.
+[19] M. J. Wainwright. Sharp thresholds for high-dimensional and noisy sparsity recovery using 1 constrained quadratic programming (Lasso). IEEE Trans. Information Theory, 55:2183–2202,
+May 2009.
+[20] M. Yuan and Y. Lin. Model selection and estimation in regression with grouped variables.
+Journal of the Royal Statistical Society B, 1(68):49, 2006.
+[21] C. Zhang and J. Huang. Model selection consistency of the lasso selection in high-dimensional
+linear regression. Annals of Statistics, 36:1567–1594, 2008.
+[22] P. Zhao and B. Yu. On model selection consistency of Lasso. Journal of Machine Learning
+Research, 7:2541–2567, 2006.
+[23] P. Zhao, G. Rocha, and B. Yu. Grouped and hierarchical model selection through composite
+absolute penalties. Annals of Statistics, 37(6A):3468–3497, 2009.
+
+9
+
+

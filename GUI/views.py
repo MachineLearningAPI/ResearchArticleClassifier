@@ -10,7 +10,7 @@ from DatabaseParser.views import parseTextToDb, getStopWords
 from myapp.models import Document
 from DatabaseParser.wKNN import wKNN
 from DatabaseParser.NaiveBayes import NaiveBayes
-
+from DatabaseParser.views import filterStopWords 
 
 # Create your views here.
 PATH_TO_DATASET = 'TrainingData/'
@@ -119,4 +119,7 @@ def loadTextFile(request):
 
 def getStop(request):
     return HttpResponse(getStopWords())
- 
+
+def removeStopWords(request):
+    filterStopWords()
+    return HttpResponse("StopWords Removed !!!")

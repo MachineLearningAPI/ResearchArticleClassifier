@@ -1,0 +1,1486 @@
+Responsible Professor:
+
+Assistants:
+Miao Li
+miao.li@epfl.ch
+Sina Mirrazavi
+sina.mirrazavi@epfl.ch
+Mahdi Khoramshahi
+mahdi.khoramshahi@epfl.ch
+
+Prof. Aude Billard
+E-mail: aude.billard@epfl.ch
+Web:http://lasa.epfl.ch/
+
+Robotics Practical
+
+Teaching Robots to Accomplish a Manipulation Task
+
+Spring 2015
+
+1
+
+Contents
+1 Introduction
+
+3
+
+1.1
+
+Task Description . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+3
+
+1.2
+
+Steps to follow . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+4
+
+1.3
+
+Preparation of Practical . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+5
+
+1.4
+
+Practical Evaluation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+5
+
+2 Object Recognition
+
+6
+
+2.1
+
+Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+
+2.2
+
+PCA-based Object Recognition . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+
+2.2.1
+
+Background . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+
+2.2.2
+
+Efficient Image Storage . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+
+2.2.3
+
+Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+6
+
+3 Teaching a reaching movement to a robot
+
+11
+
+3.1
+
+Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+11
+
+3.2
+
+Kinesthetic Teaching . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+11
+
+3.2.1
+
+Robot reaching motion acquisition . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+11
+
+3.2.2
+
+Train the acquired trajectories and evaluate the results . . . . . . . . . . . . . . .
+
+12
+
+3.2.3
+
+Robot implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+14
+
+4 Building a tower game
+
+16
+
+4.1
+
+Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+16
+
+4.2
+
+Steps to follow . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+16
+
+4.2.1
+
+Object Localization . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+16
+
+4.2.2
+
+Recognize object . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+16
+
+4.2.3
+
+Robot Movement Generation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+17
+
+4.2.4
+
+Integration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+18
+
+A Appendix
+
+19
+
+A.1 Algorithm for PCA . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+19
+
+A.2 Gaussian Mixture Regression (GMR) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+19
+
+A.3 Stable Estimator of Dynamical Systems (SEDS)
+
+21
+
+2
+
+. . . . . . . . . . . . . . . . . . . . . . .
+
+1
+
+Introduction
+
+In this robotic practical, you will be teaching a robot to build a tower by stacking several objects on top
+of each other. Each group is provided with several objects with different shapes and sizes. In order to
+accomplish this task, the robot must be capable of 1) identifying the objects; 2) estimating the location
+and pose of the objects; 3) generating appropriate motion to pick up each object and stack it on top of
+other objects. In this practical, you will learn how you can teach a robot through human demonstration
+to acquire the first and third competence. The second competence, namely estimating the position and
+orientation of the object is beyond the scope of the practical and hence, you will be provided with a ready
+to use package to perform this step.
+During the practical, you are expected to understand and use two machine learning algorithms, namely
+principal component analysis (PCA) and Gaussian Mixture Regression (GMR), to complete the robotic
+tasks. These algorithms have been taught in the compulsory course in machine learning which you have
+taken in the fall semester. For those of you who did not take this course, you can find a description
+of these algorithms in Appendices A.1 and A.2. The basic libraries for these algorithms are provided,
+but you may need to slightly modify them based on your requirement. More importantly, you should be
+aware of the performance and limitation of these algorithms in practice.
+
+Ɵ6
+
+Ɵ5
+Ɵ3
+
+Ɵ4
+
+Camera 1
+
+Ɵ2
+workspace
+
+Ɵ1
+Building
+blocks
+
+(a) Kinematics
+Katana robot
+
+of
+
+the
+
+(b) Object Recognition
+
+(c) Human demonstration
+
+Figure 1: (a) The kinematics of the Katana robot, 5 degree of freedoms in the arm with an additional
+one in the gripper. θi , i = 1...5 refers to the corresponding joints. (b) The objects will be recognized
+using PCA. (c) The human teacher is showing to the robot how to place the robot through kinesthetic
+teaching, namely by passively moving the robot’s joints from the original position to the final position.
+
+1.1
+
+Task Description
+
+As described before, in this robotic practical, your task is to teach a robot to build a tower by stacking
+several objects on top of one another. The robot you will use is a light-weight, small-size, five degrees
+of freedom (DOF) Katana arm, developed by Neuronics (see Fig. 1a). There are different objects, such
+as cylinder, cube, triangle. All objects should be placed on the table and within the workspace of the
+robot to start with. Note that the objects do not need to be placed in any particular location within
+this workspace, as the robot should be able to adapt to arbitrary position and orientation of the object.
+You should teach the robot how to pick each of these objects. Since objects differ in size and shape, the
+approach motion may differ depending on where you grasp the objects, their sizes and shapes as well as
+how to place them on top of other objects to ensure that the tower remains stable (see Fig. 1).
+This task should be accomplished in two steps: offline training and online implementation. The offline training includes object recognition and reaching movement learning, see Fig. 2. For the object
+recognition, you need to use a camera mounted on the robot arm to collect enough images for each
+object, as shown in Fig. 1b. Then for all the object images, use PCA to learn a model to recognize
+objects. For the learning of robot movements, you will teach the robot how to reach and grasp a block
+through a couple of demonstrations, see Fig. 1c. Because the Kanata robot can be back-driven, you just
+3
+
+online
+object
+localization
+
+offline training
+object shape
+learning
+using PCA
+
+object
+recognition
+
+stacking
+planing
+
+Reaching
+movement
+learning using
+SEDS
+
+reaching
+movement
+generation
+(GMR)
+
+Figure 2: The flow chart of the practical, which generally includes two parts: (1) The offline learning of
+object recognition and reaching movement, and (2) The online implementation of the learned models to
+build the tower. The object localization block will be provided and is not covered in this practical.
+need to hold the robot arm and move the robot end-effector from the initial to the desired final position.
+The process of programming a robot based on some demonstrations is simply called programming by
+demonstrations (also referred to as imitation learning, apprenticeship learning, or learning from demonstration). See http://www.scholarpedia.org/article/Robot_learning_by_demonstration for more
+information on programming by demonstrations. Videos of practical examples of imitation learning for
+teaching complex robotic tasks are also available at http://lasa.epfl.ch.
+
+1.2
+
+Steps to follow
+
+Following Fig. 2, the general pipeline of the task is as follows:
+1. You will be assigned several(minimal 3) objects with different shapes and sizes.
+2. Initially, you will take some photos of these blocks from different positions, which will be used later
+on for the object recognition (Section 2)
+3. You will also need to measure the size of each object (Length× Width × Height). These information
+will be very important for you to design the stacking sequence1 . Also mention these object sizes in
+your report.
+4. You will teach your robot several demonstrations of how to reach for an object, and how to place
+it at a desired position (Section 3).
+1 During the stacking task, the X − Y position of the tower will be fixed or chosen by student, however, the Z position
+will change as students need to put one object on another one.
+
+4
+
+Table 1: The overall grading scheme for the practical.
+Overall weight
+
+Grading Item
+Accomplishments:
+
+Goals reached, quality of results, Q&A (discussion)
+
+50%
+
+Methodology:
+
+Systematic approach, understanding of the subject,
+personal contribution
+
+20%
+
+Autonomy, communication with assistants, timeliness
+
+10%
+
+Structure (hierarchy, appendix, ...), completeness,
+clarity of presentation (general form, graphs, captions ...)
+
+20%
+
+Working style:
+Report:
+
+5. You will train a general model of the robot motion based on your demonstration trajectories (Section 3).
+6. You will put together Steps 1 to 5 to build a stable and high tower (Section 4).
+
+1.3
+
+Preparation of Practical
+
+• Week 1: Read Sections 1 and 2 to get a general idea of how to perform object recognition and
+localization.
+• Week 2: Read Section 3 and Appendices A.2 and A.3 to learn how to model a point-to-point motion.
+• Week 3: Read Section 4 to get an idea how to integrate the materials from the first two weeks to
+finish a tower game.
+
+1.4
+
+Practical Evaluation
+
+The grade for this project will be based on your answers to the questions in this document (object
+recognition 30%, reaching movement 40%), as well as the performance of your group in performing the
+task of building the tower (performance 30%), which will be evaluated based on the height, the stability
+and the time for the tower building. Note that this grading of the report will count for the entry one on
+the overall grading scheme and hence amount to 50% of the overall grade (see Table 1).
+Write a report of maximum 20 pages in PDF format (pages beyond the twentieth will be ignored).
+Font size should not go below 10pt and use single column format. Do not forget to include all necessary
+graphs or tables in your report when answering the questions above. You need to justify why these graphs
+are important by referring to them in your response. Needless to say, all figures should have caption, axis
+label, legends, etc.
+NOTE: When working with the robot, You need to precisely follow all the instructions provided in
+this document as well as those elucidated by the assistants during the practical.
+!!PRECAUTION!!
+• 1 Before you run the robot, make sure it will not collide any obstacle or person!
+• 2 Move the robot to the initial position when you try to turn the motor off!
+• 3 When you show the demonstrations to the robot, keep in mind the singularity of the robot!
+
+5
+
+2
+2.1
+
+Object Recognition
+Overview
+
+As mentioned in the introduction, the first step to accomplish a manipulation task is to detect what the
+object is and to know where it is located. While it is easy for humans to recognize objects when viewed
+through different angles and lighting conditions, or even when partially obstructed, computers/robots
+still struggle to robustly detect objects.
+To perform the task at hand, it is crucial that your object detector be able to recognize the object
+when viewed from various angles. To enable the robot to get such a generalized model of the object,
+you will need to provide it with a variety of images of the objects that are representative of the variety
+of views you expect it to encounter when performing the task. To recognize objects, you will use the
+camera located on top of the robot’s end-effector, see Fig. 1b. You will embed a model of each object
+using Principal Component Analysis (PCA), see Appendix A.1. In the remaining part of this section,
+the object recognition will be described in more details.
+
+2.2
+2.2.1
+
+PCA-based Object Recognition
+Background
+
+For object recognition, a natural way is to store the known objects as sample images or templates, then
+try to find the best match in the new given image. For each object, one needs to save a lot of images
+corresponding to different views. Then the number of sample images will increase very fast when more
+objects need to be recognized. A good solution for this situation is to store the sample images in an
+efficient way. PCA can be very helpful to find the similarities between these templates and save them in
+a more efficient way.
+
+2.2.2
+
+Efficient Image Storage
+
+In order to highlight the importance of having a smart way of storing images efficiently, let us take an
+example using real object images: a bowl, a tissue and a stapler (see Fig. 3). For each object, ten 640×480
+images2 are collected using a camera mounted on the robot, the camera 1 as shown in Fig. 1. These
+images are first resized to 128 × 96 gray scale as shown in Fig. 4. Then the PCA algorithm described
+in the Appendix A.1 is directly applied on them. The first 6 eigenvectors of these images are shown in
+Fig. 5, which correspond to 85% of the variance of the trained images. These eigenvectors can be used
+as the axis of the new coordinate frame. Then each image can be saved in the new frame with only 6
+coordinates, which can be computed according to step (6) in Appendix A.1. For example, the jth image
+of object i can be represented as depicted in Fig. 6.
+Before doing PCA, in order to save 30 object images of the size 128 × 96, we need 30 × 128 × 96 ×
+sizeof (int) memory. After PCA, in the example above, each object will only has 6 coordinates, then the
+total memory is (30 × 6 + 128 × 96 × 6)sizeof (int). Reducing the dimensionality of the dataset using
+PCA saved us then around 80% memory.
+
+2.2.3
+
+Implementation
+
+During the practical, you do not need to code the PCA algorithm (All students must read Appendix A.1
+for further information about this algorithm). But you need to collect the block images for the training
+dataset as shown in Fig. 7.
+2 For this practical, the object recognition algorithm should be invariant to the object orientation (rotation on the table).
+To this end, we collect images for each object with different orientation.
+
+6
+
+Figure 3: The object images for a bowl, a tissue and a stapler, each with 10 images, size 640 × 480.
+
+Figure 4: The same object images with gray scale, size 128 × 96.
+Steps to follow:
+1. Take one of the objects and put it on the position marked by a cross on the table. This is the
+default image capturing position, where you could take the photos of the object using the webcam
+that is mounted on the robot arm (see Fig. 7)
+2. Execute Katana control software by opening a terminal and typing the following lines:
+>> cd $PRACTICAL/ c p p c o d e s / LasaKatana /
+>> . / b i n / P r a c t i c a l
+
+3. A command list will be displayed like below:
+======================================================================
+Command L i s t
+1 . B a s i c Tasks : \ n
+[ c a l i b r a t e ] : C a l i b r a t e Katana
+[ open
+] : Open t h e g r i p p e r
+[ close
+] : Close the g r i p p e r
+[ motor on ] : Turn on t h e motors
+[ motor o f f ] : Turn o f f t h e motors
+[ home
+] : Go t o home p o s i t i o n
+[ quit
+] : Quit t h e s o f t w a r e
+2 . For PCA S e s s i o n :
+[ pca
+] : Move t h e Katana t o t h e d e f a u l t p o s i t i o n
+[ grab
+] : Grab a image from t h e camera mounted on t h e r o b o t
+3 . For SEDS S e s s i o n :
+[ pick
+] : Get d e m o n s t r a t i o n s o f p i c k i n g t a s k
+[ place
+] : Get d e m o n s t r a t i o n s o f p l a c i n g t a s k
+======================================================================
+>>
+
+4. Before using the robot, we need to calibrate it. First, make sure the robot is in its home position
+(Fig. 1a shows the robot in its home position). Then type “calibrate” to start the calibration.
+5. Type “pca” to send the robot to the default image capturing position. This bring the robot arm on
+the top of the object, where it can take a clear picture of it using the camera mounted on its wrist.
+6. Type “grab” to take image for each object and type object index for each object:
+
+7
+
+Figure 5: The first 6 eigenvectors of the trained object images.
+
++
+
+g1ij ×
+
++
+
+g2ij ×
+
++
+
+g3ij ×
+
+g4ij ×
+
++
+
+g5ij ×
+
++
+
+g6ij ×
+
+=
+
+Figure 6: Reconstruction of an image as a linear superposition of the 6 eigenvectors shown in Fig. 5.
+
+>>P l e a s e
+[ ObjInd ]
+>> I f you
+>> I f you
+>> I f you
+
+type image i n d e x ( 1 t o 1 0 ) :
+a r e r e a d y t o save images , p r e s s [ENTER]
+want t o change image index , type i n d e x i d .
+want t o e x i t , p r e s s ’ x ’ .
+
+Note: take one image without any object as the background image! Change the image name to
+bknd.png.
+7. Repeat Step 6 for all your objects and all the images will be saved in “PracticalCodes/data/img/training”. Move some images from here to the “testing” folder, which will be used as a testing
+dataset.
+8. Move robot to home position
+9. Open MATLAB by typing the following line in a new terminal:
+>>matlab &
+
+10. Open the file “PracticalCodes/matlabcodes/PCA/Object recognition.m” and follow the instructions in this file as follows.
+8
+
+Camera 1
+
+workspace
+
+Building
+blocks
+
+Figure 7: There are five blocks that will be used for the practical. In order to recognize the blocks, you
+need to collect images of each blocks from different view.
+
+% S t u d e n t s need t o modify b e l o w v a r i a b l e s
+nbObj = 5 ; % Number o f o b j e c t s you a r e t r a i n e d
+nbImg = 1 0 ; % Number o f images f o r each o b j e c t
+% Save t h e images as a m a t r i x and compute t h e c o v a r i a n c e
+[ MatrixImage , imgMat , imMean , imVec0 ] = I m a g e P r o c e s s ( nbObj , nbImg ) ;
+% Compute t h e e i g e n v e c t o r s and e i g e n v a l u e s
+[ D, ev ] =CompEigen ( MatrixImage , imgMat ) ;
+% Determing t h e number o f p r i n c i p a l components by c h a n g i n g t h e t h r e s h o l d
+% NK : number o f pc
+threshold =0.85;
+f o r i =1: s i z e (D, 1 )
+temp=sum(D( 1 : i ) ) /sum(D) ;
+i f ( temp>t h r e s h o l d )
+NK=i ;
+break
+end
+end
+% Save t h e model i n a s t r u t u r e and w r i t e t o a t e x t f i l e
+LearnedPCAModel = SaveTrainedPCA (NK, ev , imMean , imVec0 , nbObj , nbImg ) ;
+% P l o t t h e e i g e n image i f you want t o s e e t h e r e s u l t s
+f o r i =1:NK
+figure ( i )
+eigIMAGE=reshape ( LearnedPCAModel . e i g e n V e c ( : , i ) , 9 6 , 1 2 8 ) ;
+colormap ( gray ( 2 5 6 ) ) ;
+imagesc ( eigIMAGE ) ;
+daspect ( [ 1 1 1 ] ) ;
+xlabel ( s p r i n t f ( ’ The %dth e i g e n images ’ , i ) , ’ F o n t S i z e ’ , 1 8 ) ;
+end
+% t e s t t h e performance o f t h e t r a i n e d PCA
+P r a c t i c a l R o o t P a t h = getenv ( ’PRACTICAL ’ ) ;
+
+9
+
+O b j e c t I n d e x = evaulatePCAModel ( [ P r a c t i c a l R o o t P a t h ,
+. png ’ ] , LearnedPCAModel ) ;
+
+’ / data / img / t e s t i n g / T e s t i n g I m a g e
+
+11. After training, the learned model will be saved in the folder “data/pcamodel”.
+
+Excercise 1, Object Recognition (30 % of the total score): Build a PCA model of your objects by
+following steps 1 to 10 above, and answer the following questions:
+1. Explain how you created your training set: how many and what types of images did you pick for
+each object? Justify your choices. (5 %)
+2. Validate your trained model with some new images (i.e. Step 7). How many and what type of test
+images did you use to have a good validation of the trained model? Justify your choices. What is
+the performance of your object recognition model? (10 %)
+3. Is there any misclassification? If yes, explain the source(s) of misclassification? If no, explain what
+experiment conditions you have considered to obtain this performance? Could you think of other
+means to validate your model? (10 %)
+4. How many bytes are used to store these images for each object in MATLAB before and after PCA
+(you need to understand the example mentioned in Section 2.2.2)? What is the optimal number of
+eigenvectors for your dataset and how did you pick it? (5 %)
+
+10
+
+3
+
+Teaching a reaching movement to a robot
+
+3.1
+
+Overview
+
+In this session, you will teach a robot how to move its end-effector to a desired position to pick an object
+and to move it to a specific position. All these movements are called point-to-point motions (also referred
+to as episodic motions, discrete motions, or reaching motions) because they always start from one point
+and stop at a terminal point, called target. We will use an imitation learning approach to teach a robot
+these point-to-point motions. Imitation learning enables a robot to learn a given task from a set of
+demonstrations shown by the user. Among the several imitation learning-based point-to-point-motion
+learning methods, we will use a Dynamical System (DS) approach, namely Stable Estimator of Dynamical
+Systems (SEDS) [?].
+SEDS builds an accurate estimate of robot motions from a set of demonstrations while ensuring its
+global asymptotic stability at the target. SEDS uses finite mixture of Gaussian functions to encode the
+movements. The number of Gaussian functions should be defined by the user (usually lower than 10)3 .
+Figure 8 shows an example of 2D training data and its reproduction by the DS model learned using
+SEDS. A brief overview of SEDS and Gaussian Mixture Model (which SEDS is built upon) is provided in
+Appendices A.3 and A.2, respectively. Next sections will guide you through the steps necessary to teach
+a robot point-to-point motion.
+
+(a) Two-dimensional demonstrations
+
+(b) Reproduction by the dynamics model learned
+through SEDS
+
+Figure 8: An example of two-dimensional dynamics learned from three demonstrations
+
+3.2
+3.2.1
+
+Kinesthetic Teaching
+Robot reaching motion acquisition
+
+You will demonstrate several point-to-point motions using the provided Katana robot, and measure the
+robot’s griper position and joint angle trajectories.
+
+Step to follow :
+1. Turn on the robot
+2. Execute the Katana control software by typing the following lines in a terminal window:
+>> r o s c d LasaKatana
+>> . / b i n / P r a c t i c a l
+3 An optimal number of gaussian functions can be found using various method, such as the Bayesian Information Criterion
+(BIC) [?], the Akaike information criterion (AIC) [?] or the deviance information criterion (DIC) [?]. However in this
+practical, the number will be given by the user
+
+11
+
+3. A command list will be displayed like below.
+======================================================================
+Command L i s t
+1 . B a s i c Tasks :
+[ c a l i b r a t e ] : C a l i b r a t e Katana
+[ open
+] : Open t h e g r i p p e r
+[ close
+] : Close the g r i p p e r
+[ motor on ] : Turn on t h e motors
+[ motor o f f ] : Turn o f f t h e motors
+[ home
+] : Go t o home p o s i t i o n
+[ quit
+] : Quit t h e s o f t w a r e
+2 . For PCA S e s s i o n :
+[ pca
+] : Move t h e Katana t o t h e d e f a u l t p o s i t i o n
+[ grab
+] : Grab a image from t h e camera mounted on t h e r o b o t
+3 . For SEDS S e s s i o n :
+[ pick
+] : Get d e m o n s t r a t i o n s o f p i c k i n g t a s k
+[ place
+] : Get d e m o n s t r a t i o n s o f p l a c i n g t a s k
+======================================================================
+>>
+
+4. Calibrate the Katana robot by typing “calibrate”
+5. Start record picking motion by typing “pick”
+6. The robot arm will automatically move to a proper initial posture.
+7. Hold the robot firmly with your hand. If you are ready to grab a data, press [Enter]. After
+pressing enter, the motors will switch off and the robot will be back-drivable. Failing to grab the
+robot properly will cause the robot fall on the table and be dameged!
+8. Demonstrate a motion by back-driving the robot (see Fig. 9).
+9. When the demonstration is finished, press [Enter].
+10. You needed to do the same demonstrations a few times from different initial positions. The optimal
+number of demonstrations depends on several factors. Try to figure out these factors and come up
+with an optimal number of demonstrations (See Exercise 2.1).
+11. The demonstrations will be stored on the “$PRACTICAL/data/trj/” folder.
+12. You can record placing motion in the same way of grabbing picking motion by typing “place”.
+13. When you finished the demonstrations, type “quit” to send the robot to its home position and to
+quit the software. Note that all the robot motors are turned off when the software is
+closed, and thus the robot may fall down on the table if it is not properly placed at
+its home position!
+By following the steps above, you acquire several demonstrations for both picking and placing motions.
+Next, we will use Matlab to learn a generic and stable model of these motions from the demonstrations
+using the SEDS library.
+
+3.2.2
+
+Train the acquired trajectories and evaluate the results
+
+You will train the acquired trajectory from section 3.2.1 using SEDS Matlab package. The package is
+located at “$PRACTICAL/matlabcodes/SEDS”.
+Step to follow :
+1. Start Matlab software by typing “matlab” in the Ubuntu terminal.
+>> matlab &
+
+12
+
+(a) Demonstration of a picking motion (b) Demonstration of a placing motion
+
+Figure 9: An example of picking and placing demonstrations through back-driving the robot.
+2. Change current folder to the SEDS Package folder “$PRACTICAL/matlabcodes/SEDS”.
+3. Open the file “practical.m”.
+4. You need to modify the parameters defined in lines 9 to 22 based on your need. The functionality
+of each parameter is described in front of it.
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+
+%% User Parameters
+demoType = ‘ p i c k ’ ;
+
+%S p e c i f y i n g t h e t y p e o f d e m o n s t r a t i o n s . I t s
+%v a l u e s h o u l d e i t h e r be ‘ p i c k ’ or ‘ p l a c e ’
+
+K = 4;
+
+%Number o f Gaussian f u n c t i o n s
+
+o p t i o n s . o b j e c t i v e = ‘ mse ’ ; %The c r i t e r i o n t h a t o p t i m i z a t i o n u s e s t o t r a i n
+%t h e model . P o s s i b l e v a l u e s a r e :
+% ‘ mse ’ : u s e mean s q u a r e e r r o r as c r i t e r i o n t o o p t i m i z e
+p a r a m e t e r s o f GMM
+19
+% ‘ l i k e l i h o o d ’ : u s e l i k e l i h o o d as c r i t e r i o n t o o p t i m i z e
+p a r a m e t e r s o f GMM
+20
+21 o p t i o n s . m a x i t e r = 5 0 0 ;
+%Maximum number o f i t e r a t i o n s . O p t i m i z a t i o n e x i t s i f i t
+22
+% does not converge w i t h i n the s p e c i f i e d i t e r a t i o n s
+
+5. Execute the code by pressing “F5”.
+6. The code automatically train the demonstration and save the trained model in the text format on
+“$PRACTICAL/data/model”.
+7. Change the demoType to place and train the model.
+
+Excercise 2. Learning the picking and placing motions using the SEDS Matlab package (30% of the total
+score)
+
+1. Analyzing the effect of number of Gaussian functions (15%)
+(a) Set options.objective = ‘mse’, and the number of Gaussian functions K = 1. Run the code
+by pressing “F5”, and write down the final estimation error. Repeat this step 3 times. You
+should observe that the estimation error may vary at each iteration. This is due to the fact
+that SEDS is initialized randomly. Write down the best estimation error that you obtain from
+the three trials.
+
+13
+
+(b) Repeat (a) by incrementally increasing K from 1 to 6, and discuss the effect of increasing the
+number of Gaussian functions on the final estimation error.
+(c) Is there an optimal number of Gaussian functions? If yes, what is this value? If no, could you
+come up with some criterion to choose the optimal number?
+(d) Repeat the steps above for the placing motion.
+2. Analyzing the effect of the optimization objective criterion (15%)
+(a) Set options.objective = ‘likelihood’, and repeat the steps above.
+(b) Discuss the performance difference between using mse or likelihood as the optimization criterion. Which one is more performant? Why?
+3. Export the best model of both picking and placing motions by typing the following line:
+>> SaveGMM( structGMM , [ P r a c t i c a l R o o t P a t h ‘ / data / model / ’ ] , demoType ) ;
+
+3.2.3
+
+Robot implementation
+
+Using the two trained models of the previous exercise (picking and placing motion models), you can now
+move the robots to reach for an object and to place it at a desired position. In this section, you use a
+provided program to test your trained models.
+Steps to follow:
+1. Execute the DSTest control software
+>> r o s c d LasaKatana /
+>> . / b i n / DSTest
+
+2. A command list will be displayed like below.
+======================================================================
+Command L i s t
+[ c a l i b r a t e ] : c a l i b r a t e Katana
+[ pick
+] : e x e c u t e p i c k motion
+[ place
+] : e x e c u t e p l a c e motion
+[ save
+] : save the l a s t Cartesian t r a j e c t o r y
+[ home
+] : go t o t h e home p o s i t i o n
+[ set
+] : set t h e t a r g e t p o s i t i o n
+[ quit
+] : quit
+======================================================================
+>>
+
+3. First, calibrate the robot by typing “calibrate”.
+4. Get the target position by typing “set”.
+5. Send the robot to a proper initial position by typing “initial”. This step is essential to avoid
+some possible issues when solving the inverse kinematic problem (interested students can ask the
+assistants for further details).
+6. Type “pick” to move the robot from the initial to the target point using the trained picking DS
+model. Similarly, you could type “place” to use the placing DS model.
+7. After the motion was executed, type “save” to store the generated trajectory in a text file. You
+could use the saved trajectory later on to evaluate the performance of your trained models.
+
+Excercise 3. Evaluation of the generated motions on the real robot: (10%)
+
+14
+
+1. Execute the pick and place motions for three different positions of the target, and save the generated
+trajectories (see the steps described above). Compare these trajectories to those you demonstrated
+for the training, and discuss similarities and differences.
+2. Read the initial and target positions of each trajectory, and re-generate the motion in the simulation
+using the provided matlab code. Discuss the similarities and differences between the generated
+motions in the simulation and on the real robot?
+
+15
+
+4
+
+Building a tower game
+
+4.1
+
+Overview
+
+In this last session, you will implement a code to let the robot build a stable and high tower. In the
+previous two sessions, you have become familiar with PCA to perform object recognition and with SEDS
+to generate robot point-to-point motions. Based on these methods, you can now make an automatic
+robotic system to build a stable and high tower using the given toy blocks. For this task, each group
+receives a Katana robot equipped with a camera and five toy blocks to build the tower.
+
+4.2
+
+Steps to follow
+
+A template code providing you with basic features such as position estimation, object recognition, and
+movement generation is available in the file “myTower.cpp”. You should extend this template file to
+implement your own autonomous building tower robotic system. Next, we will describe different parts of
+this file, which can be accessed as follows:
+
+1. Open the project file in “$PRACTICAL/cppcodes/LataKatana/” using eclipse by typing the following line in the Ubuntu’s terminal:
+>> e c l i p s e &
+
+2. Open “myTower.cpp” in eclipse. This is an example code describing how to use the GMR library,
+how to communicate with the Katana, how to perform object recognition, etc.
+
+4.2.1
+
+Object Localization
+
+Provided objects will be distributed randomly in the robots workspace as shown in Fig. 10a. The
+number of object and their 2D positions on the table will be measured using an object localization
+module. Localization is done using a fixed camera located above the set-up, see Fig. 10. It takes an
+image using the camera and calculates the objects’ 2D Cartesian position with respect to the Katana’s
+base coordinate.
+The hardware setup and basic procedure for the localization module is shown in Fig 10. Furthermore,
+the following lines, taken from “myTower.cpp”, shows an example of how to localize the objects.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+MObjLocal ∗ m L o c a l i z a t i o n ;
+// c r e a t e a t r a c k i n g c l a s s
+m L o c a l i z a t i o n = new MObjLocal ( ) ;
+// g e t o b j e c t p o s i t i o n l i s t
+MathLib : : Matrix l O b j P o s i t i o n s ;
+l O b j P o s i t i o n s = m L o c a l i z a t i o n −>M O b j L o c a l i z a t i o n (MAX OBJ, LOCALIZATION THRESHOLD) ;
+// MAX OBJ : Maximum number o f o b j e c t t o be l o c a l i z e d , d e f a u l t 10
+// LOCALIZATION THRESHOLD : d e f a u l t 20
+
+4.2.2
+
+Recognize object
+
+Once object positions are measured, the robot should move the camera (which is attached near the
+end-effector) and put it above the object position. When the camera reaches the desired position, you
+can identify the object using your trained PCA model. The following lines shows how it is done in
+“myTower.cpp” file.
+16
+
+Object image
+
+Camera 1
+
+Background
+
+Camera 2
+substract
+background
+
+gray scale
+
+binary scale
+
+(a) The vision system for object localization
+and recognition
+
+(b) The Basic procedure for object localization.
+
+Figure 10: The 2D object position will be measured by camera 2. For more details about object localization using one camera, please refer to http://mablresearch.rit.edu/wiki/index.php/Object_
+detection_and_location_with_MATLAB
+
+1
+2 f o r ( i n t c n t =0; cnt<l O b j P o s i t i o n s . ColumnSize ( ) ; c n t++)
+3 {
+4
+// move t h e camera l o c a t i o n t o a b o v e t h e o b j e c t
+5
+lTargetPos (0) = l O b j P o s i t i o n s (0 , cnt ) ;
+6
+lTargetPos (1) = l O b j P o s i t i o n s (1 , cnt ) ;
+7
+lTargetPos (2) = 0 . 2 5 ;
+8
+9
+lTargetOri (0) = 0 . 0 ;
+10
+lTargetOri (1) = 0 . 0 ;
+11
+lTargetOri ( 2 ) = −1.0;
+12
+b o o l r s t = mKatana−>M o v e S t r a i g h t ( l T a r g e t P o s , AXIS X , l T a r g e t O r i ) ;
+13
+14
+// r e c o g n i z e t h e i d o f t h e o b j e c t
+15
+// nbPC : number o f p r i n c i p l e components
+16
+// nbObj : number o f o b j e c t
+17
+// nbObjImg : number o f images f o r each o b j e c t
+18
+i n t lObjID = mObj−>ObjIden (nbPC , nbObj , nbObjImg ) ;
+19 }
+
+4.2.3
+
+Robot Movement Generation
+
+After detecting the objects and estimating their position, we could now move the robot to reach for
+objects and to place them in a desired position. The following lines describe how we could move the
+robot to reach for an object, and grasp it. You could easily extend this code to perform the placing
+motion.
+1
+2
+3
+4
+5
+6
+
+// gmr p i c k
+mKatana−>G e t J o i n t a n g l e ( l J o i n t s ) ;
+mKatana−>SetGMRDyn(mGMRPick) ;
+mKatana−>GenerateMotion ( l J o i n t s , l T a r g e t P o s ) ; // l T a r g e t P o s : o b j e c t p o s i t i o n
+mKatana−>Grip ( t r u e ) ; // open g r i p p e r
+
+17
+
+7
+8
+9
+10
+11
+12
+13
+14
+15
+
+mKatana−>Move ( ) ;
+// move t h e g r i p e r t o t h e
+mKatana−>Grip ( f a l s e ) ; // c l o s e g r i p p e r
+
+‘ ‘ lTargetPos ’ ’ .
+
+// gmr p l a c e
+mKatana−>G e t J o i n t a n g l e ( l J o i n t s ) ;
+mKatana−>SetGMRDyn(mGMRPlace) ;
+mKatana−>GenerateMotion ( l J o i n t s , l P l a c i n g P o s ) ; // l P l a c i n g P o s : p l a c i n g p o s i t i o n
+mKatana−>Move ( ) ;
+mKatana−>Grip ( t r u e ) ;
+
+4.2.4
+
+Integration
+
+After searching and recognizing the objects, you will make a different strategy for determining stacking
+order. For instance, you may make the robot to put an object on the bottom which has the largest flat
+surface. Then, you should make a complete autonomous software based on the previous implemented
+codes.
+
+Excercise 4. Integrate the works of previous sessions (PCA and SEDS) and develop a software to make
+the Katana build a tower (30% of the total score).
+
+1. Write a code to move the camera close to each object so that the object become visible in the
+camera mounted on the Katana’s wrist and hence be recognizable by the PCA algorithm.
+2. Design a stocking strategy to maximize the tower height, and describe your strategy in word and
+using a block diagram illustrating the information flow. Furthermore, describe the results with
+illustrative pictures, including graphs of succussed and failed attempts with an explanation of the
+cause of failures.
+
+18
+
+A
+
+Appendix
+
+A.1
+
+Algorithm for PCA
+2
+
+Given an N × N image template, one can save it as a column vector x ∈ RN whose elements are the
+2
+pixel values of the image. Given a dataset with n such vectors or images, xi ∈ RN , i = 1, ..., M , we
+denote their mean as x =
+
+1
+M
+
+M
+
+xi and proceeds as follows:
+
+i=1
+
+1. Subtracting the mean for each vector xi = xi − x, i = 1, ..., M ;
+
+
+T
+x1
+ . 
+
+2. Computing the covariance matrix C = [x1 ...xM ] 
+ .. ;
+T
+xM
+3. Computing the eigenvectors and values of the covariance matrix: ei , λi , i = 1, ..., M ;
+4. Sorting the eigenvector and values: λ1 > λ2 > ... > λM ;
+5. Assuming only first k components are important, which can be done by computing the cumulative
+energy content for each eigenvector.
+6. For each object i and each image j, j = 1...J, compute the new coordinates:
+g ij = (xij − x)T [e1 , ..., ek ]
+7. For each object i, compute the cluster center g¯i =
+
+1
+J
+
+J
+
+(g ij )
+
+j=1
+
+Now, given a new image (In this practical, images are taken using a camera mounted on the robot
+2
+arm), precess the image to the same format as the training dataset, write it as x∗ ∈ RN . Note that here
+one can easily define different metrics for the object classification, we simply use the distance between
+the cluster center and the new object as a recognition criteria. When the distance is larger then some
+threshold, the algorithm will return a null value of object index to indicate a more accurate PCA model
+is required.
+1. computing the coordinates: g ∗ = (x∗ − x)T [e1 , ..., ek ];
+2. Finding the closest object cluster center g¯i to g ∗ by min:||¯
+g i − g ∗ ||2 ;
+
+A.2
+
+Gaussian Mixture Regression (GMR)4
+
+Nonlinear regression techniques deal with the problem of building a continuous mapping function f :
+i T
+i
+Rn → Rm based on a set of T training data points D : {ξIi , ξO
+}i=1 , where ξIi ∈ Rn and ξO
+∈ Rm
+correspond to vectors of input and output variables, respectively. The regression function f is usually
+described in terms of a set of parameters θ, where an optimal value of θ can be determined during the
+training. Once an estimate of f is obtained, then it can be used to predict the value of ξO for a new
+input ξI :
+∗
+ξO
+= f (ξI∗ ; θ)
+4 The
+
+presented materials in this section are taken from [?].
+
+19
+
+(1)
+
+Gaussian Mixture Regression (GMR) is one of the well-known nonlinear regression techniques that
+works on the joint probability P([ξI ; ξO ]) between input and output variables5 . The joint probability is
+formed by superposition of K linear Gaussian functions:
+K
+
+π k N ([ξI ; ξO ]|µk , Σk )
+
+P([ξI ; ξO ]) =
+
+(2)
+
+k=1
+
+where π k , µk and Σk respectively are the prior, mean and covariance matrix of the k-th Gaussian function
+N ([ξI ; ξO ]|µk , Σk ) that is described by:
+N ([ξI ; ξO ]; µk , Σk ) =
+
+1
+
+1
+
+(2π)n+m |Σk |
+
+e− 2 ([ξI ;ξO ]−µ
+
+) (Σk )−1 ([ξI ;ξO ]−µk )
+
+k T
+
+(3)
+
+where (.)T denotes the transpose. From different perspective, Eq. 2 can be rendered as:
+K
+
+P([ξI ; ξO ]) =
+
+P(k)P([ξI ; ξO ]|k)
+
+(4)
+
+k=1
+
+in which P(k) = π k is the probability of picking the k-th component and P([ξI ; ξO ]|k) stands for the
+probability the datapoint [ξI ; ξO ] belongs to this component. In mixture modeling, the unknown parameters of the joint distribution are the priors π k , the means µk and the covariance matrices Σk of the
+k = 1..K Gaussian functions (i.e. θk = {π k , µk , Σk } and θ = {θ1 ..θK }), which can be estimated by using
+an Expectation-Maximization (EM) algorithm [?]. EM proceeds by maximizing the likelihood that the
+complete model represents the training data well. Given the joint distribution P([ξI ; ξO ]) and a query
+point ξI∗ , the GMR process consists of taking the posterior mean estimate of the conditional distribution:
+∗
+∗
+ξO
+= f (ξI∗ ; θ) = E[P(ξO
+|ξI∗ , θ)]
+
+(5)
+
+By defining the components of the mean and the covariance matrix of a Gaussian k as:
+
+µk =
+
+µkI
+µkO
+
+& Σk =
+
+ΣkI
+ΣkOI
+
+ΣkIO
+ΣkO
+
+(6)
+
+∗
+the expected distribution of ξO
+can be estimated as:
+
+K
+∗
+ξO
+=
+
+h(ξI∗ ; θ k ) ΣkOI (ΣkI )−1 (ξI∗ − µkI ) + µkO
+
+(7)
+
+k=1
+
+where
+
+h(ξI∗ ; θ k ) =
+
+P(k)P(ξI∗ |k)
+K
+i=1
+
+P(i)P(ξI∗ |i)
+
+=
+
+π k N (ξI∗ |µkI , ΣkI )
+K
+i=1
+
+π i N (ξI∗ |µiI , ΣiI )
+
+(8)
+
+Figure 11 illustrates an example of using GMR to build an estimate of f from a set of noisy samples
+using 3 Gaussian functions. For illustrative purpose, a uni-dimensional input and output variables are
+considered in this example.
+5 Note that we use the expression [ξ ; ξ ] to vertically concatenate the two column vectors ξ and ξ . The resulting
+I O
+I
+O
+vector [ξI ; ξO ] has the dimension n + m.
+
+20
+
+Samples
+Regression
+1−σ confidence
+
+0.4
+
+ξO
+
+0.2
+
+0
+
+−0.2
+
+−0.4
+−1
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+ξI
+Figure 11: An examples of using GMR to regress a set of one-input one-output datapoints. In this
+graph, the ellipses and crosses represents the 3 − Σ and centers of the Gaussian functions. The grey area
+represents the predictive confidence by one standard deviation.
+
+A.3
+
+Stable Estimator of Dynamical Systems (SEDS)6
+
+Classical approaches to modeling robot motions rely on decomposing the task execution into two separate
+processes: planning and execution [?]. The former is used as a means to generate a feasible path that
+can satisfy the task’s requirements, and the latter is designed so that it follows the generated feasible
+path as closely as possible. Hence these approaches consider any deviation from the desired path (due to
+perturbations or changes in environment) as the tracking error, and various control theories have been
+developed to efficiently suppress this error in terms of some objective functions. Despite the great success
+of these approaches in providing powerful robotic systems, particularly in factories, they are ill-suited for
+robotic systems that are aimed to work in the close vicinity of humans, and thus alternative techniques
+must be sought.
+In robotics, DS-based approaches to motion generation have been proven to be interesting alternatives
+to classical methods as they offer a natural means to integrate planning and execution into one single
+unit [?, ?, ?]. For instance when modeling robot reaching motions with DS, all possible solutions to reach
+the target are embedded into one single model. Such a model represents a global map which specifies
+instantly the correct direction for reaching the target, considering the current state of the robot, the
+target, and all the other objects in the robot’s working space. Clearly such models are more similar
+to human movements in that they can effortlessly adapt its motion to change in environments rather
+than stubbornly following the previous path. In other words, the main advantage of using DS-based
+formulation can be summarized as: “Modeling movements with DS allows having robotic systems that
+have inherent adaptivity to changes in a dynamic environment, and that can swiftly adopt a new path to
+reach the target”. This advantage is the direct outcome of having a unified planning and execution unit.
+When modeling robot motions with nonlinear Dynamical Systems (DS), ensuring stability of the
+learned DS (from a set of demonstrations of the task) is a key requirement to provide a useful control
+policy. In Appendix A.2, we have described how one can use GMR to build an estimate of a nonlinear
+function from a set of sample datapoints. However, as EM (the conventional learning algorithm for
+GMM) do not optimize under the constraint of making the function f stable at the target, it is not
+guaranteed to result in a stable estimate of the motion. Stable Estimator of Dynamical Systems (SEDS)
+is a learning algorithm developed at LASA as an alternative to EM in order to train a GMM from user
+demonstrations while ensuring its global asymptotic stability at the target. More details about SEDS
+framework is available at [?].
+The estimated DS from SEDS captures the invariant features in the user demonstrations, and can
+generate motions that resemble the user demonstrations. For instance, Fig. 12 shows an example of
+learning 20 human handwriting motions using SEDS. For each motion, the user provides 3 demonstrations
+by drawing a pen on a Tablet-PC. These demonstrations are shown with red dots. By using SEDS, a DS
+6 The
+
+presented materials in this section are taken from [?].
+
+21
+
+Training Data
+
+Reproductions
+
+Initial points
+
+ξ2
+
+ξ2
+
+Target
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+ξ1
+
+Figure 12: Learning a library of 20 human handwriting motion by using SEDS framework. This library
+is not fixed and the user can freely add a new style of writing, or modify one of the existing motions just
+by introducing a new set of sample trajectories.
+
+f 1 (ξ)
+
+f 2 (ξ)
+
+f 3 (ξ) = 0.8f 1 (ξ) + f 2 (ξ)
+0.15
+
+0.1
+
+ξ2 (m)
+
+ξ2
+
+ξ2 (m)
+
+0.1
+
+0.05
+
+0.05
+
+ξ2 (m)
+
+Swing Motion
+
+0
+
+0.1
+0.05
+
+−0.05
+
+Resting Motion
+
+0
+
+0
+
+−0.1
+−0.2 −0.15 −0.1 −0.05
+
+ξ1
+
+(a) Generation of tennis swing motion as a
+composition of a swing and a resting primitives. Only three examples of generated
+trajectories are shown here (plotted as red,
+green, and blue lines).
+
+ξ1 (m)
+
+0
+
+−0.3
+
+−0.2
+
+−0.1
+
+ξ1 (m)
+
+0
+
+−0.3
+
+−0.2
+
+−0.1
+
+0
+
+ξ1 (m)
+
+(b) In this example f 1 (ξ) and f 2 (ξ) are two basic movement primitives
+that represent an angle and sine-shaped motions, respectively. The new
+movement primitive f 3 (ξ) that includes a mixture of both behaviors is
+obtained through a linear superposition of f 1 (ξ) and f 2 (ξ).
+
+Figure 13: Illustration of two examples exploiting modularity of DS models to generate (a) a more
+complex motion and (b) a new movement primitive. In this figure, the black star and circles indicate
+the target and initial points, respectively.
+model is estimated for each of these motions. By using these models, we are now able to generate motions
+that follow the same behavior (i.e. follows the same shape, curvature, nonlinearity) from different point
+in space (see the solid curves in Fig. 12). In other words, we are now able to give the robot the ability to
+follow a specific behavior (e.g. writing a letter ‘z’) just with a few examples. Additionally, the user can
+also teach the robot a new style of writing the letter ‘z’, by just providing a new set of sample trajectories.
+Another feature of SEDS is its modularity. In fact, each DS model codes a specific motion (behavior),
+which is called a movement primitive (also known as motor primitive). These motion primitives can be
+seen as a building block that can be used to generate more complex or new motions through sequencing
+or superimposition of the primitives. This modularity of DS-based movement primitives is essential as
+it allows controlling a wide repertoire of movements from a (small) set of basic motions [?]. Figure 13
+shows two examples of exploiting this modularity of movement primitives to generate new motions.
+To summarize, a conceptual workflow describing how SEDS works is depicted in Fig. 14. As it is
+illustrated, first the user provides a set of demonstrations describing how robot should perform a task.
+Then a DS-based control policy is build using the ‘Learning Core’ of SEDS. This DS model can be used
+to generate robot commands to properly execute the desired task based on the situation in the robot’s
+workspace. The ‘Execution Core’ of SEDS is able to adapt in realtime a new trajectory if any change
+happen in the workspace (e.g. the target point or other objects are replaced). For example in the image
+shown in the block ‘robot’ in Fig. 14, the robot is required to put a (transparent) glass in front of the
+user in a cluttered environment. As the robot approaches, the person intentionally moves the red glass
+in a way that crosses the robot trajectory. Despite this quick change, the robot is able to robustly handle
+this perturbation and successfully put the transparent glass in front of the user without hitting other
+objects (more information on this experiment is provided in [?]).
+
+22
+
+Human user showing a couple of
+samples of the desired motion
+SEDS
+Learning a dynamical
+system model of the
+motion
+
+Realtime, adaptive,
+robust, and human-like
+robot motion generation
+Realtime feedback from the
+robot’s environment, e.g. the
+position and orientation of
+objects, target points, etc.
+
+Robot
+
+Execution Core
+
+If necessary, online refinement
+of the motion model
+
+Learning Core
+
+Offline learning
+
+Torque or velocity
+command to the robot
+
+Figure 14: A conceptual workflow describing how the SEDS framework works. For further information
+please refer to A.3.
+
+23
+
+

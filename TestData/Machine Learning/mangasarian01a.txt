@@ -1,0 +1,1390 @@
+Journal of Machine Learning Research 1 (2001) 161-177
+
+Submitted 8/00; Published 3/01
+
+Lagrangian Support Vector Machines
+O. L. Mangasarian
+
+olvi@cs.wisc.edu
+
+Computer Sciences Department
+University of Wisconsin
+Madison, WI 53706, USA
+
+David R. Musicant
+
+dmusican@carleton.edu
+
+Department of Mathematics and Computer Science
+Carleton College
+Northfield, MN 55057, USA
+
+Editor: Bernhard Sch¨
+olkopf (for http://www.kernel-machines.org)
+
+Abstract
+An implicit Lagrangian for the dual of a simple reformulation of the standard quadratic
+program of a linear support vector machine is proposed. This leads to the minimization
+of an unconstrained differentiable convex function in a space of dimensionality equal to
+the number of classified points. This problem is solvable by an extremely simple linearly
+convergent Lagrangian support vector machine (LSVM) algorithm. LSVM requires the
+inversion at the outset of a single matrix of the order of the much smaller dimensionality of the original input space plus one. The full algorithm is given in this paper in 11
+lines of MATLAB code without any special optimization tools such as linear or quadratic
+programming solvers. This LSVM code can be used “as is” to solve classification problems with millions of points. For example, 2 million points in 10 dimensional input space
+were classified by a linear surface in 82 minutes on a Pentium III 500 MHz notebook with
+384 megabytes of memory (and additional swap space), and in 7 minutes on a 250 MHz
+UltraSPARC II processor with 2 gigabytes of memory. Other standard classification test
+problems were also solved. Nonlinear kernel classification can also be solved by LSVM. Although it does not scale up to very large problems, it can handle any positive semidefinite
+kernel and is guaranteed to converge. A short MATLAB code is also given for nonlinear
+kernels and tested on a number of problems.
+
+1. Introduction
+Support vector machines (SVMs) (Vapnik, 1995, Cherkassky and Mulier, 1998, Bradley and
+Mangasarian, 2000, Mangasarian, 2000, Lee and Mangasarian, 2000) are powerful tools for
+data classification. Classification is achieved by a linear or nonlinear separating surface
+in the input space of the dataset. In this work we propose a very fast simple algorithm,
+based on an an implicit Lagrangian formulation (Mangasarian and Solodov, 1993) of the
+dual of a simple reformulation of the standard quadratic program of a linear support vector machine. This leads to the minimization of an unconstrained differentiable convex
+function in an m-dimensional space where m is the number of points to be classified in a
+given n dimensional input space. The necessary optimality condition for this unconstrained
+minimization problem can be transformed into a very simple symmetric positive definite
+c 2001 O. L. Mangasarian and David R. Musicant.
+
+Mangasarian & Musicant
+
+complementarity problem (12). A linearly convergent iterative Lagrangian support vector
+machine (LSVM) Algorithm 1 is given for solving (12). LSVM requires the inversion at
+the outset of a single matrix of the order of the dimensionality of the original input space
+plus one: (n + 1). The algorithm can accurately solve problems with millions of points and
+requires only standard native MATLAB commands without any optimization tools such as
+linear or quadratic programming solvers.
+As was the case in our recent active set support vector machine (ASVM) approach
+(Mangasarian and Musicant, 2000), the following two simple changes were made to the
+standard linear SVM: (i) The margin (distance) between the parallel bounding planes was
+maximized with respect to both orientation (w) as well as location relative to the origin
+(γ). Such a change was also carried out in our successive overrelaxation (SOR) approach
+(Mangasarian and Musicant, 1999) as well as in the smooth support vector machine (SSVM)
+approach of Lee and Mangasarian (2000). See equation (7) and Figure 1. (ii) The error in the
+soft margin (y) was minimized using the 2-norm squared instead of the conventional 1-norm.
+See equation (7). These straightforward, but important changes, lead to a considerably
+simpler positive definite dual problem with nonnegativity constraints only. See equation
+(8). Although our use of a quadratic penalty for the soft margin as indicated in (ii) above
+is nonstandard, it has been used effectively in previous work (Lee and Mangasarian, 2000,
+2001, Mangasarian and Musicant, 2000). In theory, this change could lead to a less robust
+classifier in the presence of outliers. However, this modification to the SVM does not seem
+to have a detrimental effect, as can be seen in the experimental results of Section 5.
+In Section 2 of the paper we begin with the standard SVM formulation and its dual
+and then give our formulation and its dual. We note that computational evidence given
+in our previous work (Mangasarian and Musicant, 2000) shows that this alternative formulation does not compromise on generalization ability. Section 3 gives our simple iterative
+Lagrangian support vector machine (LSVM) Algorithm 1 and establishes its global linear
+convergence. LSVM, stated in 11 lines of MATLAB Code 2 below, solves once at the outset
+a single system of n + 1 equations in n + 1 variables given by a symmetric positive definite
+matrix. It then uses a linearly convergent iterative method to solve the problem. In Section 4 LSVM is extended to positive semidefinite nonlinear kernels. Section 5 describes our
+numerical results which show that LSVM gives comparable or better testing results than
+those of other SVM algorithms, and in some cases is dramatically faster than a standard
+quadratic programming SVM solver.
+We now describe our notation and give some background material. All vectors will be
+column vectors unless transposed to a row vector by a prime . For a vector x in the ndimensional real space R n , x+ denotes the vector in R n with all of its negative components
+set to zero. This corresponds to projecting x onto the nonnegative orthant. The base of
+the natural logarithms will be denoted by ε , and for a vector y ∈ R m , ε−y will denote a
+vector in Rm with components ε−yi , i = 1, . . . , m. The notation A ∈ R m×n will signify a
+real m × n matrix. For such a matrix A will denote the transpose of A, Ai will denote the
+i-th row of A and A·j will denote the j-th column of A. A vector of ones or zeroes in a real
+space of arbitrary dimension will be denoted by e or 0, respectively. The identity matrix
+of arbitrary dimension will be denoted by I. For two vectors x and y in R n , x ⊥ y denotes
+orthogonality, that is x y = 0. We use := to denote definition. The 2-norm of a vector
+x and a matrix Q will be denoted by x and Q respectively. A separating plane, with
+162
+
+Lagrangian Support Vector Machines
+
+respect to two given point sets A and B in R n , is a plane that attempts to separate R n into
+two halfspaces such that each open halfspace contains points mostly of A or B. A special
+case of the Sherman-Morrison-Woodbury (SMW) identity (Golub and Van Loan, 1996) will
+be utilized:
+I
+I
+(1)
+( + HH )−1 = ν(I − H( + H H)−1 H ),
+ν
+ν
+where ν is a positive number and H is an arbitrary m × k matrix. This identity, easily
+verifiable by premultiplying both sides by ( νI + HH ), enables us to invert a large m × m
+matrix of the form in (1) by merely inverting a smaller k × k matrix. It was also used
+recently in our ASVM paper (Mangasarian and Musicant, 2000) as well as by Ferris and
+Munson (2000).
+
+2. The Linear Support Vector Machine
+We consider the problem of classifying m points in the n-dimensional real space R n , represented by the m × n matrix A, according to membership of each point A i in the class A+
+or A− as specified by a given m × m diagonal matrix D with plus ones or minus ones along
+its diagonal. For this problem the standard support vector machine with a linear kernel
+(Vapnik, 1995, Cherkassky and Mulier, 1998) is given by the following quadratic program
+with parameter ν > 0:
+1
+νe y + w w s.t. D(Aw − eγ) + y ≥ e, y ≥ 0.
+2
+(w,γ,y)∈Rn+1+m
+min
+
+(2)
+
+Here w is the normal to the bounding planes:
+xw =γ±1
+
+(3)
+
+and γ determines their location relative to the origin. See Figure 1. The plane x w = γ + 1
+bounds the class A+ points, possibly with some error, and the plane x w = γ − 1 bounds
+the class A− points, also possibly with some error. The linear separating surface is the
+plane:
+x w = γ,
+(4)
+midway between the bounding planes (3). The quadratic term in (2) is twice the reciprocal of
+the square of the 2-norm distance 2/ w between the two bounding planes of (3) (see Figure
+1). This term enforces maximization of this distance, which is often called the “margin”. If
+the classes are linearly inseparable, as depicted in Figure 1, then the two planes bound the
+two classes with a “soft margin”. That is, they bound each set approximately with some
+error determined by the nonnegative error variable y:
+Ai w + yi ≥ γ + 1, for Dii = 1,
+Ai w − yi ≤ γ − 1, for Dii = −1.
+
+(5)
+
+Traditionally the constant ν in (2) multiplies the the 1-norm of the error variable y and
+acts as a weighting factor. A nonzero y results in an approximate separation as depicted in
+Figure 1. The dual to the standard quadratic linear SVM (2) (Mangasarian, 1994, Sch¨olkopf
+163
+
+PSfrag replacements
+
+Mangasarian & Musicant
+
+xw =γ+1
+x
+x
+o
+x
+x
+o x x x
+o
+o o o x
+x
+o o o
+x
+x
+x x
+o o oo
+x
+x
+o x x
+Ao
+o
+o
+x
+oo
+o o
+o
+o
+
+A+
+
+Separating Plane: x w = γ
+
+xw =γ−1
+Margin= w2
+
+w
+
+Figure 1: The bounding planes of a linear SVM with a soft margin (i.e. with some errors),
+and the separating plane approximately separating A+ from A−.
+et al., 1999, Mangasarian, 2000, Cristianini and Shawe-Taylor, 2000) is the following:
+1
+minm u DAA Du − e u s.t. e Du = 0, 0 ≤ u ≤ νe.
+(6)
+u∈R 2
+The variables (w, γ) of the primal problem which determine the separating surface (4) can
+be obtained from the solution of the dual problem above (Mangasarian and Musicant, 1999,
+Eqns. 5 and 7). We note immediately that the matrix DAA D appearing in the dual objective function (6) is not positive definite in general because typically m >> n. Also, there
+is an equality constraint present, in addition to bound constraints, which for large problems necessitates special computational procedures such as SMO (Platt, 1999) or SVM light
+(Joachims, 1999). Furthermore, a one-dimensional optimization problem (Mangasarian and
+Musicant, 1999) must be solved in order to determine the locator γ of the separating surface
+(4). In order to overcome all these difficulties as well as that of dealing with the necessity
+of having to essentially invert a very large matrix of the order of m × m, we propose the
+following simple but critical modifications to the standard SVM formulation (2). We change
+the 1-norm of y to a 2-norm squared which makes the constraint y ≥ 0 redundant. We also
+append the term γ 2 to w w. This in effect maximizes the margin between the parallel separating planes (3) by optimizing with respect to both w and γ (Mangasarian and Musicant,
+1999), that is with respect to both orientation and location of the planes, rather that just
+with respect to w which merely determines the orientation of the plane. This leads to the
+following reformulation of the SVM:
+min
+
+(w,γ,y)∈Rn+1+m
+
+ν
+
+yy 1
++ (w w + γ 2 ) s.t. D(Aw − eγ) + y ≥ e.
+2
+2
+
+(7)
+
+The dual of this problem is (Mangasarian, 1994):
+1 I
+min m u ( + D(AA + ee )D)u − e u.
+0≤u∈R 2
+ν
+
+(8)
+
+The variables (w, γ) of the primal problem which determine the separating surface (4) are
+recovered directly from the solution of the dual (8) above by the relations:
+u
+(9)
+w = A Du, y = , γ = −e Du.
+ν
+164
+
+Lagrangian Support Vector Machines
+
+We immediately note that the matrix appearing in the dual objective function is positive
+definite and that there is no equality constraint and no upper bound on the dual variable
+u. The only constraint present is a nonnegativity one. These facts lead us to our simple
+iterative Lagrangian SVM Algorithm which requires the inversion of a positive definite
+(n + 1) × (n + 1) matrix, at the beginning of the algorithm followed by a straightforward
+linearly convergent iterative scheme that requires no optimization package.
+
+3. LSVM (Lagrangian Support Vector Machine) Algorithm
+Before stating our algorithm we define two matrices to simplify notation as follows:
+H = D[A
+
+− e],
+
+Q=
+
+I
++ HH .
+ν
+
+(10)
+
+With these definitions the dual problem (8) becomes
+min m f (u) :=
+
+0≤u∈R
+
+1
+u Qu − e u.
+2
+
+(11)
+
+It will be understood that within the LSVM Algorithm, the single time that Q −1 is computed
+at the outset of the algorithm, the SMW identity (1) will be used. Hence only an (n + 1) ×
+(n + 1) matrix is inverted.
+The LSVM Algorithm is based directly on the Karush-Kuhn-Tucker necessary and sufficient optimality conditions (Mangasarian, 1994, KTP 7.2.4, page 94) for the dual problem
+(11):
+0 ≤ u ⊥ Qu − e ≥ 0.
+(12)
+By using the easily established identity between any two real numbers (or vectors) a and b:
+0 ≤ a ⊥ b ≥ 0 ⇐⇒ a = (a − αb)+ , α > 0,
+
+(13)
+
+the optimality condition (12) can be written in the following equivalent form for any positive
+α:
+Qu − e = ((Qu − e) − αu)+ .
+(14)
+These optimality conditions lead to the following very simple iterative scheme which constitutes our LSVM Algorithm:
+ui+1 = Q−1 (e + ((Qui − e) − αui )+ ), i = 0, 1, . . . ,
+
+(15)
+
+for which we will establish global linear convergence from any starting point under the easily
+satisfiable condition:
+2
+(16)
+0<α< .
+ν
+We impose this condition as α = 1.9/ν in all our experiments, where ν is the parameter
+of our SVM formulation (7). It turns out, and this is the way that led us to this iterative
+scheme, that the optimality condition (14), is also the necessary and sufficient condition for
+the unconstrained minimum of the implicit Lagrangian (Mangasarian and Solodov, 1993)
+associated with the dual problem (11):
+min L(u, α) = minm
+
+u∈Rm
+
+u∈R
+
+1
+1
+u Qu − e u +
+( (−αu + Qu − e)+
+2
+2α
+165
+
+2
+
+− Qu − e 2 ).
+
+(17)
+
+Mangasarian & Musicant
+
+Setting the gradient with respect to u of this convex and differentiable Lagrangian to zero
+gives
+1
+1
+(Qu − e) + (Q − αI)((Q − αI)u − e)+ − Q(Qu − e) = 0,
+(18)
+α
+α
+or equivalently:
+(αI − Q)((Qu − e) − ((Q − αI)u − e)+ ) = 0,
+(19)
+which is equivalent to the optimality condition (14) under the assumption that α is positive
+and not an eigenvalue of Q.
+We establish now the global linear convergence of the iteration (15) under condition
+(16).
+Algorithm 1 LSVM Algorithm & Its Global Convergence Let Q ∈ R m×m be the
+symmetric positive definite matrix defined by (10) and let (16) hold. Starting with an
+arbitrary u0 ∈ Rm , the iterates ui of (15) converge to the unique solution u
+¯ of (11) at the
+linear rate:
+Qui+1 − Q¯
+u ≤ I − αQ−1 · Qui − Q¯
+u .
+(20)
+Proof Because u
+¯ is the solution of (11), it must satisfy the optimality condition (14) for
+any α > 0. Subtracting that equation with u = u
+¯ from the iteration (15) premultiplied by
+Q and taking norms gives:
+Qui+1 − Q¯
+u = (Qui − e − αui )+ − (Q¯
+u − e − α¯
+u)+
+
+(21)
+
+Using the Projection Theorem (Bertsekas, 1999, Proposition 2.1.3) which states that the
+distance between any two points in R m is not less than the distance between their projections
+on any convex set (the nonnegative orthant here) in R m , the above equation gives:
+Qui+1 − Q¯
+u
+
+≤
+≤
+
+(Q − αI)(ui − u
+¯)
+−1
+I − αQ
+· Q(ui − u
+¯) .
+
+(22)
+
+All we need to show now is that I − αQ−1 < 1. This follows from (16) as follows. Noting
+the definition (10) of Q and letting λ i , i = 1, . . . , m, denote the nonnegative eigenvalues of
+HH , all we need is:
+1
+(23)
+−1 < 1 − α( + λi )−1 < 1,
+ν
+or equivalently:
+1
+2 > α( + λi )−1 > 0,
+(24)
+ν
+which is satisfied under the assumption (16).✷
+We give now a complete MATLAB (The MathWorks, Inc., 1994-2001) code of LSVM
+which is capable of solving problems with millions of points using only native MATLAB
+commands. The input parameters, besides A, D and ν of (10), which define the problem,
+are: itmax, the maximum number of iterations and tol, the tolerated nonzero error in
+ui+1 − ui at termination. The quantity ui+1 − ui bounds from above:
+Q
+
+−1
+
+· Qui − e − ((Qui − e) − αui )+ ,
+166
+
+(25)
+
+Lagrangian Support Vector Machines
+
+which measures the violation of the optimality criterion (14). It follows (Mangasarian and
+Ren, 1994) that ui+1 − ui also bounds ui − u
+¯ , and by (9) it also bounds w i − w
+¯ and
+i
+|γ − γ¯ |, where (w,
+¯ γ¯ , y¯) is the unique solution of the primal SVM (7).
+Code 2 LSVM MATLAB M-File
+function [it, opt, w, gamma] = svml(A,D,nu,itmax,tol)
+% lsvm with SMW for min 1/2*u’*Q*u-e’*u s.t. u=>0,
+% Q=I/nu+H*H’, H=D[A -e]
+% Input: A, D, nu, itmax, tol; Output: it, opt, w, gamma
+% [it, opt, w, gamma] = svml(A,D,nu,itmax,tol);
+[m,n]=size(A);alpha=1.9/nu;e=ones(m,1);H=D*[A -e];it=0;
+S=H*inv((speye(n+1)/nu+H’*H));
+u=nu*(1-S*(H’*e));oldu=u+1;
+while it<itmax & norm(oldu-u)>tol
+z=(1+pl(((u/nu+H*(H’*u))-alpha*u)-1));
+oldu=u;
+u=nu*(z-S*(H’*z));
+it=it+1;
+end;
+opt=norm(u-oldu);w=A’*D*u;gamma=-e’*D*u;
+function pl = pl(x); pl = (abs(x)+x)/2;
+
+4. LSVM for Nonlinear Kernels
+In this section of the paper we show how LSVM can be used to solve classification problems
+with positive semidefinite nonlinear kernels. Algorithm 1 and its convergence can be extended for such nonlinear kernels as we show below. The only price paid for this extension is
+that problems with large datasets can be handled using the Sherman-Morrison-Woodbury
+(SMW) identity (1) only if the inner product terms of the kernel (Mangasarian, 2000, Equation (3)) are explicitly known, which in general they are not. Nevertheless LSVM may be a
+useful tool for classification with nonlinear kernels because of its extreme simplicity as we
+demonstrate below with the simple MATLAB code for which it does not make use of the
+Sherman-Morrison-Woodbury identity nor any optimization package.
+We shall use the notation of Mangasarian (2000). For A ∈ R m×n and B ∈ Rn× , the
+kernel K(A, B) maps Rm×n × Rn× into Rm× . A typical kernel is the Gaussian kernel
+2
+ε−µ Ai −B·j , i, j = 1, . . . , m, = m, where ε is the base of natural logarithms, while a
+linear kernel is K(A, B) = AB. For a column vector x in R n , K(x , A ) is a row vector in
+Rm , and the linear separating surface (4) is replaced by the nonlinear surface
+K([x
+
+− 1],
+
+A
+−e
+
+)Du = 0,
+
+(26)
+
+where u is the solution of the dual problem (11) with Q re-defined for a general nonlinear
+kernel as follows:
+I
+(27)
+G = [A − e],
+Q = + DK(G, G )D.
+ν
+167
+
+Mangasarian & Musicant
+
+Note that the nonlinear separating surface (26) degenerates to the linear one (4) if we let
+K(G, G ) = GG and make use of (9).
+To justify the nonlinear kernel formulation (27) we refer the reader to (Mangasarian,
+2000, Equation (8.9)) for a similar result and give a brief derivation here. If we rewrite our
+dual problem for a linear kernel (8) in the equivalent form:
+1 I
+min m u ( + DGG D)u − e u,
+0≤u∈R 2
+ν
+
+(28)
+
+and replace the linear kernel GG by a general nonlinear positive semidefinite symmetric
+kernel K(G, G ) we obtain:
+1 I
+min m u ( + DK(G, G )D)u − e u.
+0≤u∈R 2
+ν
+
+(29)
+
+This is the formulation given above in (27). We note that the Karush-Kuhn-Tucker necessary and sufficient optimality conditions for this problem are:
+0≤u ⊥ (
+
+I
++ DK([A
+ν
+
+− e],
+
+A
+−e
+
+)D)u − e ≥ 0,
+
+(30)
+
+which underly LSVM for a nonlinear positive semidefinite kernel K(G, G ). The positive
+semidefiniteness of the nonlinear kernel K(G, G ) is needed in order to ensure the existence
+of a solution to both (29) and (30).
+All the results of the previous section remain valid, with Q re-defined as above for any
+positive semidefinite kernel K. This includes the iterative scheme (15) and the convergence result given under the Algorithm 1. However, because we do not make use of the
+Sherman-Morrison-Woodbury identity for a nonlinear kernel, the LSVM MATLAB Code 3
+is somewhat different and is as follows:
+
+168
+
+Lagrangian Support Vector Machines
+
+Code 3 LSVM MATLAB M-File for Nonlinear Kernel K(·, ·)
+function [it, opt,u] = svmlk(nu,itmax,tol,D,KM)
+% lsvm with nonlinear kernel for min 1/2*u’*Q*u-e’*u s.t. u=>0
+% Q=I/nu+DK(G,G’)D, G=[A -e]
+% Input: nu, itmax, tol, D, KM=K(G,G’)
+% [it, opt,u] = svmlk(nu,itmax,tol,D,KM);
+m=size(KM,1);alpha=1.9/nu;e=ones(m,1);I=speye(m);it=0;
+Q=I/nu+D*KM*D;P=inv(Q);
+u=P*e;oldu=u+1;
+while it<itmax & norm(oldu-u)>tol
+oldu=u;
+u=P*(1+pl(Q*u-1-alpha*u));
+it=it+1;
+end;
+opt=norm(u-oldu);[it opt]
+function pl = pl(x); pl = (abs(x)+x)/2;
+Since we cannot use the Sherman-Morrison-Woodbury identity in the general nonlinear
+case, we note that this code for a nonlinear kernel is effective for moderately sized problems.
+The sizes of the matrices P and Q in Code 3 scale quadratically with the number of data
+points.
+
+5. Numerical Implementation and Comparisons
+The implementation of LSVM is straightforward, as shown in the previous sections. Our
+first “dry run” experiments were on randomly generated problems just to test the speed and
+effectiveness of LSVM on large problems. We first used a Pentium III 500 MHz notebook
+with 384 megabytes of memory (and additional swap space) on 2 million randomly generated
+1
+and α = 1.9
+points in R10 with ν = m
+ν . LSVM solved the problem in 6 iterations in 81.52
+minutes to an optimality criterion of 9.398e − 5 on a 2-norm violation of (14). The same
+problem was solved in the same number of iterations and to the same accuracy in 6.74
+minutes on a 250 MHz UltraSPARC II processor with 2 gigabytes of memory. After these
+preliminary encouraging tests we proceeded to more systematic numerical tests as follows.
+Most of the rest of our experiments were run on the Carleton College workstation “gray”,
+which utilizes a 700 MHz Pentium III Xeon processor and a maximum of 2 Gigabytes of
+memory available for each process. This computer runs Redhat Linux 6.2, with MATLAB
+6.0. The one set of experiments showing the checkerboard were run on the UW-Madison
+Data Mining Institute “locop2” machine, which utilizes a 400 MHz Pentium II Xeon and
+a maximum of 2 Gigabytes of memory available for each process. This computer runs
+Windows NT Server 4.0, with MATLAB 5.3.1. Both gray and locop2 are multiprocessor
+machines. However, only one processor was used for all the experiments shown here as
+MATLAB is a single threaded application and does not distribute any effort across processors (The MathWorks, Inc., 2000). We had exclusive access to these machines, so there
+were no issues with other users inconsistently slowing the computers down.
+169
+
+Mangasarian & Musicant
+
+The first results we present are designed to show that our reformulation of the SVM (7)
+and its associated algorithm LSVM yield similar performance to the standard SVM (2), referred to here as SVM-QP. Results are also shown for our active set SVM (ASVM) algorithm
+(Mangasarian and Musicant, 2000). For six datasets available from the UCI Machine Learning Repository (Murphy and Aha, 1992), we performed tenfold cross validation in order to
+compare test set accuracies between the methodologies. Furthermore, we utilized a tuning
+set for each algorithm to find the optimal value of the parameter ν. For both LSVM and
+ASVM, we used an optimality tolerance of 0.001 to determine when to terminate. SVM-QP
+was implemented using the high-performing CPLEX barrier quadratic programming solver
+(ILOG, Inc., 1999) with its default stopping criterion. Altering the CPLEX default stopping
+criterion to match that of LSVM did not result in significant change in timing relative to
+LSVM, but did reduce test set correctness for SVM-QP.
+We also tested SVM-QP with the well-known optimized algorithm SVM light (Joachims,
+1998). Joachims, the author of SVMlight , graciously provided us with the newest version
+of the software (Version 3.10b) and advice on setting the parameters. All features for
+all experiments were normalized to the range [−1, +1] as recommended in the SVM light
+documentation. Such normalization was used in all experiments that we present, and is
+recommended for the LSVM algorithm due to the penalty on the bias parameter γ which
+we have added to our objective (7). We chose to use the default termination error criterion
+in SVMlight of 0.001. We also present an estimate of how much memory each algorithm used,
+as well as the number of support vectors. The number of support vectors was determined
+here as the number of components of the dual vector u that were nonzero. Moreover, we
+also present the number of components of u larger than 0.001 (referred to in the table as
+“SVs with tolerance”).
+The results demonstrate that LSVM performs comparably to SVM-QP with respect to
+generalizability, and shows running times comparable to or better than SVM light . LSVM
+and ASVM show nearly identical generalization performance, as they solve the same optimization problem. Any differences in generalization observed between the two are only
+due to different approximate solutions being found at termination. LSVM and ASVM usually run in roughly the same amount of time, though there are some cases where ASVM
+is noticeably faster than LSVM. Nevertheless, this is impressive performance on the part
+of LSVM, which is a dramatically simpler algorithm than ASVM, CPLEX, and SVM light .
+LSVM utilizes significantly less memory than the SVM-QP algorithms as well, though it
+does require more support vectors than SVM-QP. We address this point in the conclusion.
+We next compare LSVM with SVMlight on the Adult dataset (Murphy and Aha, 1992),
+which is commonly used to compare SVM algorithms (Platt, 1999, Mangasarian and Musicant, 1999). These results, shown in Table 2, demonstrate that for the largest training
+sets LSVM performs faster than SVMlight with similar test set accuracies. Note that the
+“iterations” column takes on very different meanings for the two algorithms. SVM light defines an iteration as solving an optimization problem over a a small number, or “chunk,” of
+constraints. LSVM, on the other hand, defines an iteration as a matrix calculation which
+updates all the dual variables simultaneously. These two numbers are not directly comparable, and are included here only for purposes of monitoring scalability. In this experiment,
+LSVM uses significantly more memory than SVM light .
+170
+
+Lagrangian Support Vector Machines
+
+Dataset
+Algorithm
+mxn
+Liver Disorders CPLEX
+SVMlight
+ASVM
+LSVM
+345 x 6
+Cleveland Heart CPLEX
+SVMlight
+ASVM
+LSVM
+297 x 13
+Pima Diabetes CPLEX
+SVMlight
+ASVM
+LSVM
+768 x 8
+CPLEX
+Ionosphere
+SVMlight
+ASVM
+LSVM
+351 x 34
+CPLEX
+Tic Tac Toe
+SVMlight
+ASVM
+LSVM
+958 x 9
+CPLEX
+Votes
+SVMlight
+ASVM
+LSVM
+435 x 16
+
+Training
+Testing
+Memory
+Time
+Correctness Correctness (CPU sec) (Kilobytes)
+68.41%
+70.76%
+3.806
+4,427
+68.41%
+70.76%
+0.252
+1,451
+68.68%
+70.14%
+0.007
+2
+68.68%
+70.14%
+*0.053
+5
+85.91%
+87.73%
+2.453
+3,406
+85.91%
+87.73%
+0.057
+1,376
+85.89%
+87.36%
+0.011
+0
+85.89%
+87.36%
+*0.048
+0
+76.95%
+77.36%
+90.360
+20,978
+76.95%
+77.36%
+0.121
+1,364
+78.12%
+78.04%
+0.023
+41
+78.12%
+*78.04%
+0.126
+207
+88.60%
+92.81%
+4.335
+13,230
+88.60%
+92.81%
+0.161
+1,340
+87.75%
+93.29%
+0.070
+193
+87.75%
+93.29%
+*0.089
+183
+65.34%
+65.34%
+178.844
+32,681
+65.34%
+65.34%
+0.208
+1,344
+69.72%
+70.27%
+0.015
+136
+69.72%
+*70.27%
+*0.004
+140
+95.85%
+96.02%
+9.929
+6,936
+95.85%
+96.02%
+0.038
+1,344
+96.07%
+96.73%
+0.025
+69
+96.07%
+*96.73%
+0.047
+245
+
+# of SVs
+310.5
+225.7
+299.4
+305.3
+267.3
+96.1
+169.7
+220.5
+687.8
+454.8
+610.0
+651.1
+301.7
+98.4
+167.0
+216.6
+862.2
+608.3
+862.2
+862.2
+391.5
+57.8
+128.8
+245.4
+
+# of SVs
+(w/ tolerance)
+268.7
+225.7
+299.4
+299.4
+96.3
+96.1
+169.5
+169.5
+454.8
+454.5
+610.0
+610.0
+98.8
+98.4
+166.8
+166.8
+862.2
+608.2
+862.2
+862.2
+57.7
+57.4
+123.1
+123.2
+
+Table 1: LSVM compared with conventional SVM-QP (CPLEX and SVM light ) and ASVM
+on six UCI datasets. LSVM test correctness is comparable to SVM-QP, with
+timing much faster than CPLEX and faster than or comparable to SVM light . An
+asterisk in the first three columns indicates that the LSVM results are significantly
+different from SVMlight at significance level α = 0.05. The column “w/ tolerance”
+indicates the number of support vectors with dual variable u > 0.001.
+
+171
+
+Mangasarian & Musicant
+
+Training
+Set Size
+
+1605
+2265
+3185
+4781
+6414
+11221
+16101
+22697
+32562
+
+CPU
+Sec
+SVMlight
+LSVM
+0.3
+1.4
+0.5
+2.1
+0.8
+3.2
+1.5
+5.3
+2.7
+7.6
+11.6
+15.3
+28.2
+23.8
+55.9
+36.5
+112.7
+56.1
+
+Iterations
+
+Test Set
+Accuracy
+
+Memory
+(Kilobytes)
+
+SVMlight
+LSVM
+256
+38
+389
+40
+495
+43
+724
+46
+966
+47
+1588
+50
+2285
+52
+3389
+54
+4850
+55
+
+SVMlight
+LSVM
+84.05%
+84.27%
+84.37%
+84.66%
+84.22%
+84.55%
+84.33%
+84.55%
+84.47%
+84.68%
+84.58%
+84.84%
+84.81%
+85.01%
+85.16%
+85.35%
+85.03%
+85.05%
+
+SVMlight
+LSVM
+1340
+2816
+1340
+4672
+2444
+6148
+3388
+9044
+3684
+12584
+5536
+22368
+7508
+32544
+10212
+44032
+15500
+70416
+
+# of SVs
+SVMlight
+LSVM
+708
+1364
+1012
+1924
+1316
+2662
+1906
+3933
+2490
+5220
+4222
+9008
+6003
+12935
+8385
+18048
+11782
+25769
+
+# of SVs
+(w/ tolerance)
+SVMlight
+LSVM
+706
+1069
+1011
+1540
+1312
+2040
+1904
+3026
+2488
+3985
+4220
+6879
+5999
+9803
+8381
+13721
+11777
+19448
+
+Table 2: Comparison of LSVM with SVM light on the UCI adult dataset. LSVM test correctness is comparable to that of SVM light , but is faster on large datasets. The
+column “w/ tolerance” indicates the number of support vectors with dual variable
+u > 0.001. (ν = 0.03)
+
+# of
+# of
+Training
+Points Attributes Iterations Correctness
+2 million
+10
+81
+69.80%
+
+Testing
+Time
+Correctness (CPU min)
+69.44%
+22.4
+
+Memory
+(Kilobytes)
+918,256
+
+Table 3: Performance of LSVM on NDC generated dataset (ν = 0.1). SVM light failed on
+this dataset.
+
+172
+
+Lagrangian Support Vector Machines
+
+Table 3 shows results from running LSVM on a massively sized dataset. This dataset
+was created using our own NDC Data Generator (Musicant, 1998) as suggested by Usama
+Fayyad. The results show that LSVM can be used to solve massive problems quickly,
+which is particularly intriguing given the simplicity of the LSVM Algorithm. Note that
+for these experiments, all the data was brought into memory. As such, the running time
+reported consists of the time used to actually solve the problem to termination excluding I/O
+time. This is consistent with the measurement techniques used by other popular approaches
+(Joachims, 1999, Platt, 1999). Putting all the data in memory is simpler to code and results
+in faster running times. However, it is not a fundamental requirement of our algorithm —
+block matrix multiplications, incremental evaluations of Q −1 using another application of
+the Sherman-Morrison-Woodbury identity, and indices on the dataset can be used to create
+an efficient disk based version of LSVM. We note that we tried to run SVM light on this
+dataset, but after running for more than six hours it did not terminate.
+We now demonstrate the effectiveness of LSVM in solving nonlinear classification problems through the use of kernel functions. One highly nonlinearly separable but simple
+example is the “tried and true” checkerboard dataset (Ho and Kleinberg, 1996), which has
+often been used to show the effectiveness of nonlinear kernel methods on a dataset for which
+a linear separation clearly fails. The checkerboard dataset contains 1000 points randomly
+sampled from a checkerboard. These points are used as a training set in LSVM to try to
+reproduce an accurate rendering of a checkerboard. For this problem, we used the following
+Gaussian kernel:
+−4
+2
+K(G, G ) = ε−2·10 Gi −Gj , i, j = 1, . . . , m
+(31)
+Our results, shown in Figure 2, demonstrate that LSVM shows similar or better generalization capability on this dataset when compared to other methods (Kaufman, 1999,
+Mangasarian and Musicant, 2001, Lee and Mangasarian, 2000). Total time for the checkerboard problem using LSVM with a Gaussian kernel was 2.85 hours on the Locop2 Pentium
+II Xeon machine on the 1000-point training set in R 2 after 100,000 iterations. Test set
+accuracy was 97.0% on a 39,000-point test set. However, within 58 seconds and after 100 iterations, a quite reasonable checkerboard was obtained (http://www.cs.wisc.edu/~olvi/
+lsvm/check100iter.eps) with a 95.9% accuracy on the same test set.
+The final set of experiments, shown in Table 4, demonstrates the effectiveness of nonlinear kernel functions with LSVM on UCI datasets (Murphy and Aha, 1992) specialized as
+follows for purposes of our tests:
+• The liver-disorders dataset contains 345 points, each consisting of six features. Class
+1 contains 145 points, and class -1 contains 200 points.
+• The letter-recognition dataset is used for recognizing letters of the alphabet. Traditionally, this dataset is used for multi-category classification. We used it here in a two
+class situation by taking a subset of those points which correspond to the letter “A,”
+and a subset of those points which correspond to the letter “B.” This resulted in a
+dataset of 600 points with 6 features, where each class contained 300 points.
+• The mushroom dataset is a two class dataset which contains eight categorical attributes. We transformed each categorical attribute into a series of binary attributes,
+one attribute for each distinct value. For example, this dataset contains an attribute
+173
+
+Mangasarian & Musicant
+
+100
+
+80
+
+60
+
+40
+
+20
+
+0
+
+−20
+
+−40
+
+−60
+
+−80
+
+−100
+−100
+
+−80
+
+−60
+
+−40
+
+−20
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+Figure 2: Gaussian kernel LSVM performance on checkerboard training dataset. (ν = 10 5 )
+called “cap surface,” which can take one one of four categories, namely “fibrous,”
+“grooves,” “scaly,” or “smooth.” We represented this as four binary attributes. A 1
+is assigned to the attribute that corresponds to the actual category, and a 0 to the
+rest. Thus the categorical value “fibrous” would be represented by [1 0 0 0], while the
+value “smooth” would be represented by [0 0 0 1]. A subset of the entire mushroom
+dataset was used, so as to shorten the running times of our experiments. The final
+dataset we used contained 22 features with 200 points in class 1 and 300 points in
+class -1.
+• The tic-tac-toe dataset is a two class dataset that contains incomplete tic-tac-toe
+games. All those games with a possible winning move for “X” end up in category
+1, and all other games end up in category -1. We have intentionally represented this
+problem with a poor representation scheme to show the power of non-linear kernels in
+overcoming this difficulty. Each tic-tac-toe game is represented by 9 attributes, where
+each attribute corresponds to a spot on the tic-tac-toe board. An “X” is represented
+by 1, an “O” is represented by 0, and a blank is represented by -1. We used a subset
+of this dataset with 9 attributes, 200 points in class 1, and 100 points in class -1.
+We chose which kernels to use and appropriate values of ν via tuning sets and tenfold cross-validation techniques. The results show that nonlinear kernels produce test set
+accuracies that improve on those obtained with linear kernels.
+
+6. Conclusion
+A fast and extremely simple algorithm, LSVM, considerably easier to code than SVM light
+(Joachims, 1999), SMO (Platt, 1999), SOR (Mangasarian and Musicant, 1999) and ASVM
+(Mangasarian and Musicant, 2000), capable of classifying datasets with millions of points
+has been proposed and implemented in a few lines of MATLAB code. For a linear kernel,
+174
+
+Lagrangian Support Vector Machines
+
+Dataset
+mxn
+Liver Disorders
+
+Algorithm
+SVMlight
+LSVM
+
+345 x 6
+Tic-Tac-Toe
+
+SVMlight
+LSVM
+
+300 x 9
+Letter Recognition
+
+SVMlight
+LSVM
+
+600 x 6
+Mushroom
+
+SVMlight
+LSVM
+
+500 x 22
+
+Kernel
+Type
+Linear
+Quadratic
+Linear
+Quadratic
+Linear
+Quadratic
+Linear
+Quadratic
+Linear
+Cubic
+Linear
+Cubic
+Linear
+Cubic
+Linear
+Cubic
+
+Training
+Correctness
+70.76%
+76.30%
+70.15%
+*75.17%
+66.67%
+98.30%
+66.67%
+*99.52%
+85.48%
+89.31%
+*81.69%
+88.56%
+77.24%
+90.91%
+77.96%
+90.91%
+
+Testing
+Correctness
+68.41%
+72.79%
+68.68%
+72.78%
+66.67%
+95.33%
+66.67%
+95.00%
+85.00%
+88.67%
+81.50%
+87.83%
+76.20%
+88.40%
+76.80%
+88.20%
+
+Time
+(secs)
+0.239
+0.197
+*0.051
+*0.345
+0.036
+17.575
+*0.001
+*0.377
+0.124
+0.374
+*0.029
+*1.639
+0.536
+0.261
+*0.053
+*0.570
+
+Memory
+(Kilobytes)
+1448
+42413
+4
+2418
+1375
+42424
+23
+1852
+1234
+1374
+76
+6976
+1340
+1340
+124
+4724
+
+# of SVs
+225.7
+218.6
+305.3
+304.4
+182.8
+73.5
+270.0
+122.4
+240.3
+217.0
+537.7
+472.2
+241.9
+174.5
+438.7
+366.7
+
+# of SVs
+(w/ tolerance)
+225.7
+218.6
+299.4
+298.5
+0.0
+73.4
+0.0
+115.3
+240.3
+216.9
+535.3
+400.7
+240.3
+163.6
+428.1
+250.5
+
+Table 4: LSVM performance with linear, quadratic, and cubic kernels (polynomial kernels
+of degree 1, 2, and 3 respectively). An asterisk in the first three columns indicates
+that the LSVM results are significantly different from SVM light at significance level
+α = 0.05. The column “w/ tolerance” indicates the number of support vectors
+with dual variable u > 0.001.
+LSVM is an iterative method which requires nothing more complex than the inversion of a
+single matrix of the order of the input space plus one, and thus has the ability to handle
+massive problems. For a positive semidefinite nonlinear kernel, a single matrix inversion is
+required in the space of dimension equal to the number of points classified. Hence, for such
+nonlinear classifiers LSVM can handle only intermediate size problems.
+There is room for future work in reducing the number of support vectors in the solutions
+yielded by LSVM. One method would be to augment the quadratic term in y in the objective
+function of (7) by a 1-norm in y. This should decrease the number of support vectors as in
+work by Bradley and Mangasarian (1998) where the 1-norm was used to effectively suppress
+features. Additionally, the iterative algorithm itself could be modified so that dual variables
+with values smaller than a tolerance would be automatically set to zero.
+Further future work includes extensions to parallel processing of the data and handling
+very large datasets directly from disk as well as extending nonlinear kernel classification to
+very large datasets.
+
+Acknowledgements
+Research described in this Data Mining Institute Report 00-06, June 2000, was supported by
+National Science Foundation Grants CCR-9729842 and CDA-9623632, by Air Force Office
+of Scientific Research Grant F49620-00-1-0085 and by Microsoft. We wish to thank our
+colleague Thorsten Joachims for supplying us with his latest code for SVM light and for
+advice on how to run it efficiently.
+c 2001 Olvi L. Mangasarian and David R. Musicant.
+The LSVM Algorithm 1 and the LSVM Codes 2 and 3 are copyrighted and may not be
+used for any commercial purpose without written authorization from the authors.
+
+175
+
+Mangasarian & Musicant
+
+References
+D. P. Bertsekas. Nonlinear Programming. Athena Scientific, Belmont, MA, second edition,
+1999.
+P. S. Bradley and O. L. Mangasarian. Feature selection via concave minimization and
+support vector machines. In J. Shavlik, editor, Machine Learning Proceedings of the
+Fifteenth International Conference(ICML ’98), pages 82–90, San Francisco, California,
+1998. Morgan Kaufmann. ftp://ftp.cs.wisc.edu/math-prog/tech-reports/98-03.
+ps.
+P. S. Bradley and O. L. Mangasarian. Massive data discrimination via linear support vector
+machines. Optimization Methods and Software, 13:1–10, 2000. ftp://ftp.cs.wisc.edu/
+math-prog/tech-reports/98-03.ps.
+V. Cherkassky and F. Mulier. Learning from Data - Concepts, Theory and Methods. John
+Wiley & Sons, New York, 1998.
+N. Cristianini and J. Shawe-Taylor. An Introduction to Support Vector Machines. Cambridge University Press, Cambridge, 2000.
+M. C. Ferris and T. S. Munson. Interior point methods for massive support vector machines.
+Technical Report 00-05, Computer Sciences Department, University of Wisconsin, Madison, Wisconsin, May 2000. ftp://ftp.cs.wisc.edu/pub/dmi/tech-reports/00-05.
+ps.
+G. H. Golub and C. F. Van Loan. Matrix Computations. The John Hopkins University
+Press, Baltimore, Maryland, 3rd edition, 1996.
+T. K. Ho and E. M. Kleinberg. Checkerboard dataset, 1996. http://www.cs.wisc.edu/
+math-prog/mpml.html.
+ILOG, Inc. ILOG CPLEX 6.5 Reference Manual. ILOG CPLEX Division, Incline Village,
+Nevada, 1999.
+T. Joachims. SVMlight , 1998. http://ais.gmd.de/˜thorsten/svm light.
+T. Joachims. Making large-scale support vector machine learning practical. In Sch¨olkopf
+et al. (1999), pages 169–184.
+L. Kaufman. Solving the quadratic programming problem arising in support vector classification. In Sch¨olkopf et al. (1999), pages 147–167.
+Y.-J. Lee and O. L. Mangasarian. RSVM: Reduced support vector machines. In Proceedings
+of the First SIAM International Conference on Data Mining, 2001. To appear. ftp:
+//ftp.cs.wisc.edu/pub/dmi/tech-reports/00-07.ps.
+Yuh-Jye Lee and O. L. Mangasarian. SSVM: A smooth support vector machine. Computational Optimization and Applications, 2000. To appear. ftp://ftp.cs.wisc.edu/pub/
+dmi/tech-reports/99-03.ps.
+176
+
+Lagrangian Support Vector Machines
+
+O. L. Mangasarian. Nonlinear Programming. SIAM, Philadelphia, PA, 1994.
+O. L. Mangasarian. Generalized support vector machines. In A. Smola, P. Bartlett,
+B. Sch¨olkopf, and D. Schuurmans, editors, Advances in Large Margin Classifiers, pages
+135–146, Cambridge, MA, 2000. MIT Press. ftp://ftp.cs.wisc.edu/math-prog/
+tech-reports/98-14.ps.
+O. L. Mangasarian and D. R. Musicant. Successive overrelaxation for support vector machines. IEEE Transactions on Neural Networks, 10:1032–1037, 1999. ftp://ftp.cs.
+wisc.edu/math-prog/tech-reports/98-18.ps.
+O. L. Mangasarian and D. R. Musicant. Active support vector machine classification.
+Advances in Neural Information Processing Systems (NIPS 2000), 2000. To appear.
+ftp://ftp.cs.wisc.edu/pub/dmi/tech-reports/00-04.ps.
+O. L. Mangasarian and D. R. Musicant. Data discrimination via nonlinear generalized
+support vector machines. In M. C. Ferris, O. L. Mangasarian, and J.-S. Pang, editors,
+Complementarity: Applications, Algorithms and Extensions, pages 233–251, Dordrecht,
+January 2001. Kluwer Academic Publishers. ftp://ftp.cs.wisc.edu/math-prog/
+tech-reports/99-03.ps.
+O. L. Mangasarian and J. Ren. New improved error bounds for the linear complementarity
+problem. Mathematical Programming, 66:241–255, 1994.
+O. L. Mangasarian and M. V. Solodov. Nonlinear complementarity as unconstrained and
+constrained minimization. Mathematical Programming, Series B, 62:277–297, 1993.
+P. M. Murphy and D. W. Aha. UCI repository of machine learning databases, 1992.
+http://www.ics.uci.edu/˜mlearn/MLRepository.html.
+D. R. Musicant. NDC: Normally Distributed Clustered Datasets, 1998. http://www.cs.
+wisc.edu/˜musicant/data/ndc.
+J.
+
+Platt.
+Sequential minimal optimization:
+A fast algorithm for training support vector machines.
+In Sch¨olkopf et al. (1999), pages 185–208.
+http://www.research.microsoft.com/˜jplatt/smo.html.
+
+B. Sch¨olkopf, C. Burges, and A. Smola. Advances in Kernel Methods: Support Vector
+Machines. MIT Press, Cambridge, MA, 1999.
+The MathWorks, Inc. MATLAB User’s Guide. The MathWorks, Inc., Natick, MA 01760,
+1994-2001.
+The MathWorks, Inc. MATLAB Solution Number 1913: Can one session of MATLAB
+take advantage of multiple processors on the same PC or UNIX machine?, 2000. http:
+//www.mathworks.com/support/solutions/data/1913.shtml.
+V. N. Vapnik. The Nature of Statistical Learning Theory. Springer, New York, 1995.
+
+177
+
+

@@ -9,6 +9,7 @@ from DatabaseParser.models import DocFreqTable, DocClass, WordTable
 from DatabaseParser.views import MAX_NUM_OF_WORDS_READ
 from math import log10
 from DatabaseParser.views import loadStopWords  
+from DatabaseParser.views import get_my_string
 
 def NaiveBayes(file):
     
@@ -21,7 +22,7 @@ def NaiveBayes(file):
     #1. Select the first 300 words which
     #2. Contains only letters (helps in removing meaningless tokens)
     #3. Must not be a stop word
-    fp = open(file,'r')
+    fp = open(file,encoding="latin-1")
     docCount = DocClass.objects.count()
     print("Number of documents: ",docCount)
     
@@ -31,8 +32,7 @@ def NaiveBayes(file):
     stopwords=loadStopWords(STOP_WORD_LIST_FILENAME)
     for w_ in W:
         w=w_.lower()
-        if not w[-1].isalpha():
-            w=w[:-1]
+        w = get_my_string(w)
         if not w.isalpha():
             continue
         if w in processedW.keys(): 

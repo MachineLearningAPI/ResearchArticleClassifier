@@ -6,8 +6,10 @@ Created on Sep 24, 2015
 import numpy as numpy
 import math as math
 from DatabaseParser.models import DocFreqTable, DocClass, WordTable
+from DatabaseParser.views import loadStopWords
 from DatabaseParser.views import MAX_NUM_OF_WORDS_READ
 from DatabaseParser.views import FREQ_THRESHOLD_PERCENT
+from DatabaseParser.views import STOP_WORD_LIST_FILENAME
 
 class Tuple:
     def __init__(self):
@@ -72,23 +74,14 @@ def wKNN(filename,k):
     #Push the keywords in the file to a dictionary datastructure
     fileKeyWords = {}
     wordsInFile = filePointer.read().split()
-    """try:
-                    wordsInFile = filePointer.read().split()
-                except:
-                    for line in filePointer:
-                        wordsInLine = None
-                        try:
-                            wordsInLine = line.split()
-                        except:
-                            wordsInLine = ''
-                        for word in wordsInLine:
-                            wordsInFile.append(word)"""
     cnt = 0
+    stopwords=loadStopWords(STOP_WORD_LIST_FILENAME)
     for word in wordsInFile:
-        fileKeyWords[getASCII(word)] = True
-        cnt += 1
-        if cnt == MAX_NUM_OF_WORDS_READ:
-            break
+        if getASCII(word) in stopwords.keys():
+            fileKeyWords[getASCII(word)] = True
+            cnt += 1
+            if cnt == MAX_NUM_OF_WORDS_READ:
+                break
     #Get the tupple for the current file
     print(fileKeyWords)
     inputFileTupple = getTuple(wordList,fileKeyWords)
