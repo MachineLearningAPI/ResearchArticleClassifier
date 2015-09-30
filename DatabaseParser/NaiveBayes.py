@@ -15,8 +15,8 @@ def NaiveBayes(file):
     
     #Logging to a file
     orig_stdout = sys.stdout
-    f = open('out.txt', 'w')
-    sys.stdout = f
+    #f = open('out.txt', 'w')
+    #sys.stdout = f
     
     #Extract tokens from doc
     #1. Select the first 300 words which
@@ -24,7 +24,7 @@ def NaiveBayes(file):
     #3. Must not be a stop word
     fp = open(file,encoding="latin-1")
     docCount = DocClass.objects.count()
-    print("Number of documents: ",docCount)
+    #print("Number of documents: ",docCount)
     
     W = fp.read().split()
     cnt=0
@@ -49,7 +49,7 @@ def NaiveBayes(file):
     #number of classes
     countC=len(C)
     
-    print("Number of classes: ",countC)
+    #print("Number of classes: ",countC)
 
     #(probability,class) pairs
     scores=[]
@@ -57,14 +57,14 @@ def NaiveBayes(file):
     #number of terms
     B=DocFreqTable.objects.all().count()   
     
-    print("Number of terms: ",B) 
+    #print("Number of terms: ",B) 
     
     #Outer Loop: for every class
     for c in C: 
         
         cName=c['className']
         
-        print("Calculating probabilities for class=",cName)
+        #print("Calculating probabilities for class=",cName)
         
         #get all docs corresponding to current class
         docsC = DocClass.objects.filter(className = cName).values("docName")
@@ -80,7 +80,7 @@ def NaiveBayes(file):
             #number of docs of current class in which the current term appears
             numC = WordTable.objects.filter(docName__in=docsC,word=t).select_related().count()
             
-            print("Using term=",t)
+            #print("Using term=",t)
             
             #how much evidence does term provide that clas is the correct class        
           
@@ -97,6 +97,6 @@ def NaiveBayes(file):
         answer_list.append( ( -i[0], i[1] ) );
     
     sys.stdout = orig_stdout
-    f.close()
+    #f.close()
            
     return answer_list

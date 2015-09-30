@@ -23,12 +23,12 @@ class Tuple:
         otherVector = numpy.asarray(other.list)
         if self.count == other.count:
             M11 = numpy.sum(myVector & otherVector)
-            print(myVector)
-            print(otherVector)
-            print(myVector ^ otherVector)
+            #print(myVector)
+            #print(otherVector)
+            #print(myVector ^ otherVector)
             M01_M10 = numpy.sum(myVector ^ otherVector)
-            print('M11 = '+str(M11))
-            print('M01_M10 = '+str(M01_M10))
+            #print('M11 = '+str(M11))
+            #print('M01_M10 = '+str(M01_M10))
             return (M01_M10)/(M11+M01_M10)
         else:
             return 0
@@ -69,7 +69,7 @@ def wKNN(filename,k):
     for inst in docInstances:
         wordList.append(getASCII(inst.word))
     #Now start reading the file and then parse it match if the keywords are present in the file
-    print(wordList)
+    #print(wordList)
     filePointer = open(filename,encoding="latin-1")
     #Push the keywords in the file to a dictionary datastructure
     fileKeyWords = {}
@@ -78,14 +78,15 @@ def wKNN(filename,k):
     stopwords=loadStopWords(STOP_WORD_LIST_FILENAME)
     for word in wordsInFile:
         if getASCII(word) in stopwords.keys():
-            fileKeyWords[getASCII(word)] = True
-            cnt += 1
-            if cnt == MAX_NUM_OF_WORDS_READ:
-                break
+            continue
+        fileKeyWords[getASCII(word)] = True
+        cnt += 1
+        if cnt == MAX_NUM_OF_WORDS_READ:
+            break
     #Get the tupple for the current file
-    print(fileKeyWords)
+    ##print(fileKeyWords)
     inputFileTupple = getTuple(wordList,fileKeyWords)
-    print(inputFileTupple.list)
+    ##print(inputFileTupple.list)
     docListInstance = DocClass.objects.all()
     docList = []
     # to get back the class name for any given document (assuming the number of documnets can be stored in the main mememory)
@@ -119,12 +120,12 @@ def wKNN(filename,k):
         distanceClassList.append((dis,docToClassName[docList[i]]))
         i += 1
     distanceClassList.sort()
-    print(distanceClassList)
+    #print(distanceClassList)
     classCount = {}
     cnt = 0
     for ins in distanceClassList:
         wt = 1/(ins[0]+0.01) #for removing the zero error
-        print(str(ins[1])+' -> '+str(wt))
+        #print(str(ins[1])+' -> '+str(wt))
         if ins[1] in classCount.keys():
             classCount[ins[1]] += wt
         else:
@@ -132,7 +133,7 @@ def wKNN(filename,k):
         if cnt == k:
             break;
         cnt += 1
-    print(str(classCount))
+    #print(str(classCount))
     classCountList = []
     for className in classCount.keys():
         classCountList.append((-1*classCount[className],className))

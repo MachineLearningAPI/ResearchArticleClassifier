@@ -11,6 +11,7 @@ from myapp.models import Document
 from DatabaseParser.wKNN import wKNN
 from DatabaseParser.NaiveBayes import NaiveBayes
 from DatabaseParser.views import filterStopWords 
+from DatabaseParser.testData import testAllData
 
 # Create your views here.
 PATH_TO_DATASET = 'TrainingData/'
@@ -105,7 +106,7 @@ def callBayesian(request):
                'title':'Bayesian Results',
 	       'msg':'<br>For the file '+filename+' .<a href="/home/">Click here to go back!!</a>',
 	       'colA':'Class Name',
-	       'colB':'Percentage Chance',
+	       'colB':'Log10(Probability)',
                'dataSet' : lis,
                }
     return render(request,'results.html',context)
@@ -123,3 +124,7 @@ def getStop(request):
 def removeStopWords(request):
     filterStopWords()
     return HttpResponse("StopWords Removed !!!")
+
+def testAll(request):
+    context = testAllData()
+    return render(request,'results.html',context)

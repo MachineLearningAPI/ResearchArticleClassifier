@@ -40,5 +40,6 @@ urlpatterns += patterns('GUI.views',
     url(r'^stopWords/$','getStop'),
     url(r'^loadText/$','loadTextFile'),
     url(r'^filter/$','removeStopWords'),
+    url(r'^testAll/$','testAll'),
 )
 
